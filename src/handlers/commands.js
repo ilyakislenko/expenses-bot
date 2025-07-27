@@ -174,8 +174,22 @@ class CommandHandlers {
     try {
       const userId = ctx.from.id;
       const categories = await db.getCategories(userId);
-      const message = Formatter.formatCategories(categories);
-      await ctx.reply(message, { parse_mode: 'Markdown' });
+
+      if (!categories.length) {
+        return await ctx.reply('Категории не найдены.');
+      }
+
+      // Формируем inline-клавиатуру
+      const keyboard = categories.map(cat => [
+        { text: `${cat.icon} ${cat.name}`, callback_data: `show_category|${cat.id}` }
+      ]);
+      keyboard.push([{ text: '⬅️ Назад', callback_data: 'back_to_menu' }]);
+
+      await ctx.reply('Выберите категорию:', {
+        reply_markup: {
+          inline_keyboard: keyboard
+        }
+      });
     } catch (error) {
       console.error('Error in categories command:', error);
       await ctx.reply('Произошла ошибка при получении категорий 😞');

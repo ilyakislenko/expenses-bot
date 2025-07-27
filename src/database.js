@@ -246,6 +246,30 @@ class Database {
     const result = await this.query('SELECT currency FROM users WHERE id = $1', [userId]);
     return result.rows[0]?.currency || 'RUB';
   }
+
+  async getExpensesByCategoryId(userId, categoryId, period = 'month') {
+    let dateFilter;
+    switch (period) {
+      case 'day':
+        dateFilter = "e.date = CURRENT_DATE";
+        break;
+      case 'week':
+        dateFilter = "e.date >= CURRENT_DATE - INTERVAL '7 days'";
+        break;
+      case 'month':
+      default:
+        dateFilter = "EXTRACT(MONTH FROM e.date) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM e.date) = EXTRACT(YEAR FROM CURRENT_DATE)";
+    }
+    const query = `
+      SELECT e.*, c.name as category_name, c.icon as category_icon
+      FROM expenses e
+      LEFT JOIN categories c ON e.category_id = c.id
+      WHERE e.user_id = $1 AND e.category_id = $2 AND ${dateFilter}
+      ORDER BY e.created_at DESC
+    `;
+    const result = await this.query(query, [userId, categoryId]);
+    return result.rows;
+  }
 }
 
 module.exports = new Database();

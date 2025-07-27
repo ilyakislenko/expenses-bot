@@ -65,6 +65,17 @@ bot.action('back_to_settings', async (ctx) => {
 bot.action('back_to_menu', async (ctx) => {
   await CommandHandlers.help(ctx);
 });
+bot.action(/^show_category\|(\d+)$/, async (ctx) => {
+  const categoryId = ctx.match[1];
+  const userId = ctx.from.id;
+  const expenses = await require('./database').getExpensesByCategoryId(userId, categoryId, 'month');
+  if (!expenses.length) {
+    return ctx.reply('Нет трат по этой категории за последний месяц.');
+  }
+  const Formatter = require('./utils/formatter');
+  const message = Formatter.formatExpenseList(expenses);
+  await ctx.reply(message, { parse_mode: 'Markdown' });
+});
 
 // Обработка ошибок
 bot.catch((error, ctx) => {
