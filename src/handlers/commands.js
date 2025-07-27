@@ -20,7 +20,7 @@ class CommandHandlers {
 
 *Команды:*
 /total - общая сумма за месяц
-/history - последние 10 записей  
+/history - последние записи за день
 /stats - статистика по категориям
 /export - выгрузка данных в CSV
 /undo - удалить последнюю запись
@@ -42,7 +42,7 @@ class CommandHandlers {
 *Команды:*
 /start - перезапустить бота
 /total - сумма за текущий месяц
-/history - последние записи
+/history - последние записи за день
 /stats - подробная статистика
 /export - скачать данные (CSV)
 /undo - отменить последнюю запись
@@ -76,12 +76,14 @@ class CommandHandlers {
     }
   }
 
-  static async history(ctx) {
+  static async dailyHistory(ctx) {
     try {
       const userId = ctx.from.id;
-      const expenses = await db.getUserExpenses(userId, 10);
+      const expenses = await db.getDailyExpenses(userId);
       
-      const message = `📋 *Последние расходы*\n\n${Formatter.formatExpenseList(expenses)}`;
+      const message = `📋 *Траты за день*\n\n${Formatter.
+        formatExpenseList(expenses)}\n\n*Покупок за день: ${expenses.length}* \n\n*Общая сумма: ${Formatter.
+            formatAmount(expenses.reduce((sum, expense) => sum + parseFloat(expense.amount), 0))}* `;
       
       await ctx.reply(message, { parse_mode: 'Markdown' });
     } catch (error) {

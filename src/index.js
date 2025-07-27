@@ -29,7 +29,7 @@ bot.use((ctx, next) => {
 bot.start(CommandHandlers.start);
 bot.help(CommandHandlers.help);
 bot.command('total', CommandHandlers.total);
-bot.command('history', CommandHandlers.history);
+bot.command('history', CommandHandlers.dailyHistory);
 bot.command('stats', CommandHandlers.stats);
 bot.command('export', CommandHandlers.exportData);
 bot.command('undo', CommandHandlers.undo);

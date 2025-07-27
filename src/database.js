@@ -106,7 +106,12 @@ class Database {
 
   async getDailyExpenses(userId) {
     const query = `
-      SELECT * FROM expenses WHERE user_id = $1 AND date = CURRENT_DATE
+    SELECT e.*, c.name as category_name, c.icon as category_icon
+      FROM expenses e
+      LEFT JOIN categories c ON e.category_id = c.id
+      WHERE e.user_id = $1
+      AND e.date = CURRENT_DATE
+      ORDER BY e.created_at ASC
     `;
     const result = await this.query(query, [userId]);
     return result.rows;

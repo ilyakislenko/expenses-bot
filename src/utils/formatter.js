@@ -12,7 +12,9 @@ class Formatter {
       return new Intl.DateTimeFormat('ru-RU', {
         day: '2-digit',
         month: '2-digit',
-        year: 'numeric'
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
       }).format(new Date(date));
     }
   
@@ -25,7 +27,7 @@ class Formatter {
         const icon = expense.category_icon || '📦';
         const amount = this.formatAmount(expense.amount);
         const description = expense.description || 'Без описания';
-        const date = this.formatDate(expense.date);
+        const date = this.formatDate(expense.created_at);
         
         return `${icon} ${amount} - ${description}\n📅 ${date}`;
       }).join('\n\n');
@@ -50,7 +52,7 @@ class Formatter {
     static formatCSV(expenses) {
       let csv = 'Дата,Сумма,Категория,Описание\n';
       expenses.forEach(expense => {
-        const date = this.formatDate(expense.date);
+        const date = this.formatDate(expense.created_at);
         const amount = expense.amount;
         const category = expense.category || 'Другое';
         const description = (expense.description || '').replace(/"/g, '""');
