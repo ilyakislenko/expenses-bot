@@ -111,6 +111,24 @@ class Formatter {
   static formatCategories(categories) {
     return categories.map(cat => `${cat.icon} ${cat.name}`).join('\n');
   }
+
+  static formatExpenseWithActions(expense) {
+    const icon = expense.category_icon || '📦';
+    const amount = this.formatAmount(expense.amount, expense.currency || 'RUB');
+    const description = expense.description || 'Без описания';
+    const date = this.formatDate(expense.created_at);
+    return {
+      text: `${icon} ${amount} - ${description}\n📅 ${date}`,
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: '✏️ Редактировать', callback_data: `edit_expense|${expense.id}` },
+            { text: '🗑️ Удалить', callback_data: `delete_expense|${expense.id}` }
+          ]
+        ]
+      }
+    };
+  }
 }
 
 module.exports = Formatter;
