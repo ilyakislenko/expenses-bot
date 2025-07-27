@@ -29,7 +29,14 @@ class CommandHandlers {
 
 Начни вводить свои расходы! 💰`;
 
-    await ctx.reply(message, { parse_mode: 'Markdown' });
+    await ctx.reply(message, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          keyboard: [[{ text: '📋 Меню' }]],
+          resize_keyboard: true,
+          one_time_keyboard: false
+        }
+      });
   }
 
   static async help(ctx) {
@@ -82,8 +89,8 @@ class CommandHandlers {
       const expenses = await db.getDailyExpenses(userId);
       
       const message = `📋 *Траты за день*\n\n${Formatter.
-        formatExpenseList(expenses)}\n\n*Покупок за день: ${expenses.length}* \n\n*Общая сумма: ${Formatter.
-            formatAmount(expenses.reduce((sum, expense) => sum + parseFloat(expense.amount), 0))}* `;
+        formatExpenseList(expenses)}\n\n*Потрачено: ${Formatter.
+            formatAmount(expenses.reduce((sum, expense) => sum + parseFloat(expense.amount), 0))}* \n\n*Записей: ${expenses.length}*  `;
       
       await ctx.reply(message, { parse_mode: 'Markdown' });
     } catch (error) {

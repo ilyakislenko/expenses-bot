@@ -8,6 +8,13 @@ class MessageHandlers {
       const userId = ctx.from.id;
       const text = ctx.message.text;
       
+      // Обработка нажатия на reply-кнопку '📋 Меню'
+      if (text === '📋 Меню') {
+        const CommandHandlers = require('./commands');
+        await CommandHandlers.help(ctx);
+        return;
+      }
+
       const parsed = Validator.parseExpense(text);
       
       if (!parsed.isValid) {

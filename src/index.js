@@ -41,6 +41,9 @@ bot.on('text', MessageHandlers.handleExpense);
 // Обработчики callback-запросов
 bot.action(/^category\|/, CallbackHandlers.handleCategorySelection);
 bot.action('cancel', CallbackHandlers.handleCancel);
+bot.action('menu', async (ctx) => {
+  await CommandHandlers.help(ctx);
+});
 
 // Обработка ошибок
 bot.catch((error, ctx) => {
