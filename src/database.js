@@ -271,6 +271,35 @@ class Database {
     const result = await this.query(query, [userId, categoryId]);
     return result.rows;
   }
+
+  async deleteExpenseById(userId, expenseId) {
+    const query = `
+      DELETE FROM expenses
+      WHERE id = $1 AND user_id = $2
+      RETURNING *
+    `;
+    const result = await this.query(query, [expenseId, userId]);
+    return result.rows[0];
+  }
+
+  async updateExpenseById(userId, expenseId, { amount, description }) {
+    const query = `
+      UPDATE expenses
+      SET amount = $1, description = $2
+      WHERE id = $3 AND user_id = $4
+      RETURNING *
+    `;
+    const result = await this.query(query, [amount, description, expenseId, userId]);
+    return result.rows[0];
+  }
+
+  async getExpenseById(userId, expenseId) {
+    const query = `
+      SELECT * FROM expenses WHERE id = $1 AND user_id = $2
+    `;
+    const result = await this.query(query, [expenseId, userId]);
+    return result.rows[0];
+  }
 }
 
 module.exports = new Database();
