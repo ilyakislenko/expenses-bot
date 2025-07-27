@@ -107,6 +107,14 @@ class CommandHandlers {
       let message;
       message = await Formatter.formatStats(total, [], userCurrency, 'день') + '\n' + Formatter.formatExpenseList(expenses);
       await ctx.reply(message, { parse_mode: 'Markdown' });
+      // Кнопка редактирования
+      await ctx.reply('Что сделать с этими тратами?', {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: 'Редактировать', callback_data: 'edit_history' }]
+          ]
+        }
+      });
     } catch (error) {
       console.error('Error in history command:', error);
       await ctx.reply('Произошла ошибка при получении истории 😞');

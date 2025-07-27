@@ -123,6 +123,33 @@ bot.action('cancel_edit', async (ctx) => {
   }
 });
 
+bot.action('edit_history', async (ctx) => {
+  const userId = ctx.from.id;
+  const db = require('./database');
+  const expenses = await db.getDailyExpenses(userId);
+  if (!expenses.length) {
+    return ctx.reply('Нет трат за этот период.');
+  }
+  const Formatter = require('./utils/formatter');
+  for (const expense of expenses) {
+    const { text, reply_markup } = Formatter.formatExpenseWithActions(expense);
+    await ctx.reply(text, { reply_markup, parse_mode: 'Markdown' });
+  }
+  // Кнопка назад
+  await ctx.reply('Выход из режима редактирования:', {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: '⬅️ Назад', callback_data: 'back_to_history' }]
+      ]
+    }
+  });
+});
+
+bot.action('back_to_history', async (ctx) => {
+  const CommandHandlers = require('./handlers/commands');
+  await CommandHandlers.dailyHistory(ctx);
+});
+
 // Обработка ошибок
 bot.catch((error, ctx) => {
   console.error('Bot error:', error);
