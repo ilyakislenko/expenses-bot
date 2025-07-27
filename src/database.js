@@ -104,6 +104,14 @@ class Database {
     return result.rows;
   }
 
+  async getDailyExpenses(userId) {
+    const query = `
+      SELECT * FROM expenses WHERE user_id = $1 AND date = CURRENT_DATE
+    `;
+    const result = await this.query(query, [userId]);
+    return result.rows;
+  }
+
   async getTotalExpenses(userId, period = 'month') {
     let dateFilter;
     switch (period) {
