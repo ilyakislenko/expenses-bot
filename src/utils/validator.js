@@ -3,18 +3,21 @@ class Validator {
       // Пример: '200 такси'
       const match = text.match(/^(\d+[.,]?\d*)\s+(.+)$/);
       if (!match) {
-        return { isValid: false };
+        return { isValid: false, error: 'format' };
       }
       const amount = parseFloat(match[1].replace(',', '.'));
-      if(!this.isValidAmount(amount)){
-        return {isValid:false}
-      }
       const description = match[2].trim();
       if (!description) {
-        return { isValid: false };
+        return { isValid: false, error: 'no_description' };
+      }
+      if (description.length > 60) {
+        return { isValid: false, error: 'too_long' };
+      }
+      if (isNaN(amount) || amount <= 0 || amount > 999999) {
+        return { isValid: false, error: 'amount' };
       }
       return {
-        isValid: !isNaN(amount) && amount > 0 && !!description,
+        isValid: true,
         amount,
         description
       };

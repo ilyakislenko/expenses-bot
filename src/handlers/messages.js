@@ -1,6 +1,8 @@
 const db = require('../database');
 const Validator = require('../utils/validator');
 const Formatter = require('../utils/formatter');
+const pendingExpenses = require('./callbacks').pendingExpenses;
+const { errorMessages } = require('../utils/constants');
 
 class MessageHandlers {
   static async handleExpense(ctx) {
@@ -18,11 +20,8 @@ class MessageHandlers {
       const parsed = Validator.parseExpense(text);
       
       if (!parsed.isValid) {
-        return await ctx.reply(
-          '❌ Не понял формат. Напиши сумму и описание:\n' +
-          'Например: `200 продукты` или `1500 обед в кафе`',
-          { parse_mode: 'Markdown' }
-        );
+        const errorMsg = errorMessages[parsed.error] || errorMessages.format;
+        return await ctx.reply(errorMsg, { parse_mode: 'Markdown' });
       }
 
       // Получаем категории пользователя
@@ -43,6 +42,9 @@ class MessageHandlers {
         return;
       }
 
+      // Сохраняем сумму и описание во временное хранилище
+      pendingExpenses.set(userId, { amount: parsed.amount, description: parsed.description });
+
       // Создаем кнопки категорий
       const keyboard = [];
       const row = [];
@@ -50,7 +52,7 @@ class MessageHandlers {
       categories.forEach((category, index) => {
         const button = {
           text: `${category.icon} ${category.name}`,
-          callback_data: `category|${parsed.amount}|${parsed.description}|${category.name}`
+          callback_data: `category|${category.name}`
         };
         
         row.push(button);

@@ -6,26 +6,22 @@ const pendingExpenses = new Map();
 
 class CallbackHandlers {
   static async handleCategorySelection(ctx) {
+    const userId = ctx.from.id;
     try {
-      const userId = ctx.from.id;
       const callbackData = ctx.callbackQuery.data;
-      
-      // Парсим данные из callback
-      const [, amount, description, categoryName] = callbackData.split('|');
-      
-      if (!amount || !description) {
+      const [, categoryName] = callbackData.split('|');
+      const pending = pendingExpenses.get(userId);
+      if (!pending) {
         return await ctx.answerCbQuery('❌ Ошибка: данные не найдены');
       }
-
+      const { amount, description } = pending;
       // Получаем название категории из кнопки
       const button = ctx.callbackQuery.message.reply_markup.inline_keyboard
         .flat()
         .find(btn => btn.callback_data === callbackData);
-
       if (!button) {
         return await ctx.answerCbQuery('❌ Ошибка: кнопка не найдена');
       }
-
       // Извлекаем название категории из текста кнопки (убираем иконку)
       console.log(categoryName, {ctx: button});
       // Добавляем расход в базу данных
@@ -35,13 +31,10 @@ class CallbackHandlers {
         description,
         categoryName
       );
-
       const formattedAmount = Formatter.formatAmount(expense.amount, expense.currency);
       const formattedDescription = expense.description || 'Без описания';
-      
       // Отвечаем на callback
       await ctx.answerCbQuery(`✅ Добавлено в категорию "${categoryName}"`);
-      
       // Редактируем сообщение с кнопками
       await ctx.editMessageText(
         `✅ *Расход добавлен!*\n\n` +
@@ -50,10 +43,11 @@ class CallbackHandlers {
         `🏷️ Категория: ${categoryName}`,
         { parse_mode: 'Markdown' }
       );
-
     } catch (error) {
       console.error('Error handling category selection:', error);
       await ctx.answerCbQuery('❌ Произошла ошибка при сохранении');
+    } finally {
+      pendingExpenses.delete(userId);
     }
   }
 
@@ -67,4 +61,5 @@ class CallbackHandlers {
   }
 }
 
-module.exports = CallbackHandlers; 
+module.exports = CallbackHandlers;
+module.exports.pendingExpenses = pendingExpenses; 
