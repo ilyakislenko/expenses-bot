@@ -5,6 +5,7 @@ const MessageHandlers = require('./handlers/messages');
 const CallbackHandlers = require('./handlers/callbacks');
 const currencyUtils = require('./utils/currency');
 const cron = require('node-cron');
+const userEditState = require('./utils/userEditState');
 
 // Валидация переменных окружения
 if (!process.env.BOT_TOKEN) {
@@ -38,6 +39,14 @@ bot.command('undo', CommandHandlers.undo);
 bot.command('categories', CommandHandlers.categories);
 bot.command('currency', CommandHandlers.currency);
 bot.command('settings', CommandHandlers.settings);
+bot.command('cancel', async (ctx) => {
+  if (userEditState.has(ctx.from.id)) {
+    userEditState.delete(ctx.from.id);
+    await ctx.reply('Редактирование отменено.');
+  } else {
+    await ctx.reply('Нет активного редактирования.');
+  }
+});
 
 // Обработчик текстовых сообщений (расходы)
 bot.on('text', MessageHandlers.handleExpense);
@@ -73,8 +82,45 @@ bot.action(/^show_category\|(\d+)$/, async (ctx) => {
     return ctx.reply('Нет трат по этой категории за последний месяц.');
   }
   const Formatter = require('./utils/formatter');
-  const message = Formatter.formatExpenseList(expenses);
-  await ctx.reply(message, { parse_mode: 'Markdown' });
+  for (const expense of expenses) {
+    const { text, reply_markup } = Formatter.formatExpenseWithActions(expense);
+    await ctx.reply(text, { reply_markup, parse_mode: 'Markdown' });
+  }
+});
+bot.action(/^delete_expense\|(\d+)$/, async (ctx) => {
+  const expenseId = ctx.match[1];
+  const userId = ctx.from.id;
+  const db = require('./database');
+  const deleted = await db.deleteExpenseById(userId, expenseId);
+  if (deleted) {
+    await ctx.answerCbQuery('Запись удалена!');
+    await ctx.editMessageText('Запись удалена!');
+  } else {
+    await ctx.answerCbQuery('Ошибка удаления или запись не найдена');
+  }
+});
+bot.action(/^edit_expense\|(\d+)$/, async (ctx) => {
+  const expenseId = ctx.match[1];
+  userEditState.set(ctx.from.id, expenseId);
+  await ctx.reply(
+    'Введите новую сумму и/или описание для этой траты (например: 500 кофе).\n\nИли нажмите кнопку ниже для отмены.',
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '❌ Отмена', callback_data: 'cancel_edit' }]
+        ]
+      }
+    }
+  );
+});
+
+bot.action('cancel_edit', async (ctx) => {
+  if (userEditState.has(ctx.from.id)) {
+    userEditState.delete(ctx.from.id);
+    await ctx.editMessageText('Редактирование отменено.');
+  } else {
+    await ctx.answerCbQuery('Нет активного редактирования.');
+  }
 });
 
 // Обработка ошибок

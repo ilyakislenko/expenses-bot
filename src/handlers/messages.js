@@ -3,6 +3,7 @@ const Validator = require('../utils/validator');
 const Formatter = require('../utils/formatter');
 const pendingExpenses = require('./callbacks').pendingExpenses;
 const { errorMessages } = require('../utils/constants');
+const userEditState = require('../utils/userEditState');
 
 class MessageHandlers {
   static async handleExpense(ctx) {
@@ -47,6 +48,42 @@ class MessageHandlers {
             ]
           }
         });
+      }
+
+      // Проверка на редактирование
+      if (userEditState && userEditState.has(ctx.from.id)) {
+        if (ctx.message.text.trim() === '/cancel') {
+          userEditState.delete(ctx.from.id);
+          return ctx.reply('Редактирование отменено.');
+        }
+        const expenseId = userEditState.get(ctx.from.id);
+        const parsed = Validator.parseEditExpense(ctx.message.text);
+        if (!parsed.isValid) {
+          if (parsed.error === 'empty') {
+            return ctx.reply('Введите новую сумму, описание или оба значения.');
+          }
+          if (parsed.error === 'amount') {
+            return ctx.reply('Некорректная сумма.');
+          }
+          if (parsed.error === 'too_long') {
+            return ctx.reply('Описание слишком длинное (максимум 60 символов).');
+          }
+          return ctx.reply('Ошибка формата.');
+        }
+        const oldExpense = await db.getExpenseById(ctx.from.id, expenseId);
+        if (!oldExpense) {
+          userEditState.delete(ctx.from.id);
+          return ctx.reply('Ошибка: запись не найдена.');
+        }
+        const newAmount = parsed.amount !== undefined ? parsed.amount : oldExpense.amount;
+        const newDescription = parsed.description !== undefined ? parsed.description : oldExpense.description;
+        const updated = await db.updateExpenseById(ctx.from.id, expenseId, { amount: newAmount, description: newDescription });
+        userEditState.delete(ctx.from.id);
+        if (updated) {
+          return ctx.reply('Запись успешно обновлена!');
+        } else {
+          return ctx.reply('Ошибка: запись не найдена или не обновлена.');
+        }
       }
 
       const parsed = Validator.parseExpense(text);
