@@ -36,7 +36,7 @@ class CallbackHandlers {
         categoryName
       );
 
-      const formattedAmount = Formatter.formatAmount(expense.amount);
+      const formattedAmount = Formatter.formatAmount(expense.amount, expense.currency);
       const formattedDescription = expense.description || 'Без описания';
       
       // Отвечаем на callback

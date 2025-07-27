@@ -68,7 +68,9 @@ class MessageHandlers {
         callback_data: 'cancel'
       }]);
 
-      const amount = Formatter.formatAmount(parsed.amount);
+      // Получаем валюту пользователя
+      const userCurrency = await db.getUserCurrency(userId);
+      const amount = Formatter.formatAmount(parsed.amount, userCurrency);
       const description = parsed.description || 'Без описания';
       
       await ctx.reply(
@@ -82,7 +84,6 @@ class MessageHandlers {
           }
         }
       );
-      
     } catch (error) {
       console.error('Error handling expense:', error);
       await ctx.reply('Произошла ошибка при сохранении расхода 😞');

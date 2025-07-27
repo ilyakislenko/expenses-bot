@@ -4,7 +4,8 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(255),
     first_name VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    timezone VARCHAR(50) DEFAULT 'UTC'
+    timezone VARCHAR(50) DEFAULT 'UTC',
+    currency VARCHAR(3) DEFAULT 'RUB'
 );
 
 CREATE TABLE IF NOT EXISTS categories (
@@ -20,6 +21,7 @@ CREATE TABLE IF NOT EXISTS expenses (
     id SERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     amount DECIMAL(10,2) NOT NULL,
+    currency VARCHAR(3) DEFAULT 'RUB',
     category_id INTEGER REFERENCES categories(id),
     description TEXT,
     date DATE DEFAULT CURRENT_DATE,

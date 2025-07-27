@@ -1,8 +1,8 @@
 class Formatter {
-    static formatAmount(amount) {
+    static formatAmount(amount, currency = 'RUB') {
       return new Intl.NumberFormat('ru-RU', {
         style: 'currency',
-        currency: 'RUB',
+        currency: currency,
         minimumFractionDigits: 0,
         maximumFractionDigits: 2
       }).format(amount);
@@ -25,7 +25,7 @@ class Formatter {
   
       return expenses.map((expense, index) => {
         const icon = expense.category_icon || '📦';
-        const amount = this.formatAmount(expense.amount);
+        const amount = this.formatAmount(expense.amount, expense.currency || 'RUB');
         const description = expense.description || 'Без описания';
         const date = this.formatDate(expense.created_at);
         
@@ -33,19 +33,31 @@ class Formatter {
       }).join('\n\n');
     }
   
-    static formatStats(total, categoryStats) {
-      let message = `📊 *Статистика за месяц*\n\n`;
-      message += `💰 Всего потрачено: *${this.formatAmount(total.total)}*\n`;
+    static formatStats(total, categoryStats, period = 'месяц') {
+      let periodLabel = 'месяц';
+      if (period === 'day' || period === 'день') periodLabel = 'день';
+      if (period === 'week' || period === 'неделя') periodLabel = 'неделю';
+      let message = `📊 *Статистика за ${periodLabel}*\n\n`;
+
+      // Группируем суммы по валютам
+      if (Array.isArray(total.byCurrency)) {
+        const parts = total.byCurrency.map(({currency, total}) => {
+          return this.formatAmount(total, currency);
+        });
+        message += `💰 Всего потрачено: *${parts.join(', ')}*\n`;
+      } else {
+        message += `💰 Всего потрачено: *${this.formatAmount(total.total, total.currency || 'RUB')}*\n`;
+      }
       message += `📝 Количество записей: ${total.count}\n\n`;
-  
+
       if (categoryStats.length > 0) {
         message += `*По категориям:*\n`;
         categoryStats.forEach(cat => {
           const percentage = total.total > 0 ? (cat.total / total.total * 100).toFixed(1) : 0;
-          message += `${cat.icon} ${cat.name}: ${this.formatAmount(cat.total)} (${percentage}%)\n`;
+          message += `${cat.icon} ${cat.name}: ${this.formatAmount(cat.total, cat.currency || 'RUB')} (${percentage}%)\n`;
         });
       }
-  
+
       return message;
     }
   

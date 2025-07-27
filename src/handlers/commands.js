@@ -71,11 +71,15 @@ class CommandHandlers {
     try {
       const userId = ctx.from.id;
       const total = await db.getTotalExpenses(userId, 'month');
-      
-      const message = `💰 *Расходы за текущий месяц*\n\n` +
-        `Потрачено: *${Formatter.formatAmount(total.total)}*\n` +
-        `Записей: ${total.count}`;
-
+      let message;
+      if (Array.isArray(total.byCurrency) && total.byCurrency.length > 1) {
+        // Используем formatStats для вывода по всем валютам
+        message = Formatter.formatStats(total, [], 'месяц');
+      } else {
+        message = `💰 *Расходы за текущий месяц*\n\n` +
+          `Потрачено: *${Formatter.formatAmount(total.total, total.currency || 'RUB')}*\n` +
+          `Записей: ${total.count}`;
+      }
       await ctx.reply(message, { parse_mode: 'Markdown' });
     } catch (error) {
       console.error('Error in total command:', error);
@@ -87,11 +91,13 @@ class CommandHandlers {
     try {
       const userId = ctx.from.id;
       const expenses = await db.getDailyExpenses(userId);
-      
-      const message = `📋 *Траты за день*\n\n${Formatter.
-        formatExpenseList(expenses)}\n\n*Потрачено: ${Formatter.
-            formatAmount(expenses.reduce((sum, expense) => sum + parseFloat(expense.amount), 0))}* \n\n*Записей: ${expenses.length}*  `;
-      
+      const total = await db.getTotalExpenses(userId, 'day');
+      let message;
+      if (Array.isArray(total.byCurrency) && total.byCurrency.length > 1) {
+        message = Formatter.formatStats(total, [], 'день') + '\n' + Formatter.formatExpenseList(expenses);
+      } else {
+        message = Formatter.formatStats(total, [], 'день') + '\n' + Formatter.formatExpenseList(expenses);
+      }
       await ctx.reply(message, { parse_mode: 'Markdown' });
     } catch (error) {
       console.error('Error in history command:', error);
@@ -166,6 +172,24 @@ class CommandHandlers {
       console.error('Error in categories command:', error);
       await ctx.reply('Произошла ошибка при получении категорий 😞');
     }
+  }
+
+  static async currency(ctx) {
+    const message = 'Выберите валюту, которая будет использоваться по умолчанию:';
+    await ctx.reply(message, {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: '₽ RUB', callback_data: 'set_currency|RUB' },
+            { text: '$ USD', callback_data: 'set_currency|USD' },
+            { text: '€ EUR', callback_data: 'set_currency|EUR' },
+            { text: '₸ KZT', callback_data: 'set_currency|KZT' },
+            { text: '¥ CNY', callback_data: 'set_currency|CNY' },
+            { text: '฿ THB', callback_data: 'set_currency|THB' }
+          ]
+        ]
+      }
+    });
   }
 }
 

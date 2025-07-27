@@ -75,10 +75,13 @@ class Database {
         categoryId = categoryResult.rows[0].id;
       }
       
+      // Получаем валюту пользователя
+      const userCurrencyResult = await client.query('SELECT currency FROM users WHERE id = $1', [userId]);
+      const currency = userCurrencyResult.rows[0]?.currency || 'RUB';
       // Add expense
       const expenseResult = await client.query(
-        'INSERT INTO expenses (user_id, amount, description, category_id) VALUES ($1, $2, $3, $4) RETURNING *',
-        [userId, amount, description, categoryId]
+        'INSERT INTO expenses (user_id, amount, description, category_id, currency) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+        [userId, amount, description, categoryId, currency || 'RUB']
       );
       
       await client.query('COMMIT');
@@ -131,15 +134,37 @@ class Database {
         dateFilter = "EXTRACT(MONTH FROM date) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM date) = EXTRACT(YEAR FROM CURRENT_DATE)";
     }
 
-    const query = `
-      SELECT 
-        COALESCE(SUM(amount), 0) as total,
-        COUNT(*) as count
-      FROM expenses 
+    // Получаем суммы по всем валютам
+    const byCurrencyQuery = `
+      SELECT currency, SUM(amount) as total
+      FROM expenses
+      WHERE user_id = $1 AND ${dateFilter}
+      GROUP BY currency
+    `;
+    const byCurrencyResult = await this.query(byCurrencyQuery, [userId]);
+    const byCurrency = byCurrencyResult.rows.map(row => ({
+      currency: row.currency,
+      total: parseFloat(row.total)
+    }));
+
+    // Получаем общее количество записей
+    const countQuery = `
+      SELECT COUNT(*) as count
+      FROM expenses
       WHERE user_id = $1 AND ${dateFilter}
     `;
-    const result = await this.query(query, [userId]);
-    return result.rows[0];
+    const countResult = await this.query(countQuery, [userId]);
+    const count = parseInt(countResult.rows[0].count, 10);
+
+    // Для совместимости: total и currency (если только одна валюта)
+    let total = 0;
+    let currency = null;
+    if (byCurrency.length === 1) {
+      total = byCurrency[0].total;
+      currency = byCurrency[0].currency;
+    }
+
+    return { byCurrency, count, total, currency };
   }
 
   async getExpensesByCategory(userId, period = 'month') {
@@ -209,6 +234,16 @@ class Database {
     `;
     const result = await this.query(query, [userId]);
     return result.rows;
+  }
+
+  async setUserCurrency(userId, currency) {
+    const query = 'UPDATE users SET currency = $1 WHERE id = $2';
+    await this.query(query, [currency, userId]);
+  }
+
+  async getUserCurrency(userId) {
+    const result = await this.query('SELECT currency FROM users WHERE id = $1', [userId]);
+    return result.rows[0]?.currency || 'RUB';
   }
 }
 

@@ -34,6 +34,7 @@ bot.command('stats', CommandHandlers.stats);
 bot.command('export', CommandHandlers.exportData);
 bot.command('undo', CommandHandlers.undo);
 bot.command('categories', CommandHandlers.categories);
+bot.command('currency', CommandHandlers.currency);
 
 // Обработчик текстовых сообщений (расходы)
 bot.on('text', MessageHandlers.handleExpense);
@@ -43,6 +44,14 @@ bot.action(/^category\|/, CallbackHandlers.handleCategorySelection);
 bot.action('cancel', CallbackHandlers.handleCancel);
 bot.action('menu', async (ctx) => {
   await CommandHandlers.help(ctx);
+});
+bot.action(/^set_currency\|/, async (ctx) => {
+  const userId = ctx.from.id;
+  const currency = ctx.callbackQuery.data.split('|')[1];
+  const db = require('./database');
+  await db.setUserCurrency(userId, currency);
+  await ctx.answerCbQuery(`Валюта установлена: ${currency}`);
+  await ctx.editMessageText(`Валюта успешно изменена на ${currency}`);
 });
 
 // Обработка ошибок
