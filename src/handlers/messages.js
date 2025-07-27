@@ -33,6 +33,16 @@ class MessageHandlers {
         await CommandHandlers.undo(ctx);
         return;
       }
+      if (ctx.message.text === '⚙️ Настройки') {
+        return ctx.reply('Настройки:', {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: 'Сменить валюту', callback_data: 'change_currency' }],
+              [{ text: '⬅️ Назад', callback_data: 'back_to_menu' }]
+            ]
+          }
+        });
+      }
 
       const parsed = Validator.parseExpense(text);
       

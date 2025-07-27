@@ -37,6 +37,7 @@ bot.command('export', CommandHandlers.exportData);
 bot.command('undo', CommandHandlers.undo);
 bot.command('categories', CommandHandlers.categories);
 bot.command('currency', CommandHandlers.currency);
+bot.command('settings', CommandHandlers.settings);
 
 // Обработчик текстовых сообщений (расходы)
 bot.on('text', MessageHandlers.handleExpense);
@@ -54,6 +55,15 @@ bot.action(/^set_currency\|/, async (ctx) => {
   await db.setUserCurrency(userId, currency);
   await ctx.answerCbQuery(`Валюта установлена: ${currency}`);
   await ctx.editMessageText(`Валюта успешно изменена на ${currency}`);
+});
+bot.action('change_currency', async (ctx) => {
+  await CommandHandlers.currency(ctx); // Показываем выбор валюты
+});
+bot.action('back_to_settings', async (ctx) => {
+  await CommandHandlers.settings(ctx);
+});
+bot.action('back_to_menu', async (ctx) => {
+  await CommandHandlers.help(ctx);
 });
 
 // Обработка ошибок
