@@ -1,0 +1,47 @@
+-- Create database tables
+CREATE TABLE IF NOT EXISTS users (
+    id BIGINT PRIMARY KEY,
+    username VARCHAR(255),
+    first_name VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    timezone VARCHAR(50) DEFAULT 'UTC'
+);
+
+CREATE TABLE IF NOT EXISTS categories (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    icon VARCHAR(10) DEFAULT '💰',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, name)
+);
+
+CREATE TABLE IF NOT EXISTS expenses (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    amount DECIMAL(10,2) NOT NULL,
+    category_id INTEGER REFERENCES categories(id),
+    description TEXT,
+    date DATE DEFAULT CURRENT_DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_expenses_user_id ON expenses(user_id);
+CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date);
+CREATE INDEX IF NOT EXISTS idx_expenses_user_date ON expenses(user_id, date);
+
+-- Insert default user for system categories
+INSERT INTO users (id, username, first_name) VALUES 
+(0, 'system', 'System Default')
+ON CONFLICT (id) DO NOTHING;
+
+-- Insert default categories
+INSERT INTO categories (user_id, name, icon) VALUES 
+(0, 'Еда', '🍕'),
+(0, 'Транспорт', '🚗'),
+(0, 'Развлечения', '🎬'),
+(0, 'Покупки', '🛒'),
+(0, 'Здоровье', '💊'),
+(0, 'Другое', '📦')
+ON CONFLICT DO NOTHING;
