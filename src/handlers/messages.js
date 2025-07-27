@@ -18,16 +18,63 @@ class MessageHandlers {
         );
       }
 
-      const expense = await db.addExpense(
-        userId, 
-        parsed.amount, 
-        parsed.description
-      );
-
-      const amount = Formatter.formatAmount(expense.amount);
-      const description = expense.description || 'Без описания';
+      // Получаем категории пользователя
+      const categories = await db.getCategories(userId);
       
-      await ctx.reply(`✅ Записал: ${amount} - ${description}`);
+      if (categories.length === 0) {
+        // Если категорий нет, сохраняем как раньше
+        const expense = await db.addExpense(
+          userId, 
+          parsed.amount, 
+          parsed.description
+        );
+
+        const amount = Formatter.formatAmount(expense.amount);
+        const description = expense.description || 'Без описания';
+        
+        await ctx.reply(`✅ Записал: ${amount} - ${description}`);
+        return;
+      }
+
+      // Создаем кнопки категорий
+      const keyboard = [];
+      const row = [];
+      
+      categories.forEach((category, index) => {
+        const button = {
+          text: `${category.icon} ${category.name}`,
+          callback_data: `category|${parsed.amount}|${parsed.description}|${category.name}`
+        };
+        
+        row.push(button);
+        
+        // Размещаем по 2 кнопки в ряду
+        if (row.length === 2 || index === categories.length - 1) {
+          keyboard.push([...row]);
+          row.length = 0;
+        }
+      });
+
+      // Добавляем кнопку отмены
+      keyboard.push([{
+        text: '❌ Отменить',
+        callback_data: 'cancel'
+      }]);
+
+      const amount = Formatter.formatAmount(parsed.amount);
+      const description = parsed.description || 'Без описания';
+      
+      await ctx.reply(
+        `💰 *Выберите категорию для расхода:*\n\n` +
+        `Сумма: *${amount}*\n` +
+        `Описание: ${description}`,
+        {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: keyboard
+          }
+        }
+      );
       
     } catch (error) {
       console.error('Error handling expense:', error);

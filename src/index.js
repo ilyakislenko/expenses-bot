@@ -2,6 +2,7 @@ require('dotenv').config();
 const { Telegraf } = require('telegraf');
 const CommandHandlers = require('./handlers/commands');
 const MessageHandlers = require('./handlers/messages');
+const CallbackHandlers = require('./handlers/callbacks');
 
 // Валидация переменных окружения
 if (!process.env.BOT_TOKEN) {
@@ -36,6 +37,10 @@ bot.command('categories', CommandHandlers.categories);
 
 // Обработчик текстовых сообщений (расходы)
 bot.on('text', MessageHandlers.handleExpense);
+
+// Обработчики callback-запросов
+bot.action(/^category\|/, CallbackHandlers.handleCategorySelection);
+bot.action('cancel', CallbackHandlers.handleCancel);
 
 // Обработка ошибок
 bot.catch((error, ctx) => {
