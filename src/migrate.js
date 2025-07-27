@@ -9,7 +9,7 @@ if (!process.env.DATABASE_URL) {
 }
 
 // Путь к файлу миграции
-const migrationFile = path.join(__dirname, 'migrations', 'init.sql');
+const migrationFile = path.join(__dirname, 'migrations', 'update.sql');
 
 // Выполняем миграцию
 const command = `psql "${process.env.DATABASE_URL}" -f "${migrationFile}"`;

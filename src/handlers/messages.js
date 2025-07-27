@@ -17,6 +17,23 @@ class MessageHandlers {
         return;
       }
 
+      // Обработка быстрых reply-кнопок
+      if (text === '💰 Траты за день') {
+        const CommandHandlers = require('./commands');
+        await CommandHandlers.dailyHistory(ctx);
+        return;
+      }
+      if (text === '💰 Траты за месяц') {
+        const CommandHandlers = require('./commands');
+        await CommandHandlers.stats(ctx);
+        return;
+      }
+      if (text === '🗑️ Удалить последнюю запись') {
+        const CommandHandlers = require('./commands');
+        await CommandHandlers.undo(ctx);
+        return;
+      }
+
       const parsed = Validator.parseExpense(text);
       
       if (!parsed.isValid) {

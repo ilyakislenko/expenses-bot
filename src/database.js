@@ -185,12 +185,13 @@ class Database {
       SELECT 
         c.name,
         c.icon,
+        e.currency,
         SUM(e.amount) as total,
         COUNT(e.id) as count
       FROM expenses e
       LEFT JOIN categories c ON e.category_id = c.id
       WHERE e.user_id = $1 AND ${dateFilter}
-      GROUP BY c.id, c.name, c.icon
+      GROUP BY c.id, c.name, c.icon, e.currency
       ORDER BY total DESC
     `;
     const result = await this.query(query, [userId]);

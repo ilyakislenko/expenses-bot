@@ -1,82 +1,98 @@
+const currencyUtils = require('./currency');
+
 class Formatter {
-    static formatAmount(amount, currency = 'RUB') {
-      return new Intl.NumberFormat('ru-RU', {
-        style: 'currency',
-        currency: currency,
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 2
-      }).format(amount);
-    }
-  
-    static formatDate(date) {
-      return new Intl.DateTimeFormat('ru-RU', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      }).format(new Date(date));
-    }
-  
-    static formatExpenseList(expenses) {
-      if (!expenses.length) {
-        return 'Расходов пока нет 📝';
-      }
-  
-      return expenses.map((expense, index) => {
-        const icon = expense.category_icon || '📦';
-        const amount = this.formatAmount(expense.amount, expense.currency || 'RUB');
-        const description = expense.description || 'Без описания';
-        const date = this.formatDate(expense.created_at);
-        
-        return `${icon} ${amount} - ${description}\n📅 ${date}`;
-      }).join('\n\n');
-    }
-  
-    static formatStats(total, categoryStats, period = 'месяц') {
-      let periodLabel = 'месяц';
-      if (period === 'day' || period === 'день') periodLabel = 'день';
-      if (period === 'week' || period === 'неделя') periodLabel = 'неделю';
-      let message = `📊 *Статистика за ${periodLabel}*\n\n`;
-
-      // Группируем суммы по валютам
-      if (Array.isArray(total.byCurrency)) {
-        const parts = total.byCurrency.map(({currency, total}) => {
-          return this.formatAmount(total, currency);
-        });
-        message += `💰 Всего потрачено: *${parts.join(', ')}*\n`;
-      } else {
-        message += `💰 Всего потрачено: *${this.formatAmount(total.total, total.currency || 'RUB')}*\n`;
-      }
-      message += `📝 Количество записей: ${total.count}\n\n`;
-
-      if (categoryStats.length > 0) {
-        message += `*По категориям:*\n`;
-        categoryStats.forEach(cat => {
-          const percentage = total.total > 0 ? (cat.total / total.total * 100).toFixed(1) : 0;
-          message += `${cat.icon} ${cat.name}: ${this.formatAmount(cat.total, cat.currency || 'RUB')} (${percentage}%)\n`;
-        });
-      }
-
-      return message;
-    }
-  
-    static formatCSV(expenses) {
-      let csv = 'Дата,Сумма,Категория,Описание\n';
-      expenses.forEach(expense => {
-        const date = this.formatDate(expense.created_at);
-        const amount = expense.amount;
-        const category = expense.category || 'Другое';
-        const description = (expense.description || '').replace(/"/g, '""');
-        csv += `"${date}","${amount}","${category}","${description}"\n`;
-      });
-      return csv;
-    }
-
-    static formatCategories(categories) {
-      return categories.map(cat => `${cat.icon} ${cat.name}`).join('\n');
-    }
+  static formatAmount(amount, currency = 'RUB') {
+    return new Intl.NumberFormat('ru-RU', {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(amount);
   }
-  
-  module.exports = Formatter;
+
+  static formatDate(date) {
+    return new Intl.DateTimeFormat('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(new Date(date));
+  }
+
+  static formatExpenseList(expenses) {
+    if (!expenses.length) {
+      return 'Расходов пока нет 📝';
+    }
+
+    return expenses.map((expense, index) => {
+      const icon = expense.category_icon || '📦';
+      const amount = this.formatAmount(expense.amount, expense.currency || 'RUB');
+      const description = expense.description || 'Без описания';
+      const date = this.formatDate(expense.created_at);
+      
+      return `${icon} ${amount} - ${description}\n📅 ${date}`;
+    }).join('\n\n');
+  }
+
+  static async formatStats(total, categoryStats, userCurrency = 'RUB', period = 'месяц') {
+    let periodLabel = 'месяц';
+    if (period === 'day' || period === 'день') periodLabel = 'день';
+    if (period === 'week' || period === 'неделя') periodLabel = 'неделю';
+    let message = `📊 *Статистика за ${periodLabel}*\n\n`;
+
+    // Конвертируем total в userCurrency
+    let totalInUserCurrency = 0;
+    if (Array.isArray(total.byCurrency)) {
+      let sum = 0;
+      for (const {currency, total: amount} of total.byCurrency) {
+        const converted = await currencyUtils.convert(Number(amount), currency, userCurrency);
+        sum += converted;
+      }
+      totalInUserCurrency = sum;
+      message += `💰 Всего потрачено: *${this.formatAmount(sum, userCurrency)}*\n`;
+    } else {
+      totalInUserCurrency = await currencyUtils.convert(Number(total.total), total.currency || 'RUB', userCurrency);
+      message += `💰 Всего потрачено: *${this.formatAmount(totalInUserCurrency, userCurrency)}*\n`;
+    }
+    message += `📝 Количество записей: ${total.count}\n\n`;
+
+    if (categoryStats.length > 0) {
+      // Агрегируем по категориям (name+icon), складываем суммы после конвертации
+      const catMap = new Map();
+      for (const cat of categoryStats) {
+        const key = `${cat.icon}||${cat.name}`;
+        const prev = catMap.get(key) || 0;
+        const catTotal = await currencyUtils.convert(Number(cat.total), cat.currency || 'RUB', userCurrency);
+        catMap.set(key, prev + catTotal);
+      }
+      message += `*По категориям:*\n`;
+      for (const [key, sum] of catMap.entries()) {
+        const [icon, name] = key.split('||');
+        const percentage = totalInUserCurrency > 0 ? (sum / totalInUserCurrency * 100).toFixed(1) : 0;
+        message += `${icon} ${name}: ${this.formatAmount(sum, userCurrency)} (${percentage}%)\n`;
+      }
+    }
+
+    return message;
+  }
+
+  static formatCSV(expenses) {
+    let csv = 'Дата,Сумма,Категория,Описание\n';
+    expenses.forEach(expense => {
+      const date = this.formatDate(expense.created_at);
+      const amount = expense.amount;
+      const category = expense.category || 'Другое';
+      const description = (expense.description || '').replace(/"/g, '""');
+      csv += `"${date}","${amount}","${category}","${description}"\n`;
+    });
+    return csv;
+  }
+
+  static formatCategories(categories) {
+    return categories.map(cat => `${cat.icon} ${cat.name}`).join('\n');
+  }
+}
+
+module.exports = Formatter;
   

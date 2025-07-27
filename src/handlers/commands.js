@@ -19,7 +19,6 @@ class CommandHandlers {
 После ввода появится меню с кнопками категорий - выбери подходящую! 🏷️
 
 *Команды:*
-/total - общая сумма за месяц
 /history - последние записи за день
 /stats - статистика по категориям
 /export - выгрузка данных в CSV
@@ -30,13 +29,20 @@ class CommandHandlers {
 Начни вводить свои расходы! 💰`;
 
     await ctx.reply(message, {
-        parse_mode: 'Markdown',
-        reply_markup: {
-          keyboard: [[{ text: '📋 Меню' }]],
-          resize_keyboard: true,
-          one_time_keyboard: false
-        }
-      });
+      parse_mode: 'Markdown',
+      reply_markup: {
+        keyboard: [
+          
+            [{ text: '📋 Меню' }],
+            [{ text: '💰 Траты за месяц' },
+            { text: '💰 Траты за день' }],
+            [{ text: '🗑️ Удалить последнюю запись' }],
+          
+        ],
+        resize_keyboard: true,
+        one_time_keyboard: false
+      }
+    });
   }
 
   static async help(ctx) {
@@ -48,7 +54,6 @@ class CommandHandlers {
 
 *Команды:*
 /start - перезапустить бота
-/total - сумма за текущий месяц
 /history - последние записи за день
 /stats - подробная статистика
 /export - скачать данные (CSV)
@@ -70,11 +75,12 @@ class CommandHandlers {
   static async total(ctx) {
     try {
       const userId = ctx.from.id;
+      const userCurrency = await db.getUserCurrency(userId);
       const total = await db.getTotalExpenses(userId, 'month');
       let message;
       if (Array.isArray(total.byCurrency) && total.byCurrency.length > 1) {
         // Используем formatStats для вывода по всем валютам
-        message = Formatter.formatStats(total, [], 'месяц');
+        message = await Formatter.formatStats(total, [], userCurrency, 'месяц');
       } else {
         message = `💰 *Расходы за текущий месяц*\n\n` +
           `Потрачено: *${Formatter.formatAmount(total.total, total.currency || 'RUB')}*\n` +
@@ -90,14 +96,11 @@ class CommandHandlers {
   static async dailyHistory(ctx) {
     try {
       const userId = ctx.from.id;
+      const userCurrency = await db.getUserCurrency(userId);
       const expenses = await db.getDailyExpenses(userId);
       const total = await db.getTotalExpenses(userId, 'day');
       let message;
-      if (Array.isArray(total.byCurrency) && total.byCurrency.length > 1) {
-        message = Formatter.formatStats(total, [], 'день') + '\n' + Formatter.formatExpenseList(expenses);
-      } else {
-        message = Formatter.formatStats(total, [], 'день') + '\n' + Formatter.formatExpenseList(expenses);
-      }
+      message = await Formatter.formatStats(total, [], userCurrency, 'день') + '\n' + Formatter.formatExpenseList(expenses);
       await ctx.reply(message, { parse_mode: 'Markdown' });
     } catch (error) {
       console.error('Error in history command:', error);
@@ -108,10 +111,11 @@ class CommandHandlers {
   static async stats(ctx) {
     try {
       const userId = ctx.from.id;
+      const userCurrency = await db.getUserCurrency(userId);
       const total = await db.getTotalExpenses(userId, 'month');
       const categoryStats = await db.getExpensesByCategory(userId, 'month');
       
-      const message = Formatter.formatStats(total, categoryStats);
+      const message = await Formatter.formatStats(total, categoryStats, userCurrency);
       
       await ctx.reply(message, { parse_mode: 'Markdown' });
     } catch (error) {

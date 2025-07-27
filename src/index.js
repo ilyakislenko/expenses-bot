@@ -3,6 +3,8 @@ const { Telegraf } = require('telegraf');
 const CommandHandlers = require('./handlers/commands');
 const MessageHandlers = require('./handlers/messages');
 const CallbackHandlers = require('./handlers/callbacks');
+const currencyUtils = require('./utils/currency');
+const cron = require('node-cron');
 
 // Валидация переменных окружения
 if (!process.env.BOT_TOKEN) {
@@ -60,24 +62,43 @@ bot.catch((error, ctx) => {
   ctx.reply('Произошла неожиданная ошибка. Попробуйте позже.');
 });
 
-// Запуск бота
 const PORT = process.env.PORT || 3000;
+const SUPPORTED_CURRENCIES = ['RUB', 'USD', 'EUR', 'KZT', 'CNY', 'THB'];
 
-if (process.env.NODE_ENV === 'production') {
-  // Webhook режим для продакшена
-  bot.launch({
-    webhook: {
-      domain: process.env.WEBHOOK_URL,
-      port: PORT
+(async () => {
+  try {
+    // Проверяем, нужно ли обновлять курсы
+    if (await currencyUtils.needUpdateRates()) {
+      await currencyUtils.updateRates(SUPPORTED_CURRENCIES);
+      console.log('Курсы валют успешно обновлены!');
     }
+  } catch (err) {
+    console.error('Ошибка при обновлении курсов валют:', err);
+  }
+
+  // Запускаем автообновление курсов каждый день в 10:00 утра
+  cron.schedule('0 10 * * *', () => {
+    currencyUtils.updateRates(SUPPORTED_CURRENCIES)
+      .then(() => console.log('Курсы валют обновлены по расписанию (cron)!'))
+      .catch(err => console.error('Ошибка при автообновлении курсов валют (cron):', err));
   });
-} else {
-  // Polling режим для разработки
-  bot.launch();
-}
 
-console.log('Bot started successfully! 🚀');
+  if (process.env.NODE_ENV === 'production') {
+    // Webhook режим для продакшена
+    bot.launch({
+      webhook: {
+        domain: process.env.WEBHOOK_URL,
+        port: PORT
+      }
+    });
+  } else {
+    // Polling режим для разработки
+    bot.launch();
+  }
 
-// Graceful shutdown
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+  console.log('Bot started successfully! 🚀');
+
+  // Graceful shutdown
+  process.once('SIGINT', () => bot.stop('SIGINT'));
+  process.once('SIGTERM', () => bot.stop('SIGTERM'));
+})();
