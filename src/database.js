@@ -224,6 +224,7 @@ class Database {
     const query = `
       SELECT 
         e.amount,
+        e.currency,
         e.description,
         c.name as category,
         e.date,

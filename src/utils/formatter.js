@@ -77,15 +77,34 @@ class Formatter {
     return message;
   }
 
-  static formatCSV(expenses) {
-    let csv = 'Дата,Сумма,Категория,Описание\n';
-    expenses.forEach(expense => {
+  static async formatCSV(expenses, userCurrency) {
+    let csv = 'Дата,Сумма,Валюта,Категория,Описание\n';
+    const totalsByCurrency = {};
+    for (const expense of expenses) {
       const date = this.formatDate(expense.created_at);
       const amount = expense.amount;
+      const currency = expense.currency || 'RUB';
       const category = expense.category || 'Другое';
       const description = (expense.description || '').replace(/"/g, '""');
-      csv += `"${date}","${amount}","${category}","${description}"\n`;
-    });
+      csv += `"${date}","${amount}","${currency}","${category}","${description}"\n`;
+      totalsByCurrency[currency] = (totalsByCurrency[currency] || 0) + Number(amount);
+    }
+
+    // Итоги по валютам
+    csv += '\nИтого по валютам:\n';
+    for (const [currency, total] of Object.entries(totalsByCurrency)) {
+      csv += `${currency}: ${total}\n`;
+    }
+
+    // Общая сумма в выбранной валюте пользователя
+    let totalInUserCurrency = 0;
+    const currencyUtils = require('./currency');
+    for (const [currency, total] of Object.entries(totalsByCurrency)) {
+      const converted = await currencyUtils.convert(total, currency, userCurrency);
+      totalInUserCurrency += converted;
+    }
+    csv += `\nВсего в ${userCurrency}: ${totalInUserCurrency.toFixed(2)}\n`;
+
     return csv;
   }
 

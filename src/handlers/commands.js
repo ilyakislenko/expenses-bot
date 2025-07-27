@@ -132,14 +132,12 @@ class CommandHandlers {
     try {
       const userId = ctx.from.id;
       const expenses = await db.exportExpenses(userId);
-      
       if (expenses.length === 0) {
         return await ctx.reply('Пока нет данных для экспорта 📝');
       }
-
-      const csv = Formatter.formatCSV(expenses);
+      const userCurrency = await db.getUserCurrency(userId);
+      const csv = await Formatter.formatCSV(expenses, userCurrency);
       const filename = `expenses_${new Date().toISOString().split('T')[0]}.csv`;
-      
       await ctx.replyWithDocument({
         source: Buffer.from(csv, 'utf-8'),
         filename
