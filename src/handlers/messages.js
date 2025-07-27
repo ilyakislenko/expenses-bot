@@ -28,6 +28,11 @@ class MessageHandlers {
         await CommandHandlers.stats(ctx);
         return;
       }
+      if (text === '💰 Траты по категориям') {
+        const CommandHandlers = require('./commands');
+        await CommandHandlers.categories(ctx);
+        return;
+      }
       if (text === '🗑️ Удалить последнюю запись') {
         const CommandHandlers = require('./commands');
         await CommandHandlers.undo(ctx);

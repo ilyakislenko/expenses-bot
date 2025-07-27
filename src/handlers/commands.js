@@ -37,8 +37,9 @@ class CommandHandlers {
         keyboard: [
           [{ text: '📋 Меню' }],
           [{ text: '💰 Траты за месяц' }, { text: '💰 Траты за день' }],
-          [{ text: '🗑️ Удалить последнюю запись' }],
-          [{ text: '⚙️ Настройки' }]
+          [{ text: '💰 Траты по категориям' }],
+          [{ text: '⚙️ Настройки' }],
+          [{ text: '🗑️ Удалить последнюю запись' }]
         ],
         resize_keyboard: true,
         one_time_keyboard: false
