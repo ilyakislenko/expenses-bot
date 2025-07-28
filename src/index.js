@@ -1,18 +1,17 @@
 require('dotenv').config();
 const { Telegraf } = require('telegraf');
-const CommandHandlers = require('./handlers/commands');
-const MessageHandlers = require('./handlers/messages');
-const CallbackHandlers = require('./handlers/callbacks');
-const currencyUtils = require('./utils/currency');
+const db = require('./database');
+const createCurrencyUtils = require('./utils/currency');
+const currencyUtils = createCurrencyUtils(db);
 const cron = require('node-cron');
 const userEditState = require('./utils/userEditState');
-const Formatter = require('./utils/formatter');
 const ExpenseService = require('./services/ExpenseService');
 const UserService = require('./services/UserService');
 const errorHandler = require('./middleware/errorHandler');
 
 const commandHandlers = require('../commandHandlersInstance');
 const messageHandlers = require('../messageHandlersInstance');
+const callbackHandlers = require('../callbackHandlersInstance');
 
 // Валидация переменных окружения
 if (!process.env.BOT_TOKEN) {
@@ -60,8 +59,8 @@ bot.command('cancel', async (ctx) => {
 bot.on('text', errorHandler((ctx) => messageHandlers.handleExpense(ctx)));
 
 // Обработчики callback-запросов
-bot.action(/^category\|/, CallbackHandlers.handleCategorySelection);
-bot.action('cancel', CallbackHandlers.handleCancel);
+bot.action(/^category\|/, (ctx) => callbackHandlers.handleCategorySelection(ctx));
+bot.action('cancel', (ctx) => callbackHandlers.handleCancel(ctx));
 bot.action('menu', errorHandler(async (ctx) => {
   await ctx.answerCbQuery();
   await commandHandlers.mainMenu(ctx);
@@ -93,8 +92,7 @@ bot.action('help', errorHandler(async (ctx) => {
 bot.action(/^set_currency\|/, async (ctx) => {
   const userId = ctx.from.id;
   const currency = ctx.callbackQuery.data.split('|')[1];
-  const db = require('./database');
-  await db.setUserCurrency(userId, currency);
+  await UserService.setUserCurrency(userId, currency);
   await ctx.answerCbQuery(`Валюта установлена: ${currency}`);
   await ctx.editMessageText(`Валюта успешно изменена на ${currency}`, {
     reply_markup: {
@@ -121,7 +119,7 @@ bot.action(/^show_category\|(\d+)$/, async (ctx) => {
   if (!expenses.length) {
     return ctx.reply('Нет трат по этой категории за последний месяц.');
   }
-  const Formatter = require('./utils/formatter');
+  const formatter = require('../commandHandlersInstance').formatter;
   const convertedAmounts = await Promise.all(
     expenses.map(e => currencyUtils.convert(Number(e.amount), e.currency || 'RUB', userCurrency))
   );
@@ -130,7 +128,7 @@ bot.action(/^show_category\|(\d+)$/, async (ctx) => {
     count: expenses.length,
     currency: userCurrency
   };
-  let message = await Formatter.formatStats(total, [], userCurrency, 'месяц') + '\n' + Formatter.formatExpenseList(expenses);
+  let message = await formatter.formatStats(total, [], userCurrency, 'месяц') + '\n' + formatter.formatExpenseList(expenses);
   await ctx.reply(message, { parse_mode: 'Markdown',reply_markup: {
     inline_keyboard: [
       [
@@ -143,8 +141,7 @@ bot.action(/^show_category\|(\d+)$/, async (ctx) => {
 bot.action(/^delete_expense\|(\d+)$/, async (ctx) => {
   const expenseId = ctx.match[1];
   const userId = ctx.from.id;
-  const db = require('./database');
-  const deleted = await db.deleteExpenseById(userId, expenseId);
+  const deleted = await ExpenseService.deleteExpenseById(userId, expenseId);
   if (deleted) {
     await ctx.answerCbQuery('Запись удалена!');
     await ctx.editMessageText('Запись удалена!');
@@ -178,14 +175,13 @@ bot.action('cancel_edit', async (ctx) => {
 
 bot.action('edit_history', async (ctx) => {
   const userId = ctx.from.id;
-  const db = require('./database');
-  const expenses = await db.getDailyExpenses(userId);
+  const expenses = await ExpenseService.getDailyExpenses(userId);
   if (!expenses.length) {
     return ctx.reply('Нет трат за этот период.');
   }
-  const Formatter = require('./utils/formatter');
+  const formatter = require('../commandHandlersInstance').formatter;
   for (const expense of expenses) {
-    const { text, reply_markup } = Formatter.formatExpenseWithActions(expense);
+    const { text, reply_markup } = formatter.formatExpenseWithActions(expense);
     await ctx.reply(text, { reply_markup, parse_mode: 'Markdown' });
   }
   // Кнопка назад
@@ -204,8 +200,9 @@ bot.action(/^edit_category\|(\d+)$/, async (ctx) => {
   if (!expenses.length) {
     return ctx.reply('почему-то карточек нет...произошла ошибка');
   }
+  const formatter = require('../commandHandlersInstance').formatter;
   for (const expense of expenses) {
-    const { text, reply_markup } = Formatter.formatExpenseWithActions(expense);
+    const { text, reply_markup } = formatter.formatExpenseWithActions(expense);
     await ctx.reply(text, { reply_markup, parse_mode: 'Markdown' });
   }
 

@@ -41,6 +41,22 @@ class ExpenseService {
   static async getExpensesByCategoryId(userId, categoryId, period = 'month') {
     return ExpenseRepository.getExpensesByCategoryId(userId, categoryId, period);
   }
+
+  static async getDailyExpenses(userId) {
+    return ExpenseRepository.getDailyExpenses(userId);
+  }
+
+  static async getExpenseById(userId, expenseId) {
+    return ExpenseRepository.getExpenseById(userId, expenseId);
+  }
+
+  static async updateExpenseById(userId, expenseId, data) {
+    return ExpenseRepository.updateExpenseById(userId, expenseId, data);
+  }
+
+  static async deleteExpenseById(userId, expenseId) {
+    return ExpenseRepository.deleteExpenseById(userId, expenseId);
+  }
 }
 
 module.exports = ExpenseService; 

@@ -67,14 +67,14 @@ class MessageHandlers {
           }
           return ctx.reply('Ошибка формата.');
         }
-        const oldExpense = await db.getExpenseById(ctx.from.id, expenseId);
+        const oldExpense = await this.expenseService.getExpenseById(ctx.from.id, expenseId);
         if (!oldExpense) {
           userEditState.delete(ctx.from.id);
           return ctx.reply('Ошибка: запись не найдена.');
         }
         const newAmount = parsed.amount !== undefined ? parsed.amount : oldExpense.amount;
         const newDescription = parsed.description !== undefined ? parsed.description : oldExpense.description;
-        const updated = await db.updateExpenseById(ctx.from.id, expenseId, { amount: newAmount, description: newDescription });
+        const updated = await this.expenseService.updateExpenseById(ctx.from.id, expenseId, { amount: newAmount, description: newDescription });
         userEditState.delete(ctx.from.id);
         if (updated) {
           return ctx.reply('Запись успешно обновлена!');
@@ -87,14 +87,14 @@ class MessageHandlers {
         const errorMsg = errorMessages[parsed.error] || errorMessages.format;
         return await ctx.reply(errorMsg, { parse_mode: 'Markdown' });
       }
-      const categories = await db.getCategories(userId);
+      const categories = await this.expenseService.getCategories(userId);
       if (categories.length === 0) {
-        const expense = await db.addExpense(
+        const expense = await this.expenseService.addExpense(
           userId, 
           parsed.amount, 
           parsed.description
         );
-        const amount = Formatter.formatAmount(expense.amount);
+        const amount = this.formatter.formatAmount(expense.amount);
         const description = expense.description || 'Без описания';
         await ctx.reply(`✅ Записал: ${amount} - ${description}`);
         return;
@@ -117,8 +117,8 @@ class MessageHandlers {
         text: '❌ Отменить',
         callback_data: 'cancel'
       }]);
-      const userCurrency = await db.getUserCurrency(userId);
-      const amount = Formatter.formatAmount(parsed.amount, userCurrency);
+      const userCurrency = await this.userService.getUserCurrency(userId);
+      const amount = this.formatter.formatAmount(parsed.amount, userCurrency);
       const description = parsed.description || 'Без описания';
       await ctx.reply(
         `💰 *Выберите категорию для расхода:*\n\n` +

@@ -1,11 +1,15 @@
-const db = require('../database');
 const Formatter = require('../utils/formatter');
 
 // Временное хранилище для данных о расходах пользователей
 const pendingExpenses = new Map();
 
 class CallbackHandlers {
-  static async handleCategorySelection(ctx) {
+  constructor({ expenseService, formatter }) {
+    this.expenseService = expenseService;
+    this.formatter = formatter;
+  }
+
+  async handleCategorySelection(ctx) {
     const userId = ctx.from.id;
     try {
       const callbackData = ctx.callbackQuery.data;
@@ -22,20 +26,16 @@ class CallbackHandlers {
       if (!button) {
         return await ctx.answerCbQuery('❌ Ошибка: кнопка не найдена');
       }
-      // Извлекаем название категории из текста кнопки (убираем иконку)
-      console.log(categoryName, {ctx: button});
-      // Добавляем расход в базу данных
-      const expense = await db.addExpense(
+      // Добавляем расход через сервис
+      const expense = await this.expenseService.addExpense(
         userId,
         parseFloat(amount),
         description,
         categoryName
       );
-      const formattedAmount = Formatter.formatAmount(expense.amount, expense.currency);
+      const formattedAmount = this.formatter.formatAmount(expense.amount, expense.currency);
       const formattedDescription = expense.description || 'Без описания';
-      // Отвечаем на callback
       await ctx.answerCbQuery(`✅ Добавлено в категорию "${categoryName}"`);
-      // Редактируем сообщение с кнопками
       await ctx.editMessageText(
         `✅ *Расход добавлен!*\n\n` +
         `💰 Сумма: *${formattedAmount}*\n` +
@@ -55,7 +55,7 @@ class CallbackHandlers {
     }
   }
 
-  static async handleCancel(ctx) {
+  async handleCancel(ctx) {
     try {
       await ctx.answerCbQuery('❌ Отменено');
       await ctx.editMessageText('❌ Добавление расхода отменено');
