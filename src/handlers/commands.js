@@ -1,10 +1,19 @@
 const db = require('../database');
 const Formatter = require('../utils/formatter');
+const { MAIN_MENU_KEYBOARD, CURRENCY_KEYBOARD, SETTINGS_KEYBOARD } = require('../utils/constants');
+const ExpenseService = require('../services/ExpenseService');
+const UserService = require('../services/UserService');
 
 class CommandHandlers {
-  static async start(ctx) {
+  constructor({ expenseService, userService, formatter }) {
+    this.expenseService = expenseService;
+    this.userService = userService;
+    this.formatter = formatter;
+  }
+
+  async start(ctx) {
     const user = ctx.from;
-    await db.createUser(user.id, user.username, user.first_name);
+    await this.userService.registerUser(user.id, user.username, user.first_name);
 
     const message = `Привет, ${user.first_name}! 👋
 
@@ -34,20 +43,14 @@ class CommandHandlers {
     await ctx.reply(message, {
       parse_mode: 'Markdown',
       reply_markup: {
-        keyboard: [
-          [{ text: '📋 Меню' }],
-          [{ text: '💰 Траты за месяц' }, { text: '💰 Траты за день' }],
-          [{ text: '💰 Траты по категориям' }],
-          [{ text: '⚙️ Настройки' }],
-          [{ text: '🗑️ Удалить последнюю запись' }]
-        ],
+        keyboard: MAIN_MENU_KEYBOARD,
         resize_keyboard: true,
         one_time_keyboard: false
       }
     });
   }
 
-  static async help(ctx) {
+  async help(ctx) {
     const message = `📋 *Справка по командам*
 
 *Добавление расходов:*
@@ -77,18 +80,17 @@ class CommandHandlers {
     await ctx.reply(message, { parse_mode: 'Markdown' });
   }
 
-  static async total(ctx) {
+  async total(ctx) {
     try {
       const userId = ctx.from.id;
-      const userCurrency = await db.getUserCurrency(userId);
-      const total = await db.getTotalExpenses(userId, 'month');
+      const { total, userCurrency } = await this.expenseService.getMonthlyStats(userId);
       let message;
       if (Array.isArray(total.byCurrency) && total.byCurrency.length > 1) {
         // Используем formatStats для вывода по всем валютам
-        message = await Formatter.formatStats(total, [], userCurrency, 'месяц');
+        message = await this.formatter.formatStats(total, [], userCurrency, 'месяц');
       } else {
         message = `💰 *Расходы за текущий месяц*\n\n` +
-          `Потрачено: *${Formatter.formatAmount(total.total, total.currency || 'RUB')}*\n` +
+          `Потрачено: *${this.formatter.formatAmount(total.total, total.currency || 'RUB')}*\n` +
           `Записей: ${total.count}`;
       }
       await ctx.reply(message, { parse_mode: 'Markdown' });
@@ -98,14 +100,11 @@ class CommandHandlers {
     }
   }
 
-  static async dailyHistory(ctx) {
+  async dailyHistory(ctx) {
     try {
       const userId = ctx.from.id;
-      const userCurrency = await db.getUserCurrency(userId);
-      const expenses = await db.getDailyExpenses(userId);
-      const total = await db.getTotalExpenses(userId, 'day');
-      let message;
-      message = await Formatter.formatStats(total, [], userCurrency, 'день') + '\n' + Formatter.formatExpenseList(expenses);
+      const { total, expenses, userCurrency } = await this.expenseService.getDailyStats(userId);
+      let message = await this.formatter.formatStats(total, [], userCurrency, 'день') + '\n' + this.formatter.formatExpenseList(expenses);
       await ctx.reply(message, { parse_mode: 'Markdown' });
       // Кнопка редактирования
       await ctx.reply('Что сделать с этими тратами?', {
@@ -121,14 +120,12 @@ class CommandHandlers {
     }
   }
 
-  static async stats(ctx) {
+  async stats(ctx) {
     try {
       const userId = ctx.from.id;
-      const userCurrency = await db.getUserCurrency(userId);
-      const total = await db.getTotalExpenses(userId, 'month');
-      const categoryStats = await db.getExpensesByCategory(userId, 'month');
+      const { total, categoryStats, userCurrency } = await this.expenseService.getMonthlyStats(userId);
       
-      const message = await Formatter.formatStats(total, categoryStats, userCurrency);
+      const message = await this.formatter.formatStats(total, categoryStats, userCurrency);
       
       await ctx.reply(message, { parse_mode: 'Markdown' });
     } catch (error) {
@@ -137,15 +134,14 @@ class CommandHandlers {
     }
   }
 
-  static async exportData(ctx) {
+  async exportData(ctx) {
     try {
       const userId = ctx.from.id;
-      const expenses = await db.exportExpenses(userId);
+      const { expenses, userCurrency } = await this.expenseService.exportExpenses(userId);
       if (expenses.length === 0) {
         return await ctx.reply('Пока нет данных для экспорта 📝');
       }
-      const userCurrency = await db.getUserCurrency(userId);
-      const csv = await Formatter.formatCSV(expenses, userCurrency);
+      const csv = await this.formatter.formatCSV(expenses, userCurrency);
       const filename = `expenses_${new Date().toISOString().split('T')[0]}.csv`;
       await ctx.replyWithDocument({
         source: Buffer.from(csv, 'utf-8'),
@@ -159,13 +155,13 @@ class CommandHandlers {
     }
   }
 
-  static async undo(ctx) {
+  async undo(ctx) {
     try {
       const userId = ctx.from.id;
-      const deleted = await db.deleteLastExpense(userId);
+      const deleted = await this.expenseService.deleteLastExpense(userId);
       
       if (deleted) {
-        const amount = Formatter.formatAmount(deleted.amount);
+        const amount = this.formatter.formatAmount(deleted.amount);
         const description = deleted.description || 'Без описания';
         await ctx.reply(`✅ Удалена запись: ${amount} - ${description}`);
       } else {
@@ -177,10 +173,10 @@ class CommandHandlers {
     }
   }
 
-  static async categories(ctx) {
+  async categories(ctx) {
     try {
       const userId = ctx.from.id;
-      const categories = await db.getCategories(userId);
+      const categories = await this.expenseService.getCategories(userId);
 
       if (!categories.length) {
         return await ctx.reply('Категории не найдены.');
@@ -203,34 +199,19 @@ class CommandHandlers {
     }
   }
 
-  static async currency(ctx) {
+  async currency(ctx) {
     const message = 'Выберите валюту, которая будет использоваться по умолчанию:';
     await ctx.reply(message, {
       reply_markup: {
-        inline_keyboard: [
-          [
-            { text: '₽ RUB', callback_data: 'set_currency|RUB' },
-            { text: '$ USD', callback_data: 'set_currency|USD' },
-            { text: '€ EUR', callback_data: 'set_currency|EUR' },
-            { text: '₸ KZT', callback_data: 'set_currency|KZT' },
-            { text: '¥ CNY', callback_data: 'set_currency|CNY' },
-            { text: '฿ THB', callback_data: 'set_currency|THB' }
-          ],
-          [
-            { text: '⬅️ Назад', callback_data: 'back_to_settings' }
-          ]
-        ]
+        inline_keyboard: CURRENCY_KEYBOARD
       }
     });
   }
 
-  static async settings(ctx) {
+  async settings(ctx) {
     await ctx.reply('Настройки:', {
       reply_markup: {
-        inline_keyboard: [
-          [{ text: 'Сменить валюту', callback_data: 'change_currency' }],
-          [{ text: '⬅️ Назад', callback_data: 'back_to_menu' }]
-        ]
+        inline_keyboard: SETTINGS_KEYBOARD
       }
     });
   }

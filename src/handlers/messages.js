@@ -4,6 +4,7 @@ const Formatter = require('../utils/formatter');
 const pendingExpenses = require('./callbacks').pendingExpenses;
 const { errorMessages } = require('../utils/constants');
 const userEditState = require('../utils/userEditState');
+const commandHandlers = require('../../commandHandlersInstance');
 
 class MessageHandlers {
   static async handleExpense(ctx) {
@@ -13,30 +14,25 @@ class MessageHandlers {
       
       // Обработка нажатия на reply-кнопку '📋 Меню'
       if (text === '📋 Меню') {
-        const CommandHandlers = require('./commands');
-        await CommandHandlers.help(ctx);
+        await commandHandlers.help(ctx);
         return;
       }
 
       // Обработка быстрых reply-кнопок
       if (text === '💰 Траты за день') {
-        const CommandHandlers = require('./commands');
-        await CommandHandlers.dailyHistory(ctx);
+        await commandHandlers.dailyHistory(ctx);
         return;
       }
       if (text === '💰 Траты за месяц') {
-        const CommandHandlers = require('./commands');
-        await CommandHandlers.stats(ctx);
+        await commandHandlers.stats(ctx);
         return;
       }
       if (text === '💰 Траты по категориям') {
-        const CommandHandlers = require('./commands');
-        await CommandHandlers.categories(ctx);
+        await commandHandlers.categories(ctx);
         return;
       }
       if (text === '🗑️ Удалить последнюю запись') {
-        const CommandHandlers = require('./commands');
-        await CommandHandlers.undo(ctx);
+        await commandHandlers.undo(ctx);
         return;
       }
       if (ctx.message.text === '⚙️ Настройки') {

@@ -6,6 +6,11 @@ const CallbackHandlers = require('./handlers/callbacks');
 const currencyUtils = require('./utils/currency');
 const cron = require('node-cron');
 const userEditState = require('./utils/userEditState');
+const Formatter = require('./utils/formatter');
+const ExpenseService = require('./services/ExpenseService');
+const UserService = require('./services/UserService');
+
+const commandHandlers = require('../commandHandlersInstance');
 
 // Валидация переменных окружения
 if (!process.env.BOT_TOKEN) {
@@ -29,16 +34,16 @@ bot.use((ctx, next) => {
 });
 
 // Обработчики команд
-bot.start(CommandHandlers.start);
-bot.help(CommandHandlers.help);
-bot.command('total', CommandHandlers.total);
-bot.command('history', CommandHandlers.dailyHistory);
-bot.command('stats', CommandHandlers.stats);
-bot.command('export', CommandHandlers.exportData);
-bot.command('undo', CommandHandlers.undo);
-bot.command('categories', CommandHandlers.categories);
-bot.command('currency', CommandHandlers.currency);
-bot.command('settings', CommandHandlers.settings);
+bot.command('start', (ctx) => commandHandlers.start(ctx));
+bot.command('help', (ctx) => commandHandlers.help(ctx));
+bot.command('total', (ctx) => commandHandlers.total(ctx));
+bot.command('history', (ctx) => commandHandlers.dailyHistory(ctx));
+bot.command('stats', (ctx) => commandHandlers.stats(ctx));
+bot.command('export', (ctx) => commandHandlers.exportData(ctx));
+bot.command('undo', (ctx) => commandHandlers.undo(ctx));
+bot.command('categories', (ctx) => commandHandlers.categories(ctx));
+bot.command('currency', (ctx) => commandHandlers.currency(ctx));
+bot.command('settings', (ctx) => commandHandlers.settings(ctx));
 bot.command('cancel', async (ctx) => {
   if (userEditState.has(ctx.from.id)) {
     userEditState.delete(ctx.from.id);
@@ -55,7 +60,7 @@ bot.on('text', MessageHandlers.handleExpense);
 bot.action(/^category\|/, CallbackHandlers.handleCategorySelection);
 bot.action('cancel', CallbackHandlers.handleCancel);
 bot.action('menu', async (ctx) => {
-  await CommandHandlers.help(ctx);
+  await commandHandlers.help(ctx);
 });
 bot.action(/^set_currency\|/, async (ctx) => {
   const userId = ctx.from.id;
@@ -66,13 +71,13 @@ bot.action(/^set_currency\|/, async (ctx) => {
   await ctx.editMessageText(`Валюта успешно изменена на ${currency}`);
 });
 bot.action('change_currency', async (ctx) => {
-  await CommandHandlers.currency(ctx); // Показываем выбор валюты
+  await commandHandlers.currency(ctx); // Показываем выбор валюты
 });
 bot.action('back_to_settings', async (ctx) => {
-  await CommandHandlers.settings(ctx);
+  await commandHandlers.settings(ctx);
 });
 bot.action('back_to_menu', async (ctx) => {
-  await CommandHandlers.help(ctx);
+  await commandHandlers.help(ctx);
 });
 bot.action(/^show_category\|(\d+)$/, async (ctx) => {
   const categoryId = ctx.match[1];
@@ -146,8 +151,7 @@ bot.action('edit_history', async (ctx) => {
 });
 
 bot.action('back_to_history', async (ctx) => {
-  const CommandHandlers = require('./handlers/commands');
-  await CommandHandlers.dailyHistory(ctx);
+  await commandHandlers.dailyHistory(ctx);
 });
 
 // Обработка ошибок
