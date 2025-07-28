@@ -33,6 +33,14 @@ class ExpenseService {
   static async getCategories(userId) {
     return ExpenseRepository.getCategories(userId);
   }
+
+  static async getMonthlyExpenses(userId) {
+    return ExpenseRepository.getUserExpenses(userId, 1000, 'month');
+  }
+
+  static async getExpensesByCategoryId(userId, categoryId, period = 'month') {
+    return ExpenseRepository.getExpensesByCategoryId(userId, categoryId, period);
+  }
 }
 
 module.exports = ExpenseService; 

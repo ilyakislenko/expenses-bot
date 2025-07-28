@@ -84,15 +84,27 @@ bot.action('back_to_menu', async (ctx) => {
 bot.action(/^show_category\|(\d+)$/, async (ctx) => {
   const categoryId = ctx.match[1];
   const userId = ctx.from.id;
+  const userCurrency = await UserService.getUserCurrency(userId);
   const expenses = await require('./database').getExpensesByCategoryId(userId, categoryId, 'month');
   if (!expenses.length) {
     return ctx.reply('Нет трат по этой категории за последний месяц.');
   }
   const Formatter = require('./utils/formatter');
-  for (const expense of expenses) {
-    const { text, reply_markup } = Formatter.formatExpenseWithActions(expense);
-    await ctx.reply(text, { reply_markup, parse_mode: 'Markdown' });
-  }
+  // Асинхронно приводим все суммы к валюте пользователя
+  const convertedAmounts = await Promise.all(
+    expenses.map(e => currencyUtils.convert(Number(e.amount), e.currency || 'RUB', userCurrency))
+  );
+  const total = {
+    total: convertedAmounts.reduce((sum, v) => sum + v, 0),
+    count: expenses.length,
+    currency: userCurrency
+  };
+  let message = await Formatter.formatStats(total, [], userCurrency, 'месяц') + '\n' + Formatter.formatExpenseList(expenses);
+  await ctx.reply(message, { parse_mode: 'Markdown',reply_markup: {
+    inline_keyboard: [
+      [{ text: 'Редактировать', callback_data: `edit_category|${categoryId}` }]
+    ]
+  } });
 });
 bot.action(/^delete_expense\|(\d+)$/, async (ctx) => {
   const expenseId = ctx.match[1];
@@ -151,7 +163,19 @@ bot.action('edit_history', async (ctx) => {
     }
   });
 });
+bot.action(/^edit_category\|(\d+)$/, async (ctx) => {
+  const categoryId = ctx.match[1];
+  const userId = ctx.from.id;
+  const expenses = await ExpenseService.getExpensesByCategoryId(userId, categoryId, 'month');
+  if (!expenses.length) {
+    return ctx.reply('почему-то карточек нет...произошла ошибка');
+  }
+  for (const expense of expenses) {
+    const { text, reply_markup } = Formatter.formatExpenseWithActions(expense);
+    await ctx.reply(text, { reply_markup, parse_mode: 'Markdown' });
+  }
 
+});
 bot.action('back_to_history', async (ctx) => {
   await commandHandlers.dailyHistory(ctx);
 });
