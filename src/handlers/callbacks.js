@@ -41,7 +41,11 @@ class CallbackHandlers {
         `💰 Сумма: *${formattedAmount}*\n` +
         `📝 Описание: ${formattedDescription}\n` +
         `🏷️ Категория: ${categoryName}`,
-        { parse_mode: 'Markdown' }
+        { parse_mode: 'Markdown', reply_markup: {
+          inline_keyboard: [
+            [{ text: '⬅️ Назад', callback_data: 'back_to_menu' }]
+          ]
+        } }
       );
     } catch (error) {
       console.error('Error handling category selection:', error);

@@ -214,6 +214,23 @@ class CommandHandlers {
       }
     });
   }
+
+  async mainMenu(ctx) {
+    const message = `🏠 *Главное меню*\n\nВыберите действие:`;
+    await ctx.reply(message, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '📋 Меню', callback_data: 'menu' }],
+          [{ text: '💰 Траты за месяц', callback_data: 'stats' }, { text: '💰 Траты за день', callback_data: 'history' }],
+          [{ text: '💰 Траты по категориям', callback_data: 'categories' }],
+          [{ text: '⚙️ Настройки', callback_data: 'settings' }],
+          [{ text: '🗑️ Удалить последнюю запись', callback_data: 'undo' }],
+          [{ text: '❓ Справка', callback_data: 'help' }]
+        ]
+      }
+    });
+  }
 }
 
 module.exports = CommandHandlers;

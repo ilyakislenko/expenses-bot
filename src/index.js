@@ -46,6 +46,7 @@ bot.command('undo', errorHandler((ctx) => commandHandlers.undo(ctx)));
 bot.command('categories', errorHandler((ctx) => commandHandlers.categories(ctx)));
 bot.command('currency', errorHandler((ctx) => commandHandlers.currency(ctx)));
 bot.command('settings', errorHandler((ctx) => commandHandlers.settings(ctx)));
+bot.command('menu', errorHandler((ctx) => commandHandlers.mainMenu(ctx)));
 bot.command('cancel', async (ctx) => {
   if (userEditState.has(ctx.from.id)) {
     userEditState.delete(ctx.from.id);
@@ -61,16 +62,47 @@ bot.on('text', errorHandler((ctx) => messageHandlers.handleExpense(ctx)));
 // Обработчики callback-запросов
 bot.action(/^category\|/, CallbackHandlers.handleCategorySelection);
 bot.action('cancel', CallbackHandlers.handleCancel);
-bot.action('menu', async (ctx) => {
+bot.action('menu', errorHandler(async (ctx) => {
+  await ctx.answerCbQuery();
+  await commandHandlers.mainMenu(ctx);
+}));
+bot.action('stats', errorHandler(async (ctx) => {
+  await ctx.answerCbQuery();
+  await commandHandlers.stats(ctx);
+}));
+bot.action('history', errorHandler(async (ctx) => {
+  await ctx.answerCbQuery();
+  await commandHandlers.dailyHistory(ctx);
+}));
+bot.action('categories', errorHandler(async (ctx) => {
+  await ctx.answerCbQuery();
+  await commandHandlers.categories(ctx);
+}));
+bot.action('settings', errorHandler(async (ctx) => {
+  await ctx.answerCbQuery();
+  await commandHandlers.settings(ctx);
+}));
+bot.action('undo', errorHandler(async (ctx) => {
+  await ctx.answerCbQuery();
+  await commandHandlers.undo(ctx);
+}));
+bot.action('help', errorHandler(async (ctx) => {
+  await ctx.answerCbQuery();
   await commandHandlers.help(ctx);
-});
+}));
 bot.action(/^set_currency\|/, async (ctx) => {
   const userId = ctx.from.id;
   const currency = ctx.callbackQuery.data.split('|')[1];
   const db = require('./database');
   await db.setUserCurrency(userId, currency);
   await ctx.answerCbQuery(`Валюта установлена: ${currency}`);
-  await ctx.editMessageText(`Валюта успешно изменена на ${currency}`);
+  await ctx.editMessageText(`Валюта успешно изменена на ${currency}`, {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: '⬅️ Назад', callback_data: 'back_to_menu' }]
+      ]
+    }
+  });
 });
 bot.action('change_currency', async (ctx) => {
   await commandHandlers.currency(ctx); // Показываем выбор валюты
@@ -78,9 +110,9 @@ bot.action('change_currency', async (ctx) => {
 bot.action('back_to_settings', async (ctx) => {
   await commandHandlers.settings(ctx);
 });
-bot.action('back_to_menu', async (ctx) => {
-  await commandHandlers.help(ctx);
-});
+bot.action('back_to_menu', errorHandler(async (ctx) => {
+  await commandHandlers.mainMenu(ctx);
+}));
 bot.action(/^show_category\|(\d+)$/, async (ctx) => {
   const categoryId = ctx.match[1];
   const userId = ctx.from.id;
