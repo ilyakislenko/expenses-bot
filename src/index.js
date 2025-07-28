@@ -90,7 +90,6 @@ bot.action(/^show_category\|(\d+)$/, async (ctx) => {
     return ctx.reply('Нет трат по этой категории за последний месяц.');
   }
   const Formatter = require('./utils/formatter');
-  // Асинхронно приводим все суммы к валюте пользователя
   const convertedAmounts = await Promise.all(
     expenses.map(e => currencyUtils.convert(Number(e.amount), e.currency || 'RUB', userCurrency))
   );
@@ -102,7 +101,10 @@ bot.action(/^show_category\|(\d+)$/, async (ctx) => {
   let message = await Formatter.formatStats(total, [], userCurrency, 'месяц') + '\n' + Formatter.formatExpenseList(expenses);
   await ctx.reply(message, { parse_mode: 'Markdown',reply_markup: {
     inline_keyboard: [
-      [{ text: 'Редактировать', callback_data: `edit_category|${categoryId}` }]
+      [
+        { text: 'Редактировать', callback_data: `edit_category|${categoryId}` },
+        { text: '⬅️ Назад', callback_data: 'back_to_categories' }
+      ]
     ]
   } });
 });
@@ -178,6 +180,9 @@ bot.action(/^edit_category\|(\d+)$/, async (ctx) => {
 });
 bot.action('back_to_history', async (ctx) => {
   await commandHandlers.dailyHistory(ctx);
+});
+bot.action('back_to_categories', async (ctx) => {
+  await commandHandlers.categories(ctx);
 });
 
 // Обработка ошибок
