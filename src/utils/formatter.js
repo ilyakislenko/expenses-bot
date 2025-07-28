@@ -72,29 +72,56 @@ class Formatter {
     return message;
   }
 
-  async formatCSV(expenses, userCurrency) {
-    let csv = 'Дата,Сумма,Валюта,Категория,Описание\n';
-    const totalsByCurrency = {};
-    for (const expense of expenses) {
-      const date = this.formatDate(expense.created_at);
-      const amount = expense.amount;
-      const currency = expense.currency || 'RUB';
-      const category = expense.category || 'Другое';
-      const description = (expense.description || '').replace(/"/g, '""');
-      csv += `"${date}","${amount}","${currency}","${category}","${description}"\n`;
-      totalsByCurrency[currency] = (totalsByCurrency[currency] || 0) + Number(amount);
-    }
-    csv += '\nИтого по валютам:\n';
-    for (const [currency, total] of Object.entries(totalsByCurrency)) {
-      csv += `${currency}: ${total}\n`;
-    }
-    let totalInUserCurrency = 0;
-    for (const [currency, total] of Object.entries(totalsByCurrency)) {
-      totalInUserCurrency += await this.currencyUtils.convert(total, currency, userCurrency);
-    }
-    csv += `\nИтого в ${userCurrency}: ${this.formatAmount(totalInUserCurrency, userCurrency)}\n`;
-    return csv;
+
+// Обновлённая версия formatCSV: поддержка многострочных полей, правильное экранирование, итоги в одной ячейке
+async formatCSV(expenses, userCurrency) {
+  // Вспомогательная функция для экранирования: удваивает кавычки, сохраняет \n для многострочных полей
+  function escapeCSV(value) {
+    const str = String(value ?? '');
+    // Удаляем только \r (для кросс-платформенности), \n оставляем для многострочности
+    const clean = str.replace(/\r/g, '').replace(/"/g, '""');
+    return `"${clean}"`;
   }
+
+  let csv = 'Дата,Сумма,Валюта,Категория,Описание\n';
+  const totalsByCurrency = {};
+  
+  for (const expense of expenses) {
+    const date = this.formatDate(expense.created_at);
+    const amount = expense.amount;
+    const currency = expense.currency || 'RUB';
+    const category = expense.category || 'Другое';
+    const description = expense.description || '';
+
+    // Формируем строку с экранированными полями
+    csv += [
+      escapeCSV(date),
+      escapeCSV(amount),
+      escapeCSV(currency),
+      escapeCSV(category),
+      escapeCSV(description)
+    ].join(',') + '\n';
+
+    totalsByCurrency[currency] = (totalsByCurrency[currency] || 0) + Number(amount);
+  }
+  csv += '\n';
+  // Итоги по валютам: добавляем заголовок отдельной строкой
+  csv += escapeCSV('Итого по валютам:') + ',,,,' + '\n';
+  // Итоги по валютам: каждая валюта отдельной строкой (только в первой колонке)
+  for (const [currency, total] of Object.entries(totalsByCurrency)) {
+    csv += escapeCSV(`${currency}: ${total}`) + ',,,,' + '\n';
+  }
+  // Итоговая сумма в userCurrency отдельной строкой
+  let totalInUserCurrency = 0;
+  for (const [currency, total] of Object.entries(totalsByCurrency)) {
+    totalInUserCurrency += await this.currencyUtils.convert(total, currency, userCurrency);
+  }
+  csv += escapeCSV(`Всего в ${userCurrency}: ${this.formatAmount(totalInUserCurrency, userCurrency)}`) + ',,,,' + '\n';
+
+  return csv;
+}
+
+
 
   formatCategories(categories) {
     return categories.map(cat => `${cat.icon} ${cat.name}`).join(', ');
