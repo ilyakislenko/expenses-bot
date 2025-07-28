@@ -9,8 +9,10 @@ const userEditState = require('./utils/userEditState');
 const Formatter = require('./utils/formatter');
 const ExpenseService = require('./services/ExpenseService');
 const UserService = require('./services/UserService');
+const errorHandler = require('./middleware/errorHandler');
 
 const commandHandlers = require('../commandHandlersInstance');
+const messageHandlers = require('../messageHandlersInstance');
 
 // Валидация переменных окружения
 if (!process.env.BOT_TOKEN) {
@@ -34,16 +36,16 @@ bot.use((ctx, next) => {
 });
 
 // Обработчики команд
-bot.command('start', (ctx) => commandHandlers.start(ctx));
-bot.command('help', (ctx) => commandHandlers.help(ctx));
-bot.command('total', (ctx) => commandHandlers.total(ctx));
-bot.command('history', (ctx) => commandHandlers.dailyHistory(ctx));
-bot.command('stats', (ctx) => commandHandlers.stats(ctx));
-bot.command('export', (ctx) => commandHandlers.exportData(ctx));
-bot.command('undo', (ctx) => commandHandlers.undo(ctx));
-bot.command('categories', (ctx) => commandHandlers.categories(ctx));
-bot.command('currency', (ctx) => commandHandlers.currency(ctx));
-bot.command('settings', (ctx) => commandHandlers.settings(ctx));
+bot.command('start', errorHandler((ctx) => commandHandlers.start(ctx)));
+bot.command('help', errorHandler((ctx) => commandHandlers.help(ctx)));
+bot.command('total', errorHandler((ctx) => commandHandlers.total(ctx)));
+bot.command('history', errorHandler((ctx) => commandHandlers.dailyHistory(ctx)));
+bot.command('stats', errorHandler((ctx) => commandHandlers.stats(ctx)));
+bot.command('export', errorHandler((ctx) => commandHandlers.exportData(ctx)));
+bot.command('undo', errorHandler((ctx) => commandHandlers.undo(ctx)));
+bot.command('categories', errorHandler((ctx) => commandHandlers.categories(ctx)));
+bot.command('currency', errorHandler((ctx) => commandHandlers.currency(ctx)));
+bot.command('settings', errorHandler((ctx) => commandHandlers.settings(ctx)));
 bot.command('cancel', async (ctx) => {
   if (userEditState.has(ctx.from.id)) {
     userEditState.delete(ctx.from.id);
@@ -54,7 +56,7 @@ bot.command('cancel', async (ctx) => {
 });
 
 // Обработчик текстовых сообщений (расходы)
-bot.on('text', MessageHandlers.handleExpense);
+bot.on('text', errorHandler((ctx) => messageHandlers.handleExpense(ctx)));
 
 // Обработчики callback-запросов
 bot.action(/^category\|/, CallbackHandlers.handleCategorySelection);

@@ -4,21 +4,24 @@ const Formatter = require('../utils/formatter');
 const pendingExpenses = require('./callbacks').pendingExpenses;
 const { errorMessages } = require('../utils/constants');
 const userEditState = require('../utils/userEditState');
-const commandHandlers = require('../../commandHandlersInstance');
 
 class MessageHandlers {
-  static async handleExpense(ctx) {
+  constructor({ expenseService, userService, formatter }) {
+    this.expenseService = expenseService;
+    this.userService = userService;
+    this.formatter = formatter;
+  }
+
+  async handleExpense(ctx) {
     try {
       const userId = ctx.from.id;
       const text = ctx.message.text;
-      
+      const commandHandlers = require('../../commandHandlersInstance');
       // Обработка нажатия на reply-кнопку '📋 Меню'
       if (text === '📋 Меню') {
         await commandHandlers.help(ctx);
         return;
       }
-
-      // Обработка быстрых reply-кнопок
       if (text === '💰 Траты за день') {
         await commandHandlers.dailyHistory(ctx);
         return;
@@ -45,8 +48,6 @@ class MessageHandlers {
           }
         });
       }
-
-      // Проверка на редактирование
       if (userEditState && userEditState.has(ctx.from.id)) {
         if (ctx.message.text.trim() === '/cancel') {
           userEditState.delete(ctx.from.id);
@@ -81,65 +82,44 @@ class MessageHandlers {
           return ctx.reply('Ошибка: запись не найдена или не обновлена.');
         }
       }
-
       const parsed = Validator.parseExpense(text);
-      
       if (!parsed.isValid) {
         const errorMsg = errorMessages[parsed.error] || errorMessages.format;
         return await ctx.reply(errorMsg, { parse_mode: 'Markdown' });
       }
-
-      // Получаем категории пользователя
       const categories = await db.getCategories(userId);
-      
       if (categories.length === 0) {
-        // Если категорий нет, сохраняем как раньше
         const expense = await db.addExpense(
           userId, 
           parsed.amount, 
           parsed.description
         );
-
         const amount = Formatter.formatAmount(expense.amount);
         const description = expense.description || 'Без описания';
-        
         await ctx.reply(`✅ Записал: ${amount} - ${description}`);
         return;
       }
-
-      // Сохраняем сумму и описание во временное хранилище
       pendingExpenses.set(userId, { amount: parsed.amount, description: parsed.description });
-
-      // Создаем кнопки категорий
       const keyboard = [];
       const row = [];
-      
       categories.forEach((category, index) => {
         const button = {
           text: `${category.icon} ${category.name}`,
           callback_data: `category|${category.name}`
         };
-        
         row.push(button);
-        
-        // Размещаем по 2 кнопки в ряду
         if (row.length === 2 || index === categories.length - 1) {
           keyboard.push([...row]);
           row.length = 0;
         }
       });
-
-      // Добавляем кнопку отмены
       keyboard.push([{
         text: '❌ Отменить',
         callback_data: 'cancel'
       }]);
-
-      // Получаем валюту пользователя
       const userCurrency = await db.getUserCurrency(userId);
       const amount = Formatter.formatAmount(parsed.amount, userCurrency);
       const description = parsed.description || 'Без описания';
-      
       await ctx.reply(
         `💰 *Выберите категорию для расхода:*\n\n` +
         `Сумма: *${amount}*\n` +

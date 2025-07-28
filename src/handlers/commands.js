@@ -105,15 +105,12 @@ class CommandHandlers {
       const userId = ctx.from.id;
       const { total, expenses, userCurrency } = await this.expenseService.getDailyStats(userId);
       let message = await this.formatter.formatStats(total, [], userCurrency, 'день') + '\n' + this.formatter.formatExpenseList(expenses);
-      await ctx.reply(message, { parse_mode: 'Markdown' });
+      await ctx.reply(message, { parse_mode: 'Markdown',reply_markup: {
+        inline_keyboard: [
+          [{ text: 'Редактировать', callback_data: 'edit_history' }]
+        ]
+      } });
       // Кнопка редактирования
-      await ctx.reply('Что сделать с этими тратами?', {
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: 'Редактировать', callback_data: 'edit_history' }]
-          ]
-        }
-      });
     } catch (error) {
       console.error('Error in history command:', error);
       await ctx.reply('Произошла ошибка при получении истории 😞');
