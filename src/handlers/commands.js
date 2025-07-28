@@ -162,7 +162,7 @@ class CommandHandlers {
       const deleted = await this.expenseService.deleteLastExpense(userId);
       
       if (deleted) {
-        const amount = this.formatter.formatAmount(deleted.amount);
+        const amount = this.formatter.formatAmount(deleted.amount, deleted.currency);
         const description = deleted.description || 'Без описания';
         await ctx.reply(`✅ Удалена запись: ${amount} - ${description}`);
       } else {
