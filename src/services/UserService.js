@@ -12,6 +12,14 @@ class UserService {
   static async getUserCurrency(userId) {
     return UserRepository.getUserCurrency(userId);
   }
+
+  static async setUserPremium(userId, isPremium) {
+    return UserRepository.setUserPremium(userId, isPremium);
+  }
+
+  static async getUserPremium(userId) {
+    return UserRepository.getUserPremium(userId);
+  }
 }
 
 module.exports = UserService; 

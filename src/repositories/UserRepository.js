@@ -12,6 +12,14 @@ class UserRepository {
   static async getUserCurrency(userId) {
     return db.getUserCurrency(userId);
   }
+
+  static async setUserPremium(userId, isPremium) {
+    return db.setUserPremium(userId, isPremium);
+  }
+
+  static async getUserPremium(userId) {
+    return db.getUserPremium(userId);
+  }
 }
 
 module.exports = UserRepository; 

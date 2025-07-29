@@ -5,7 +5,8 @@ CREATE TABLE IF NOT EXISTS users (
     first_name VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     timezone VARCHAR(50) DEFAULT 'UTC',
-    currency VARCHAR(3) DEFAULT 'RUB'
+    currency VARCHAR(3) DEFAULT 'RUB',
+    premium BOOLEAN DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS categories (

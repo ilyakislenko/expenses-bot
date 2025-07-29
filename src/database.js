@@ -300,6 +300,16 @@ class Database {
     const result = await this.query(query, [expenseId, userId]);
     return result.rows[0];
   }
+
+  async setUserPremium(userId, isPremium) {
+    const query = 'UPDATE users SET premium = $1 WHERE id = $2';
+    await this.query(query, [isPremium, userId]);
+  }
+
+  async getUserPremium(userId) {
+    const result = await this.query('SELECT premium FROM users WHERE id = $1', [userId]);
+    return result.rows[0]?.premium || false;
+  }
 }
 
 module.exports = new Database();
