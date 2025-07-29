@@ -1,8 +1,4 @@
-const db = require('../database');
-const Formatter = require('../utils/formatter');
 const { MAIN_MENU_KEYBOARD, CURRENCY_KEYBOARD, SETTINGS_KEYBOARD } = require('../utils/constants');
-const ExpenseService = require('../services/ExpenseService');
-const UserService = require('../services/UserService');
 
 class CommandHandlers {
   constructor({ expenseService, userService, formatter }) {

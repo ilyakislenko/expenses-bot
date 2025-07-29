@@ -1,12 +1,8 @@
-const Formatter = require('../utils/formatter');
-
-// Временное хранилище для данных о расходах пользователей
-const pendingExpenses = new Map();
-
 class CallbackHandlers {
-  constructor({ expenseService, formatter }) {
+  constructor({ expenseService, formatter, stateService }) {
     this.expenseService = expenseService;
     this.formatter = formatter;
+    this.stateService = stateService;
   }
 
   async handleCategorySelection(ctx) {
@@ -14,7 +10,7 @@ class CallbackHandlers {
     try {
       const callbackData = ctx.callbackQuery.data;
       const [, categoryName] = callbackData.split('|');
-      const pending = pendingExpenses.get(userId);
+      const pending = this.stateService.getPendingExpense(userId);
       if (!pending) {
         return await ctx.answerCbQuery('❌ Ошибка: данные не найдены');
       }
@@ -51,7 +47,7 @@ class CallbackHandlers {
       console.error('Error handling category selection:', error);
       await ctx.answerCbQuery('❌ Произошла ошибка при сохранении');
     } finally {
-      pendingExpenses.delete(userId);
+      this.stateService.deletePendingExpense(userId);
     }
   }
 
@@ -65,5 +61,4 @@ class CallbackHandlers {
   }
 }
 
-module.exports = CallbackHandlers;
-module.exports.pendingExpenses = pendingExpenses; 
+module.exports = CallbackHandlers; 

@@ -1,41 +1,39 @@
-const db = require('../database');
-const Validator = require('../utils/validator');
-const Formatter = require('../utils/formatter');
-const pendingExpenses = require('./callbacks').pendingExpenses;
 const { errorMessages } = require('../utils/constants');
-const userEditState = require('../utils/userEditState');
 
 class MessageHandlers {
-  constructor({ expenseService, userService, formatter }) {
+  constructor({ expenseService, userService, formatter, commandHandlers, stateService, validator }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.formatter = formatter;
+    this.commandHandlers = commandHandlers;
+    this.stateService = stateService;
+    this.validator = validator;
   }
 
   async handleExpense(ctx) {
     try {
       const userId = ctx.from.id;
       const text = ctx.message.text;
-      const commandHandlers = require('../../commandHandlersInstance');
+      
       // Обработка нажатия на reply-кнопку '📋 Меню'
       if (text === '📋 Меню') {
-        await commandHandlers.help(ctx);
+        await this.commandHandlers.help(ctx);
         return;
       }
       if (text === '💰 Траты за день') {
-        await commandHandlers.dailyHistory(ctx);
+        await this.commandHandlers.dailyHistory(ctx);
         return;
       }
       if (text === '💰 Траты за месяц') {
-        await commandHandlers.stats(ctx);
+        await this.commandHandlers.stats(ctx);
         return;
       }
       if (text === '💰 Траты по категориям') {
-        await commandHandlers.categories(ctx);
+        await this.commandHandlers.categories(ctx);
         return;
       }
       if (text === '🗑️ Удалить последнюю запись') {
-        await commandHandlers.undo(ctx);
+        await this.commandHandlers.undo(ctx);
         return;
       }
       if (ctx.message.text === '⚙️ Настройки') {
@@ -48,13 +46,13 @@ class MessageHandlers {
           }
         });
       }
-      if (userEditState && userEditState.has(ctx.from.id)) {
+      if (this.stateService.hasUserEditState(ctx.from.id)) {
         if (ctx.message.text.trim() === '/cancel') {
-          userEditState.delete(ctx.from.id);
+          this.stateService.deleteUserEditState(ctx.from.id);
           return ctx.reply('Редактирование отменено.');
         }
-        const expenseId = userEditState.get(ctx.from.id);
-        const parsed = Validator.parseEditExpense(ctx.message.text);
+        const expenseId = this.stateService.getUserEditState(ctx.from.id);
+        const parsed = this.validator.parseEditExpense(ctx.message.text);
         if (!parsed.isValid) {
           if (parsed.error === 'empty') {
             return ctx.reply('Введите новую сумму, описание или оба значения.');
@@ -75,14 +73,14 @@ class MessageHandlers {
         const newAmount = parsed.amount !== undefined ? parsed.amount : oldExpense.amount;
         const newDescription = parsed.description !== undefined ? parsed.description : oldExpense.description;
         const updated = await this.expenseService.updateExpenseById(ctx.from.id, expenseId, { amount: newAmount, description: newDescription });
-        userEditState.delete(ctx.from.id);
+        this.stateService.deleteUserEditState(ctx.from.id);
         if (updated) {
           return ctx.reply('Запись успешно обновлена!');
         } else {
           return ctx.reply('Ошибка: запись не найдена или не обновлена.');
         }
       }
-      const parsed = Validator.parseExpense(text);
+      const parsed = this.validator.parseExpense(text);
       if (!parsed.isValid) {
         const errorMsg = errorMessages[parsed.error] || errorMessages.format;
         return await ctx.reply(errorMsg, { parse_mode: 'Markdown' });
@@ -99,7 +97,7 @@ class MessageHandlers {
         await ctx.reply(`✅ Записал: ${amount} - ${description}`);
         return;
       }
-      pendingExpenses.set(userId, { amount: parsed.amount, description: parsed.description });
+      this.stateService.setPendingExpense(userId, { amount: parsed.amount, description: parsed.description });
       const keyboard = [];
       const row = [];
       categories.forEach((category, index) => {

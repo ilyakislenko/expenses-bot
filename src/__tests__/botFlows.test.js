@@ -1,7 +1,4 @@
-const CommandHandlers = require('../../commandHandlersInstance');
-const ExpenseService = require('../services/ExpenseService');
-const UserService = require('../services/UserService');
-const Formatter = require('../utils/formatter');
+const Container = require('../container');
 
 jest.mock('../database', () => ({
   createUser: jest.fn().mockResolvedValue({ id: 1, username: 'testuser', first_name: 'Test' }),
@@ -41,47 +38,57 @@ function createMockCtx() {
 
 describe('CommandHandlers', () => {
   let ctx;
+  let commandHandlers;
+
   beforeEach(() => {
     ctx = createMockCtx();
+    const container = new Container();
+    commandHandlers = container.get('commandHandlers');
   });
 
   it('start: sends welcome message', async () => {
-    await CommandHandlers.start(ctx);
+    await commandHandlers.start(ctx);
     expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Привет'), expect.objectContaining({ parse_mode: 'Markdown' }));
   });
 
   it('help: sends help message', async () => {
-    await CommandHandlers.help(ctx);
+    await commandHandlers.help(ctx);
     expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Справка по командам'), expect.objectContaining({ parse_mode: 'Markdown' }));
   });
 
   it('currency: sends currency keyboard', async () => {
-    await CommandHandlers.currency(ctx);
+    await commandHandlers.currency(ctx);
     expect(ctx.reply).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ reply_markup: expect.any(Object) }));
   });
 
   it('settings: sends settings keyboard', async () => {
-    await CommandHandlers.settings(ctx);
+    await commandHandlers.settings(ctx);
     expect(ctx.reply).toHaveBeenCalledWith('Настройки:', expect.objectContaining({ reply_markup: expect.any(Object) }));
   });
 });
 
 describe('ExpenseService', () => {
   it('getCategories returns array', async () => {
-    const categories = await ExpenseService.getCategories(1);
+    const container = new Container();
+    const expenseService = container.get('expenseService');
+    const categories = await expenseService.getCategories(1);
     expect(Array.isArray(categories)).toBe(true);
   });
 });
 
 describe('UserService', () => {
   it('getUserCurrency returns string', async () => {
-    const currency = await UserService.getUserCurrency(1);
+    const container = new Container();
+    const userService = container.get('userService');
+    const currency = await userService.getUserCurrency(1);
     expect(typeof currency === 'string' || currency === null).toBe(true);
   });
 });
 
 describe('Formatter', () => {
   it('formatAmount returns string', () => {
-    expect(typeof Formatter.formatAmount(100, 'RUB')).toBe('string');
+    const container = new Container();
+    const formatter = container.get('formatter');
+    expect(typeof formatter.formatAmount(100, 'RUB')).toBe('string');
   });
 }); 

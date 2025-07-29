@@ -59,7 +59,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^set_currency\|/, async (ctx) => {
     const userId = ctx.from.id;
     const currency = ctx.callbackQuery.data.split('|')[1];
-    await UserService.setUserCurrency(userId, currency);
+    await handlers.userService.setUserCurrency(userId, currency);
     await ctx.answerCbQuery(`Валюта установлена: ${currency}`);
     await ctx.editMessageText(`Валюта успешно изменена на ${currency}`, {
       reply_markup: {
@@ -81,12 +81,12 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^show_category\|(\d+)$/, async (ctx) => {
     const categoryId = ctx.match[1];
     const userId = ctx.from.id;
-    const userCurrency = await UserService.getUserCurrency(userId);
+    const userCurrency = await handlers.userService.getUserCurrency(userId);
     const expenses = await handlers.db.getExpensesByCategoryId(userId, categoryId, 'month');
     if (!expenses.length) {
       return ctx.reply('Нет трат по этой категории за последний месяц.');
     }
-    const formatter = require('../commandHandlersInstance').formatter;
+    const formatter = handlers.formatter;
     const convertedAmounts = await Promise.all(
       expenses.map(e => currencyUtils.convert(Number(e.amount), e.currency || 'RUB', userCurrency))
     );
@@ -108,7 +108,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^delete_expense\|(\d+)$/, async (ctx) => {
     const expenseId = ctx.match[1];
     const userId = ctx.from.id;
-    const deleted = await ExpenseService.deleteExpenseById(userId, expenseId);
+    const deleted = await handlers.expenseService.deleteExpenseById(userId, expenseId);
     if (deleted) {
       await ctx.answerCbQuery('Запись удалена!');
       await ctx.editMessageText('Запись удалена!');
@@ -118,7 +118,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   });
   bot.action(/^edit_expense\|(\d+)$/, async (ctx) => {
     const expenseId = ctx.match[1];
-    userEditState.set(ctx.from.id, expenseId);
+    handlers.stateService.setUserEditState(ctx.from.id, expenseId);
     await ctx.reply(
       'Введите новую сумму и/или описание для этой траты (например: 500 кофе).\n\nИли нажмите кнопку ниже для отмены.',
       {
@@ -131,8 +131,8 @@ module.exports = function registerBotRoutes(bot, handlers) {
     );
   });
   bot.action('cancel_edit', async (ctx) => {
-    if (userEditState.has(ctx.from.id)) {
-      userEditState.delete(ctx.from.id);
+    if (handlers.stateService.hasUserEditState(ctx.from.id)) {
+      handlers.stateService.deleteUserEditState(ctx.from.id);
       await ctx.editMessageText('Редактирование отменено.');
     } else {
       await ctx.answerCbQuery('Нет активного редактирования.');
@@ -140,11 +140,11 @@ module.exports = function registerBotRoutes(bot, handlers) {
   });
   bot.action('edit_history', async (ctx) => {
     const userId = ctx.from.id;
-    const expenses = await ExpenseService.getDailyExpenses(userId);
+    const expenses = await handlers.expenseService.getDailyExpenses(userId);
     if (!expenses.length) {
       return ctx.reply('Нет трат за этот период.');
     }
-    const formatter = require('../commandHandlersInstance').formatter;
+    const formatter = handlers.formatter;
     for (const expense of expenses) {
       const { text, reply_markup } = formatter.formatExpenseWithActions(expense);
       await ctx.reply(text, { reply_markup, parse_mode: 'Markdown' });
@@ -160,11 +160,11 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^edit_category\|(\d+)$/, async (ctx) => {
     const categoryId = ctx.match[1];
     const userId = ctx.from.id;
-    const expenses = await ExpenseService.getExpensesByCategoryId(userId, categoryId, 'month');
+    const expenses = await handlers.expenseService.getExpensesByCategoryId(userId, categoryId, 'month');
     if (!expenses.length) {
       return ctx.reply('почему-то карточек нет...произошла ошибка');
     }
-    const formatter = require('../commandHandlersInstance').formatter;
+    const formatter = handlers.formatter;
     for (const expense of expenses) {
       const { text, reply_markup } = formatter.formatExpenseWithActions(expense);
       await ctx.reply(text, { reply_markup, parse_mode: 'Markdown' });
