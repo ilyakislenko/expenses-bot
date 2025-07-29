@@ -3,3 +3,6 @@ node_modules/
 *.log
 .DS_Store
 dist/
+test-results/
+playwright-report/
+tg.auth.json
