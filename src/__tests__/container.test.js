@@ -7,10 +7,10 @@ describe('Container', () => {
     container = new Container();
   });
 
-  test('should create database instance', () => {
-    const db = container.get('db');
-    expect(db).toBeDefined();
-    expect(typeof db.query).toBe('function');
+  test('should create user repository instance', () => {
+    const userRepository = container.get('userRepository');
+    expect(userRepository).toBeDefined();
+    expect(typeof userRepository.query).toBe('function');
   });
 
   test('should create formatter instance', () => {
@@ -39,9 +39,9 @@ describe('Container', () => {
   });
 
   test('should cache instances', () => {
-    const db1 = container.get('db');
-    const db2 = container.get('db');
-    expect(db1).toBe(db2);
+    const userRepo1 = container.get('userRepository');
+    const userRepo2 = container.get('userRepository');
+    expect(userRepo1).toBe(userRepo2);
   });
 
   test('should throw error for unknown dependency', () => {

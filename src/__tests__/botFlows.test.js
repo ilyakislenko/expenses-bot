@@ -1,26 +1,49 @@
 const Container = require('../container');
 
-jest.mock('../database', () => ({
-  createUser: jest.fn().mockResolvedValue({ id: 1, username: 'testuser', first_name: 'Test' }),
-  getCategories: jest.fn().mockResolvedValue([
-    { id: 1, name: 'Еда', icon: '🍕' },
-    { id: 2, name: 'Транспорт', icon: '🚗' }
-  ]),
-  getUserCurrency: jest.fn().mockResolvedValue('RUB'),
-  getTotalExpenses: jest.fn().mockResolvedValue({ total: 1000, currency: 'RUB', count: 5 }),
-  getDailyExpenses: jest.fn().mockResolvedValue([
-    { amount: 200, description: 'продукты', category_name: 'Еда', category_icon: '🍕' }
-  ]),
-  getExpensesByCategory: jest.fn().mockResolvedValue([
-    { category: 'Еда', total: 500 },
-    { category: 'Транспорт', total: 500 }
-  ]),
-  deleteLastExpense: jest.fn().mockResolvedValue({ amount: 100, description: 'кофе' }),
-  exportExpenses: jest.fn().mockResolvedValue([
-    { amount: 100, description: 'кофе', currency: 'RUB' }
-  ]),
-  setUserCurrency: jest.fn().mockResolvedValue(true),
-}));
+// Mock repositories
+jest.mock('../repositories/UserRepository', () => {
+  return jest.fn().mockImplementation(() => ({
+    createUser: jest.fn().mockResolvedValue({ id: 1, username: 'testuser', first_name: 'Test' }),
+    setUserCurrency: jest.fn().mockResolvedValue(undefined),
+    getUserCurrency: jest.fn().mockResolvedValue('RUB'),
+    setUserPremium: jest.fn().mockResolvedValue(undefined),
+    getUserPremium: jest.fn().mockResolvedValue(false)
+  }));
+});
+
+jest.mock('../repositories/ExpenseRepository', () => {
+  return jest.fn().mockImplementation(() => ({
+    addExpense: jest.fn().mockResolvedValue({ id: 1, amount: 100, description: 'test' }),
+    getUserExpenses: jest.fn().mockResolvedValue([
+      { id: 1, amount: 100, description: 'test', category_name: 'Еда', category_icon: '🍕' }
+    ]),
+    getTotalExpenses: jest.fn().mockResolvedValue({ total: 100, count: 1, currency: 'RUB' }),
+    getExpensesByCategory: jest.fn().mockResolvedValue([
+      { name: 'Еда', icon: '🍕', total: 100, count: 1, currency: 'RUB' }
+    ]),
+    deleteLastExpense: jest.fn().mockResolvedValue({ id: 1, amount: 100 }),
+    exportExpenses: jest.fn().mockResolvedValue([
+      { amount: 100, currency: 'RUB', description: 'test', category: 'Еда' }
+    ]),
+    getExpensesByCategoryId: jest.fn().mockResolvedValue([
+      { id: 1, amount: 100, description: 'test', category_name: 'Еда', category_icon: '🍕' }
+    ]),
+    deleteExpenseById: jest.fn().mockResolvedValue({ id: 1, amount: 100 }),
+    updateExpenseById: jest.fn().mockResolvedValue({ id: 1, amount: 200, description: 'updated' }),
+    getExpenseById: jest.fn().mockResolvedValue({ id: 1, amount: 100, description: 'test' })
+  }));
+});
+
+jest.mock('../repositories/CategoryRepository', () => {
+  return jest.fn().mockImplementation(() => ({
+    createDefaultCategories: jest.fn().mockResolvedValue(undefined),
+    getCategories: jest.fn().mockResolvedValue([
+      { id: 1, name: 'Еда', icon: '🍕' },
+      { id: 2, name: 'Транспорт', icon: '🚗' }
+    ]),
+    getOrCreateCategory: jest.fn().mockResolvedValue({ id: 1, name: 'Еда' })
+  }));
+});
 
 // Мок для ctx
 function createMockCtx() {
@@ -67,14 +90,23 @@ describe('CommandHandlers', () => {
   });
 });
 
-describe('ExpenseService', () => {
-  it('getCategories returns array', async () => {
-    const container = new Container();
-    const expenseService = container.get('expenseService');
-    const categories = await expenseService.getCategories(1);
-    expect(Array.isArray(categories)).toBe(true);
-  });
-});
+            describe('ExpenseService', () => {
+              it('getCategories returns array', async () => {
+                const container = new Container();
+                const expenseService = container.get('expenseService');
+                const categories = await expenseService.getCategories(1);
+                expect(Array.isArray(categories)).toBe(true);
+              });
+            });
+
+            describe('UserService', () => {
+              it('getUserCurrency returns string', async () => {
+                const container = new Container();
+                const userService = container.get('userService');
+                const currency = await userService.getUserCurrency(1);
+                expect(typeof currency).toBe('string');
+              });
+            });
 
 describe('UserService', () => {
   it('getUserCurrency returns string', async () => {
