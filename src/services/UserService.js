@@ -1,24 +1,29 @@
-const UserRepository = require('../repositories/UserRepository');
-
 class UserService {
-  static async registerUser(userId, username, firstName) {
-    return UserRepository.createUser(userId, username, firstName);
+  constructor(userRepository, categoryRepository) {
+    this.userRepository = userRepository;
+    this.categoryRepository = categoryRepository;
   }
 
-  static async setUserCurrency(userId, currency) {
-    return UserRepository.setUserCurrency(userId, currency);
+  async registerUser(userId, username, firstName) {
+    const user = await this.userRepository.createUser(userId, username, firstName);
+    await this.categoryRepository.createDefaultCategories(userId);
+    return user;
   }
 
-  static async getUserCurrency(userId) {
-    return UserRepository.getUserCurrency(userId);
+  async setUserCurrency(userId, currency) {
+    return this.userRepository.setUserCurrency(userId, currency);
   }
 
-  static async setUserPremium(userId, isPremium) {
-    return UserRepository.setUserPremium(userId, isPremium);
+  async getUserCurrency(userId) {
+    return this.userRepository.getUserCurrency(userId);
   }
 
-  static async getUserPremium(userId) {
-    return UserRepository.getUserPremium(userId);
+  async setUserPremium(userId, isPremium) {
+    return this.userRepository.setUserPremium(userId, isPremium);
+  }
+
+  async getUserPremium(userId) {
+    return this.userRepository.getUserPremium(userId);
   }
 }
 

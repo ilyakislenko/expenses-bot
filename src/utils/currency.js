@@ -2,14 +2,11 @@ const fetch = require('node-fetch');
 
 const BASE_CURRENCY = 'RUB';
 
-function createCurrencyUtils(db) {
+function createCurrencyUtils(currencyRepository) {
   async function getRate(currency) {
     if (currency === BASE_CURRENCY) return 1;
     try {
-      const result = await db.query('SELECT rate FROM currency_rates WHERE currency = $1', [currency]);
-      const row = result.rows[0];
-      if (!row) throw new Error(`Нет курса для валюты: ${currency}`);
-      return row.rate;
+      return await currencyRepository.getRate(currency);
     } catch (err) {
       console.error('Ошибка при получении курса валюты:', err);
       throw err;
@@ -32,8 +29,7 @@ function createCurrencyUtils(db) {
 
   async function getLastRatesUpdate() {
     try {
-      const result = await db.query('SELECT MAX(updated_at) as last_update FROM currency_rates');
-      return result.rows[0]?.last_update ? new Date(result.rows[0].last_update) : null;
+      return await currencyRepository.getLastRatesUpdate();
     } catch (err) {
       console.error('Ошибка при получении даты последнего обновления курсов:', err);
       return null;
@@ -53,33 +49,20 @@ function createCurrencyUtils(db) {
       const res = await fetch(url);
       const data = await res.json();
       const valutes = data.Valute;
-      const now = new Date().toISOString();
-      const queries = [];
+      const rates = [];
+      
       for (const currency of currencies) {
         if (currency === BASE_CURRENCY) {
-          queries.push(
-            db.query(
-              `INSERT INTO currency_rates (currency, rate, base_currency, updated_at)
-               VALUES ($1, $2, $3, $4)
-               ON CONFLICT(currency) DO UPDATE SET rate=excluded.rate, updated_at=excluded.updated_at`,
-              [BASE_CURRENCY, 1, BASE_CURRENCY, now]
-            )
-          );
+          rates.push({ currency: BASE_CURRENCY, rate: 1, baseCurrency: BASE_CURRENCY });
           continue;
         }
         const v = valutes[currency];
         if (!v) continue;
         const rate = v.Value / v.Nominal;
-        queries.push(
-          db.query(
-            `INSERT INTO currency_rates (currency, rate, base_currency, updated_at)
-             VALUES ($1, $2, $3, $4)
-             ON CONFLICT(currency) DO UPDATE SET rate=excluded.rate, updated_at=excluded.updated_at`,
-            [currency, rate, BASE_CURRENCY, now]
-          )
-        );
+        rates.push({ currency, rate, baseCurrency: BASE_CURRENCY });
       }
-      await Promise.all(queries);
+      
+      await currencyRepository.updateRates(rates);
     } catch (err) {
       console.error('Ошибка при обновлении курсов валют:', err);
       throw err;

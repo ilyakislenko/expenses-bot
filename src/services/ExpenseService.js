@@ -1,61 +1,73 @@
-const ExpenseRepository = require('../repositories/ExpenseRepository');
-const UserRepository = require('../repositories/UserRepository');
-
 class ExpenseService {
-  static async getMonthlyStats(userId) {
-    const userCurrency = await UserRepository.getUserCurrency(userId);
-    const total = await ExpenseRepository.getTotalExpenses(userId, 'month');
-    const categoryStats = await ExpenseRepository.getExpensesByCategory(userId, 'month');
+  constructor(expenseRepository, userRepository, categoryRepository) {
+    this.expenseRepository = expenseRepository;
+    this.userRepository = userRepository;
+    this.categoryRepository = categoryRepository;
+  }
+
+  async getMonthlyStats(userId) {
+    const userCurrency = await this.userRepository.getUserCurrency(userId);
+    const total = await this.expenseRepository.getTotalExpenses(userId, 'month');
+    const categoryStats = await this.expenseRepository.getExpensesByCategory(userId, 'month');
     return { total, categoryStats, userCurrency };
   }
 
-  static async getDailyStats(userId) {
-    const userCurrency = await UserRepository.getUserCurrency(userId);
-    const expenses = await ExpenseRepository.getDailyExpenses(userId);
-    const total = await ExpenseRepository.getTotalExpenses(userId, 'day');
+  async getDailyStats(userId) {
+    const userCurrency = await this.userRepository.getUserCurrency(userId);
+    const expenses = await this.expenseRepository.getDailyExpenses(userId);
+    const total = await this.expenseRepository.getTotalExpenses(userId, 'day');
     return { total, expenses, userCurrency };
   }
 
-  static async addExpense(userId, amount, description, categoryName) {
-    return ExpenseRepository.addExpense(userId, amount, description, categoryName);
+  async addExpense(userId, amount, description, categoryName) {
+    const userCurrency = await this.userRepository.getUserCurrency(userId);
+    const category = await this.categoryRepository.getOrCreateCategory(userId, categoryName);
+    
+    return this.expenseRepository.addExpense(
+      userId, 
+      amount, 
+      description, 
+      category.id, 
+      userCurrency
+    );
   }
 
-  static async deleteLastExpense(userId) {
-    return ExpenseRepository.deleteLastExpense(userId);
+  async deleteLastExpense(userId) {
+    return this.expenseRepository.deleteLastExpense(userId);
   }
 
-  static async exportExpenses(userId) {
-    const expenses = await ExpenseRepository.exportExpenses(userId);
-    const userCurrency = await UserRepository.getUserCurrency(userId);
+  async exportExpenses(userId) {
+    const expenses = await this.expenseRepository.exportExpenses(userId);
+    const userCurrency = await this.userRepository.getUserCurrency(userId);
     return { expenses, userCurrency };
   }
 
-  static async getCategories(userId) {
-    return ExpenseRepository.getCategories(userId);
+  async getCategories(userId) {
+    return this.categoryRepository.getCategories(userId);
   }
 
-  static async getMonthlyExpenses(userId) {
-    return ExpenseRepository.getUserExpenses(userId, 1000, 'month');
+  async getMonthlyExpenses(userId) {
+    return this.expenseRepository.getUserExpenses(userId, 1000);
   }
 
-  static async getExpensesByCategoryId(userId, categoryId, period = 'month') {
-    return ExpenseRepository.getExpensesByCategoryId(userId, categoryId, period);
+  async getExpensesByCategoryId(userId, categoryId, period = 'month') {
+    return this.expenseRepository.getExpensesByCategoryId(userId, categoryId, period);
   }
 
-  static async getDailyExpenses(userId) {
-    return ExpenseRepository.getDailyExpenses(userId);
+  async getDailyExpenses(userId) {
+    return this.expenseRepository.getDailyExpenses(userId);
   }
 
-  static async getExpenseById(userId, expenseId) {
-    return ExpenseRepository.getExpenseById(userId, expenseId);
+  async getExpenseById(userId, expenseId) {
+    return this.expenseRepository.getExpenseById(userId, expenseId);
   }
 
-  static async updateExpenseById(userId, expenseId, data) {
-    return ExpenseRepository.updateExpenseById(userId, expenseId, data);
+  async updateExpenseById(userId, expenseId, data) {
+    return this.expenseRepository.updateExpenseById(userId, expenseId, data);
   }
 
-  static async deleteExpenseById(userId, expenseId) {
-    return ExpenseRepository.deleteExpenseById(userId, expenseId);
+  async deleteExpenseById(userId, expenseId) {
+    return this.expenseRepository.deleteExpenseById(userId, expenseId);
   }
 }
 

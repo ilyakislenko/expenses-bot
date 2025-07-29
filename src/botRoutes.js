@@ -82,7 +82,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
     const categoryId = ctx.match[1];
     const userId = ctx.from.id;
     const userCurrency = await handlers.userService.getUserCurrency(userId);
-    const expenses = await handlers.db.getExpensesByCategoryId(userId, categoryId, 'month');
+    const expenses = await handlers.expenseService.getExpensesByCategoryId(userId, categoryId, 'month');
     if (!expenses.length) {
       return ctx.reply('Нет трат по этой категории за последний месяц.');
     }

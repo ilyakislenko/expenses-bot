@@ -13,11 +13,16 @@ if (!process.env.DATABASE_URL) {
 
 const { Telegraf } = require('telegraf');
 const cron = require('node-cron');
-const db = require('./database');
 const createCurrencyUtils = require('./utils/currency');
 const Formatter = require('./utils/formatter');
 const Validator = require('./utils/validator');
 const errorHandler = require('./middleware/errorHandler');
+
+// Repositories
+const UserRepository = require('./repositories/UserRepository');
+const ExpenseRepository = require('./repositories/ExpenseRepository');
+const CategoryRepository = require('./repositories/CategoryRepository');
+const CurrencyRepository = require('./repositories/CurrencyRepository');
 
 // Services
 const ExpenseService = require('./services/ExpenseService');
@@ -46,11 +51,20 @@ class Container {
 
   create(key) {
     switch (key) {
-      case 'db':
-        return db;
+      case 'userRepository':
+        return new UserRepository();
+
+      case 'expenseRepository':
+        return new ExpenseRepository();
+
+      case 'categoryRepository':
+        return new CategoryRepository();
+
+      case 'currencyRepository':
+        return new CurrencyRepository();
 
       case 'currencyUtils':
-        return createCurrencyUtils(this.get('db'));
+        return createCurrencyUtils(this.get('currencyRepository'));
 
       case 'formatter':
         return new Formatter(this.get('currencyUtils'));
@@ -65,10 +79,17 @@ class Container {
         return new StateService();
 
       case 'expenseService':
-        return ExpenseService;
+        return new ExpenseService(
+          this.get('expenseRepository'),
+          this.get('userRepository'),
+          this.get('categoryRepository')
+        );
 
       case 'userService':
-        return UserService;
+        return new UserService(
+          this.get('userRepository'),
+          this.get('categoryRepository')
+        );
 
       case 'commandHandlers':
         return new CommandHandlers({
@@ -116,7 +137,6 @@ class Container {
       expenseService: this.get('expenseService'),
       userService: this.get('userService'),
       currencyUtils: this.get('currencyUtils'),
-      db: this.get('db'),
       formatter: this.get('formatter')
     };
   }
