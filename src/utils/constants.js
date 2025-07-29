@@ -37,9 +37,27 @@ const SETTINGS_KEYBOARD = [
   [{ text: '⬅️ Назад', callback_data: 'back_to_menu' }]
 ];
 
+const USER_LIMITS = {
+  regular: {
+    MAX_DESCRIPTION_LENGTH: 60,
+    MAX_NOTES_PER_MONTH: 100,
+    NOTE_RETENTION_DAYS: 30,
+    ALLOW_CUSTOM_CATEGORIES: false,
+    MAX_CUSTOM_CATEGORIES: 0,
+  },
+  premium: {
+    MAX_DESCRIPTION_LENGTH: 120,
+    MAX_NOTES_PER_MONTH: 300,
+    NOTE_RETENTION_DAYS: null, // null = неограниченно
+    ALLOW_CUSTOM_CATEGORIES: true,
+    MAX_CUSTOM_CATEGORIES: 5,
+  }
+};
+
 module.exports = {
   errorMessages,
   MAIN_MENU_KEYBOARD,
   CURRENCY_KEYBOARD,
-  SETTINGS_KEYBOARD
+  SETTINGS_KEYBOARD,
+  USER_LIMITS
 }; 
