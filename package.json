@@ -11,7 +11,9 @@
         "logs": "tail -f logs/application-$(date +%Y-%m-%d).log",
         "logs:error": "tail -f logs/error-$(date +%Y-%m-%d).log",
         "monitoring:health": "curl http://localhost:3001/health",
-        "monitoring:metrics": "curl http://localhost:3001/metrics"
+        "monitoring:metrics": "curl http://localhost:3001/metrics",
+        "monitoring:check": "node check-metrics.js",
+        "monitoring:start": "./start-monitoring.sh"
     },
     "dependencies": {
         "dotenv": "^16.3.1",
