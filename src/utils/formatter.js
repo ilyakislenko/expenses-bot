@@ -37,8 +37,8 @@ class Formatter {
     }).join('\n\n');
   }
 
-  async formatStats(total, categoryStats, userCurrency = 'RUB', period = periodsConfig.MONTH) {
-    const periodLabel = periodsConfig.LABELS[period] || 'месяц';
+  async formatStats(total, categoryStats, userCurrency = 'RUB', period = periodsConfig.LABELS.month) {
+    const periodLabel = period || 'месяц';
     let message = `📊 *Статистика за ${periodLabel}*\n\n`;
     let totalInUserCurrency = 0;
     if (Array.isArray(total.byCurrency)) {
