@@ -1,13 +1,14 @@
 require('dotenv').config();
+const logger = require('./utils/logger');
 
 // Валидация переменных окружения
 if (!process.env.BOT_TOKEN) {
-  console.error('BOT_TOKEN is required');
+  logger.error('BOT_TOKEN is required');
   process.exit(1);
 }
 
 if (!process.env.DATABASE_URL) {
-  console.error('DATABASE_URL is required');
+  logger.error('DATABASE_URL is required');
   process.exit(1);
 }
 
@@ -17,6 +18,8 @@ const createCurrencyUtils = require('./utils/currency');
 const Formatter = require('./utils/formatter');
 const Validator = require('./utils/validator');
 const errorHandler = require('./middleware/errorHandler');
+const MonitoringServer = require('./utils/monitoring');
+const CallbackDeduplicator = require('./utils/callbackDeduplicator');
 
 // Repositories
 const UserRepository = require('./repositories/UserRepository');
@@ -75,6 +78,9 @@ class Container {
       case 'errorHandler':
         return errorHandler;
 
+      case 'logger':
+        return logger;
+
       case 'stateService':
         return new StateService();
 
@@ -121,6 +127,12 @@ class Container {
       case 'cron':
         return cron;
 
+      case 'monitoringServer':
+        return new MonitoringServer(process.env.MONITORING_PORT || 3001);
+
+      case 'callbackDeduplicator':
+        return new CallbackDeduplicator();
+
       default:
         throw new Error(`Unknown dependency: ${key}`);
     }
@@ -137,7 +149,9 @@ class Container {
       expenseService: this.get('expenseService'),
       userService: this.get('userService'),
       currencyUtils: this.get('currencyUtils'),
-      formatter: this.get('formatter')
+      formatter: this.get('formatter'),
+      logger: this.get('logger'),
+      callbackDeduplicator: this.get('callbackDeduplicator')
     };
   }
 }

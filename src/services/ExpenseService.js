@@ -1,3 +1,6 @@
+const logger = require('../utils/logger');
+const { expensesTotal, expensesAmountTotal, newUsersTotal } = require('../utils/metrics');
+
 class ExpenseService {
   constructor(expenseRepository, userRepository, categoryRepository) {
     this.expenseRepository = expenseRepository;
@@ -20,29 +23,68 @@ class ExpenseService {
   }
 
   async addExpense(userId, amount, description, categoryName) {
-    const userCurrency = await this.userRepository.getUserCurrency(userId);
-    
-    // Ищем категорию в системных и пользовательских
-    const category = await this.categoryRepository.getOrCreateCategory(userId, categoryName);
-    if (!category) {
-      // Если категория не найдена, используем "Другое"
-      const defaultCategory = await this.categoryRepository.getCategoryByName(0, 'Другое');
-      return this.expenseRepository.addExpense(
+    try {
+      const userCurrency = await this.userRepository.getUserCurrency(userId);
+      
+      // Ищем категорию в системных и пользовательских
+      const category = await this.categoryRepository.getOrCreateCategory(userId, categoryName);
+      if (!category) {
+        // Если категория не найдена, используем "Другое"
+        const defaultCategory = await this.categoryRepository.getCategoryByName(0, 'Другое');
+        const expense = await this.expenseRepository.addExpense(
+          userId, 
+          amount, 
+          description, 
+          defaultCategory.id, 
+          userCurrency
+        );
+        
+        // Обновляем метрики
+        expensesTotal.inc({ currency: userCurrency });
+        expensesAmountTotal.inc({ currency: userCurrency }, amount);
+        
+        logger.info('Expense added with default category', {
+          userId,
+          amount,
+          currency: userCurrency,
+          category: 'Другое',
+          expenseId: expense.id
+        });
+        
+        return expense;
+      }
+      
+      const expense = await this.expenseRepository.addExpense(
         userId, 
         amount, 
         description, 
-        defaultCategory.id, 
+        category.id, 
         userCurrency
       );
+      
+      // Обновляем метрики
+      expensesTotal.inc({ currency: userCurrency });
+      expensesAmountTotal.inc({ currency: userCurrency }, amount);
+      
+      logger.info('Expense added successfully', {
+        userId,
+        amount,
+        currency: userCurrency,
+        category: category.name,
+        expenseId: expense.id
+      });
+      
+      return expense;
+    } catch (error) {
+      logger.error('Failed to add expense', {
+        userId,
+        amount,
+        description,
+        categoryName,
+        error: error.message
+      });
+      throw error;
     }
-    
-    return this.expenseRepository.addExpense(
-      userId, 
-      amount, 
-      description, 
-      category.id, 
-      userCurrency
-    );
   }
 
   async deleteLastExpense(userId) {
