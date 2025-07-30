@@ -21,7 +21,20 @@ class ExpenseService {
 
   async addExpense(userId, amount, description, categoryName) {
     const userCurrency = await this.userRepository.getUserCurrency(userId);
+    
+    // Ищем категорию в системных и пользовательских
     const category = await this.categoryRepository.getOrCreateCategory(userId, categoryName);
+    if (!category) {
+      // Если категория не найдена, используем "Другое"
+      const defaultCategory = await this.categoryRepository.getCategoryByName(0, 'Другое');
+      return this.expenseRepository.addExpense(
+        userId, 
+        amount, 
+        description, 
+        defaultCategory.id, 
+        userCurrency
+      );
+    }
     
     return this.expenseRepository.addExpense(
       userId, 

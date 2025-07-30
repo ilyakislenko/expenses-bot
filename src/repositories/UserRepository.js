@@ -1,4 +1,5 @@
 const BaseRepository = require('./BaseRepository');
+const currencyConfig = require('../config/currencies');
 
 class UserRepository extends BaseRepository {
   async createUser(userId, username, firstName) {
@@ -16,7 +17,7 @@ class UserRepository extends BaseRepository {
 
   async getUserCurrency(userId) {
     const result = await this.query('SELECT currency FROM users WHERE id = $1', [userId]);
-    return result.rows[0]?.currency || 'RUB';
+    return result.rows[0]?.currency || currencyConfig.BASE_CURRENCY;
   }
 
   async setUserCurrency(userId, currency) {

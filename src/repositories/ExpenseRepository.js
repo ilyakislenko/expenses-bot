@@ -1,7 +1,9 @@
 const BaseRepository = require('./BaseRepository');
+const periodsConfig = require('../config/periods');
+const currencyConfig = require('../config/currencies');
 
 class ExpenseRepository extends BaseRepository {
-  async addExpense(userId, amount, description, categoryId, currency = 'RUB') {
+  async addExpense(userId, amount, description, categoryId, currency = currencyConfig.BASE_CURRENCY) {
     const query = `
       INSERT INTO expenses (user_id, amount, description, category_id, currency) 
       VALUES ($1, $2, $3, $4, $5) 
@@ -37,16 +39,16 @@ class ExpenseRepository extends BaseRepository {
     return result.rows;
   }
 
-  async getTotalExpenses(userId, period = 'month') {
+  async getTotalExpenses(userId, period = periodsConfig.MONTH) {
     let dateFilter;
     switch (period) {
-      case 'day':
+      case periodsConfig.DAY:
         dateFilter = "date = CURRENT_DATE";
         break;
-      case 'week':
+      case periodsConfig.WEEK:
         dateFilter = "date >= CURRENT_DATE - INTERVAL '7 days'";
         break;
-      case 'month':
+      case periodsConfig.MONTH:
       default:
         dateFilter = "EXTRACT(MONTH FROM date) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM date) = EXTRACT(YEAR FROM CURRENT_DATE)";
     }
@@ -84,16 +86,16 @@ class ExpenseRepository extends BaseRepository {
     return { byCurrency, count, total, currency };
   }
 
-  async getExpensesByCategory(userId, period = 'month') {
+  async getExpensesByCategory(userId, period = periodsConfig.MONTH) {
     let dateFilter;
     switch (period) {
-      case 'day':
+      case periodsConfig.DAY:
         dateFilter = "e.date = CURRENT_DATE";
         break;
-      case 'week':
+      case periodsConfig.WEEK:
         dateFilter = "e.date >= CURRENT_DATE - INTERVAL '7 days'";
         break;
-      case 'month':
+      case periodsConfig.MONTH:
       default:
         dateFilter = "EXTRACT(MONTH FROM e.date) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM e.date) = EXTRACT(YEAR FROM CURRENT_DATE)";
     }
@@ -115,28 +117,41 @@ class ExpenseRepository extends BaseRepository {
     return result.rows;
   }
 
-  async getExpensesByCategoryId(userId, categoryId, period = 'month') {
+  async getExpensesByCategoryId(userId, categoryId, period = periodsConfig.MONTH) {
     let dateFilter;
     switch (period) {
-      case 'day':
+      case periodsConfig.DAY:
         dateFilter = "e.date = CURRENT_DATE";
         break;
-      case 'week':
+      case periodsConfig.WEEK:
         dateFilter = "e.date >= CURRENT_DATE - INTERVAL '7 days'";
         break;
-      case 'month':
+      case periodsConfig.MONTH:
       default:
         dateFilter = "EXTRACT(MONTH FROM e.date) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM e.date) = EXTRACT(YEAR FROM CURRENT_DATE)";
     }
     
+    // Сначала получаем название категории по ID
+    const categoryQuery = `
+      SELECT name FROM categories WHERE id = $1
+    `;
+    const categoryResult = await this.query(categoryQuery, [categoryId]);
+    
+    if (!categoryResult.rows.length) {
+      return [];
+    }
+    
+    const categoryName = categoryResult.rows[0].name;
+    
+    // Ищем расходы по всем категориям с таким же названием (системным и пользовательским)
     const query = `
       SELECT e.*, c.name as category_name, c.icon as category_icon
       FROM expenses e
       LEFT JOIN categories c ON e.category_id = c.id
-      WHERE e.user_id = $1 AND e.category_id = $2 AND ${dateFilter}
+      WHERE e.user_id = $1 AND c.name = $2 AND ${dateFilter}
       ORDER BY e.created_at DESC
     `;
-    const result = await this.query(query, [userId, categoryId]);
+    const result = await this.query(query, [userId, categoryName]);
     return result.rows;
   }
 
