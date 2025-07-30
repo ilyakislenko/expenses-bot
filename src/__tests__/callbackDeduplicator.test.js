@@ -8,9 +8,9 @@ describe('CallbackDeduplicator', () => {
   });
 
   afterEach(() => {
-    // Очищаем интервалы
-    if (deduplicator.cleanupInterval) {
-      clearInterval(deduplicator.cleanupInterval);
+    // Очищаем таймеры
+    if (deduplicator) {
+      deduplicator.destroy();
     }
   });
 

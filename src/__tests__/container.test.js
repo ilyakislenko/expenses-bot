@@ -7,6 +7,14 @@ describe('Container', () => {
     container = new Container();
   });
 
+  afterEach(() => {
+    // Очищаем все экземпляры с таймерами
+    const handlers = container.getHandlers();
+    if (handlers.callbackDeduplicator) {
+      handlers.callbackDeduplicator.destroy();
+    }
+  });
+
   test('should create user repository instance', () => {
     const userRepository = container.get('userRepository');
     expect(userRepository).toBeDefined();
