@@ -16,7 +16,9 @@ const { Telegraf } = require('telegraf');
 const cron = require('node-cron');
 const createCurrencyUtils = require('./utils/currency');
 const Formatter = require('./utils/formatter');
-const Validator = require('./utils/validator');
+const EnhancedValidator = require('./utils/enhancedValidator');
+const RateLimiter = require('./utils/rateLimiter');
+const SecurityMiddleware = require('./middleware/securityMiddleware');
 const errorHandler = require('./middleware/errorHandler');
 const MonitoringServer = require('./utils/monitoring');
 const CallbackDeduplicator = require('./utils/callbackDeduplicator');
@@ -72,8 +74,17 @@ class Container {
       case 'formatter':
         return new Formatter(this.get('currencyUtils'));
 
-      case 'validator':
-        return Validator;
+      case 'enhancedValidator':
+        return new EnhancedValidator();
+
+      case 'rateLimiter':
+        return new RateLimiter();
+
+      case 'securityMiddleware':
+        return new SecurityMiddleware(
+          this.get('rateLimiter'),
+          this.get('enhancedValidator')
+        );
 
       case 'errorHandler':
         return errorHandler;
@@ -111,7 +122,7 @@ class Container {
           formatter: this.get('formatter'),
           commandHandlers: this.get('commandHandlers'),
           stateService: this.get('stateService'),
-          validator: this.get('validator')
+          validator: this.get('enhancedValidator')
         });
 
       case 'callbackHandlers':
@@ -151,7 +162,10 @@ class Container {
       currencyUtils: this.get('currencyUtils'),
       formatter: this.get('formatter'),
       logger: this.get('logger'),
-      callbackDeduplicator: this.get('callbackDeduplicator')
+      callbackDeduplicator: this.get('callbackDeduplicator'),
+      securityMiddleware: this.get('securityMiddleware'),
+      rateLimiter: this.get('rateLimiter'),
+      enhancedValidator: this.get('enhancedValidator')
     };
   }
 }

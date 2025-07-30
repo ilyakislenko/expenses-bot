@@ -100,6 +100,35 @@ const cpuUsage = new promClient.Gauge({
   registers: [register]
 });
 
+// Метрики для безопасности
+const securityRateLimitExceeded = new promClient.Counter({
+  name: 'security_rate_limit_exceeded_total',
+  help: 'Total number of rate limit violations',
+  labelNames: ['user_id', 'limit_type'],
+  registers: [register]
+});
+
+const securityValidationErrors = new promClient.Counter({
+  name: 'security_validation_errors_total',
+  help: 'Total number of validation errors',
+  labelNames: ['error_type', 'user_id'],
+  registers: [register]
+});
+
+const securityForbiddenPatterns = new promClient.Counter({
+  name: 'security_forbidden_patterns_total',
+  help: 'Total number of forbidden patterns detected',
+  labelNames: ['pattern_type', 'user_id'],
+  registers: [register]
+});
+
+const securityUnauthorizedAccess = new promClient.Counter({
+  name: 'security_unauthorized_access_total',
+  help: 'Total number of unauthorized access attempts',
+  labelNames: ['access_type', 'user_id'],
+  registers: [register]
+});
+
 // Метрики для внешних API
 const externalApiRequestsTotal = new promClient.Counter({
   name: 'external_api_requests_total',
@@ -126,8 +155,15 @@ function updateSystemMetrics() {
 }
 
 // Обновляем системные метрики каждые 30 секунд
-setInterval(updateSystemMetrics, 30000);
+const systemMetricsInterval = setInterval(updateSystemMetrics, 30000);
 updateSystemMetrics(); // Первоначальное обновление
+
+// Функция для очистки таймеров (для тестов)
+function cleanup() {
+  if (systemMetricsInterval) {
+    clearInterval(systemMetricsInterval);
+  }
+}
 
 // Middleware для автоматического сбора метрик запросов
 function metricsMiddleware() {
@@ -174,10 +210,15 @@ module.exports = {
   expensesAmountTotal,
   memoryUsage,
   cpuUsage,
+  securityRateLimitExceeded,
+  securityValidationErrors,
+  securityForbiddenPatterns,
+  securityUnauthorizedAccess,
   externalApiRequestsTotal,
   externalApiRequestDuration,
   metricsMiddleware,
   getMetrics,
   getMetricsJson,
-  updateSystemMetrics
+  updateSystemMetrics,
+  cleanup
 }; 

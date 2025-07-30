@@ -5,7 +5,7 @@ class CallbackDeduplicator {
     this.maxAge = 30000; // 30 секунд
     
     // Очистка старых записей каждую минуту
-    setInterval(() => {
+    this.cleanupTimer = setInterval(() => {
       this.cleanup();
     }, this.cleanupInterval);
   }
@@ -63,6 +63,29 @@ class CallbackDeduplicator {
       maxAge: this.maxAge,
       cleanupInterval: this.cleanupInterval
     };
+  }
+
+  /**
+   * Очищает таймер (для тестов)
+   */
+  cleanup() {
+    const now = Date.now();
+    for (const [callbackId, record] of this.processedCallbacks.entries()) {
+      if (now - record.timestamp > this.maxAge) {
+        this.processedCallbacks.delete(callbackId);
+      }
+    }
+  }
+
+  /**
+   * Очищает таймер (для тестов)
+   */
+  destroy() {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
+    this.processedCallbacks.clear();
   }
 }
 
