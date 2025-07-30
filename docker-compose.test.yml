@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:latest
+    container_name: ${TEST_DB_CONTAINER_NAME:-postgres-db}
+    restart: always
+    environment:
+      POSTGRES_USER: ${TEST_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${TEST_DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${TEST_DB_NAME:-expenses_assistant_test}
+    ports:
+      - "${TEST_DB_PORT:-1337}:5432"
+    volumes:
+      - expenses_db_data:/var/lib/postgresql/data
+      - ./src/migrations/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  expenses_db_data:

@@ -10,12 +10,12 @@ scrape_configs:
   # Prometheus itself
   - job_name: 'prometheus'
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ['localhost:${PROMETHEUS_PORT:-9090}']
 
   # Expenses Bot
   - job_name: 'expenses-bot'
     static_configs:
-      - targets: ['localhost:3001']
+      - targets: ['localhost:${BOT_PORT:-3001}']
     metrics_path: '/metrics'
     scrape_interval: 30s
     scrape_timeout: 10s
@@ -23,6 +23,6 @@ scrape_configs:
   # Health check
   - job_name: 'expenses-bot-health'
     static_configs:
-      - targets: ['localhost:3001']
+      - targets: ['localhost:${BOT_PORT:-3001}']
     metrics_path: '/health'
     scrape_interval: 60s 
