@@ -36,12 +36,11 @@ jest.mock('../repositories/ExpenseRepository', () => {
 
 jest.mock('../repositories/CategoryRepository', () => {
   return jest.fn().mockImplementation(() => ({
-    createDefaultCategories: jest.fn().mockResolvedValue(undefined),
     getCategories: jest.fn().mockResolvedValue([
       { id: 1, name: 'Еда', icon: '🍕' },
       { id: 2, name: 'Транспорт', icon: '🚗' }
     ]),
-    getOrCreateCategory: jest.fn().mockResolvedValue({ id: 1, name: 'Еда' })
+    getCategoryByName: jest.fn().mockResolvedValue({ id: 1, name: 'Еда' })
   }));
 });
 
