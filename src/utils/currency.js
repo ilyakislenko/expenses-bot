@@ -1,10 +1,9 @@
 const fetch = require('node-fetch');
-
-const BASE_CURRENCY = 'RUB';
+const currencyConfig = require('../config/currencies');
 
 function createCurrencyUtils(currencyRepository) {
   async function getRate(currency) {
-    if (currency === BASE_CURRENCY) return 1;
+    if (currency === currencyConfig.BASE_CURRENCY) return 1;
     try {
       return await currencyRepository.getRate(currency);
     } catch (err) {
@@ -40,26 +39,33 @@ function createCurrencyUtils(currencyRepository) {
     const lastUpdate = await getLastRatesUpdate();
     if (!lastUpdate) return true;
     const now = new Date();
-    return (now - lastUpdate) > 1000 * 60 * 60 * 24;
+    return (now - lastUpdate) > currencyConfig.UPDATE_INTERVAL;
   }
 
   async function updateRates(currencies) {
     try {
-      const url = 'https://www.cbr-xml-daily.ru/daily_json.js';
-      const res = await fetch(url);
+      const res = await fetch(currencyConfig.API_URL);
       const data = await res.json();
       const valutes = data.Valute;
       const rates = [];
       
       for (const currency of currencies) {
-        if (currency === BASE_CURRENCY) {
-          rates.push({ currency: BASE_CURRENCY, rate: 1, baseCurrency: BASE_CURRENCY });
+        if (currency === currencyConfig.BASE_CURRENCY) {
+          rates.push({ 
+            currency: currencyConfig.BASE_CURRENCY, 
+            rate: 1, 
+            baseCurrency: currencyConfig.BASE_CURRENCY 
+          });
           continue;
         }
         const v = valutes[currency];
         if (!v) continue;
         const rate = v.Value / v.Nominal;
-        rates.push({ currency, rate, baseCurrency: BASE_CURRENCY });
+        rates.push({ 
+          currency, 
+          rate, 
+          baseCurrency: currencyConfig.BASE_CURRENCY 
+        });
       }
       
       await currencyRepository.updateRates(rates);
@@ -76,7 +82,7 @@ function createCurrencyUtils(currencyRepository) {
       }).catch(err => {
         console.error('Ошибка при автообновлении курсов валют:', err);
       });
-    }, 1000 * 60 * 60 * 24); // 24 часа
+    }, currencyConfig.UPDATE_INTERVAL);
   }
 
   return {
@@ -85,7 +91,7 @@ function createCurrencyUtils(currencyRepository) {
     updateRates,
     needUpdateRates,
     startRatesAutoUpdate,
-    BASE_CURRENCY
+    BASE_CURRENCY: currencyConfig.BASE_CURRENCY
   };
 }
 

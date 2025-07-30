@@ -1,3 +1,5 @@
+const periodsConfig = require('../config/periods');
+
 class Formatter {
   constructor(currencyUtils) {
     this.currencyUtils = currencyUtils;
@@ -35,10 +37,8 @@ class Formatter {
     }).join('\n\n');
   }
 
-  async formatStats(total, categoryStats, userCurrency = 'RUB', period = 'месяц') {
-    let periodLabel = 'месяц';
-    if (period === 'day' || period === 'день') periodLabel = 'день';
-    if (period === 'week' || period === 'неделя') periodLabel = 'неделю';
+  async formatStats(total, categoryStats, userCurrency = 'RUB', period = periodsConfig.MONTH) {
+    const periodLabel = periodsConfig.LABELS[period] || 'месяц';
     let message = `📊 *Статистика за ${periodLabel}*\n\n`;
     let totalInUserCurrency = 0;
     if (Array.isArray(total.byCurrency)) {
