@@ -6,3 +6,21 @@ dist/
 test-results/
 playwright-report/
 tg.auth.json
+
+# Logs directory
+logs/
+*.log.*
+
+# Environment files
+.env.local
+.env.production
+.env.test
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+Thumbs.db
