@@ -1,9 +1,15 @@
 const { metricsMiddleware, telegramDuplicateCallbacks } = require('./utils/metrics');
 const logger = require('./utils/logger');
 
-module.exports = function applyBotMiddleware(bot, errorHandler, callbackDeduplicator) {
+module.exports = function applyBotMiddleware(bot, errorHandler, callbackDeduplicator, securityMiddleware) {
   // Middleware для метрик
   bot.use(metricsMiddleware());
+
+  // Security middleware (rate limiting + validation)
+  if (securityMiddleware) {
+    bot.use(securityMiddleware.middleware());
+    logger.startup('Security middleware applied');
+  }
 
   // Middleware для дедупликации callback_query
   bot.use((ctx, next) => {
