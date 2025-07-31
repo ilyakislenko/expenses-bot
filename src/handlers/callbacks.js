@@ -1,8 +1,9 @@
 const { getTimezoneByCode } = require('../utils/timezone');
 
 class CallbackHandlers {
-  constructor({ expenseService, formatter, stateService, userService }) {
+  constructor({ expenseService, premiumService, formatter, stateService, userService }) {
     this.expenseService = expenseService;
+    this.premiumService = premiumService;
     this.formatter = formatter;
     this.stateService = stateService;
     this.userService = userService;
@@ -18,6 +19,15 @@ class CallbackHandlers {
         return await ctx.answerCbQuery('❌ Ошибка: данные не найдены');
       }
       const { amount, description } = pending;
+      
+      // Проверяем лимит количества записей
+      const expenseCountValidation = await this.premiumService.validateExpenseCount(userId);
+      if (!expenseCountValidation.isValid) {
+        await ctx.answerCbQuery('❌ Достигнут лимит записей');
+        await ctx.editMessageText(errorMessages.limit_reached, { parse_mode: 'Markdown' });
+        return;
+      }
+      
       // Получаем название категории из кнопки
       const button = ctx.callbackQuery.message.reply_markup.inline_keyboard
         .flat()

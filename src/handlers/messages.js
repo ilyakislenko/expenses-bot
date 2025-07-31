@@ -1,9 +1,10 @@
 const { errorMessages,SETTINGS_KEYBOARD } = require('../utils/constants');
 
 class MessageHandlers {
-  constructor({ expenseService, userService, formatter, commandHandlers, stateService, validator }) {
+  constructor({ expenseService, userService, premiumService, formatter, commandHandlers, stateService, validator }) {
     this.expenseService = expenseService;
     this.userService = userService;
+    this.premiumService = premiumService;
     this.formatter = formatter;
     this.commandHandlers = commandHandlers;
     this.stateService = stateService;
@@ -77,11 +78,26 @@ class MessageHandlers {
           return ctx.reply('Ошибка: запись не найдена или не обновлена.');
         }
       }
-      const parsed = this.validator.parseExpense(text);
+      // Получаем лимиты пользователя для валидации
+      const limits = await this.premiumService.getUserLimits(userId);
+      const parsed = this.validator.parseExpense(text, limits.MAX_DESCRIPTION_LENGTH);
+      
       if (!parsed.isValid) {
-        const errorMsg = errorMessages[parsed.error] || errorMessages.format;
+        let errorMsg;
+        if (parsed.error === 'too_long') {
+          const isPremium = await this.premiumService.isPremiumUser(userId);
+          errorMsg = isPremium ? errorMessages.too_long_premium : errorMessages.too_long_regular;
+        } else {
+          errorMsg = errorMessages[parsed.error] || errorMessages.format;
+        }
         return await ctx.reply(errorMsg, { parse_mode: 'Markdown' });
       }
+      // Проверяем лимит количества записей
+      const expenseCountValidation = await this.premiumService.validateExpenseCount(userId);
+      if (!expenseCountValidation.isValid) {
+        return await ctx.reply(errorMessages.limit_reached, { parse_mode: 'Markdown' });
+      }
+
       const categories = await this.expenseService.getCategories(userId);
       if (categories.length === 0) {
         const expense = await this.expenseService.addExpense(

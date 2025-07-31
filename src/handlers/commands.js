@@ -1,9 +1,10 @@
 const { MAIN_MENU_KEYBOARD, CURRENCY_KEYBOARD, SETTINGS_KEYBOARD } = require('../utils/constants');
 
 class CommandHandlers {
-  constructor({ expenseService, userService, formatter }) {
+  constructor({ expenseService, userService, premiumService, formatter }) {
     this.expenseService = expenseService;
     this.userService = userService;
+    this.premiumService = premiumService;
     this.formatter = formatter;
   }
 
@@ -229,6 +230,41 @@ class CommandHandlers {
     });
   }
 
+  async limits(ctx) {
+    try {
+      const userId = ctx.from.id;
+      const usageStats = await this.premiumService.getUsageStats(userId);
+      
+      const status = usageStats.isPremium ? '💎 Премиум' : '👤 Обычный';
+      let message = `📊 *Информация о лимитах*\n\n` +
+        `*Статус:* ${status}\n` +
+        `*Записей:* ${usageStats.currentCount}/${usageStats.maxCount} (${usageStats.usagePercentage}%)\n` +
+        `*Осталось:* ${usageStats.remaining} записей\n` +
+        `*Макс. длина описания:* ${usageStats.maxDescriptionLength} символов\n\n`;
+      
+      if (usageStats.isNearLimit && !usageStats.isAtLimit) {
+        message += `⚠️ *Внимание:* Вы близки к лимиту записей!\n`;
+      }
+      
+      if (usageStats.isAtLimit) {
+        message += `❌ *Достигнут лимит записей!*\n`;
+      }
+      
+      if (!usageStats.isPremium) {
+        message += `\n💎 *Преимущества премиума:*\n` +
+          `• 160 символов в описании (вместо 80)\n` +
+          `• 300 записей (вместо 100)\n` +
+          `• Кастомные категории\n` +
+          `• Расширенная статистика`;
+      }
+      
+      await ctx.reply(message, { parse_mode: 'Markdown' });
+    } catch (error) {
+      console.error('Error in limits command:', error);
+      await ctx.reply('Произошла ошибка при получении информации о лимитах 😞');
+    }
+  }
+
   async mainMenu(ctx) {
     const message = `🏠 *Главное меню*\n\nВыберите действие:`;
     await ctx.reply(message, {
@@ -240,6 +276,7 @@ class CommandHandlers {
           [{ text: '💰 Траты по категориям', callback_data: 'categories' }],
           [{ text: '⚙️ Настройки', callback_data: 'settings' }],
           [{ text: '🗑️ Удалить последнюю запись', callback_data: 'undo' }],
+          [{ text: '📊 Лимиты', callback_data: 'limits' }],
           [{ text: '❓ Справка', callback_data: 'help' }]
         ]
       }

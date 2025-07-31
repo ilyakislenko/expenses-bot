@@ -216,6 +216,16 @@ class ExpenseRepository extends BaseRepository {
     const result = await this.query(query, [userId]);
     return result.rows;
   }
+
+  async getExpenseCount(userId) {
+    const query = `
+      SELECT COUNT(*) as count
+      FROM expenses
+      WHERE user_id = $1
+    `;
+    const result = await this.query(query, [userId]);
+    return parseInt(result.rows[0].count, 10);
+  }
 }
 
 module.exports = ExpenseRepository; 

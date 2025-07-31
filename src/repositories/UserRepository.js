@@ -45,6 +45,22 @@ class UserRepository extends BaseRepository {
     const result = await this.query(query, [timezone, userId]);
     return result;
   }
+
+  async getUserById(userId) {
+    const query = 'SELECT * FROM users WHERE id = $1';
+    const result = await this.query(query, [userId]);
+    return result.rows[0];
+  }
+
+  async updateUser(userId, updates) {
+    const fields = Object.keys(updates);
+    const values = Object.values(updates);
+    const setClause = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
+    
+    const query = `UPDATE users SET ${setClause} WHERE id = $1 RETURNING *`;
+    const result = await this.query(query, [userId, ...values]);
+    return result.rows[0];
+  }
 }
 
 module.exports = UserRepository; 

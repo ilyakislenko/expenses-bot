@@ -32,6 +32,7 @@ const CurrencyRepository = require('./repositories/CurrencyRepository');
 // Services
 const ExpenseService = require('./services/ExpenseService');
 const UserService = require('./services/UserService');
+const PremiumService = require('./services/PremiumService');
 
 // Handlers
 const CommandHandlers = require('./handlers/commands');
@@ -108,10 +109,17 @@ class Container {
           this.get('categoryRepository')
         );
 
+      case 'premiumService':
+        return new PremiumService(
+          this.get('userRepository'),
+          this.get('expenseRepository')
+        );
+
       case 'commandHandlers':
         return new CommandHandlers({
           expenseService: this.get('expenseService'),
           userService: this.get('userService'),
+          premiumService: this.get('premiumService'),
           formatter: this.get('formatter')
         });
 
@@ -119,6 +127,7 @@ class Container {
         return new MessageHandlers({
           expenseService: this.get('expenseService'),
           userService: this.get('userService'),
+          premiumService: this.get('premiumService'),
           formatter: this.get('formatter'),
           commandHandlers: this.get('commandHandlers'),
           stateService: this.get('stateService'),
@@ -128,6 +137,7 @@ class Container {
       case 'callbackHandlers':
         return new CallbackHandlers({
           expenseService: this.get('expenseService'),
+          premiumService: this.get('premiumService'),
           formatter: this.get('formatter'),
           stateService: this.get('stateService'),
           userService: this.get('userService')
@@ -160,6 +170,7 @@ class Container {
       stateService: this.get('stateService'),
       expenseService: this.get('expenseService'),
       userService: this.get('userService'),
+      premiumService: this.get('premiumService'),
       currencyUtils: this.get('currencyUtils'),
       formatter: this.get('formatter'),
       logger: this.get('logger'),

@@ -13,6 +13,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.command('currency', errorHandler((ctx) => commandHandlers.currency(ctx)));
   bot.command('timezone', errorHandler((ctx) => commandHandlers.timezone(ctx)));
   bot.command('settings', errorHandler((ctx) => commandHandlers.settings(ctx)));
+  bot.command('limits', errorHandler((ctx) => commandHandlers.limits(ctx)));
   bot.command('menu', errorHandler((ctx) => commandHandlers.mainMenu(ctx)));
   bot.command('cancel', async (ctx) => {
     if (userEditState.has(ctx.from.id)) {
@@ -56,6 +57,10 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('help', errorHandler(async (ctx) => {
     await ctx.answerCbQuery();
     await commandHandlers.help(ctx);
+  }));
+  bot.action('limits', errorHandler(async (ctx) => {
+    await ctx.answerCbQuery();
+    await commandHandlers.limits(ctx);
   }));
   bot.action(/^set_currency\|/, async (ctx) => {
     const userId = ctx.from.id;
