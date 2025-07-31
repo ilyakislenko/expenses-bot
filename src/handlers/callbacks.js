@@ -65,31 +65,21 @@ class CallbackHandlers {
 
   async handleTimezoneSelection(ctx) {
     const userId = ctx.from.id;
-    console.log('=== TIMEZONE SELECTION START ===');
-    console.log('Callback data:', ctx.callbackQuery.data);
     try {
       const callbackData = ctx.callbackQuery.data;
-      console.log('Full callback data:', callbackData);
       const parts = callbackData.split('|');
-      console.log('Split parts:', parts);
       const [, timezoneCode] = parts;
-      console.log('Timezone code:', timezoneCode);
       
       // Проверяем, это новый формат времени или старый формат городов
       if (callbackData.startsWith('time|')) {
-        console.log('=== NEW TIME FORMAT DETECTED ===');
         // Новый формат: time|hour|minute
         const [, hour, minute] = callbackData.split('|');
-        console.log('Parsed hour:', hour, 'minute:', minute);
         const { calculateTimezoneFromUserTime, getTimezoneDisplayName } = require('../utils/timezoneCalculator');
         
-        console.log(`Timezone calculation: user selected ${hour}:${minute}`);
         // Используем время выбора как опорное время
         const selectionTime = new Date();
         const timezone = calculateTimezoneFromUserTime(parseInt(hour), parseInt(minute), selectionTime);
         const displayName = getTimezoneDisplayName(timezone);
-        console.log(`Calculated timezone: ${timezone}, display: ${displayName}`);
-        console.log(`Reference time: ${selectionTime.toUTCString()}`);
         
         // Устанавливаем timezone пользователя
         await this.userService.setUserTimezone(userId, timezone);
