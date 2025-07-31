@@ -25,8 +25,6 @@ CREATE TABLE IF NOT EXISTS expenses (
     currency VARCHAR(3) DEFAULT 'RUB',
     category_id INTEGER REFERENCES categories(id),
     description TEXT,
-    date DATE DEFAULT CURRENT_DATE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_at_utc TIMESTAMPTZ DEFAULT NOW(),
     local_date DATE
 );
@@ -40,8 +38,6 @@ CREATE TABLE IF NOT EXISTS currency_rates (
 
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_expenses_user_id ON expenses(user_id);
-CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date);
-CREATE INDEX IF NOT EXISTS idx_expenses_user_date ON expenses(user_id, date);
 CREATE INDEX IF NOT EXISTS idx_expenses_user_local_date ON expenses(user_id, local_date);
 CREATE INDEX IF NOT EXISTS idx_expenses_created_utc ON expenses(created_at_utc);
 

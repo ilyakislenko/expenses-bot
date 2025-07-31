@@ -1,4 +1,4 @@
-const { errorMessages } = require('../utils/constants');
+const { errorMessages,SETTINGS_KEYBOARD } = require('../utils/constants');
 
 class MessageHandlers {
   constructor({ expenseService, userService, formatter, commandHandlers, stateService, validator }) {
@@ -39,10 +39,7 @@ class MessageHandlers {
       if (ctx.message.text === '⚙️ Настройки') {
         return ctx.reply('Настройки:', {
           reply_markup: {
-            inline_keyboard: [
-              [{ text: 'Сменить валюту', callback_data: 'change_currency' }],
-              [{ text: '⬅️ Назад', callback_data: 'back_to_menu' }]
-            ]
+            inline_keyboard: SETTINGS_KEYBOARD
           }
         });
       }

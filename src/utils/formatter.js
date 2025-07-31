@@ -33,7 +33,7 @@ class Formatter {
       const icon = expense.category_icon || '📦';
       const amount = this.formatAmount(expense.amount, expense.currency || 'RUB');
       const description = expense.description || 'Без описания';
-      const date = this.formatDate(expense.created_at_utc || expense.created_at, userTimezone);
+      const date = this.formatDate(expense.created_at_utc, userTimezone);
       return `${icon} ${amount} - ${description}\n📅 ${date}`;
     }).join('\n\n');
   }
@@ -88,7 +88,7 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC') {
   const totalsByCurrency = {};
   
   for (const expense of expenses) {
-    const date = this.formatDate(expense.created_at_utc || expense.created_at, userTimezone);
+    const date = this.formatDate(expense.created_at_utc, userTimezone);
     const amount = expense.amount;
     const currency = expense.currency || 'RUB';
     const category = expense.category || 'Другое';
@@ -132,7 +132,7 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC') {
     const icon = expense.category_icon || '📦';
     const amount = this.formatAmount(expense.amount, expense.currency || 'RUB');
     const description = expense.description || 'Без описания';
-    const date = this.formatDate(expense.created_at_utc || expense.created_at, userTimezone);
+    const date = this.formatDate(expense.created_at_utc, userTimezone);
     return {
       text: `${icon} ${amount} - ${description}\n📅 ${date}`,
       reply_markup: {
