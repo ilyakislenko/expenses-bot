@@ -1,0 +1,107 @@
+groups:
+  - name: node_alerts
+    rules:
+      - alert: HighCpuUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is above 80% for more than 5 minutes"
+
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is above 85% for more than 5 minutes"
+
+      - alert: HighDiskUsage
+        expr: (node_filesystem_size_bytes - node_filesystem_free_bytes) / node_filesystem_size_bytes * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High disk usage on {{ $labels.instance }}"
+          description: "Disk usage is above 85% for more than 5 minutes"
+
+  - name: container_alerts
+    rules:
+      - alert: ContainerDown
+        expr: absent(container_cpu_usage_seconds_total)
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Container {{ $labels.name }} is down"
+          description: "Container {{ $labels.name }} has been down for more than 1 minute"
+
+      - alert: HighContainerCpuUsage
+        expr: (rate(container_cpu_usage_seconds_total[5m]) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage in container {{ $labels.name }}"
+          description: "Container {{ $labels.name }} CPU usage is above 80% for more than 5 minutes"
+
+      - alert: HighContainerMemoryUsage
+        expr: (container_memory_usage_bytes / container_spec_memory_limit_bytes * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage in container {{ $labels.name }}"
+          description: "Container {{ $labels.name }} memory usage is above 85% for more than 5 minutes"
+
+  - name: application_alerts
+    rules:
+      - alert: ExpensesBotDown
+        expr: up{job="expenses-bot"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Expenses Bot is down"
+          description: "Expenses Bot application has been down for more than 1 minute"
+
+      - alert: HighExpensesBotResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time for Expenses Bot"
+          description: "95th percentile response time is above 1 second for more than 5 minutes"
+
+  - name: monitoring_alerts
+    rules:
+      - alert: PrometheusDown
+        expr: up{job="prometheus"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Prometheus is down"
+          description: "Prometheus has been down for more than 1 minute"
+
+      - alert: GrafanaDown
+        expr: up{job="grafana"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Grafana is down"
+          description: "Grafana has been down for more than 1 minute"
+
+      - alert: LokiDown
+        expr: up{job="loki"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Loki is down"
+          description: "Loki has been down for more than 1 minute" 

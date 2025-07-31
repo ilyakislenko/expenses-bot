@@ -1,0 +1,79 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'local'
+    job: 'prometheus'
+
+rule_files:
+  - "rules/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: /metrics
+    scrape_interval: 15s
+
+  # Node Exporter
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    metrics_path: /metrics
+    scrape_interval: 15s
+
+  # cAdvisor
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    metrics_path: /metrics
+    scrape_interval: 15s
+
+  # Docker containers
+  - job_name: 'docker'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    metrics_path: /metrics
+    scrape_interval: 15s
+    metrics_path: /metrics
+    params:
+      collect[]:
+        - 'container'
+        - 'machine'
+        - 'subcontainer'
+
+  # Expenses Bot Application
+  - job_name: 'expenses-bot'
+    static_configs:
+      - targets: ['host.docker.internal:3001']
+    metrics_path: /metrics
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # Promtail
+  - job_name: 'promtail'
+    static_configs:
+      - targets: ['promtail:9080']
+    metrics_path: /metrics
+    scrape_interval: 15s
+
+  # Loki
+  - job_name: 'loki'
+    static_configs:
+      - targets: ['loki:3100']
+    metrics_path: /metrics
+    scrape_interval: 15s
+
+  # Grafana
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+    metrics_path: /metrics
+    scrape_interval: 15s 
