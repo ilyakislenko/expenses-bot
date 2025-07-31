@@ -101,7 +101,8 @@ class CommandHandlers {
     try {
       const userId = ctx.from.id;
       const { total, expenses, userCurrency } = await this.expenseService.getDailyStats(userId);
-      let message = await this.formatter.formatStats(total, [], userCurrency, 'день') + '\n' + this.formatter.formatExpenseList(expenses);
+      const userTimezone = await this.userService.getUserTimezone(userId);
+      let message = await this.formatter.formatStats(total, [], userCurrency, 'день') + '\n' + this.formatter.formatExpenseList(expenses, userTimezone);
       await ctx.reply(message, { parse_mode: 'Markdown', reply_markup: {
         inline_keyboard: [
           [{ text: 'Редактировать', callback_data: 'edit_history' }, { text: '⬅️ Назад', callback_data: 'back_to_menu' }]
@@ -134,11 +135,11 @@ class CommandHandlers {
   async exportData(ctx) {
     try {
       const userId = ctx.from.id;
-      const { expenses, userCurrency } = await this.expenseService.exportExpenses(userId);
+      const { expenses, userCurrency, userTimezone } = await this.expenseService.exportExpenses(userId);
       if (expenses.length === 0) {
         return await ctx.reply('Пока нет данных для экспорта 📝');
       }
-      const csv = await this.formatter.formatCSV(expenses, userCurrency);
+      const csv = await this.formatter.formatCSV(expenses, userCurrency, userTimezone);
       const filename = `expenses_${new Date().toISOString().split('T')[0]}.csv`;
       await ctx.replyWithDocument({
         source: Buffer.from(csv, 'utf-8'),
@@ -209,6 +210,21 @@ class CommandHandlers {
     await ctx.reply('Настройки:', {
       reply_markup: {
         inline_keyboard: SETTINGS_KEYBOARD
+      }
+    });
+  }
+
+  async timezone(ctx) {
+    const { generateTimeKeyboard } = require('../utils/constants');
+    const currentUtcTime = new Date();
+    const utcTimeString = currentUtcTime.toUTCString();
+    
+    const message = `🕐 *Настройка часового пояса*\n\nСколько у вас сейчас времени?\n\n*Текущее время по UTC:* ${utcTimeString}\n\nВыберите ваше текущее время:`;
+    
+    await ctx.reply(message, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: generateTimeKeyboard()
       }
     });
   }

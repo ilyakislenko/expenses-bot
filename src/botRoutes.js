@@ -11,6 +11,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.command('undo', errorHandler((ctx) => commandHandlers.undo(ctx)));
   bot.command('categories', errorHandler((ctx) => commandHandlers.categories(ctx)));
   bot.command('currency', errorHandler((ctx) => commandHandlers.currency(ctx)));
+  bot.command('timezone', errorHandler((ctx) => commandHandlers.timezone(ctx)));
   bot.command('settings', errorHandler((ctx) => commandHandlers.settings(ctx)));
   bot.command('menu', errorHandler((ctx) => commandHandlers.mainMenu(ctx)));
   bot.command('cancel', async (ctx) => {
@@ -72,6 +73,11 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('change_currency', async (ctx) => {
     await commandHandlers.currency(ctx);
   });
+  bot.action('change_timezone', async (ctx) => {
+    await commandHandlers.timezone(ctx);
+  });
+  bot.action(/^tz\|/, errorHandler((ctx) => callbackHandlers.handleTimezoneSelection(ctx)));
+  bot.action(/^time\|/, errorHandler((ctx) => callbackHandlers.handleTimezoneSelection(ctx)));
   bot.action('back_to_settings', async (ctx) => {
     await commandHandlers.settings(ctx);
   });
@@ -82,6 +88,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
     const categoryId = ctx.match[1];
     const userId = ctx.from.id;
     const userCurrency = await handlers.userService.getUserCurrency(userId);
+    const userTimezone = await handlers.userService.getUserTimezone(userId);
     const expenses = await handlers.expenseService.getExpensesByCategoryId(userId, categoryId, 'month');
     if (!expenses.length) {
       return ctx.reply('Нет трат по этой категории за последний месяц.');
@@ -95,7 +102,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
       count: expenses.length,
       currency: userCurrency
     };
-    let message = await formatter.formatStats(total, [], userCurrency, 'месяц') + '\n' + formatter.formatExpenseList(expenses);
+    let message = await formatter.formatStats(total, [], userCurrency, 'месяц') + '\n' + formatter.formatExpenseList(expenses, userTimezone);
     await ctx.reply(message, { parse_mode: 'Markdown',reply_markup: {
       inline_keyboard: [
         [
@@ -140,13 +147,14 @@ module.exports = function registerBotRoutes(bot, handlers) {
   });
   bot.action('edit_history', async (ctx) => {
     const userId = ctx.from.id;
+    const userTimezone = await handlers.userService.getUserTimezone(userId);
     const expenses = await handlers.expenseService.getDailyExpenses(userId);
     if (!expenses.length) {
       return ctx.reply('Нет трат за этот период.');
     }
     const formatter = handlers.formatter;
     for (const expense of expenses) {
-      const { text, reply_markup } = formatter.formatExpenseWithActions(expense);
+      const { text, reply_markup } = formatter.formatExpenseWithActions(expense, userTimezone);
       await ctx.reply(text, { reply_markup, parse_mode: 'Markdown' });
     }
     await ctx.reply('Выход из режима редактирования:', {
@@ -160,13 +168,14 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^edit_category\|(\d+)$/, async (ctx) => {
     const categoryId = ctx.match[1];
     const userId = ctx.from.id;
+    const userTimezone = await handlers.userService.getUserTimezone(userId);
     const expenses = await handlers.expenseService.getExpensesByCategoryId(userId, categoryId, 'month');
     if (!expenses.length) {
       return ctx.reply('почему-то карточек нет...произошла ошибка');
     }
     const formatter = handlers.formatter;
     for (const expense of expenses) {
-      const { text, reply_markup } = formatter.formatExpenseWithActions(expense);
+      const { text, reply_markup } = formatter.formatExpenseWithActions(expense, userTimezone);
       await ctx.reply(text, { reply_markup, parse_mode: 'Markdown' });
     }
   });

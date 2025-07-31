@@ -129,7 +129,8 @@ class Container {
         return new CallbackHandlers({
           expenseService: this.get('expenseService'),
           formatter: this.get('formatter'),
-          stateService: this.get('stateService')
+          stateService: this.get('stateService'),
+          userService: this.get('userService')
         });
 
       case 'bot':

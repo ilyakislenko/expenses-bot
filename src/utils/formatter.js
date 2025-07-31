@@ -14,17 +14,18 @@ class Formatter {
     }).format(amount);
   }
 
-  formatDate(date) {
+  formatDate(date, timezone = 'UTC') {
     return new Intl.DateTimeFormat('ru-RU', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: timezone
     }).format(new Date(date));
   }
 
-  formatExpenseList(expenses) {
+  formatExpenseList(expenses, userTimezone = 'UTC') {
     if (!expenses.length) {
       return 'Расходов пока нет 📝';
     }
@@ -32,7 +33,7 @@ class Formatter {
       const icon = expense.category_icon || '📦';
       const amount = this.formatAmount(expense.amount, expense.currency || 'RUB');
       const description = expense.description || 'Без описания';
-      const date = this.formatDate(expense.created_at);
+      const date = this.formatDate(expense.created_at_utc || expense.created_at, userTimezone);
       return `${icon} ${amount} - ${description}\n📅 ${date}`;
     }).join('\n\n');
   }
@@ -74,7 +75,7 @@ class Formatter {
 
 
 // Обновлённая версия formatCSV: поддержка многострочных полей, правильное экранирование, итоги в одной ячейке
-async formatCSV(expenses, userCurrency) {
+async formatCSV(expenses, userCurrency, userTimezone = 'UTC') {
   // Вспомогательная функция для экранирования: удваивает кавычки, сохраняет \n для многострочных полей
   function escapeCSV(value) {
     const str = String(value ?? '');
@@ -87,7 +88,7 @@ async formatCSV(expenses, userCurrency) {
   const totalsByCurrency = {};
   
   for (const expense of expenses) {
-    const date = this.formatDate(expense.created_at);
+    const date = this.formatDate(expense.created_at_utc || expense.created_at, userTimezone);
     const amount = expense.amount;
     const currency = expense.currency || 'RUB';
     const category = expense.category || 'Другое';
@@ -127,11 +128,11 @@ async formatCSV(expenses, userCurrency) {
     return categories.map(cat => `${cat.icon} ${cat.name}`).join(', ');
   }
 
-  formatExpenseWithActions(expense) {
+  formatExpenseWithActions(expense, userTimezone = 'UTC') {
     const icon = expense.category_icon || '📦';
     const amount = this.formatAmount(expense.amount, expense.currency || 'RUB');
     const description = expense.description || 'Без описания';
-    const date = this.formatDate(expense.created_at);
+    const date = this.formatDate(expense.created_at_utc || expense.created_at, userTimezone);
     return {
       text: `${icon} ${amount} - ${description}\n📅 ${date}`,
       reply_markup: {

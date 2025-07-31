@@ -34,8 +34,40 @@ const CURRENCY_KEYBOARD = [
 // Клавиатура настроек
 const SETTINGS_KEYBOARD = [
   [{ text: 'Сменить валюту', callback_data: 'change_currency' }],
+  [{ text: '🌍 Часовой пояс', callback_data: 'change_timezone' }],
   [{ text: '⬅️ Назад', callback_data: 'back_to_menu' }]
 ];
+
+// Функция для генерации клавиатуры выбора времени
+function generateTimeKeyboard() {
+  const keyboard = [];
+  const currentUtcTime = new Date();
+  const currentUtcHours = currentUtcTime.getUTCHours();
+  const currentUtcMinutes = currentUtcTime.getUTCMinutes();
+  
+  // Создаем 6 рядов по 4 кнопки (0-23 часа)
+  for (let row = 0; row < 6; row++) {
+    const rowButtons = [];
+    for (let col = 0; col < 4; col++) {
+      const hour = row * 4 + col;
+      if (hour <= 23) {
+        const timeText = `${hour.toString().padStart(2, '0')}:${currentUtcMinutes.toString().padStart(2, '0')}`;
+        rowButtons.push({
+          text: timeText,
+          callback_data: `time|${hour}|${currentUtcMinutes}`
+        });
+      }
+    }
+    if (rowButtons.length > 0) {
+      keyboard.push(rowButtons);
+    }
+  }
+  
+  // Добавляем кнопку "Назад"
+  keyboard.push([{ text: '⬅️ Назад', callback_data: 'back_to_settings' }]);
+  
+  return keyboard;
+}
 
 const USER_LIMITS = {
   regular: {
@@ -59,5 +91,6 @@ module.exports = {
   MAIN_MENU_KEYBOARD,
   CURRENCY_KEYBOARD,
   SETTINGS_KEYBOARD,
-  USER_LIMITS
+  USER_LIMITS,
+  generateTimeKeyboard
 }; 

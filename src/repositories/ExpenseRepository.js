@@ -3,13 +3,13 @@ const periodsConfig = require('../config/periods');
 const currencyConfig = require('../config/currencies');
 
 class ExpenseRepository extends BaseRepository {
-  async addExpense(userId, amount, description, categoryId, currency = currencyConfig.BASE_CURRENCY) {
+  async addExpense(userId, amount, description, categoryId, currency = currencyConfig.BASE_CURRENCY, userTimezone = 'UTC') {
     const query = `
-      INSERT INTO expenses (user_id, amount, description, category_id, currency) 
-      VALUES ($1, $2, $3, $4, $5) 
+      INSERT INTO expenses (user_id, amount, description, category_id, currency, created_at_utc, local_date) 
+      VALUES ($1, $2, $3, $4, $5, NOW(), (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $6)::DATE) 
       RETURNING *
     `;
-    const result = await this.query(query, [userId, amount, description, categoryId, currency]);
+    const result = await this.query(query, [userId, amount, description, categoryId, currency, userTimezone]);
     return result.rows[0];
   }
 
@@ -19,38 +19,38 @@ class ExpenseRepository extends BaseRepository {
       FROM expenses e
       LEFT JOIN categories c ON e.category_id = c.id
       WHERE e.user_id = $1
-      ORDER BY e.created_at DESC
+      ORDER BY e.created_at_utc DESC
       LIMIT $2
     `;
     const result = await this.query(query, [userId, limit]);
     return result.rows;
   }
 
-  async getDailyExpenses(userId) {
+  async getDailyExpenses(userId, userTimezone = 'UTC') {
     const query = `
       SELECT e.*, c.name as category_name, c.icon as category_icon
       FROM expenses e
       LEFT JOIN categories c ON e.category_id = c.id
       WHERE e.user_id = $1
-      AND e.date = CURRENT_DATE
-      ORDER BY e.created_at ASC
+      AND e.local_date = (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $2)::DATE
+      ORDER BY e.created_at_utc ASC
     `;
-    const result = await this.query(query, [userId]);
+    const result = await this.query(query, [userId, userTimezone]);
     return result.rows;
   }
 
-  async getTotalExpenses(userId, period = periodsConfig.MONTH) {
+  async getTotalExpenses(userId, period = periodsConfig.MONTH, userTimezone = 'UTC') {
     let dateFilter;
     switch (period) {
       case periodsConfig.DAY:
-        dateFilter = "date = CURRENT_DATE";
+        dateFilter = "local_date = (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $2)::DATE";
         break;
       case periodsConfig.WEEK:
-        dateFilter = "date >= CURRENT_DATE - INTERVAL '7 days'";
+        dateFilter = "local_date >= (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $2)::DATE - INTERVAL '7 days'";
         break;
       case periodsConfig.MONTH:
       default:
-        dateFilter = "EXTRACT(MONTH FROM date) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM date) = EXTRACT(YEAR FROM CURRENT_DATE)";
+        dateFilter = "EXTRACT(MONTH FROM local_date) = EXTRACT(MONTH FROM (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $2)::DATE) AND EXTRACT(YEAR FROM local_date) = EXTRACT(YEAR FROM (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $2)::DATE)";
     }
 
     // Получаем суммы по всем валютам
@@ -60,7 +60,7 @@ class ExpenseRepository extends BaseRepository {
       WHERE user_id = $1 AND ${dateFilter}
       GROUP BY currency
     `;
-    const byCurrencyResult = await this.query(byCurrencyQuery, [userId]);
+    const byCurrencyResult = await this.query(byCurrencyQuery, [userId, userTimezone]);
     const byCurrency = byCurrencyResult.rows.map(row => ({
       currency: row.currency,
       total: parseFloat(row.total)
@@ -72,7 +72,7 @@ class ExpenseRepository extends BaseRepository {
       FROM expenses
       WHERE user_id = $1 AND ${dateFilter}
     `;
-    const countResult = await this.query(countQuery, [userId]);
+    const countResult = await this.query(countQuery, [userId, userTimezone]);
     const count = parseInt(countResult.rows[0].count, 10);
 
     // Для совместимости: total и currency (если только одна валюта)
@@ -86,18 +86,18 @@ class ExpenseRepository extends BaseRepository {
     return { byCurrency, count, total, currency };
   }
 
-  async getExpensesByCategory(userId, period = periodsConfig.MONTH) {
+  async getExpensesByCategory(userId, period = periodsConfig.MONTH, userTimezone = 'UTC') {
     let dateFilter;
     switch (period) {
       case periodsConfig.DAY:
-        dateFilter = "e.date = CURRENT_DATE";
+        dateFilter = "e.local_date = (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $2)::DATE";
         break;
       case periodsConfig.WEEK:
-        dateFilter = "e.date >= CURRENT_DATE - INTERVAL '7 days'";
+        dateFilter = "e.local_date >= (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $2)::DATE - INTERVAL '7 days'";
         break;
       case periodsConfig.MONTH:
       default:
-        dateFilter = "EXTRACT(MONTH FROM e.date) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM e.date) = EXTRACT(YEAR FROM CURRENT_DATE)";
+        dateFilter = "EXTRACT(MONTH FROM e.local_date) = EXTRACT(MONTH FROM (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $2)::DATE) AND EXTRACT(YEAR FROM e.local_date) = EXTRACT(YEAR FROM (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $2)::DATE)";
     }
 
     const query = `
@@ -113,22 +113,22 @@ class ExpenseRepository extends BaseRepository {
       GROUP BY c.id, c.name, c.icon, e.currency
       ORDER BY total DESC
     `;
-    const result = await this.query(query, [userId]);
+    const result = await this.query(query, [userId, userTimezone]);
     return result.rows;
   }
 
-  async getExpensesByCategoryId(userId, categoryId, period = periodsConfig.MONTH) {
+  async getExpensesByCategoryId(userId, categoryId, period = periodsConfig.MONTH, userTimezone = 'UTC') {
     let dateFilter;
     switch (period) {
       case periodsConfig.DAY:
-        dateFilter = "e.date = CURRENT_DATE";
+        dateFilter = "e.local_date = (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $3)::DATE";
         break;
       case periodsConfig.WEEK:
-        dateFilter = "e.date >= CURRENT_DATE - INTERVAL '7 days'";
+        dateFilter = "e.local_date >= (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $3)::DATE - INTERVAL '7 days'";
         break;
       case periodsConfig.MONTH:
       default:
-        dateFilter = "EXTRACT(MONTH FROM e.date) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM e.date) = EXTRACT(YEAR FROM CURRENT_DATE)";
+        dateFilter = "EXTRACT(MONTH FROM e.local_date) = EXTRACT(MONTH FROM (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $3)::DATE) AND EXTRACT(YEAR FROM e.local_date) = EXTRACT(YEAR FROM (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $3)::DATE)";
     }
     
     // Сначала получаем название категории по ID
@@ -149,9 +149,9 @@ class ExpenseRepository extends BaseRepository {
       FROM expenses e
       LEFT JOIN categories c ON e.category_id = c.id
       WHERE e.user_id = $1 AND c.name = $2 AND ${dateFilter}
-      ORDER BY e.created_at DESC
+      ORDER BY e.created_at_utc DESC
     `;
-    const result = await this.query(query, [userId, categoryName]);
+    const result = await this.query(query, [userId, categoryName, userTimezone]);
     return result.rows;
   }
 
@@ -161,7 +161,7 @@ class ExpenseRepository extends BaseRepository {
       WHERE id = (
         SELECT id FROM expenses 
         WHERE user_id = $1 
-        ORDER BY created_at DESC 
+        ORDER BY created_at_utc DESC 
         LIMIT 1
       )
       RETURNING *
@@ -206,12 +206,12 @@ class ExpenseRepository extends BaseRepository {
         e.currency,
         e.description,
         c.name as category,
-        e.date,
-        e.created_at
+        e.local_date as date,
+        e.created_at_utc as created_at
       FROM expenses e
       LEFT JOIN categories c ON e.category_id = c.id
       WHERE e.user_id = $1
-      ORDER BY e.date DESC, e.created_at DESC
+      ORDER BY e.local_date DESC, e.created_at_utc DESC
     `;
     const result = await this.query(query, [userId]);
     return result.rows;

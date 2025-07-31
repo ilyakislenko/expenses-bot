@@ -50,6 +50,15 @@ class UserService {
     return this.userRepository.getUserPremium(userId);
   }
 
+  async setUserTimezone(userId, timezone) {
+    const result = await this.userRepository.setUserTimezone(userId, timezone);
+    return result;
+  }
+
+  async getUserTimezone(userId) {
+    return this.userRepository.getUserTimezone(userId);
+  }
+
   // Методы для премиум-категорий
   async createUserCategory(userId, name, icon) {
     const isPremium = await this.getUserPremium(userId);

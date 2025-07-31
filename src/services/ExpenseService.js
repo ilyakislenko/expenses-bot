@@ -10,21 +10,24 @@ class ExpenseService {
 
   async getMonthlyStats(userId) {
     const userCurrency = await this.userRepository.getUserCurrency(userId);
-    const total = await this.expenseRepository.getTotalExpenses(userId, 'month');
-    const categoryStats = await this.expenseRepository.getExpensesByCategory(userId, 'month');
+    const userTimezone = await this.userRepository.getUserTimezone(userId);
+    const total = await this.expenseRepository.getTotalExpenses(userId, 'month', userTimezone);
+    const categoryStats = await this.expenseRepository.getExpensesByCategory(userId, 'month', userTimezone);
     return { total, categoryStats, userCurrency };
   }
 
   async getDailyStats(userId) {
     const userCurrency = await this.userRepository.getUserCurrency(userId);
-    const expenses = await this.expenseRepository.getDailyExpenses(userId);
-    const total = await this.expenseRepository.getTotalExpenses(userId, 'day');
+    const userTimezone = await this.userRepository.getUserTimezone(userId);
+    const expenses = await this.expenseRepository.getDailyExpenses(userId, userTimezone);
+    const total = await this.expenseRepository.getTotalExpenses(userId, 'day', userTimezone);
     return { total, expenses, userCurrency };
   }
 
   async addExpense(userId, amount, description, categoryName) {
     try {
       const userCurrency = await this.userRepository.getUserCurrency(userId);
+      const userTimezone = await this.userRepository.getUserTimezone(userId);
       
       // Ищем категорию в системных и пользовательских
       const category = await this.categoryRepository.getOrCreateCategory(userId, categoryName);
@@ -36,7 +39,8 @@ class ExpenseService {
           amount, 
           description, 
           defaultCategory.id, 
-          userCurrency
+          userCurrency,
+          userTimezone
         );
         
         // Обновляем метрики
@@ -59,7 +63,8 @@ class ExpenseService {
         amount, 
         description, 
         category.id, 
-        userCurrency
+        userCurrency,
+        userTimezone
       );
       
       // Обновляем метрики
@@ -94,7 +99,8 @@ class ExpenseService {
   async exportExpenses(userId) {
     const expenses = await this.expenseRepository.exportExpenses(userId);
     const userCurrency = await this.userRepository.getUserCurrency(userId);
-    return { expenses, userCurrency };
+    const userTimezone = await this.userRepository.getUserTimezone(userId);
+    return { expenses, userCurrency, userTimezone };
   }
 
   async getCategories(userId) {
@@ -106,11 +112,13 @@ class ExpenseService {
   }
 
   async getExpensesByCategoryId(userId, categoryId, period = 'month') {
-    return this.expenseRepository.getExpensesByCategoryId(userId, categoryId, period);
+    const userTimezone = await this.userRepository.getUserTimezone(userId);
+    return this.expenseRepository.getExpensesByCategoryId(userId, categoryId, period, userTimezone);
   }
 
   async getDailyExpenses(userId) {
-    return this.expenseRepository.getDailyExpenses(userId);
+    const userTimezone = await this.userRepository.getUserTimezone(userId);
+    return this.expenseRepository.getDailyExpenses(userId, userTimezone);
   }
 
   async getExpenseById(userId, expenseId) {

@@ -34,6 +34,17 @@ class UserRepository extends BaseRepository {
     const query = 'UPDATE users SET premium = $1 WHERE id = $2';
     await this.query(query, [isPremium, userId]);
   }
+
+  async getUserTimezone(userId) {
+    const result = await this.query('SELECT timezone FROM users WHERE id = $1', [userId]);
+    return result.rows[0]?.timezone || 'UTC';
+  }
+
+  async setUserTimezone(userId, timezone) {
+    const query = 'UPDATE users SET timezone = $1 WHERE id = $2';
+    const result = await this.query(query, [timezone, userId]);
+    return result;
+  }
 }
 
 module.exports = UserRepository; 
