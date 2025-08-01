@@ -64,13 +64,19 @@ module.exports = function registerBotRoutes(bot, handlers) {
   }));
   bot.action(/^set_currency\|/, async (ctx) => {
     const userId = ctx.from.id;
+    const userLanguage = await handlers.userService.getUserLanguage(userId);
     const currency = ctx.callbackQuery.data.split('|')[1];
     await handlers.userService.setUserCurrency(userId, currency);
-    await ctx.answerCbQuery(`Валюта установлена: ${currency}`);
-    await ctx.editMessageText(`Валюта успешно изменена на ${currency}`, {
+    
+    const currencySetText = handlers.localizationService.getText(userLanguage, 'currency_set', { currency });
+    const currencyUpdatedText = handlers.localizationService.getText(userLanguage, 'currency_updated', { currency });
+    const backText = handlers.localizationService.getText(userLanguage, 'button_back');
+    
+    await ctx.answerCbQuery(currencySetText);
+    await ctx.editMessageText(currencyUpdatedText, {
       reply_markup: {
         inline_keyboard: [
-          [{ text: '⬅️ Назад', callback_data: 'back_to_menu' }]
+          [{ text: backText, callback_data: 'back_to_settings' }]
         ]
       }
     });
@@ -81,22 +87,55 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('change_timezone', async (ctx) => {
     await commandHandlers.timezone(ctx);
   });
+  bot.action('change_language', async (ctx) => {
+    await commandHandlers.language(ctx);
+  });
   bot.action(/^tz\|/, errorHandler((ctx) => callbackHandlers.handleTimezoneSelection(ctx)));
   bot.action(/^time\|/, errorHandler((ctx) => callbackHandlers.handleTimezoneSelection(ctx)));
-  bot.action('back_to_settings', async (ctx) => {
-    await commandHandlers.settings(ctx);
-  });
+  bot.action(/^set_language\|/, errorHandler((ctx) => callbackHandlers.handleLanguageSelection(ctx)));
+  // Захардкоженные переходы "назад" для каждой страницы
   bot.action('back_to_menu', errorHandler(async (ctx) => {
+    await ctx.answerCbQuery();
     await commandHandlers.mainMenu(ctx);
+  }));
+  
+  bot.action('back_to_settings', errorHandler(async (ctx) => {
+    await ctx.answerCbQuery();
+    await commandHandlers.settings(ctx);
+  }));
+  
+  bot.action('back_to_categories', errorHandler(async (ctx) => {
+    await ctx.answerCbQuery();
+    await commandHandlers.categories(ctx);
+  }));
+  
+  bot.action('back_to_history', errorHandler(async (ctx) => {
+    await ctx.answerCbQuery();
+    await commandHandlers.dailyHistory(ctx);
+  }));
+  
+  bot.action('back_to_stats', errorHandler(async (ctx) => {
+    await ctx.answerCbQuery();
+    await commandHandlers.stats(ctx);
+  }));
+  
+  // Универсальный обработчик для остальных случаев
+  bot.action('back', errorHandler(async (ctx) => {
+    await callbackHandlers.handleBack(ctx);
   }));
   bot.action(/^show_category\|(\d+)$/, async (ctx) => {
     const categoryId = ctx.match[1];
     const userId = ctx.from.id;
+    
+
+    
     const userCurrency = await handlers.userService.getUserCurrency(userId);
     const userTimezone = await handlers.userService.getUserTimezone(userId);
     const expenses = await handlers.expenseService.getExpensesByCategoryId(userId, categoryId, 'month');
     if (!expenses.length) {
-      return ctx.reply('Нет трат по этой категории за последний месяц.');
+      const userLanguage = await handlers.userService.getUserLanguage(userId);
+      const noExpensesText = handlers.localizationService.getText(userLanguage, 'no_expenses_category');
+      return ctx.reply(noExpensesText);
     }
     const formatter = handlers.formatter;
     const convertedAmounts = await Promise.all(
@@ -107,12 +146,16 @@ module.exports = function registerBotRoutes(bot, handlers) {
       count: expenses.length,
       currency: userCurrency
     };
-    let message = await formatter.formatStats(total, [], userCurrency, 'месяц') + '\n' + formatter.formatExpenseList(expenses, userTimezone);
+    const userLanguage = await handlers.userService.getUserLanguage(userId);
+    let message = await formatter.formatStats(total, [], userCurrency, 'месяц', handlers.localizationService, userLanguage) + '\n' + formatter.formatExpenseList(expenses, userTimezone, handlers.localizationService, userLanguage);
+    const editText = handlers.localizationService.getText(userLanguage, 'button_edit');
+    const backText = handlers.localizationService.getText(userLanguage, 'button_back');
+    
     await ctx.reply(message, { parse_mode: 'Markdown',reply_markup: {
       inline_keyboard: [
         [
-          { text: 'Редактировать', callback_data: `edit_category|${categoryId}` },
-          { text: '⬅️ Назад', callback_data: 'back_to_categories' }
+          { text: editText, callback_data: `edit_category|${categoryId}` },
+          { text: backText, callback_data: 'back_to_categories' }
         ]
       ]
     } });
@@ -121,51 +164,72 @@ module.exports = function registerBotRoutes(bot, handlers) {
     const expenseId = ctx.match[1];
     const userId = ctx.from.id;
     const deleted = await handlers.expenseService.deleteExpenseById(userId, expenseId);
+    const userLanguage = await handlers.userService.getUserLanguage(userId);
     if (deleted) {
-      await ctx.answerCbQuery('Запись удалена!');
-      await ctx.editMessageText('Запись удалена!');
+      const deletedText = handlers.localizationService.getText(userLanguage, 'callback_deleted');
+      await ctx.answerCbQuery(deletedText);
+      await ctx.editMessageText(deletedText);
     } else {
-      await ctx.answerCbQuery('Ошибка удаления или запись не найдена');
+      const deleteErrorText = handlers.localizationService.getText(userLanguage, 'callback_delete_error');
+      await ctx.answerCbQuery(deleteErrorText);
     }
   });
   bot.action(/^edit_expense\|(\d+)$/, async (ctx) => {
     const expenseId = ctx.match[1];
-    handlers.stateService.setUserEditState(ctx.from.id, expenseId);
-    await ctx.reply(
-      'Введите новую сумму и/или описание для этой траты (например: 500 кофе).\n\nИли нажмите кнопку ниже для отмены.',
-      {
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: '❌ Отмена', callback_data: 'cancel_edit' }]
-          ]
-        }
+    const userId = ctx.from.id;
+    
+
+    
+    handlers.stateService.setUserEditState(userId, expenseId);
+    const userLanguage = await handlers.userService.getUserLanguage(userId);
+    const editInstructionsText = handlers.localizationService.getText(userLanguage, 'edit_instructions');
+    const cancelText = handlers.localizationService.getText(userLanguage, 'button_cancel');
+    
+    await ctx.reply(editInstructionsText, {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: cancelText, callback_data: 'cancel_edit' }]
+        ]
       }
-    );
+    });
   });
   bot.action('cancel_edit', async (ctx) => {
+    const userId = ctx.from.id;
+    const userLanguage = await handlers.userService.getUserLanguage(userId);
+    
     if (handlers.stateService.hasUserEditState(ctx.from.id)) {
       handlers.stateService.deleteUserEditState(ctx.from.id);
-      await ctx.editMessageText('Редактирование отменено.');
+      const editCanceledText = handlers.localizationService.getText(userLanguage, 'edit_canceled');
+      await ctx.editMessageText(editCanceledText);
     } else {
-      await ctx.answerCbQuery('Нет активного редактирования.');
+      const editNoActiveText = handlers.localizationService.getText(userLanguage, 'edit_no_active');
+      await ctx.answerCbQuery(editNoActiveText);
     }
   });
   bot.action('edit_history', async (ctx) => {
     const userId = ctx.from.id;
+    
+
+    
+    const userLanguage = await handlers.userService.getUserLanguage(userId);
     const userTimezone = await handlers.userService.getUserTimezone(userId);
     const expenses = await handlers.expenseService.getDailyExpenses(userId);
     if (!expenses.length) {
-      return ctx.reply('Нет трат за этот период.');
+      const noExpensesPeriodText = handlers.localizationService.getText(userLanguage, 'no_expenses_period');
+      return ctx.reply(noExpensesPeriodText);
     }
     const formatter = handlers.formatter;
     for (const expense of expenses) {
-      const { text, reply_markup } = formatter.formatExpenseWithActions(expense, userTimezone);
+      const { text, reply_markup } = formatter.formatExpenseWithActions(expense, userTimezone, handlers.localizationService, userLanguage);
       await ctx.reply(text, { reply_markup, parse_mode: 'Markdown' });
     }
-    await ctx.reply('Выход из режима редактирования:', {
+    const exitEditModeText = handlers.localizationService.getText(userLanguage, 'callback_edit_mode');
+    const backText = handlers.localizationService.getText(userLanguage, 'button_back');
+    
+    await ctx.reply(exitEditModeText, {
       reply_markup: {
         inline_keyboard: [
-          [{ text: '⬅️ Назад', callback_data: 'back_to_history' }]
+          [{ text: backText, callback_data: 'back_to_history' }]
         ]
       }
     });
@@ -173,27 +237,36 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^edit_category\|(\d+)$/, async (ctx) => {
     const categoryId = ctx.match[1];
     const userId = ctx.from.id;
+    
+
+    
+    const userLanguage = await handlers.userService.getUserLanguage(userId);
     const userTimezone = await handlers.userService.getUserTimezone(userId);
     const expenses = await handlers.expenseService.getExpensesByCategoryId(userId, categoryId, 'month');
     if (!expenses.length) {
-      return ctx.reply('почему-то карточек нет...произошла ошибка');
+      const noCardsText = handlers.localizationService.getText(userLanguage, 'callback_no_cards');
+      return ctx.reply(noCardsText);
     }
     const formatter = handlers.formatter;
     for (const expense of expenses) {
-      const { text, reply_markup } = formatter.formatExpenseWithActions(expense, userTimezone);
+      const { text, reply_markup } = formatter.formatExpenseWithActions(expense, userTimezone, handlers.localizationService, userLanguage);
       await ctx.reply(text, { reply_markup, parse_mode: 'Markdown' });
     }
-  });
-  bot.action('back_to_history', async (ctx) => {
-    await commandHandlers.dailyHistory(ctx);
-  });
-  bot.action('back_to_categories', async (ctx) => {
-    await commandHandlers.categories(ctx);
+    const exitEditModeText = handlers.localizationService.getText(userLanguage, 'callback_edit_mode');
+    const backText = handlers.localizationService.getText(userLanguage, 'button_back');
+    
+    await ctx.reply(exitEditModeText, {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: backText, callback_data: `show_category|${categoryId}` }]
+        ]
+      }
+    });
   });
 
   // Глобальный обработчик ошибок
   bot.catch((error, ctx) => {
     console.error('Bot error:', error);
-    ctx.reply('Произошла неожиданная ошибка. Попробуйте позже.');
+    ctx.reply('An unexpected error occurred. Please try again later.');
   });
 }; 

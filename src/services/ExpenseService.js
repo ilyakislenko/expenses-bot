@@ -33,7 +33,7 @@ class ExpenseService {
       const category = await this.categoryRepository.getOrCreateCategory(userId, categoryName);
       if (!category) {
         // Если категория не найдена, используем "Другое"
-        const defaultCategory = await this.categoryRepository.getCategoryByName(0, 'Другое');
+        const defaultCategory = await this.categoryRepository.getCategoryByName(0, 'Other');
         const expense = await this.expenseRepository.addExpense(
           userId, 
           amount, 
@@ -51,7 +51,7 @@ class ExpenseService {
           userId,
           amount,
           currency: userCurrency,
-          category: 'Другое',
+          category: 'Other',
           expenseId: expense.id
         });
         
@@ -103,8 +103,36 @@ class ExpenseService {
     return { expenses, userCurrency, userTimezone };
   }
 
-  async getCategories(userId) {
-    return this.categoryRepository.getCategories(userId);
+  async getCategories(userId, localizationService = null, userLanguage = 'ru') {
+    const categories = await this.categoryRepository.getCategories(userId);
+    
+    // Если есть локализация, переводим названия категорий
+    if (localizationService) {
+      return categories.map(cat => ({
+        ...cat,
+        name: this.translateCategoryName(cat.name, localizationService, userLanguage)
+      }));
+    }
+    
+    return categories;
+  }
+
+  translateCategoryName(categoryName, localizationService, userLanguage) {
+    const categoryMap = {
+      'Еда': 'category_food',
+      'Транспорт': 'category_transport',
+      'Развлечения': 'category_entertainment',
+      'Покупки': 'category_shopping',
+      'Здоровье': 'category_health',
+      'Другое': 'category_other'
+    };
+    
+    const translationKey = categoryMap[categoryName];
+    if (translationKey) {
+      return localizationService.getText(userLanguage, translationKey);
+    }
+    
+    return categoryName; // Возвращаем оригинальное название, если перевод не найден
   }
 
   async getMonthlyExpenses(userId) {

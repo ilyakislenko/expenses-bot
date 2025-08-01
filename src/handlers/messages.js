@@ -1,10 +1,11 @@
 const { errorMessages,SETTINGS_KEYBOARD } = require('../utils/constants');
 
 class MessageHandlers {
-  constructor({ expenseService, userService, premiumService, formatter, commandHandlers, stateService, validator }) {
+  constructor({ expenseService, userService, premiumService, localizationService, formatter, commandHandlers, stateService, validator }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
+    this.localizationService = localizationService;
     this.formatter = formatter;
     this.commandHandlers = commandHandlers;
     this.stateService = stateService;
@@ -16,66 +17,89 @@ class MessageHandlers {
       const userId = ctx.from.id;
       const text = ctx.message.text;
       
-      // Обработка нажатия на reply-кнопку '📋 Меню'
-      if (text === '📋 Меню') {
+      // Получаем язык пользователя для локализации
+      const userLanguage = await this.userService.getUserLanguage(userId);
+      
+      // Обработка нажатия на reply-кнопки (локализованные)
+      const menuText = this.localizationService.getText(userLanguage, 'button_menu');
+      const expensesDayText = this.localizationService.getText(userLanguage, 'button_expenses_day');
+      const expensesMonthText = this.localizationService.getText(userLanguage, 'button_expenses_month');
+      const expensesCategoriesText = this.localizationService.getText(userLanguage, 'button_expenses_categories');
+      const deleteLastText = this.localizationService.getText(userLanguage, 'button_delete_last');
+      const settingsText = this.localizationService.getText(userLanguage, 'button_settings');
+      
+      if (text === menuText) {
         await this.commandHandlers.help(ctx);
         return;
       }
-      if (text === '💰 Траты за день') {
+      if (text === expensesDayText) {
         await this.commandHandlers.dailyHistory(ctx);
         return;
       }
-      if (text === '💰 Траты за месяц') {
+      if (text === expensesMonthText) {
         await this.commandHandlers.stats(ctx);
         return;
       }
-      if (text === '💰 Траты по категориям') {
+      if (text === expensesCategoriesText) {
         await this.commandHandlers.categories(ctx);
         return;
       }
-      if (text === '🗑️ Удалить последнюю запись') {
+      if (text === deleteLastText) {
         await this.commandHandlers.undo(ctx);
         return;
       }
-      if (ctx.message.text === '⚙️ Настройки') {
-        return ctx.reply('Настройки:', {
+      if (text === settingsText) {
+        const settingsTitle = this.localizationService.getText(userLanguage, 'settings_title');
+        const keyboard = this.localizationService.getLanguageKeyboardLocalized(userLanguage);
+        return ctx.reply(settingsTitle, {
           reply_markup: {
-            inline_keyboard: SETTINGS_KEYBOARD
+            inline_keyboard: keyboard
           }
         });
       }
       if (this.stateService.hasUserEditState(ctx.from.id)) {
         if (ctx.message.text.trim() === '/cancel') {
           this.stateService.deleteUserEditState(ctx.from.id);
-          return ctx.reply('Редактирование отменено.');
+          const editCanceledText = this.localizationService.getText(userLanguage, 'edit_canceled');
+          return ctx.reply(editCanceledText);
         }
         const expenseId = this.stateService.getUserEditState(ctx.from.id);
         const parsed = this.validator.parseEditExpense(ctx.message.text);
         if (!parsed.isValid) {
           if (parsed.error === 'empty') {
-            return ctx.reply('Введите новую сумму, описание или оба значения.');
+            const editEmptyText = this.localizationService.getText(userLanguage, 'edit_empty');
+            return ctx.reply(editEmptyText);
           }
           if (parsed.error === 'amount') {
-            return ctx.reply('Некорректная сумма.');
+            const editAmountErrorText = this.localizationService.getText(userLanguage, 'edit_amount_error');
+            return ctx.reply(editAmountErrorText);
           }
           if (parsed.error === 'too_long') {
-            return ctx.reply('Описание слишком длинное (максимум 60 символов).');
+            const editTooLongText = this.localizationService.getText(userLanguage, 'edit_too_long', { max: limits.MAX_DESCRIPTION_LENGTH });
+            return ctx.reply(editTooLongText);
           }
-          return ctx.reply('Ошибка формата.');
+          const editFormatErrorText = this.localizationService.getText(userLanguage, 'edit_format_error');
+          return ctx.reply(editFormatErrorText);
         }
         const oldExpense = await this.expenseService.getExpenseById(ctx.from.id, expenseId);
         if (!oldExpense) {
-          userEditState.delete(ctx.from.id);
-          return ctx.reply('Ошибка: запись не найдена.');
+          this.stateService.deleteUserEditState(ctx.from.id);
+          const expenseNotFoundText = this.localizationService.getText(userLanguage, 'expense_not_found');
+          return ctx.reply(expenseNotFoundText);
         }
         const newAmount = parsed.amount !== undefined ? parsed.amount : oldExpense.amount;
         const newDescription = parsed.description !== undefined ? parsed.description : oldExpense.description;
         const updated = await this.expenseService.updateExpenseById(ctx.from.id, expenseId, { amount: newAmount, description: newDescription });
         this.stateService.deleteUserEditState(ctx.from.id);
         if (updated) {
-          return ctx.reply('Запись успешно обновлена!');
+          const expenseUpdatedText = this.localizationService.getText(userLanguage, 'expense_updated', { 
+            amount: this.formatter.formatAmount(newAmount), 
+            description: newDescription || this.localizationService.getText(userLanguage, 'not_found') 
+          });
+          return ctx.reply(expenseUpdatedText);
         } else {
-          return ctx.reply('Ошибка: запись не найдена или не обновлена.');
+          const expenseUpdateErrorText = this.localizationService.getText(userLanguage, 'expense_update_error');
+          return ctx.reply(expenseUpdateErrorText);
         }
       }
       // Получаем лимиты пользователя для валидации
@@ -86,16 +110,20 @@ class MessageHandlers {
         let errorMsg;
         if (parsed.error === 'too_long') {
           const isPremium = await this.premiumService.isPremiumUser(userId);
-          errorMsg = isPremium ? errorMessages.too_long_premium : errorMessages.too_long_regular;
+          errorMsg = isPremium ? 
+            this.localizationService.getText(userLanguage, 'error_too_long_premium') : 
+            this.localizationService.getText(userLanguage, 'error_too_long_regular');
         } else {
-          errorMsg = errorMessages[parsed.error] || errorMessages.format;
+          errorMsg = this.localizationService.getText(userLanguage, `error_${parsed.error}`) || 
+            this.localizationService.getText(userLanguage, 'error_format');
         }
         return await ctx.reply(errorMsg, { parse_mode: 'Markdown' });
       }
       // Проверяем лимит количества записей
       const expenseCountValidation = await this.premiumService.validateExpenseCount(userId);
       if (!expenseCountValidation.isValid) {
-        return await ctx.reply(errorMessages.limit_reached, { parse_mode: 'Markdown' });
+        const limitReachedText = this.localizationService.getText(userLanguage, 'error_limit_reached');
+        return await ctx.reply(limitReachedText, { parse_mode: 'Markdown' });
       }
 
       const categories = await this.expenseService.getCategories(userId);
@@ -106,16 +134,19 @@ class MessageHandlers {
           parsed.description
         );
         const amount = this.formatter.formatAmount(expense.amount);
-        const description = expense.description || 'Без описания';
-        await ctx.reply(`✅ Записал: ${amount} - ${description}`);
+        const description = expense.description || this.localizationService.getText(userLanguage, 'not_found');
+        const expenseAddedText = this.localizationService.getText(userLanguage, 'expense_added', { amount, description });
+        await ctx.reply(expenseAddedText);
         return;
       }
       this.stateService.setPendingExpense(userId, { amount: parsed.amount, description: parsed.description });
       const keyboard = [];
       const row = [];
       categories.forEach((category, index) => {
+        // Локализуем название категории
+        const localizedCategoryName = this.formatter.translateCategoryName(category.name, this.localizationService, userLanguage);
         const button = {
-          text: `${category.icon} ${category.name}`,
+          text: `${category.icon} ${localizedCategoryName}`,
           callback_data: `category|${category.name}`
         };
         row.push(button);
@@ -124,17 +155,22 @@ class MessageHandlers {
           row.length = 0;
         }
       });
+      const cancelText = this.localizationService.getText(userLanguage, 'button_cancel');
       keyboard.push([{
-        text: '❌ Отменить',
+        text: cancelText,
         callback_data: 'cancel'
       }]);
       const userCurrency = await this.userService.getUserCurrency(userId);
       const amount = this.formatter.formatAmount(parsed.amount, userCurrency);
-      const description = parsed.description || 'Без описания';
+      const description = parsed.description || this.localizationService.getText(userLanguage, 'not_found');
+      const selectCategoryText = this.localizationService.getText(userLanguage, 'select_category');
+      const amountLabelText = this.localizationService.getText(userLanguage, 'amount_label');
+      const descriptionLabelText = this.localizationService.getText(userLanguage, 'description_label');
+      
       await ctx.reply(
-        `💰 *Выберите категорию для расхода:*\n\n` +
-        `Сумма: *${amount}*\n` +
-        `Описание: ${description}`,
+        `💰 *${selectCategoryText}*\n\n` +
+        `${amountLabelText}: *${amount}*\n` +
+        `${descriptionLabelText}: ${description}`,
         {
           parse_mode: 'Markdown',
           reply_markup: {
@@ -144,7 +180,8 @@ class MessageHandlers {
       );
     } catch (error) {
       console.error('Error handling expense:', error);
-      await ctx.reply('Произошла ошибка при сохранении расхода 😞');
+      const errorText = this.localizationService.getText(userLanguage, 'expense_save_error');
+      await ctx.reply(errorText);
     }
   }
 }
