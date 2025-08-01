@@ -59,11 +59,19 @@ class UserService {
     return this.userRepository.getUserTimezone(userId);
   }
 
+  async setUserLanguage(userId, language) {
+    return this.userRepository.setUserLanguage(userId, language);
+  }
+
+  async getUserLanguage(userId) {
+    return this.userRepository.getUserLanguage(userId);
+  }
+
   // Методы для премиум-категорий
   async createUserCategory(userId, name, icon) {
     const isPremium = await this.getUserPremium(userId);
     if (!isPremium) {
-      throw new Error('Премиум функция недоступна');
+      throw new Error('Premium feature not available');
     }
     return this.categoryRepository.createUserCategory(userId, name, icon);
   }
@@ -85,7 +93,7 @@ class UserService {
   async deleteUserCategory(userId, categoryId) {
     const isPremium = await this.getUserPremium(userId);
     if (!isPremium) {
-      throw new Error('Премиум функция недоступна');
+      throw new Error('Premium feature not available');
     }
     return this.categoryRepository.deleteUserCategory(userId, categoryId);
   }
@@ -93,7 +101,7 @@ class UserService {
   async updateUserCategory(userId, categoryId, data) {
     const isPremium = await this.getUserPremium(userId);
     if (!isPremium) {
-      throw new Error('Премиум функция недоступна');
+      throw new Error('Premium feature not available');
     }
     return this.categoryRepository.updateUserCategory(userId, categoryId, data);
   }

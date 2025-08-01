@@ -15,32 +15,88 @@ class Formatter {
   }
 
   formatDate(date, timezone = 'UTC') {
-    return new Intl.DateTimeFormat('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: timezone
-    }).format(new Date(date));
+    try {
+      // Проверяем, что date не null/undefined
+      if (!date) {
+        console.warn('Empty date provided to formatDate');
+        return 'Unknown date';
+      }
+      
+      // Если это строка даты из PostgreSQL, парсим её
+      let dateObj;
+      if (typeof date === 'string') {
+        // PostgreSQL возвращает даты в формате "2024-01-15" или "2024-01-15T10:30:00.000Z"
+        dateObj = new Date(date);
+      } else if (date instanceof Date) {
+        dateObj = date;
+      } else {
+        dateObj = new Date(date);
+      }
+      
+      if (isNaN(dateObj.getTime())) {
+        console.warn('Invalid date provided to formatDate:', date);
+        return 'Invalid date';
+      }
+      
+      const formattedDate = new Intl.DateTimeFormat('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: timezone
+      }).format(dateObj);
+      
+      // Отладочная информация только для проблемных случаев
+      if (timezone === 'UTC' || timezone === 'Europe/Moscow') {
+        console.log('Date formatting:', {
+          original: date,
+          parsed: dateObj.toISOString(),
+          timezone: timezone,
+          formatted: formattedDate
+        });
+      }
+      
+      return formattedDate;
+    } catch (error) {
+      console.error('Error formatting date:', error, 'date:', date);
+      return 'Date error';
+    }
   }
 
-  formatExpenseList(expenses, userTimezone = 'UTC') {
+  formatExpenseList(expenses, userTimezone = 'UTC', localizationService = null, userLanguage = 'ru') {
     if (!expenses.length) {
-      return 'Расходов пока нет 📝';
+      return localizationService ? 
+        localizationService.getText(userLanguage, 'no_expenses_period') : 
+        'Расходов пока нет 📝';
     }
     return expenses.map((expense, index) => {
       const icon = expense.category_icon || '📦';
       const amount = this.formatAmount(expense.amount, expense.currency || 'RUB');
-      const description = expense.description || 'Без описания';
+      const description = expense.description || (localizationService ? 
+        localizationService.getText(userLanguage, 'not_found') : 
+        'Без описания');
       const date = this.formatDate(expense.created_at_utc, userTimezone);
       return `${icon} ${amount} - ${description}\n📅 ${date}`;
     }).join('\n\n');
   }
 
-  async formatStats(total, categoryStats, userCurrency = 'RUB', period = periodsConfig.LABELS.month) {
+  async formatStats(total, categoryStats, userCurrency = 'RUB', period = periodsConfig.LABELS.month, localizationService = null, userLanguage = 'ru') {
     const periodLabel = period || 'месяц';
-    let message = `📊 *Статистика за ${periodLabel}*\n\n`;
+    
+    // Определяем заголовок в зависимости от периода
+    let title;
+    if (period === 'день' || period === 'day') {
+      title = localizationService ? 
+        localizationService.getText(userLanguage, 'daily_stats') : 
+        '📊 *Статистика за день*';
+    } else {
+      title = localizationService ? 
+        localizationService.getText(userLanguage, 'monthly_stats') : 
+        '📊 *Статистика за месяц*';
+    }
+    
+    let message = `${title}\n\n`;
     let totalInUserCurrency = 0;
     if (Array.isArray(total.byCurrency)) {
       let sum = 0;
@@ -49,12 +105,22 @@ class Formatter {
         sum += converted;
       }
       totalInUserCurrency = sum;
-      message += `💰 Всего потрачено: *${this.formatAmount(sum, userCurrency)}*\n`;
+      const totalSpentText = localizationService ? 
+        localizationService.getText(userLanguage, 'total_spent', { amount: this.formatAmount(sum, userCurrency) }) : 
+        `💰 Всего потрачено: *${this.formatAmount(sum, userCurrency)}*`;
+      message += `${totalSpentText}\n`;
     } else {
       totalInUserCurrency = await this.currencyUtils.convert(Number(total.total), total.currency || 'RUB', userCurrency);
-      message += `💰 Всего потрачено: *${this.formatAmount(totalInUserCurrency, userCurrency)}*\n`;
+      const totalSpentText = localizationService ? 
+        localizationService.getText(userLanguage, 'total_spent', { amount: this.formatAmount(totalInUserCurrency, userCurrency) }) : 
+        `💰 Всего потрачено: *${this.formatAmount(totalInUserCurrency, userCurrency)}*`;
+      message += `${totalSpentText}\n`;
     }
-    message += `📝 Количество записей: ${total.count}\n\n`;
+    
+    const recordsCountText = localizationService ? 
+      localizationService.getText(userLanguage, 'records_count', { count: total.count }) : 
+      `📝 Количество записей: ${total.count}`;
+    message += `${recordsCountText}\n\n`;
     if (categoryStats.length > 0) {
       const catMap = new Map();
       for (const cat of categoryStats) {
@@ -63,11 +129,15 @@ class Formatter {
         const catTotal = await this.currencyUtils.convert(Number(cat.total), cat.currency || 'RUB', userCurrency);
         catMap.set(key, prev + catTotal);
       }
-      message += `*По категориям:*\n`;
+      const byCategoriesText = localizationService ? 
+        localizationService.getText(userLanguage, 'by_categories') : 
+        '*По категориям:*';
+      message += `${byCategoriesText}\n`;
       for (const [key, sum] of catMap.entries()) {
         const [icon, name] = key.split('||');
+        const translatedName = this.translateCategoryName(name, localizationService, userLanguage);
         const percentage = totalInUserCurrency > 0 ? (sum / totalInUserCurrency * 100).toFixed(1) : 0;
-        message += `${icon} ${name}: ${this.formatAmount(sum, userCurrency)} (${percentage}%)\n`;
+        message += `${icon} ${translatedName}: ${this.formatAmount(sum, userCurrency)} (${percentage}%)\n`;
       }
     }
     return message;
@@ -84,14 +154,28 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC') {
     return `"${clean}"`;
   }
 
-  let csv = 'Дата,Сумма,Валюта,Категория,Описание\n';
+  let csv = 'Date,Amount,Currency,Category,Description\n';
   const totalsByCurrency = {};
   
   for (const expense of expenses) {
-    const date = this.formatDate(expense.created_at_utc, userTimezone);
+    // Отладочная информация
+    console.log('Expense data:', {
+      created_at: expense.created_at,
+      local_date: expense.local_date,
+      amount: expense.amount,
+      category: expense.category
+    });
+    
+    // Используем created_at, если есть, иначе создаем дату из local_date
+    let dateToFormat = expense.created_at;
+    if (!dateToFormat && expense.local_date) {
+      // Если created_at нет, но есть local_date, создаем дату
+      dateToFormat = new Date(expense.local_date + 'T00:00:00.000Z');
+    }
+    const date = this.formatDate(dateToFormat, userTimezone);
     const amount = expense.amount;
     const currency = expense.currency || 'RUB';
-    const category = expense.category || 'Другое';
+    const category = expense.category || 'Other';
     const description = expense.description || '';
 
     // Формируем строку с экранированными полями
@@ -107,7 +191,7 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC') {
   }
   csv += '\n';
   // Итоги по валютам: добавляем заголовок отдельной строкой
-  csv += escapeCSV('Итого по валютам:') + ',,,,' + '\n';
+  csv += escapeCSV('Total by currencies:') + ',,,,' + '\n';
   // Итоги по валютам: каждая валюта отдельной строкой (только в первой колонке)
   for (const [currency, total] of Object.entries(totalsByCurrency)) {
     csv += escapeCSV(`${currency}: ${total}`) + ',,,,' + '\n';
@@ -117,7 +201,7 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC') {
   for (const [currency, total] of Object.entries(totalsByCurrency)) {
     totalInUserCurrency += await this.currencyUtils.convert(total, currency, userCurrency);
   }
-  csv += escapeCSV(`Всего в ${userCurrency}: ${this.formatAmount(totalInUserCurrency, userCurrency)}`) + ',,,,' + '\n';
+  csv += escapeCSV(`Total in ${userCurrency}: ${this.formatAmount(totalInUserCurrency, userCurrency)}`) + ',,,,' + '\n';
 
   return csv;
 }
@@ -128,18 +212,50 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC') {
     return categories.map(cat => `${cat.icon} ${cat.name}`).join(', ');
   }
 
-  formatExpenseWithActions(expense, userTimezone = 'UTC') {
+  translateCategoryName(categoryName, localizationService, userLanguage) {
+    if (!localizationService) {
+      return categoryName;
+    }
+    
+    const categoryMap = {
+      'Еда': 'category_food',
+      'Транспорт': 'category_transport',
+      'Развлечения': 'category_entertainment',
+      'Покупки': 'category_shopping',
+      'Здоровье': 'category_health',
+      'Другое': 'category_other'
+    };
+    
+    const translationKey = categoryMap[categoryName];
+    if (translationKey) {
+      return localizationService.getText(userLanguage, translationKey);
+    }
+    
+    return categoryName; // Возвращаем оригинальное название, если перевод не найден
+  }
+
+  formatExpenseWithActions(expense, userTimezone = 'UTC', localizationService = null, userLanguage = 'ru') {
     const icon = expense.category_icon || '📦';
     const amount = this.formatAmount(expense.amount, expense.currency || 'RUB');
-    const description = expense.description || 'Без описания';
+    const description = expense.description || (localizationService ? 
+      localizationService.getText(userLanguage, 'not_found') : 
+      'Без описания');
     const date = this.formatDate(expense.created_at_utc, userTimezone);
+    
+    const editText = localizationService ? 
+      localizationService.getText(userLanguage, 'button_edit') : 
+      '✏️ Редактировать';
+    const deleteText = localizationService ? 
+      localizationService.getText(userLanguage, 'button_delete') : 
+      '🗑️ Удалить';
+    
     return {
       text: `${icon} ${amount} - ${description}\n📅 ${date}`,
       reply_markup: {
         inline_keyboard: [
           [
-            { text: '✏️ Редактировать', callback_data: `edit_expense|${expense.id}` },
-            { text: '🗑️ Удалить', callback_data: `delete_expense|${expense.id}` }
+            { text: editText, callback_data: `edit_expense|${expense.id}` },
+            { text: deleteText, callback_data: `delete_expense|${expense.id}` }
           ]
         ]
       }

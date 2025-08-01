@@ -38,6 +38,8 @@ class StateService {
     return this.pendingExpenses.delete(userId);
   }
 
+
+
   // Utility methods
   clearUserState(userId) {
     this.deleteUserEditState(userId);

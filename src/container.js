@@ -33,6 +33,7 @@ const CurrencyRepository = require('./repositories/CurrencyRepository');
 const ExpenseService = require('./services/ExpenseService');
 const UserService = require('./services/UserService');
 const PremiumService = require('./services/PremiumService');
+const LocalizationService = require('./services/LocalizationService');
 
 // Handlers
 const CommandHandlers = require('./handlers/commands');
@@ -115,12 +116,17 @@ class Container {
           this.get('expenseRepository')
         );
 
+      case 'localizationService':
+        return new LocalizationService();
+
       case 'commandHandlers':
         return new CommandHandlers({
           expenseService: this.get('expenseService'),
           userService: this.get('userService'),
           premiumService: this.get('premiumService'),
-          formatter: this.get('formatter')
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter'),
+          stateService: this.get('stateService')
         });
 
       case 'messageHandlers':
@@ -128,6 +134,7 @@ class Container {
           expenseService: this.get('expenseService'),
           userService: this.get('userService'),
           premiumService: this.get('premiumService'),
+          localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
           commandHandlers: this.get('commandHandlers'),
           stateService: this.get('stateService'),
@@ -138,9 +145,11 @@ class Container {
         return new CallbackHandlers({
           expenseService: this.get('expenseService'),
           premiumService: this.get('premiumService'),
+          localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
           stateService: this.get('stateService'),
-          userService: this.get('userService')
+          userService: this.get('userService'),
+          commandHandlers: this.get('commandHandlers')
         });
 
       case 'bot':
@@ -171,6 +180,7 @@ class Container {
       expenseService: this.get('expenseService'),
       userService: this.get('userService'),
       premiumService: this.get('premiumService'),
+      localizationService: this.get('localizationService'),
       currencyUtils: this.get('currencyUtils'),
       formatter: this.get('formatter'),
       logger: this.get('logger'),
