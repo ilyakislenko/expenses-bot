@@ -6,7 +6,7 @@ class ExpenseRepository extends BaseRepository {
   async addExpense(userId, amount, description, categoryId, currency = currencyConfig.BASE_CURRENCY, userTimezone = 'UTC') {
     const query = `
       INSERT INTO expenses (user_id, amount, description, category_id, currency, created_at_utc, local_date) 
-      VALUES ($1, $2, $3, $4, $5, NOW(), (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $6)::DATE) 
+      VALUES ($1, $2, $3, $4, $5, NOW(), (NOW() AT TIME ZONE $6)::DATE) 
       RETURNING *
     `;
     const result = await this.query(query, [userId, amount, description, categoryId, currency, userTimezone]);
@@ -32,7 +32,7 @@ class ExpenseRepository extends BaseRepository {
       FROM expenses e
       LEFT JOIN categories c ON e.category_id = c.id
       WHERE e.user_id = $1
-      AND e.local_date = (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $2)::DATE
+      AND e.local_date = (NOW() AT TIME ZONE $2)::DATE
       ORDER BY e.created_at_utc ASC
     `;
     const result = await this.query(query, [userId, userTimezone]);
@@ -43,14 +43,14 @@ class ExpenseRepository extends BaseRepository {
     let dateFilter;
     switch (period) {
       case periodsConfig.DAY:
-        dateFilter = "local_date = (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $2)::DATE";
+        dateFilter = "local_date = (NOW() AT TIME ZONE $2)::DATE";
         break;
       case periodsConfig.WEEK:
-        dateFilter = "local_date >= (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $2)::DATE - INTERVAL '7 days'";
+        dateFilter = "local_date >= (NOW() AT TIME ZONE $2)::DATE - INTERVAL '7 days'";
         break;
       case periodsConfig.MONTH:
       default:
-        dateFilter = "EXTRACT(MONTH FROM local_date) = EXTRACT(MONTH FROM (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $2)::DATE) AND EXTRACT(YEAR FROM local_date) = EXTRACT(YEAR FROM (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $2)::DATE)";
+        dateFilter = "EXTRACT(MONTH FROM local_date) = EXTRACT(MONTH FROM (NOW() AT TIME ZONE $2)::DATE) AND EXTRACT(YEAR FROM local_date) = EXTRACT(YEAR FROM (NOW() AT TIME ZONE $2)::DATE)";
     }
 
     // Получаем суммы по всем валютам
@@ -90,14 +90,14 @@ class ExpenseRepository extends BaseRepository {
     let dateFilter;
     switch (period) {
       case periodsConfig.DAY:
-        dateFilter = "e.local_date = (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $2)::DATE";
+        dateFilter = "e.local_date = (NOW() AT TIME ZONE $2)::DATE";
         break;
       case periodsConfig.WEEK:
-        dateFilter = "e.local_date >= (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $2)::DATE - INTERVAL '7 days'";
+        dateFilter = "e.local_date >= (NOW() AT TIME ZONE $2)::DATE - INTERVAL '7 days'";
         break;
       case periodsConfig.MONTH:
       default:
-        dateFilter = "EXTRACT(MONTH FROM e.local_date) = EXTRACT(MONTH FROM (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $2)::DATE) AND EXTRACT(YEAR FROM e.local_date) = EXTRACT(YEAR FROM (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $2)::DATE)";
+        dateFilter = "EXTRACT(MONTH FROM e.local_date) = EXTRACT(MONTH FROM (NOW() AT TIME ZONE $2)::DATE) AND EXTRACT(YEAR FROM e.local_date) = EXTRACT(YEAR FROM (NOW() AT TIME ZONE $2)::DATE)";
     }
 
     const query = `
@@ -121,14 +121,14 @@ class ExpenseRepository extends BaseRepository {
     let dateFilter;
     switch (period) {
       case periodsConfig.DAY:
-        dateFilter = "e.local_date = (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $3)::DATE";
+        dateFilter = "e.local_date = (NOW() AT TIME ZONE $3)::DATE";
         break;
       case periodsConfig.WEEK:
-        dateFilter = "e.local_date >= (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $3)::DATE - INTERVAL '7 days'";
+        dateFilter = "e.local_date >= (NOW() AT TIME ZONE $3)::DATE - INTERVAL '7 days'";
         break;
       case periodsConfig.MONTH:
       default:
-        dateFilter = "EXTRACT(MONTH FROM e.local_date) = EXTRACT(MONTH FROM (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $3)::DATE) AND EXTRACT(YEAR FROM e.local_date) = EXTRACT(YEAR FROM (NOW() AT TIME ZONE 'UTC' AT TIME ZONE $3)::DATE)";
+        dateFilter = "EXTRACT(MONTH FROM e.local_date) = EXTRACT(MONTH FROM (NOW() AT TIME ZONE $3)::DATE) AND EXTRACT(YEAR FROM e.local_date) = EXTRACT(YEAR FROM (NOW() AT TIME ZONE $3)::DATE)";
     }
     
     // Сначала получаем название категории по ID
@@ -206,12 +206,12 @@ class ExpenseRepository extends BaseRepository {
         e.currency,
         e.description,
         c.name as category,
-        e.local_date as date,
-        e.created_at_utc as created_at
+        COALESCE(e.created_at_utc, e.local_date::timestamp) as created_at,
+        e.local_date
       FROM expenses e
       LEFT JOIN categories c ON e.category_id = c.id
       WHERE e.user_id = $1
-      ORDER BY e.local_date DESC, e.created_at_utc DESC
+      ORDER BY COALESCE(e.created_at_utc, e.local_date::timestamp) DESC
     `;
     const result = await this.query(query, [userId]);
     return result.rows;
