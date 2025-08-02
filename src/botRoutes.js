@@ -2,19 +2,19 @@ module.exports = function registerBotRoutes(bot, handlers) {
   const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, userEditState, ExpenseService, UserService, currencyUtils } = handlers;
 
   // Команды
-  bot.command('start', errorHandler((ctx) => commandHandlers.start(ctx)));
-  bot.command('help', errorHandler((ctx) => commandHandlers.help(ctx)));
-  bot.command('total', errorHandler((ctx) => commandHandlers.total(ctx)));
-  bot.command('history', errorHandler((ctx) => commandHandlers.dailyHistory(ctx)));
-  bot.command('stats', errorHandler((ctx) => commandHandlers.stats(ctx)));
-  bot.command('export', errorHandler((ctx) => commandHandlers.exportData(ctx)));
-  bot.command('undo', errorHandler((ctx) => commandHandlers.undo(ctx)));
-  bot.command('categories', errorHandler((ctx) => commandHandlers.categories(ctx)));
-  bot.command('currency', errorHandler((ctx) => commandHandlers.currency(ctx)));
-  bot.command('timezone', errorHandler((ctx) => commandHandlers.timezone(ctx)));
-  bot.command('settings', errorHandler((ctx) => commandHandlers.settings(ctx)));
-  bot.command('limits', errorHandler((ctx) => commandHandlers.limits(ctx)));
-  bot.command('menu', errorHandler((ctx) => commandHandlers.mainMenu(ctx)));
+  bot.command('start', errorHandler((ctx) => commandHandlers.start(ctx))); // главное меню бота
+  bot.command('help', errorHandler((ctx) => commandHandlers.help(ctx))); // справка и команды
+  bot.command('total', errorHandler((ctx) => commandHandlers.total(ctx))); // общая статистика расходов
+  bot.command('history', errorHandler((ctx) => commandHandlers.dailyHistory(ctx))); // история расходов за день
+  bot.command('stats', errorHandler((ctx) => commandHandlers.stats(ctx))); // детальная статистика по категориям
+  bot.command('export', errorHandler((ctx) => commandHandlers.exportData(ctx))); // экспорт данных в CSV
+  bot.command('undo', errorHandler((ctx) => commandHandlers.undo(ctx))); // отмена последней записи
+  bot.command('categories', errorHandler((ctx) => commandHandlers.categories(ctx))); // управление категориями
+  bot.command('currency', errorHandler((ctx) => commandHandlers.currency(ctx))); // настройка валюты пользователя
+  bot.command('timezone', errorHandler((ctx) => commandHandlers.timezone(ctx))); // настройка часового пояса
+  bot.command('settings', errorHandler((ctx) => commandHandlers.settings(ctx))); // настройки пользователя
+  bot.command('limits', errorHandler((ctx) => commandHandlers.limits(ctx))); // лимиты и премиум функции
+  bot.command('menu', errorHandler((ctx) => commandHandlers.mainMenu(ctx))); // главное меню
   bot.command('cancel', async (ctx) => {
     if (userEditState.has(ctx.from.id)) {
       userEditState.delete(ctx.from.id);
@@ -25,43 +25,43 @@ module.exports = function registerBotRoutes(bot, handlers) {
   });
 
   // Текстовые сообщения
-  bot.on('text', errorHandler((ctx) => messageHandlers.handleExpense(ctx)));
+  bot.on('text', errorHandler((ctx) => messageHandlers.handleExpense(ctx))); // обработка ввода расходов
 
   // Callback actions
-  bot.action(/^category\|/, (ctx) => callbackHandlers.handleCategorySelection(ctx));
-  bot.action('cancel', (ctx) => callbackHandlers.handleCancel(ctx));
+  bot.action(/^category\|/, (ctx) => callbackHandlers.handleCategorySelection(ctx)); // выбор категории для расхода
+  bot.action('cancel', (ctx) => callbackHandlers.handleCancel(ctx)); // отмена операции
   bot.action('menu', errorHandler(async (ctx) => {
     await ctx.answerCbQuery();
     await commandHandlers.mainMenu(ctx);
-  }));
+  })); // главное меню
   bot.action('stats', errorHandler(async (ctx) => {
     await ctx.answerCbQuery();
     await commandHandlers.stats(ctx);
-  }));
+  })); // детальная статистика по категориям
   bot.action('history', errorHandler(async (ctx) => {
     await ctx.answerCbQuery();
     await commandHandlers.dailyHistory(ctx);
-  }));
+  })); // история расходов за день
   bot.action('categories', errorHandler(async (ctx) => {
     await ctx.answerCbQuery();
     await commandHandlers.categories(ctx);
-  }));
+  })); // управление категориями
   bot.action('settings', errorHandler(async (ctx) => {
     await ctx.answerCbQuery();
     await commandHandlers.settings(ctx);
-  }));
+  })); // настройки пользователя
   bot.action('undo', errorHandler(async (ctx) => {
     await ctx.answerCbQuery();
     await commandHandlers.undo(ctx);
-  }));
+  })); // отмена последней записи
   bot.action('help', errorHandler(async (ctx) => {
     await ctx.answerCbQuery();
     await commandHandlers.help(ctx);
-  }));
+  })); // справка и команды
   bot.action('limits', errorHandler(async (ctx) => {
     await ctx.answerCbQuery();
     await commandHandlers.limits(ctx);
-  }));
+  })); // лимиты и премиум функции
   bot.action(/^set_currency\|/, async (ctx) => {
     const userId = ctx.from.id;
     const userLanguage = await handlers.userService.getUserLanguage(userId);
@@ -80,49 +80,49 @@ module.exports = function registerBotRoutes(bot, handlers) {
         ]
       }
     });
-  });
+  }); // установка валюты пользователя
   bot.action('change_currency', async (ctx) => {
     await commandHandlers.currency(ctx);
-  });
+  }); // выбор валюты
   bot.action('change_timezone', async (ctx) => {
     await commandHandlers.timezone(ctx);
-  });
+  }); // выбор часового пояса
   bot.action('change_language', async (ctx) => {
     await commandHandlers.language(ctx);
-  });
-  bot.action(/^tz\|/, errorHandler((ctx) => callbackHandlers.handleTimezoneSelection(ctx)));
-  bot.action(/^time\|/, errorHandler((ctx) => callbackHandlers.handleTimezoneSelection(ctx)));
-  bot.action(/^set_language\|/, errorHandler((ctx) => callbackHandlers.handleLanguageSelection(ctx)));
+  }); // выбор языка интерфейса
+  bot.action(/^tz\|/, errorHandler((ctx) => callbackHandlers.handleTimezoneSelection(ctx))); // установка часового пояса
+  bot.action(/^time\|/, errorHandler((ctx) => callbackHandlers.handleTimezoneSelection(ctx))); // установка часового пояса (альтернативный формат)
+  bot.action(/^set_language\|/, errorHandler((ctx) => callbackHandlers.handleLanguageSelection(ctx))); // установка языка интерфейса
   // Захардкоженные переходы "назад" для каждой страницы
   bot.action('back_to_menu', errorHandler(async (ctx) => {
     await ctx.answerCbQuery();
     await commandHandlers.mainMenu(ctx);
-  }));
+  })); // возврат в главное меню
   
   bot.action('back_to_settings', errorHandler(async (ctx) => {
     await ctx.answerCbQuery();
     await commandHandlers.settings(ctx);
-  }));
+  })); // возврат в настройки
   
   bot.action('back_to_categories', errorHandler(async (ctx) => {
     await ctx.answerCbQuery();
     await commandHandlers.categories(ctx);
-  }));
+  })); // возврат к списку категорий
   
   bot.action('back_to_history', errorHandler(async (ctx) => {
     await ctx.answerCbQuery();
     await commandHandlers.dailyHistory(ctx);
-  }));
+  })); // возврат к истории расходов
   
   bot.action('back_to_stats', errorHandler(async (ctx) => {
     await ctx.answerCbQuery();
     await commandHandlers.stats(ctx);
-  }));
+  })); // возврат к статистике
   
   // Универсальный обработчик для остальных случаев
   bot.action('back', errorHandler(async (ctx) => {
     await callbackHandlers.handleBack(ctx);
-  }));
+  })); // универсальный возврат назад
   bot.action(/^show_category\|(\d+)$/, async (ctx) => {
     const categoryId = ctx.match[1];
     const userId = ctx.from.id;
@@ -159,7 +159,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
         ]
       ]
     } });
-  });
+  }); // список расходов по конкретной категории
   bot.action(/^delete_expense\|(\d+)$/, async (ctx) => {
     const expenseId = ctx.match[1];
     const userId = ctx.from.id;
@@ -173,7 +173,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
       const deleteErrorText = handlers.localizationService.getText(userLanguage, 'callback_delete_error');
       await ctx.answerCbQuery(deleteErrorText);
     }
-  });
+  }); // удаление записи расхода
   bot.action(/^edit_expense\|(\d+)$/, async (ctx) => {
     const expenseId = ctx.match[1];
     const userId = ctx.from.id;
@@ -192,7 +192,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
         ]
       }
     });
-  });
+  }); // режим редактирования записи расхода
   bot.action('cancel_edit', async (ctx) => {
     const userId = ctx.from.id;
     const userLanguage = await handlers.userService.getUserLanguage(userId);
@@ -205,7 +205,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
       const editNoActiveText = handlers.localizationService.getText(userLanguage, 'edit_no_active');
       await ctx.answerCbQuery(editNoActiveText);
     }
-  });
+  }); // отмена редактирования записи
   bot.action('edit_history', async (ctx) => {
     const userId = ctx.from.id;
     
@@ -233,7 +233,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
         ]
       }
     });
-  });
+  }); // режим редактирования истории расходов за день
   bot.action(/^edit_category\|(\d+)$/, async (ctx) => {
     const categoryId = ctx.match[1];
     const userId = ctx.from.id;
@@ -262,11 +262,11 @@ module.exports = function registerBotRoutes(bot, handlers) {
         ]
       }
     });
-  });
+  }); // режим редактирования расходов по категории
 
   // Глобальный обработчик ошибок
   bot.catch((error, ctx) => {
     console.error('Bot error:', error);
     ctx.reply('An unexpected error occurred. Please try again later.');
-  });
+  }); // обработка глобальных ошибок бота
 }; 
