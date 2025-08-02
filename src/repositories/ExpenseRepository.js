@@ -207,7 +207,7 @@ class ExpenseRepository extends BaseRepository {
         e.currency,
         e.description,
         c.name as category,
-        e.created_at_utc as created_at
+        e.created_at_utc
       FROM expenses e
       LEFT JOIN categories c ON e.category_id = c.id
       WHERE e.user_id = $1
