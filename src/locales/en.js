@@ -167,6 +167,7 @@ Now all your expenses will be correctly displayed in your local time.`,
   export_success: '📊 Data exported successfully!',
   export_error: 'An error occurred while exporting data 😞',
   expense_save_error: 'An error occurred while saving the expense 😞',
+  keyboard_updated: '✅ Keyboard updated to your language!',
   
   // Editing
   edit_canceled: 'Editing canceled.',
