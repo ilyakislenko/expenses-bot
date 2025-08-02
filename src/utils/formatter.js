@@ -170,20 +170,8 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationServic
   const totalsByCurrency = {};
   
   for (const expense of expenses) {
-    // Отладочная информация
-    console.log('Expense data:', {
-      created_at: expense.created_at,
-      local_date: expense.local_date,
-      amount: expense.amount,
-      category: expense.category
-    });
-    
-    // Используем created_at, если есть, иначе создаем дату из local_date
-    let dateToFormat = expense.created_at;
-    if (!dateToFormat && expense.local_date) {
-      // Если created_at нет, но есть local_date, создаем дату
-      dateToFormat = new Date(expense.local_date + 'T00:00:00.000Z');
-    }
+    // Используем created_at_utc как основной источник даты
+    let dateToFormat = expense.created_at_utc;
     const date = this.formatDate(dateToFormat, userTimezone);
     const amount = expense.amount;
     const currency = expense.currency || 'RUB';
