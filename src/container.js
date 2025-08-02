@@ -43,6 +43,15 @@ const CallbackHandlers = require('./handlers/callbacks');
 // State management
 const StateService = require('./services/StateService');
 
+// Constants and utilities
+const { 
+  generateMainMenuKeyboard, 
+  generateInlineMainMenu, 
+  generateCurrencyKeyboard, 
+  generateSettingsKeyboard, 
+  generateTimeKeyboard 
+} = require('./utils/constants');
+
 class Container {
   constructor() {
     this.instances = new Map();
@@ -126,7 +135,8 @@ class Container {
           premiumService: this.get('premiumService'),
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
-          stateService: this.get('stateService')
+          stateService: this.get('stateService'),
+          keyboardGenerators: this.get('keyboardGenerators')
         });
 
       case 'messageHandlers':
@@ -149,7 +159,8 @@ class Container {
           formatter: this.get('formatter'),
           stateService: this.get('stateService'),
           userService: this.get('userService'),
-          commandHandlers: this.get('commandHandlers')
+          commandHandlers: this.get('commandHandlers'),
+          keyboardGenerators: this.get('keyboardGenerators')
         });
 
       case 'bot':
@@ -163,6 +174,15 @@ class Container {
 
       case 'callbackDeduplicator':
         return new CallbackDeduplicator();
+
+      case 'keyboardGenerators':
+        return {
+          generateMainMenuKeyboard: (userLanguage) => generateMainMenuKeyboard(this.get('localizationService'), userLanguage),
+          generateInlineMainMenu: (userLanguage) => generateInlineMainMenu(this.get('localizationService'), userLanguage),
+          generateCurrencyKeyboard: (userLanguage) => generateCurrencyKeyboard(this.get('localizationService'), userLanguage),
+          generateSettingsKeyboard: (userLanguage) => generateSettingsKeyboard(this.get('localizationService'), userLanguage),
+          generateTimeKeyboard: (userLanguage) => generateTimeKeyboard(this.get('localizationService'), userLanguage)
+        };
 
       default:
         throw new Error(`Unknown dependency: ${key}`);

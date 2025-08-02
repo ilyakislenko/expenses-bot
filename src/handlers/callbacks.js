@@ -1,7 +1,7 @@
 const { getTimezoneByCode } = require('../utils/timezone');
 
 class CallbackHandlers {
-  constructor({ expenseService, premiumService, localizationService, formatter, stateService, userService, commandHandlers }) {
+  constructor({ expenseService, premiumService, localizationService, formatter, stateService, userService, commandHandlers, keyboardGenerators }) {
     this.expenseService = expenseService;
     this.premiumService = premiumService;
     this.localizationService = localizationService;
@@ -9,6 +9,7 @@ class CallbackHandlers {
     this.stateService = stateService;
     this.userService = userService;
     this.commandHandlers = commandHandlers;
+    this.keyboardGenerators = keyboardGenerators;
   }
 
   async handleCategorySelection(ctx) {
@@ -228,6 +229,20 @@ class CallbackHandlers {
           ]
         }
       });
+      
+      // Обновляем reply-клавиатуру на новом языке
+      const newMainMenuKeyboard = this.keyboardGenerators.generateMainMenuKeyboard(languageCode);
+      
+      await ctx.telegram.sendMessage(ctx.chat.id, 
+        this.localizationService.getText(languageCode, 'keyboard_updated'), 
+        {
+          reply_markup: {
+            keyboard: newMainMenuKeyboard,
+            resize_keyboard: true,
+            one_time_keyboard: false
+          }
+        }
+      );
     } catch (error) {
       console.error('Error handling language selection:', error);
       const languageChangeErrorText = this.localizationService.getText(userLanguage, 'language_change_error');

@@ -1,13 +1,14 @@
 const { MAIN_MENU_KEYBOARD, CURRENCY_KEYBOARD, SETTINGS_KEYBOARD } = require('../utils/constants');
 
 class CommandHandlers {
-  constructor({ expenseService, userService, premiumService, localizationService, formatter, stateService }) {
+  constructor({ expenseService, userService, premiumService, localizationService, formatter, stateService, keyboardGenerators }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
     this.localizationService = localizationService;
     this.formatter = formatter;
     this.stateService = stateService;
+    this.keyboardGenerators = keyboardGenerators;
   }
 
   async start(ctx) {
@@ -23,7 +24,7 @@ class CommandHandlers {
 
     const message = `${welcomeMessage}\n\n${startMessage}`;
 
-    const mainMenuKeyboard = require('../utils/constants').generateMainMenuKeyboard(this.localizationService, userLanguage);
+    const mainMenuKeyboard = this.keyboardGenerators.generateMainMenuKeyboard(userLanguage);
     await ctx.reply(message, {
       parse_mode: 'Markdown',
       reply_markup: {
@@ -327,27 +328,12 @@ class CommandHandlers {
     
     const message = this.localizationService.getText(userLanguage, 'main_menu_title');
     
-    const menuText = this.localizationService.getText(userLanguage, 'button_menu');
-    const expensesMonthText = this.localizationService.getText(userLanguage, 'button_expenses_month');
-    const expensesDayText = this.localizationService.getText(userLanguage, 'button_expenses_day');
-    const expensesCategoriesText = this.localizationService.getText(userLanguage, 'button_expenses_categories');
-    const settingsText = this.localizationService.getText(userLanguage, 'button_settings');
-    const deleteLastText = this.localizationService.getText(userLanguage, 'button_delete_last');
-    const limitsText = this.localizationService.getText(userLanguage, 'button_limits');
-    const helpText = this.localizationService.getText(userLanguage, 'button_help');
+    const inlineMainMenu = this.keyboardGenerators.generateInlineMainMenu(userLanguage);
     
     await ctx.reply(message, {
       parse_mode: 'Markdown',
       reply_markup: {
-        inline_keyboard: [
-          [{ text: menuText, callback_data: 'menu' }],
-          [{ text: expensesMonthText, callback_data: 'stats' }, { text: expensesDayText, callback_data: 'history' }],
-          [{ text: expensesCategoriesText, callback_data: 'categories' }],
-          [{ text: settingsText, callback_data: 'settings' }],
-          [{ text: deleteLastText, callback_data: 'undo' }],
-          [{ text: limitsText, callback_data: 'limits' }],
-          [{ text: helpText, callback_data: 'help' }]
-        ]
+        inline_keyboard: inlineMainMenu
       }
     });
   }
