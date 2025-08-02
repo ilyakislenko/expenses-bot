@@ -128,11 +128,12 @@ class CommandHandlers {
         const noDataText = this.localizationService.getText(userLanguage, 'no_expenses_period');
         return await ctx.reply(noDataText);
       }
-      const csv = await this.formatter.formatCSV(expenses, userCurrency, userTimezone);
+      const csv = await this.formatter.formatCSV(expenses, userCurrency, userTimezone, this.localizationService, userLanguage);
       const filename = `expenses_${new Date().toISOString().split('T')[0]}.csv`;
       
       const exportSuccessText = this.localizationService.getText(userLanguage, 'export_success');
-      const caption = `${exportSuccessText}\nВсего записей: ${expenses.length}`;
+      const recordsCountText = this.localizationService.getText(userLanguage, 'records_count', { count: expenses.length });
+      const caption = `${exportSuccessText}\n${recordsCountText}`;
       
       await ctx.replyWithDocument({
         source: Buffer.from(csv, 'utf-8'),

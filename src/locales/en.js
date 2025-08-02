@@ -200,6 +200,12 @@ Now all your expenses will be correctly displayed in your local time.`,
   date_format: '{month}/{day}/{year}',
   time_format: '{hour}:{minute}',
   
+  // CSV Export
+  date_label: 'Date',
+  currency_label: 'Currency',
+  total_by_currencies: 'Total by currencies:',
+  total_in_currency: 'Total in {currency}',
+  
   // Default categories
   category_food: 'Food',
   category_transport: 'Transport',

@@ -91,10 +91,10 @@ class MessageHandlers {
         const newDescription = parsed.description !== undefined ? parsed.description : oldExpense.description;
         const updated = await this.expenseService.updateExpenseById(ctx.from.id, expenseId, { amount: newAmount, description: newDescription });
         this.stateService.deleteUserEditState(ctx.from.id);
-        const userCurrency = await this.userService.getUserCurrency(userId);
+
         if (updated) {
           const expenseUpdatedText = this.localizationService.getText(userLanguage, 'expense_updated', { 
-            amount: this.formatter.formatAmount(newAmount, userCurrency), 
+            amount: this.formatter.formatAmount(newAmount, oldExpense.currency), 
             description: newDescription || this.localizationService.getText(userLanguage, 'not_found') 
           });
           return ctx.reply(expenseUpdatedText);

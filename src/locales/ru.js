@@ -200,6 +200,12 @@ module.exports = {
   date_format: '{day}.{month}.{year}',
   time_format: '{hour}:{minute}',
   
+  // Экспорт CSV
+  date_label: 'Дата',
+  currency_label: 'Валюта',
+  total_by_currencies: 'Итого по валютам:',
+  total_in_currency: 'Итого в {currency}',
+  
   // Категории по умолчанию
   category_food: 'Еда',
   category_transport: 'Транспорт',

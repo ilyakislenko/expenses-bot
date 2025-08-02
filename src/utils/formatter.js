@@ -145,7 +145,7 @@ class Formatter {
 
 
 // Обновлённая версия formatCSV: поддержка многострочных полей, правильное экранирование, итоги в одной ячейке
-async formatCSV(expenses, userCurrency, userTimezone = 'UTC') {
+async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationService = null, userLanguage = 'ru') {
   // Вспомогательная функция для экранирования: удваивает кавычки, сохраняет \n для многострочных полей
   function escapeCSV(value) {
     const str = String(value ?? '');
@@ -154,7 +154,19 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC') {
     return `"${clean}"`;
   }
 
-  let csv = 'Date,Amount,Currency,Category,Description\n';
+  // Получаем переведенные заголовки
+  const dateHeader = localizationService ? 
+    localizationService.getText(userLanguage, 'date_label') : 'Date';
+  const amountHeader = localizationService ? 
+    localizationService.getText(userLanguage, 'amount_label') : 'Amount';
+  const currencyHeader = localizationService ? 
+    localizationService.getText(userLanguage, 'currency_label') : 'Currency';
+  const categoryHeader = localizationService ? 
+    localizationService.getText(userLanguage, 'category_label') : 'Category';
+  const descriptionHeader = localizationService ? 
+    localizationService.getText(userLanguage, 'description_label') : 'Description';
+
+  let csv = `${dateHeader},${amountHeader},${currencyHeader},${categoryHeader},${descriptionHeader}\n`;
   const totalsByCurrency = {};
   
   for (const expense of expenses) {
@@ -175,7 +187,8 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC') {
     const date = this.formatDate(dateToFormat, userTimezone);
     const amount = expense.amount;
     const currency = expense.currency || 'RUB';
-    const category = expense.category || 'Other';
+    // Переводим категорию, если это стандартная категория
+    const category = this.translateCategoryName(expense.category || 'Other', localizationService, userLanguage);
     const description = expense.description || '';
 
     // Формируем строку с экранированными полями
@@ -191,7 +204,9 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC') {
   }
   csv += '\n';
   // Итоги по валютам: добавляем заголовок отдельной строкой
-  csv += escapeCSV('Total by currencies:') + ',,,,' + '\n';
+  const totalByCurrenciesText = localizationService ? 
+    localizationService.getText(userLanguage, 'total_by_currencies') : 'Total by currencies:';
+  csv += escapeCSV(totalByCurrenciesText) + ',,,,' + '\n';
   // Итоги по валютам: каждая валюта отдельной строкой (только в первой колонке)
   for (const [currency, total] of Object.entries(totalsByCurrency)) {
     csv += escapeCSV(`${currency}: ${total}`) + ',,,,' + '\n';
@@ -201,7 +216,9 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC') {
   for (const [currency, total] of Object.entries(totalsByCurrency)) {
     totalInUserCurrency += await this.currencyUtils.convert(total, currency, userCurrency);
   }
-  csv += escapeCSV(`Total in ${userCurrency}: ${this.formatAmount(totalInUserCurrency, userCurrency)}`) + ',,,,' + '\n';
+  const totalInCurrencyText = localizationService ? 
+    localizationService.getText(userLanguage, 'total_in_currency', { currency: userCurrency }) : `Total in ${userCurrency}`;
+  csv += escapeCSV(`${totalInCurrencyText}: ${this.formatAmount(totalInUserCurrency, userCurrency)}`) + ',,,,' + '\n';
 
   return csv;
 }
@@ -218,12 +235,20 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC') {
     }
     
     const categoryMap = {
+      // Русские названия
       'Еда': 'category_food',
       'Транспорт': 'category_transport',
       'Развлечения': 'category_entertainment',
       'Покупки': 'category_shopping',
       'Здоровье': 'category_health',
-      'Другое': 'category_other'
+      'Другое': 'category_other',
+      // Английские названия
+      'Food': 'category_food',
+      'Transport': 'category_transport',
+      'Entertainment': 'category_entertainment',
+      'Shopping': 'category_shopping',
+      'Health': 'category_health',
+      'Other': 'category_other'
     };
     
     const translationKey = categoryMap[categoryName];
