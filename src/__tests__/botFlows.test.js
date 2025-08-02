@@ -83,9 +83,9 @@ describe('CommandHandlers', () => {
     expect(ctx.reply).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ reply_markup: expect.any(Object) }));
   });
 
-  it('settings: sends settings keyboard', async () => {
+  it('settings: sends settings message', async () => {
     await commandHandlers.settings(ctx);
-    expect(ctx.reply).toHaveBeenCalledWith('Настройки:', expect.objectContaining({ reply_markup: expect.any(Object) }));
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Настройки'), expect.objectContaining({ parse_mode: 'Markdown' }));
   });
 });
 
