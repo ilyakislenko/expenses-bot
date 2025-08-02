@@ -49,14 +49,10 @@ class MessageHandlers {
         return;
       }
       if (text === settingsText) {
-        const settingsTitle = this.localizationService.getText(userLanguage, 'settings_title');
-        const keyboard = this.localizationService.getLanguageKeyboardLocalized(userLanguage);
-        return ctx.reply(settingsTitle, {
-          reply_markup: {
-            inline_keyboard: keyboard
-          }
-        });
+        await this.commandHandlers.settings(ctx);
+        return;
       }
+      
       if (this.stateService.hasUserEditState(ctx.from.id)) {
         if (ctx.message.text.trim() === '/cancel') {
           this.stateService.deleteUserEditState(ctx.from.id);
