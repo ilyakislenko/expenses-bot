@@ -17,7 +17,7 @@ const USER_LIMITS = {
   }
 };
 
-// Функция для генерации главного меню
+// Функция для генерации главного меню (reply-клавиатура)
 function generateMainMenuKeyboard(localizationService, userLanguage) {
   return [
     [{ text: localizationService.getText(userLanguage, 'button_menu') }],
@@ -28,6 +28,20 @@ function generateMainMenuKeyboard(localizationService, userLanguage) {
     [{ text: localizationService.getText(userLanguage, 'button_expenses_categories') }],
     [{ text: localizationService.getText(userLanguage, 'button_settings') }],
     [{ text: localizationService.getText(userLanguage, 'button_delete_last') }]
+  ];
+}
+
+// Функция для генерации inline-меню
+function generateInlineMainMenu(localizationService, userLanguage) {
+  return [
+    [{ text: localizationService.getText(userLanguage, 'button_menu'), callback_data: 'menu' }],
+    [
+      { text: localizationService.getText(userLanguage, 'button_expenses_month'), callback_data: 'stats' }, 
+      { text: localizationService.getText(userLanguage, 'button_expenses_day'), callback_data: 'history' }
+    ],
+    [{ text: localizationService.getText(userLanguage, 'button_expenses_categories'), callback_data: 'categories' }],
+    [{ text: localizationService.getText(userLanguage, 'button_settings'), callback_data: 'settings' }],
+    [{ text: localizationService.getText(userLanguage, 'button_delete_last'), callback_data: 'undo' }]
   ];
 }
 
@@ -92,6 +106,7 @@ function generateTimeKeyboard(localizationService, userLanguage) {
 module.exports = {
   USER_LIMITS,
   generateMainMenuKeyboard,
+  generateInlineMainMenu,
   generateCurrencyKeyboard,
   generateSettingsKeyboard,
   generateTimeKeyboard
