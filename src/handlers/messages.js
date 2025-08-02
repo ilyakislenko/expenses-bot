@@ -91,9 +91,10 @@ class MessageHandlers {
         const newDescription = parsed.description !== undefined ? parsed.description : oldExpense.description;
         const updated = await this.expenseService.updateExpenseById(ctx.from.id, expenseId, { amount: newAmount, description: newDescription });
         this.stateService.deleteUserEditState(ctx.from.id);
+        const userCurrency = await this.userService.getUserCurrency(userId);
         if (updated) {
           const expenseUpdatedText = this.localizationService.getText(userLanguage, 'expense_updated', { 
-            amount: this.formatter.formatAmount(newAmount), 
+            amount: this.formatter.formatAmount(newAmount, userCurrency), 
             description: newDescription || this.localizationService.getText(userLanguage, 'not_found') 
           });
           return ctx.reply(expenseUpdatedText);
@@ -161,12 +162,13 @@ class MessageHandlers {
         callback_data: 'cancel'
       }]);
       const userCurrency = await this.userService.getUserCurrency(userId);
+
       const amount = this.formatter.formatAmount(parsed.amount, userCurrency);
       const description = parsed.description || this.localizationService.getText(userLanguage, 'not_found');
       const selectCategoryText = this.localizationService.getText(userLanguage, 'select_category');
       const amountLabelText = this.localizationService.getText(userLanguage, 'amount_label');
       const descriptionLabelText = this.localizationService.getText(userLanguage, 'description_label');
-      
+
       await ctx.reply(
         `💰 *${selectCategoryText}*\n\n` +
         `${amountLabelText}: *${amount}*\n` +
