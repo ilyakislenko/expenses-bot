@@ -34,7 +34,7 @@ function generateMainMenuKeyboard(localizationService, userLanguage) {
 // Функция для генерации inline-меню
 function generateInlineMainMenu(localizationService, userLanguage) {
   return [
-    [{ text: localizationService.getText(userLanguage, 'button_menu'), callback_data: 'menu' }],
+    [{ text: localizationService.getText(userLanguage, 'button_help'), callback_data: 'help' }],
     [
       { text: localizationService.getText(userLanguage, 'button_expenses_month'), callback_data: 'stats' }, 
       { text: localizationService.getText(userLanguage, 'button_expenses_day'), callback_data: 'history' }
