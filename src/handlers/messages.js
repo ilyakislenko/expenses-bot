@@ -27,9 +27,9 @@ class MessageHandlers {
       const expensesCategoriesText = this.localizationService.getText(userLanguage, 'button_expenses_categories');
       const deleteLastText = this.localizationService.getText(userLanguage, 'button_delete_last');
       const settingsText = this.localizationService.getText(userLanguage, 'button_settings');
-      
+      const helpText = this.localizationService.getText(userLanguage, 'button_help');
       if (text === menuText) {
-        await this.commandHandlers.help(ctx);
+        await this.commandHandlers.mainMenu(ctx);
         return;
       }
       if (text === expensesDayText) {
@@ -50,6 +50,10 @@ class MessageHandlers {
       }
       if (text === settingsText) {
         await this.commandHandlers.settings(ctx);
+        return;
+      }
+      if (text === helpText) {
+        await this.commandHandlers.help(ctx);
         return;
       }
       

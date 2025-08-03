@@ -20,7 +20,7 @@ const USER_LIMITS = {
 // Функция для генерации главного меню (reply-клавиатура)
 function generateMainMenuKeyboard(localizationService, userLanguage) {
   return [
-    [{ text: localizationService.getText(userLanguage, 'button_menu') }],
+    [{ text: localizationService.getText(userLanguage, 'button_help') }],
     [
       { text: localizationService.getText(userLanguage, 'button_expenses_month') }, 
       { text: localizationService.getText(userLanguage, 'button_expenses_day') }
