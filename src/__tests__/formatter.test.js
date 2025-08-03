@@ -60,8 +60,7 @@ describe('Formatter CSV Localization', () => {
         currency: 'RUB',
         category: 'Еда',
         description: 'Обед',
-        created_at: new Date('2024-01-15T12:00:00Z'),
-        local_date: '2024-01-15'
+        created_at_utc: new Date('2024-01-15T12:00:00Z')
       },
       {
         id: 2,
@@ -69,8 +68,7 @@ describe('Formatter CSV Localization', () => {
         currency: 'USD',
         category: 'Transport',
         description: 'Taxi',
-        created_at: new Date('2024-01-15T14:00:00Z'),
-        local_date: '2024-01-15'
+        created_at_utc: new Date('2024-01-15T14:00:00Z')
       }
     ];
 
@@ -128,7 +126,7 @@ describe('Formatter CSV Localization', () => {
           currency: 'RUB',
           category: 'Еда',
           description: 'Обед',
-          created_at: new Date('2024-01-15T12:00:00Z')
+          created_at_utc: new Date('2024-01-15T12:00:00Z')
         },
         {
           id: 2,
@@ -136,7 +134,7 @@ describe('Formatter CSV Localization', () => {
           currency: 'RUB',
           category: 'Транспорт',
           description: 'Такси',
-          created_at: new Date('2024-01-15T14:00:00Z')
+          created_at_utc: new Date('2024-01-15T14:00:00Z')
         },
         {
           id: 3,
@@ -144,7 +142,7 @@ describe('Formatter CSV Localization', () => {
           currency: 'RUB',
           category: 'Custom Category',
           description: 'Кастомная категория',
-          created_at: new Date('2024-01-15T16:00:00Z')
+          created_at_utc: new Date('2024-01-15T16:00:00Z')
         }
       ];
 

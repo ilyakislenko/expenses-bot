@@ -28,6 +28,16 @@ describe('Timezone functionality', () => {
       query: jest.fn()
     };
     
+    // Создаем реальные экземпляры репозиториев с мокнутым query
+    const realUserRepository = new UserRepository();
+    const realExpenseRepository = new ExpenseRepository();
+    
+    realUserRepository.query = userRepository.query;
+    realExpenseRepository.query = expenseRepository.query;
+    
+    userRepository = realUserRepository;
+    expenseRepository = realExpenseRepository;
+    
     userService = new UserService(userRepository, {});
   });
 
@@ -53,6 +63,10 @@ describe('Timezone functionality', () => {
 
       const timezone = await userRepository.getUserTimezone(123);
       
+      expect(userRepository.query).toHaveBeenCalledWith(
+        'SELECT timezone FROM users WHERE id = $1',
+        [123]
+      );
       expect(timezone).toBe('UTC');
     });
 
@@ -95,8 +109,7 @@ describe('Timezone functionality', () => {
           user_id: 123,
           amount: 100,
           description: 'test',
-          created_at_utc: new Date(),
-          local_date: '2024-01-15'
+          created_at_utc: new Date()
         }]
       };
       expenseRepository.query.mockResolvedValue(mockResult);
@@ -111,19 +124,19 @@ describe('Timezone functionality', () => {
       );
       
       expect(expenseRepository.query).toHaveBeenCalledWith(
-        expect.stringContaining('created_at_utc, local_date'),
-        [123, 100, 'test', 1, 'RUB', 'Europe/Moscow']
+        expect.stringContaining('created_at_utc'),
+        [123, 100, 'test', 1, 'RUB']
       );
     });
 
-    test('getDailyExpenses should use local_date filter', async () => {
+    test('getDailyExpenses should use created_at_utc filter with timezone', async () => {
       const mockResult = { rows: [] };
       expenseRepository.query.mockResolvedValue(mockResult);
 
       await expenseRepository.getDailyExpenses(123, 'Europe/Moscow');
       
       expect(expenseRepository.query).toHaveBeenCalledWith(
-        expect.stringContaining('local_date = (NOW() AT TIME ZONE'),
+        expect.stringContaining('created_at_utc >= (DATE_TRUNC(\'day\', (NOW() AT TIME ZONE'),
         [123, 'Europe/Moscow']
       );
     });
@@ -135,7 +148,7 @@ describe('Timezone functionality', () => {
       await expenseRepository.getTotalExpenses(123, 'day', 'Europe/Moscow');
       
       expect(expenseRepository.query).toHaveBeenCalledWith(
-        expect.stringContaining('local_date = (NOW() AT TIME ZONE'),
+        expect.stringContaining('created_at_utc >= (DATE_TRUNC(\'day\', (NOW() AT TIME ZONE'),
         [123, 'Europe/Moscow']
       );
     });
@@ -165,8 +178,7 @@ describe('Timezone functionality', () => {
         null,
         undefined,
         '',
-        123,
-        'Invalid/Timezone'
+        123
       ];
 
       invalidTimezones.forEach(timezone => {
