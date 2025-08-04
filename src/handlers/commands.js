@@ -457,13 +457,13 @@ class CommandHandlers {
       const stats = await this.familyService.getFamilyStats(userFamily.id, 'month', userTimezone);
       
       // Формируем сообщение
-      const monthlyStatsText = this.localizationService.getText(userLanguage, 'family_monthly_stats');
+
       
       // Используем formatter для правильного отображения валют
       const message = await this.formatter.formatStats(stats.total, stats.byCategory, userCurrency, 'месяц', this.localizationService, userLanguage);
       
       // Добавляем заголовок для семейной статистики
-      const familyStatsMessage = `${monthlyStatsText}\n\n${message}`;
+      const familyStatsMessage = `${message}`;
       
       const backText = this.localizationService.getText(userLanguage, 'button_back');
       await ctx.reply(familyStatsMessage, {
@@ -509,11 +509,11 @@ class CommandHandlers {
       const { total, expenses } = await this.familyService.getFamilyDailyStats(userFamily.id, userTimezone);
       
       // Формируем сообщение
-      const dailyStatsText = this.localizationService.getText(userLanguage, 'family_daily_stats');
+
       const statsMessage = await this.formatter.formatStats(total, [], userCurrency, 'день', this.localizationService, userLanguage);
       const expensesList = this.formatter.formatExpenseList(expenses, userTimezone, this.localizationService, userLanguage);
       
-      const message = `${dailyStatsText}\n\n${statsMessage}\n${expensesList}`;
+      const message = `${statsMessage}\n${expensesList}`;
       
       const editText = this.localizationService.getText(userLanguage, 'button_edit');
       const backText = this.localizationService.getText(userLanguage, 'button_back');
