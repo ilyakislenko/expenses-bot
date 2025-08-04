@@ -290,7 +290,9 @@ Now all your expenses will be correctly displayed in your local time.`,
   
   // Family statistics
   family_monthly_stats: '👨‍👩‍👧‍👦 *Family Expenses for Month*',
+  family_daily_stats: '👨‍👩‍👧‍👦 Family Expenses for Day',
   family_daily_stats_title: '👨‍👩‍👧‍👦 *Family Expenses for Day*',
+  family_export: '📊 Family Export',
   family_total_spent: 'Spent: *{amount}*',
   family_members_count: 'Members: {count}',
   family_no_expenses: 'No family expenses for this period.',

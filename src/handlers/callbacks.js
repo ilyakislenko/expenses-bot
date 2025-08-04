@@ -550,6 +550,30 @@ class CallbackHandlers {
     }
   }
 
+  async handleFamilyDailyHistory(ctx) {
+    try {
+      await ctx.answerCbQuery();
+      await this.commandHandlers.familyDailyHistory(ctx);
+    } catch (error) {
+      console.error('Error handling family daily history:', error);
+      const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
+      const errorText = this.localizationService.getText(userLanguage, 'error');
+      await ctx.answerCbQuery(errorText);
+    }
+  }
+
+  async handleFamilyExport(ctx) {
+    try {
+      await ctx.answerCbQuery();
+      await this.commandHandlers.familyExport(ctx);
+    } catch (error) {
+      console.error('Error handling family export:', error);
+      const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
+      const errorText = this.localizationService.getText(userLanguage, 'error');
+      await ctx.answerCbQuery(errorText);
+    }
+  }
+
   async handleFamilyAddExpense(ctx) {
     try {
       const userId = ctx.from.id;

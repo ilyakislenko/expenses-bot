@@ -176,7 +176,9 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationServic
     const amount = expense.amount;
     const currency = expense.currency || 'RUB';
     // Переводим категорию, если это стандартная категория
-    const category = this.translateCategoryName(expense.category || 'Other', localizationService, userLanguage);
+    // Поддерживаем оба варианта названия поля: category_name (семейные) и category (личные)
+    const categoryName = expense.category_name || expense.category || 'Other';
+    const category = this.translateCategoryName(categoryName, localizationService, userLanguage);
     const description = expense.description || '';
 
     // Формируем строку с экранированными полями
@@ -247,13 +249,20 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationServic
     return categoryName; // Возвращаем оригинальное название, если перевод не найден
   }
 
-  formatExpenseWithActions(expense, userTimezone = 'UTC', localizationService = null, userLanguage = 'ru') {
+  formatExpenseWithActions(expense, userTimezone = 'UTC', localizationService = null, userLanguage = 'ru', showActions = true) {
     const icon = expense.category_icon || '📦';
     const amount = this.formatAmount(expense.amount, expense.currency || 'RUB');
     const description = expense.description || (localizationService ? 
       localizationService.getText(userLanguage, 'not_found') : 
       'Без описания');
     const date = this.formatDate(expense.created_at_utc, userTimezone);
+    
+    // Добавляем информацию о пользователе, если это семейная трата
+    let userInfo = '';
+    if (expense.user_username || expense.user_first_name) {
+      const userName = expense.user_username || expense.user_first_name;
+      userInfo = `\n👤 ${userName}`;
+    }
     
     const editText = localizationService ? 
       localizationService.getText(userLanguage, 'button_edit') : 
@@ -262,8 +271,17 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationServic
       localizationService.getText(userLanguage, 'button_delete') : 
       '🗑️ Удалить';
     
+    const text = `${icon} ${amount} - ${description}\n📅 ${date}${userInfo}`;
+    
+    if (!showActions) {
+      return {
+        text,
+        reply_markup: { inline_keyboard: [] }
+      };
+    }
+    
     return {
-      text: `${icon} ${amount} - ${description}\n📅 ${date}`,
+      text,
       reply_markup: {
         inline_keyboard: [
           [

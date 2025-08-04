@@ -239,6 +239,56 @@ module.exports = function registerBotRoutes(bot, handlers) {
       }
     });
   }); // режим редактирования истории расходов за день
+  bot.action('edit_family_history', async (ctx) => {
+    const userId = ctx.from.id;
+    const userLanguage = await handlers.userService.getUserLanguage(userId);
+    
+    // Проверяем премиум статус
+    const isPremium = await handlers.premiumService.isPremiumUser(userId);
+    if (!isPremium) {
+      const premiumRequiredText = handlers.localizationService.getText(userLanguage, 'premium_required');
+      return ctx.answerCbQuery(premiumRequiredText);
+    }
+    
+    // Получаем информацию о семье пользователя
+    const userFamily = await handlers.familyService.getUserFamily(userId);
+    if (!userFamily) {
+      const notFamilyMemberText = handlers.localizationService.getText(userLanguage, 'not_family_member');
+      return ctx.answerCbQuery(notFamilyMemberText);
+    }
+    
+    const userTimezone = await handlers.userService.getUserTimezone(userId);
+    const { expenses } = await handlers.familyService.getFamilyDailyStats(userFamily.id, userTimezone);
+    
+    if (!expenses.length) {
+      const noExpensesPeriodText = handlers.localizationService.getText(userLanguage, 'no_expenses_period');
+      return ctx.answerCbQuery(noExpensesPeriodText);
+    }
+    
+    const formatter = handlers.formatter;
+    for (const expense of expenses) {
+      // Показываем кнопки редактирования только для трат текущего пользователя
+      const { text, reply_markup } = formatter.formatExpenseWithActions(
+        expense, 
+        userTimezone, 
+        handlers.localizationService, 
+        userLanguage,
+        Number(expense.user_id) === userId // Приводим к числу для корректного сравнения
+      );
+      await ctx.reply(text, { reply_markup, parse_mode: 'Markdown' });
+    }
+    
+    const exitEditModeText = handlers.localizationService.getText(userLanguage, 'callback_edit_mode');
+    const backText = handlers.localizationService.getText(userLanguage, 'button_back');
+    
+    await ctx.reply(exitEditModeText, {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: backText, callback_data: 'family_menu' }]
+        ]
+      }
+    });
+  }); // режим редактирования семейных трат за день
   bot.action(/^edit_category\|(\d+)$/, async (ctx) => {
     const categoryId = ctx.match[1];
     const userId = ctx.from.id;
@@ -279,6 +329,8 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('family_active_invitations', errorHandler((ctx) => callbackHandlers.handleFamilyActiveInvitations(ctx)));
   bot.action('family_members', errorHandler((ctx) => callbackHandlers.handleFamilyMembers(ctx)));
   bot.action('family_stats', errorHandler((ctx) => callbackHandlers.handleFamilyStats(ctx)));
+  bot.action('family_daily_history', errorHandler((ctx) => callbackHandlers.handleFamilyDailyHistory(ctx)));
+  bot.action('family_export', errorHandler((ctx) => callbackHandlers.handleFamilyExport(ctx)));
   bot.action('family_add_expense', errorHandler((ctx) => callbackHandlers.handleFamilyAddExpense(ctx)));
   bot.action('family_delete', errorHandler((ctx) => callbackHandlers.handleFamilyDelete(ctx)));
   bot.action('family_delete_confirm', errorHandler((ctx) => callbackHandlers.handleFamilyDeleteConfirm(ctx)));

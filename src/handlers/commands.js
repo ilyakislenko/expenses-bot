@@ -367,6 +367,8 @@ class CommandHandlers {
           const inviteText = this.localizationService.getText(userLanguage, 'invite_member');
           const activeInvitationsText = this.localizationService.getText(userLanguage, 'active_invitations');
           const statsText = this.localizationService.getText(userLanguage, 'family_stats');
+          const dailyStatsText = this.localizationService.getText(userLanguage, 'family_daily_stats');
+          const exportText = this.localizationService.getText(userLanguage, 'family_export');
           const addExpenseText = this.localizationService.getText(userLanguage, 'family_add_expense');
           const deleteText = this.localizationService.getText(userLanguage, 'delete_family');
           
@@ -375,17 +377,23 @@ class CommandHandlers {
             [{ text: inviteText, callback_data: 'family_invite' }],
             [{ text: activeInvitationsText, callback_data: 'family_active_invitations' }],
             [{ text: statsText, callback_data: 'family_stats' }],
+            [{ text: dailyStatsText, callback_data: 'family_daily_history' }],
+            [{ text: exportText, callback_data: 'family_export' }],
             [{ text: addExpenseText, callback_data: 'family_add_expense' }],
             [{ text: deleteText, callback_data: 'family_delete' }]
           ];
         } else {
           // Обычный член семьи
           const statsText = this.localizationService.getText(userLanguage, 'family_stats');
+          const dailyStatsText = this.localizationService.getText(userLanguage, 'family_daily_stats');
+          const exportText = this.localizationService.getText(userLanguage, 'family_export');
           const leaveText = this.localizationService.getText(userLanguage, 'leave_family');
           const addExpenseText = this.localizationService.getText(userLanguage, 'family_add_expense');
           
           keyboard = [
             [{ text: statsText, callback_data: 'family_stats' }],
+            [{ text: dailyStatsText, callback_data: 'family_daily_history' }],
+            [{ text: exportText, callback_data: 'family_export' }],
             [{ text: addExpenseText, callback_data: 'family_add_expense' }],
             [{ text: leaveText, callback_data: 'family_leave' }]
           ];
@@ -426,6 +434,7 @@ class CommandHandlers {
     try {
       const userId = ctx.from.id;
       const userLanguage = await this.userService.getUserLanguage(userId);
+      const userCurrency = await this.userService.getUserCurrency(userId);
       
       // Проверяем премиум статус
       const isPremium = await this.premiumService.isPremiumUser(userId);
@@ -449,27 +458,15 @@ class CommandHandlers {
       
       // Формируем сообщение
       const monthlyStatsText = this.localizationService.getText(userLanguage, 'family_monthly_stats');
-      const totalSpentText = this.localizationService.getText(userLanguage, 'family_total_spent', { 
-        amount: this.formatter.formatAmount(stats.total, 'RUB') 
-      });
       
-      let message = `${monthlyStatsText}\n\n${totalSpentText}`;
+      // Используем formatter для правильного отображения валют
+      const message = await this.formatter.formatStats(stats.total, stats.byCategory, userCurrency, 'месяц', this.localizationService, userLanguage);
       
-      // Добавляем статистику по категориям
-      if (stats.byCategory && stats.byCategory.length > 0) {
-        message += '\n\n📊 *По категориям:*\n';
-        stats.byCategory.forEach(category => {
-          const categoryName = this.formatter.translateCategoryName(category.name, this.localizationService, userLanguage);
-          const amount = this.formatter.formatAmount(category.total, 'RUB');
-          message += `• ${category.icon} ${categoryName}: ${amount}\n`;
-        });
-      } else {
-        const noExpensesText = this.localizationService.getText(userLanguage, 'family_no_expenses');
-        message += `\n\n${noExpensesText}`;
-      }
+      // Добавляем заголовок для семейной статистики
+      const familyStatsMessage = `${monthlyStatsText}\n\n${message}`;
       
       const backText = this.localizationService.getText(userLanguage, 'button_back');
-      await ctx.reply(message, {
+      await ctx.reply(familyStatsMessage, {
         parse_mode: 'Markdown',
         reply_markup: {
           inline_keyboard: [
@@ -479,6 +476,111 @@ class CommandHandlers {
       });
     } catch (error) {
       console.error('Error in familyStats command:', error);
+      const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
+      const errorText = this.localizationService.getText(userLanguage, 'error');
+      await ctx.reply(errorText);
+    }
+  }
+
+  async familyDailyHistory(ctx) {
+    try {
+      const userId = ctx.from.id;
+      const userLanguage = await this.userService.getUserLanguage(userId);
+      const userCurrency = await this.userService.getUserCurrency(userId);
+      
+      // Проверяем премиум статус
+      const isPremium = await this.premiumService.isPremiumUser(userId);
+      if (!isPremium) {
+        const premiumRequiredText = this.localizationService.getText(userLanguage, 'premium_required');
+        await ctx.reply(premiumRequiredText, { parse_mode: 'Markdown' });
+        return;
+      }
+      
+      // Получаем информацию о семье пользователя
+      const userFamily = await this.familyService.getUserFamily(userId);
+      if (!userFamily) {
+        const notFamilyMemberText = this.localizationService.getText(userLanguage, 'not_family_member');
+        await ctx.reply(notFamilyMemberText, { parse_mode: 'Markdown' });
+        return;
+      }
+      
+      // Получаем дневную статистику семьи
+      const userTimezone = await this.userService.getUserTimezone(userId);
+      const { total, expenses } = await this.familyService.getFamilyDailyStats(userFamily.id, userTimezone);
+      
+      // Формируем сообщение
+      const dailyStatsText = this.localizationService.getText(userLanguage, 'family_daily_stats');
+      const statsMessage = await this.formatter.formatStats(total, [], userCurrency, 'день', this.localizationService, userLanguage);
+      const expensesList = this.formatter.formatExpenseList(expenses, userTimezone, this.localizationService, userLanguage);
+      
+      const message = `${dailyStatsText}\n\n${statsMessage}\n${expensesList}`;
+      
+      const editText = this.localizationService.getText(userLanguage, 'button_edit');
+      const backText = this.localizationService.getText(userLanguage, 'button_back');
+      
+      await ctx.reply(message, { 
+        parse_mode: 'Markdown', 
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: editText, callback_data: 'edit_family_history' }, { text: backText, callback_data: 'family_menu' }]
+          ]
+        }
+      });
+    } catch (error) {
+      console.error('Error in familyDailyHistory command:', error);
+      const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
+      const errorText = this.localizationService.getText(userLanguage, 'error');
+      await ctx.reply(errorText);
+    }
+  }
+
+  async familyExport(ctx) {
+    try {
+      const userId = ctx.from.id;
+      const userLanguage = await this.userService.getUserLanguage(userId);
+      const userCurrency = await this.userService.getUserCurrency(userId);
+      
+      // Проверяем премиум статус
+      const isPremium = await this.premiumService.isPremiumUser(userId);
+      if (!isPremium) {
+        const premiumRequiredText = this.localizationService.getText(userLanguage, 'premium_required');
+        await ctx.reply(premiumRequiredText, { parse_mode: 'Markdown' });
+        return;
+      }
+      
+      // Получаем информацию о семье пользователя
+      const userFamily = await this.familyService.getUserFamily(userId);
+      if (!userFamily) {
+        const notFamilyMemberText = this.localizationService.getText(userLanguage, 'not_family_member');
+        await ctx.reply(notFamilyMemberText, { parse_mode: 'Markdown' });
+        return;
+      }
+      
+      // Получаем все траты семьи
+      const userTimezone = await this.userService.getUserTimezone(userId);
+      const expenses = await this.familyService.getAllFamilyExpenses(userFamily.id);
+      
+      if (expenses.length === 0) {
+        const noDataText = this.localizationService.getText(userLanguage, 'no_expenses_period');
+        return await ctx.reply(noDataText);
+      }
+      
+      // Формируем CSV
+      const csv = await this.formatter.formatCSV(expenses, userCurrency, userTimezone, this.localizationService, userLanguage);
+      const filename = `family_expenses_${userFamily.name}_${new Date().toISOString().split('T')[0]}.csv`;
+      
+      const exportSuccessText = this.localizationService.getText(userLanguage, 'export_success');
+      const recordsCountText = this.localizationService.getText(userLanguage, 'records_count', { count: expenses.length });
+      const caption = `${exportSuccessText}\n${recordsCountText}`;
+      
+      await ctx.replyWithDocument({
+        source: Buffer.from(csv, 'utf-8'),
+        filename
+      }, {
+        caption: caption
+      });
+    } catch (error) {
+      console.error('Error in familyExport command:', error);
       const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
       const errorText = this.localizationService.getText(userLanguage, 'error');
       await ctx.reply(errorText);

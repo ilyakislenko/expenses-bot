@@ -372,8 +372,8 @@ class FamilyService {
 
   async getFamilyStats(familyId, period = 'month', userTimezone = 'UTC') {
     try {
-      const total = await this.familyRepository.getFamilyTotalExpenses(familyId, period, userTimezone);
-      const byCategory = await this.familyRepository.getFamilyExpensesByCategory(familyId, period, userTimezone);
+      const total = await this.expenseRepository.getFamilyTotalExpenses(familyId, period, userTimezone);
+      const byCategory = await this.expenseRepository.getFamilyExpensesByCategory(familyId, period, userTimezone);
       const expenses = await this.familyRepository.getFamilyExpenses(familyId, 50);
 
       logger.debug('Family service: family stats retrieved', {
@@ -397,8 +397,8 @@ class FamilyService {
 
   async getFamilyDailyStats(familyId, userTimezone = 'UTC') {
     try {
-      const expenses = await this.familyRepository.getFamilyDailyExpenses(familyId, userTimezone);
-      const total = await this.familyRepository.getFamilyTotalExpenses(familyId, 'day', userTimezone);
+      const expenses = await this.expenseRepository.getFamilyDailyExpenses(familyId, userTimezone);
+      const total = await this.expenseRepository.getFamilyTotalExpenses(familyId, 'day', userTimezone);
 
       logger.debug('Family service: family daily stats retrieved', {
         familyId,
@@ -428,6 +428,25 @@ class FamilyService {
       return invitations;
     } catch (error) {
       logger.error('Family service: failed to get active invitations', {
+        familyId,
+        error: error.message
+      });
+      throw error;
+    }
+  }
+
+  async getAllFamilyExpenses(familyId, limit = 1000) {
+    try {
+      const expenses = await this.expenseRepository.getFamilyExpenses(familyId, limit);
+      
+      logger.debug('Family service: all family expenses retrieved', {
+        familyId,
+        expensesCount: expenses.length
+      });
+      
+      return expenses;
+    } catch (error) {
+      logger.error('Family service: failed to get all family expenses', {
         familyId,
         error: error.message
       });
