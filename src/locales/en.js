@@ -141,6 +141,7 @@ Now all your expenses will be correctly displayed in your local time.`,
   button_expenses_month: '💰 Monthly Expenses',
   button_expenses_day: '💰 Daily Expenses',
   button_expenses_categories: '💰 Expenses by Category',
+  button_family: '👨‍👩‍👧‍👦 Family',
   button_settings: '⚙️ Settings',
   button_delete_last: '🗑️ Delete Last Entry',
   button_limits: '📊 Limits',
@@ -213,5 +214,94 @@ Now all your expenses will be correctly displayed in your local time.`,
   category_entertainment: 'Entertainment',
   category_shopping: 'Shopping',
   category_health: 'Health',
-  category_other: 'Other'
+  category_other: 'Other',
+  
+  // Family Budget
+  family_info: '👨‍👩‍👧‍👦 *Family Budget*\n\nHere you can manage family expenses together with your loved ones.',
+  family_created: '✅ Family "{name}" created! Now you can invite members.',
+  family_joined: '✅ You joined family "{name}"!',
+  family_left: '✅ You left family "{name}".',
+  family_deleted: '✅ Family "{name}" deleted. All family expenses became personal.',
+  family_member_removed: '✅ Member removed from family.',
+  family_member_removed_notification: '❌ You were removed from family "{name}".',
+  family_cannot_leave_owner: '❌ Family owner cannot leave family. Use "Delete Family" instead.',
+  
+  // Family menu buttons
+  create_family: '🏠 Create Family',
+  join_family: '🔗 Join Family',
+  invite_member: '➕ Invite Member',
+  leave_family: '🚪 Leave Family',
+  delete_family: '🗑️ Delete Family',
+  family_members: '👥 Family Members',
+  family_stats: '📊 Family Statistics',
+  family_daily_stats: '📈 Daily Expenses',
+  family_add_expense: '💰 Add Family Expense',
+  family_menu: '👨‍👩‍👧‍👦 Family Menu',
+  family_cancel: '❌ Cancel',
+  
+  // Invitations
+  invitation_sent: '✅ Invitation sent to user @{username}',
+  invitation_accepted: '✅ You accepted invitation to family "{name}"!',
+  invitation_rejected: '❌ You rejected invitation to family "{name}".',
+  invitation_not_found: '❌ Invitation not found or expired.',
+  invitation_expired: '❌ Invitation expired.',
+  invitation_already_processed: '❌ Invitation already processed.',
+  
+  // Input messages
+  enter_family_name: 'Enter family name (3-50 characters):',
+  enter_invite_username: 'Enter username (without @):',
+  enter_expense_amount: 'Enter amount and description for family expense:',
+  
+  // Errors
+  family_name_too_short: '❌ Family name must be at least 3 characters.',
+  family_name_too_long: '❌ Family name must not exceed 50 characters.',
+  user_not_found: '❌ User not found.',
+  user_already_in_family: '❌ User is already in a family.',
+  user_already_has_invitation: '❌ User already has an active invitation.',
+  only_owner_can_invite: '❌ Only family owner can invite members.',
+  active_invitations: '📋 Active Invitations',
+  no_active_invitations: '📋 You have no active invitations.',
+  active_invitations_list: '📋 Active Invitations:',
+  cancel_invitation: '❌ Cancel Invitation',
+  invitation_cancelled: '✅ Invitation cancelled.',
+  invitation_not_found: '❌ Invitation not found.',
+  not_authorized: '❌ You are not authorized to perform this action.',
+  invitation_code: '🔑 Invitation code: `{code}`',
+  family_invitation_received: '🎉 You are invited to family *{familyName}*\n\n👤 Invited by: {inviterName}\n🔑 Code: `{inviteCode}`\n\nChoose action:',
+  accept_invitation: '✅ Accept',
+  reject_invitation: '❌ Reject',
+  invitation_accepted: '🎉 Congratulations! You joined family *{familyName}*',
+  invitation_rejected: '❌ You rejected the family invitation',
+  invitation_not_pending: '❌ Invitation is not pending',
+  invitation_expired: '❌ Invitation has expired',
+  invitation_cancelled_notification: '❌ Invitation to family *{familyName}* was cancelled by {cancelledBy}',
+  enter_invite_code: '🔑 Enter invitation code:',
+  only_owner_can_remove: '❌ Only family owner can remove members.',
+  only_owner_can_delete: '❌ Only family owner can delete family.',
+  cannot_remove_owner: '❌ Cannot remove family owner.',
+  cannot_remove_yourself: '❌ Cannot remove yourself.',
+  family_not_found: '❌ Family not found.',
+  not_family_member: '❌ You are not a family member.',
+  not_family_owner: '❌ You are not a family owner.',
+  
+  // Confirmations
+  confirm_delete_family: '⚠️ *Delete Family*\n\nAll members will be removed and family expenses will become personal.\n\nAre you sure?',
+  confirm_remove_member: '⚠️ *Remove Member*\n\nMember will be removed from family.\n\nAre you sure?',
+  
+  // Family statistics
+  family_monthly_stats: '👨‍👩‍👧‍👦 *Family Expenses for Month*',
+  family_daily_stats_title: '👨‍👩‍👧‍👦 *Family Expenses for Day*',
+  family_total_spent: 'Spent: *{amount}*',
+  family_members_count: 'Members: {count}',
+  family_no_expenses: 'No family expenses for this period.',
+  
+  // Member list
+  family_members_title: '👥 *Family Members*',
+  family_member_info: '• {name} ({role}) - joined {date}',
+  family_owner_role: 'owner',
+  family_member_role: 'member',
+  
+  // Premium features
+  premium_required: '❌ This feature is only available for premium users.',
+  upgrade_to_premium: '💎 Upgrade to premium for access to family budget!'
 }; 
