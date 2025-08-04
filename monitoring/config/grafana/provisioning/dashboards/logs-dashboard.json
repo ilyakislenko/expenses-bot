@@ -1,28 +1,26 @@
 {
   "dashboard": {
     "id": null,
-    "title": "Logs Dashboard",
-    "tags": ["logs", "monitoring"],
+    "title": "Expenses Bot Logs",
+    "tags": ["expenses-bot", "logs", "telegram"],
     "style": "dark",
     "timezone": "browser",
     "panels": [
       {
         "id": 1,
-        "title": "Log Volume by Level",
-        "type": "stat",
+        "title": "Telegram Commands & Callbacks",
+        "type": "logs",
         "targets": [
           {
-            "expr": "sum(rate({job=\"expenses-bot\"}[5m])) by (level)",
+            "expr": "{job=\"expenses-bot\"} |= \"Telegram request received\"",
             "refId": "A"
           }
         ],
         "fieldConfig": {
           "defaults": {
-            "color": {
-              "mode": "palette-classic"
-            },
             "custom": {
-              "displayMode": "list"
+              "lineWidth": 1,
+              "fillOpacity": 10
             }
           }
         },
@@ -31,29 +29,33 @@
           "w": 12,
           "x": 0,
           "y": 0
+        },
+        "options": {
+          "showTime": true,
+          "showLabels": true,
+          "showCommonLabels": false,
+          "wrapLogMessage": true,
+          "prettifyLogMessage": false,
+          "enableLogDetails": true,
+          "sortOrder": "Descending",
+          "dedupStrategy": "none"
         }
       },
       {
         "id": 2,
-        "title": "Error Rate",
-        "type": "stat",
+        "title": "User Commands (/start, /menu, etc.)",
+        "type": "logs",
         "targets": [
           {
-            "expr": "sum(rate({job=\"expenses-bot\", level=\"error\"}[5m]))",
+            "expr": "{job=\"expenses-bot\"} |= \"updateType\":\"message\"",
             "refId": "A"
           }
         ],
         "fieldConfig": {
           "defaults": {
-            "color": {
-              "mode": "thresholds"
-            },
-            "thresholds": {
-              "steps": [
-                {"color": "green", "value": null},
-                {"color": "yellow", "value": 0.1},
-                {"color": "red", "value": 1}
-              ]
+            "custom": {
+              "lineWidth": 1,
+              "fillOpacity": 10
             }
           }
         },
@@ -62,28 +64,39 @@
           "w": 12,
           "x": 12,
           "y": 0
+        },
+        "options": {
+          "showTime": true,
+          "showLabels": true,
+          "showCommonLabels": false,
+          "wrapLogMessage": true,
+          "prettifyLogMessage": false,
+          "enableLogDetails": true,
+          "sortOrder": "Descending",
+          "dedupStrategy": "none"
         }
       },
       {
         "id": 3,
-        "title": "Application Logs",
+        "title": "Bot Responses & Actions",
         "type": "logs",
         "targets": [
           {
-            "expr": "{job=\"expenses-bot\"}",
+            "expr": "{job=\"expenses-bot\"} |= \"Telegram request completed\"",
             "refId": "A"
           }
         ],
         "fieldConfig": {
           "defaults": {
-            "color": {
-              "mode": "palette-classic"
+            "custom": {
+              "lineWidth": 1,
+              "fillOpacity": 10
             }
           }
         },
         "gridPos": {
-          "h": 12,
-          "w": 24,
+          "h": 8,
+          "w": 12,
           "x": 0,
           "y": 8
         },
@@ -100,26 +113,27 @@
       },
       {
         "id": 4,
-        "title": "Error Logs",
+        "title": "Database Operations",
         "type": "logs",
         "targets": [
           {
-            "expr": "{job=\"expenses-bot\", level=\"error\"}",
+            "expr": "{job=\"expenses-bot\"} |= \"Database query\"",
             "refId": "A"
           }
         ],
         "fieldConfig": {
           "defaults": {
-            "color": {
-              "mode": "palette-classic"
+            "custom": {
+              "lineWidth": 1,
+              "fillOpacity": 10
             }
           }
         },
         "gridPos": {
-          "h": 12,
-          "w": 24,
-          "x": 0,
-          "y": 20
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
         },
         "options": {
           "showTime": true,
@@ -131,12 +145,131 @@
           "sortOrder": "Descending",
           "dedupStrategy": "none"
         }
+      },
+      {
+        "id": 5,
+        "title": "Errors & Warnings",
+        "type": "logs",
+        "targets": [
+          {
+            "expr": "{job=\"expenses-bot\"} |= \"ERROR\" or |= \"WARN\"",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "lineWidth": 1,
+              "fillOpacity": 10
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 16
+        },
+        "options": {
+          "showTime": true,
+          "showLabels": true,
+          "showCommonLabels": false,
+          "wrapLogMessage": true,
+          "prettifyLogMessage": false,
+          "enableLogDetails": true,
+          "sortOrder": "Descending",
+          "dedupStrategy": "none"
+        }
+      },
+      {
+        "id": 6,
+        "title": "User Activity by Username",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "count_over_time({job=\"expenses-bot\"} |= \"Telegram request received\" [1h]) by (username)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "displayMode": "list"
+            }
+          }
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 12,
+          "x": 0,
+          "y": 24
+        }
+      },
+      {
+        "id": 7,
+        "title": "Commands Frequency (Last Hour)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "count_over_time({job=\"expenses-bot\"} |= \"updateType\":\"message\" [1h])",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "displayMode": "stat"
+            }
+          }
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 24
+        }
+      },
+      {
+        "id": 8,
+        "title": "Callbacks Frequency (Last Hour)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "count_over_time({job=\"expenses-bot\"} |= \"updateType\":\"callback_query\" [1h])",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "displayMode": "stat"
+            }
+          }
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 18,
+          "y": 24
+        }
       }
     ],
     "time": {
       "from": "now-1h",
       "to": "now"
     },
-    "refresh": "30s"
+    "refresh": "10s"
   }
 } 
