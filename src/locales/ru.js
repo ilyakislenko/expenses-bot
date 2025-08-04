@@ -107,7 +107,7 @@ module.exports = {
   family_left: '✅ Вы покинули семью "{name}".',
   family_deleted: '✅ Семья "{name}" удалена. Все семейные траты стали личными.',
   family_member_removed: '✅ Участник удален из семьи.',
-  family_member_removed_notification: '❌ Вас удалили из семьи "{name}".',
+  family_member_removed_notification: '❌ Вас удалили из семьи *{familyName}*.',
   family_cannot_leave_owner: '❌ Владелец семьи не может покинуть семью. Используйте "Удалить семью".',
   
   // Кнопки семейного меню
@@ -186,6 +186,10 @@ module.exports = {
   family_member_info: '• {name} ({role}) - присоединился {date}',
   family_owner_role: 'владелец',
   family_member_role: 'участник',
+  remove_member: '❌ Исключить',
+  confirm_remove_member: '⚠️ *Исключение участника*\n\nВы уверены, что хотите исключить {name} из семьи?',
+  member_removed: '✅ Участник {name} исключен из семьи.',
+  member_removed_notification: '❌ Вы были исключены из семьи *{familyName}* владельцем {ownerName}.',
   
   // Премиум функции
   premium_required: '❌ Эта функция доступна только для премиум пользователей.',

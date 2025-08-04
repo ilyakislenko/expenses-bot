@@ -223,7 +223,7 @@ Now all your expenses will be correctly displayed in your local time.`,
   family_left: '✅ You left family "{name}".',
   family_deleted: '✅ Family "{name}" deleted. All family expenses became personal.',
   family_member_removed: '✅ Member removed from family.',
-  family_member_removed_notification: '❌ You were removed from family "{name}".',
+  family_member_removed_notification: '❌ You were removed from family *{familyName}*.',
   family_cannot_leave_owner: '❌ Family owner cannot leave family. Use "Delete Family" instead.',
   
   // Family menu buttons
@@ -302,6 +302,10 @@ Now all your expenses will be correctly displayed in your local time.`,
   family_member_info: '• {name} ({role}) - joined {date}',
   family_owner_role: 'owner',
   family_member_role: 'member',
+  remove_member: '❌ Remove',
+  confirm_remove_member: '⚠️ *Remove Member*\n\nAre you sure you want to remove {name} from the family?',
+  member_removed: '✅ Member {name} has been removed from the family.',
+  member_removed_notification: '❌ You have been removed from family *{familyName}* by {ownerName}.',
   
   // Premium features
   premium_required: '❌ This feature is only available for premium users.',

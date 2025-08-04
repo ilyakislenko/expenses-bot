@@ -506,6 +506,7 @@ class CallbackHandlers {
       const backText = this.localizationService.getText(userLanguage, 'button_back');
       
       let message = `${membersTitleText}\n\n`;
+      let keyboard = [];
       
       if (members && members.length > 0) {
         members.forEach(member => {
@@ -516,18 +517,27 @@ class CallbackHandlers {
           const date = new Date(member.joined_at_utc).toLocaleDateString('ru-RU');
           
           message += `• ${name} (${role}) - присоединился ${date}\n`;
+          
+          // Добавляем кнопку исключения только для участников (не для владельца)
+          if (member.role !== 'owner') {
+            const removeText = this.localizationService.getText(userLanguage, 'remove_member');
+            keyboard.push([{ 
+              text: `${removeText} ${name}`, 
+              callback_data: `remove_member|${member.id}` 
+            }]);
+          }
         });
       } else {
         message += 'Нет участников';
       }
       
+      // Добавляем кнопку "Назад"
+      keyboard.push([{ text: backText, callback_data: 'family_menu' }]);
+      
       await ctx.answerCbQuery();
       await ctx.editMessageText(message, {
-        parse_mode: 'Markdown',
         reply_markup: {
-          inline_keyboard: [
-            [{ text: backText, callback_data: 'family_menu' }]
-          ]
+          inline_keyboard: keyboard
         }
       });
     } catch (error) {
@@ -568,6 +578,121 @@ class CallbackHandlers {
       await this.commandHandlers.familyExport(ctx);
     } catch (error) {
       console.error('Error handling family export:', error);
+      const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
+      const errorText = this.localizationService.getText(userLanguage, 'error');
+      await ctx.answerCbQuery(errorText);
+    }
+  }
+
+  async handleRemoveMember(ctx) {
+    try {
+      const userId = ctx.from.id;
+      const userLanguage = await this.userService.getUserLanguage(userId);
+      const memberId = ctx.callbackQuery.data.split('|')[1];
+      
+      // Проверяем премиум статус
+      const isPremium = await this.premiumService.isPremiumUser(userId);
+      if (!isPremium) {
+        const premiumRequiredText = this.localizationService.getText(userLanguage, 'premium_required');
+        await ctx.answerCbQuery(premiumRequiredText);
+        return;
+      }
+      
+      // Получаем информацию о семье пользователя
+      const userFamily = await this.familyService.getUserFamily(userId);
+      if (!userFamily) {
+        const notFamilyMemberText = this.localizationService.getText(userLanguage, 'not_family_member');
+        await ctx.answerCbQuery(notFamilyMemberText);
+        return;
+      }
+      
+      // Проверяем, является ли пользователь владельцем
+      if (userFamily.owner_id !== userId) {
+        const notFamilyOwnerText = this.localizationService.getText(userLanguage, 'not_family_owner');
+        await ctx.answerCbQuery(notFamilyOwnerText);
+        return;
+      }
+      
+      // Получаем информацию об удаляемом участнике
+      const memberInfo = await this.userService.getUserById(memberId);
+      const memberName = memberInfo.username || memberInfo.first_name || 'Unknown';
+      
+      // Показываем подтверждение
+      const confirmText = this.localizationService.getText(userLanguage, 'confirm_remove_member', { name: memberName });
+      const confirmButtonText = this.localizationService.getText(userLanguage, 'confirm');
+      const cancelText = this.localizationService.getText(userLanguage, 'family_cancel');
+      
+      await ctx.answerCbQuery();
+      await ctx.editMessageText(confirmText, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: confirmButtonText, callback_data: `confirm_remove_member|${memberId}` },
+              { text: cancelText, callback_data: 'family_members' }
+            ]
+          ]
+        }
+      });
+    } catch (error) {
+      console.error('Error handling remove member:', error);
+      const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
+      const errorText = this.localizationService.getText(userLanguage, 'error');
+      await ctx.answerCbQuery(errorText);
+    }
+  }
+
+  async handleConfirmRemoveMember(ctx) {
+    try {
+      const userId = ctx.from.id;
+      const userLanguage = await this.userService.getUserLanguage(userId);
+      const memberId = ctx.callbackQuery.data.split('|')[1];
+      
+      // Проверяем премиум статус
+      const isPremium = await this.premiumService.isPremiumUser(userId);
+      if (!isPremium) {
+        const premiumRequiredText = this.localizationService.getText(userLanguage, 'premium_required');
+        await ctx.answerCbQuery(premiumRequiredText);
+        return;
+      }
+      
+      // Получаем информацию о семье пользователя
+      const userFamily = await this.familyService.getUserFamily(userId);
+      if (!userFamily) {
+        const notFamilyMemberText = this.localizationService.getText(userLanguage, 'not_family_member');
+        await ctx.answerCbQuery(notFamilyMemberText);
+        return;
+      }
+      
+      // Проверяем, является ли пользователь владельцем
+      if (userFamily.owner_id !== userId) {
+        const notFamilyOwnerText = this.localizationService.getText(userLanguage, 'not_family_owner');
+        await ctx.answerCbQuery(notFamilyOwnerText);
+        return;
+      }
+      
+      // Исключаем участника
+      const result = await this.familyService.removeMemberFromFamily(userId, memberId);
+      
+      // Получаем информацию об удаленном участнике для сообщения
+      const memberInfo = await this.userService.getUserById(memberId);
+      const memberName = memberInfo.username || memberInfo.first_name || 'Unknown';
+      
+      // Показываем сообщение об успехе
+      const successText = this.localizationService.getText(userLanguage, 'member_removed', { name: memberName });
+      const backText = this.localizationService.getText(userLanguage, 'button_back');
+      
+      await ctx.answerCbQuery();
+      await ctx.editMessageText(successText, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: backText, callback_data: 'family_members' }]
+          ]
+        }
+      });
+    } catch (error) {
+      console.error('Error handling confirm remove member:', error);
       const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
       const errorText = this.localizationService.getText(userLanguage, 'error');
       await ctx.answerCbQuery(errorText);

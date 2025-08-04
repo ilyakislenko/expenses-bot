@@ -98,6 +98,10 @@ class UserService {
     return this.categoryRepository.deleteUserCategory(userId, categoryId);
   }
 
+  async getUserById(userId) {
+    return this.userRepository.getUserById(userId);
+  }
+
   async updateUserCategory(userId, categoryId, data) {
     const isPremium = await this.getUserPremium(userId);
     if (!isPremium) {
