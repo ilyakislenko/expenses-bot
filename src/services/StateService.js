@@ -2,6 +2,7 @@ class StateService {
   constructor() {
     this.userEditState = new Map();
     this.pendingExpenses = new Map();
+    this.userStates = new Map(); // Для семейных состояний
   }
 
   // User Edit State methods
@@ -38,18 +39,35 @@ class StateService {
     return this.pendingExpenses.delete(userId);
   }
 
+  // User States methods (для семейных состояний)
+  setUserState(userId, state) {
+    this.userStates.set(userId, state);
+  }
 
+  getUserState(userId) {
+    return this.userStates.get(userId);
+  }
+
+  hasUserState(userId) {
+    return this.userStates.has(userId);
+  }
+
+  deleteUserState(userId) {
+    return this.userStates.delete(userId);
+  }
 
   // Utility methods
   clearUserState(userId) {
     this.deleteUserEditState(userId);
     this.deletePendingExpense(userId);
+    this.deleteUserState(userId);
   }
 
   // For testing purposes
   clearAll() {
     this.userEditState.clear();
     this.pendingExpenses.clear();
+    this.userStates.clear();
   }
 }
 

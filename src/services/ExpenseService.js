@@ -24,7 +24,7 @@ class ExpenseService {
     return { total, expenses, userCurrency };
   }
 
-  async addExpense(userId, amount, description, categoryName) {
+  async addExpense(userId, amount, description, categoryName, familyId = null) {
     try {
       const userCurrency = await this.userRepository.getUserCurrency(userId);
       const userTimezone = await this.userRepository.getUserTimezone(userId);
@@ -33,14 +33,24 @@ class ExpenseService {
       const category = await this.categoryRepository.getOrCreateCategory(userId, categoryName);
       if (!category) {
         // Если категория не найдена, используем "Другое"
-        const defaultCategory = await this.categoryRepository.getCategoryByName(0, 'Other');
+        let defaultCategory = await this.categoryRepository.getCategoryByName(0, 'Другое');
+        if (!defaultCategory) {
+          // Если "Другое" не найдена, берем первую доступную категорию
+          const categories = await this.categoryRepository.getCategories(0);
+          if (categories.length === 0) {
+            throw new Error('No categories available');
+          }
+          defaultCategory = categories[0];
+        }
+        
         const expense = await this.expenseRepository.addExpense(
           userId, 
           amount, 
           description, 
           defaultCategory.id, 
           userCurrency,
-          userTimezone
+          userTimezone,
+          familyId
         );
         
         // Обновляем метрики
@@ -51,8 +61,9 @@ class ExpenseService {
           userId,
           amount,
           currency: userCurrency,
-          category: 'Other',
-          expenseId: expense.id
+          category: defaultCategory.name,
+          expenseId: expense.id,
+          familyId
         });
         
         return expense;
@@ -64,7 +75,8 @@ class ExpenseService {
         description, 
         category.id, 
         userCurrency,
-        userTimezone
+        userTimezone,
+        familyId
       );
       
       // Обновляем метрики
@@ -76,7 +88,8 @@ class ExpenseService {
         amount,
         currency: userCurrency,
         category: category.name,
-        expenseId: expense.id
+        expenseId: expense.id,
+        familyId
       });
       
       return expense;
@@ -86,6 +99,7 @@ class ExpenseService {
         amount,
         description,
         categoryName,
+        familyId,
         error: error.message
       });
       throw error;
@@ -159,6 +173,30 @@ class ExpenseService {
 
   async deleteExpenseById(userId, expenseId) {
     return this.expenseRepository.deleteExpenseById(userId, expenseId);
+  }
+
+  async addFamilyExpense(userId, amount, description, categoryName, familyId) {
+    return this.addExpense(userId, amount, description, categoryName, familyId);
+  }
+
+  async getFamilyMonthlyStats(familyId, userTimezone = 'UTC') {
+    const total = await this.expenseRepository.getFamilyTotalExpenses(familyId, 'month', userTimezone);
+    const byCategory = await this.expenseRepository.getFamilyExpensesByCategory(familyId, 'month', userTimezone);
+    return { total, byCategory };
+  }
+
+  async getFamilyDailyStats(familyId, userTimezone = 'UTC') {
+    const expenses = await this.expenseRepository.getFamilyDailyExpenses(familyId, userTimezone);
+    const total = await this.expenseRepository.getFamilyTotalExpenses(familyId, 'day', userTimezone);
+    return { total, expenses };
+  }
+
+  async getFamilyExpenses(familyId, limit = 50) {
+    return this.expenseRepository.getFamilyExpenses(familyId, limit);
+  }
+
+  async getUserAndFamilyExpenses(userId, limit = 10) {
+    return this.expenseRepository.getUserAndFamilyExpenses(userId, limit);
   }
 }
 

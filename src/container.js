@@ -28,12 +28,16 @@ const UserRepository = require('./repositories/UserRepository');
 const ExpenseRepository = require('./repositories/ExpenseRepository');
 const CategoryRepository = require('./repositories/CategoryRepository');
 const CurrencyRepository = require('./repositories/CurrencyRepository');
+const FamilyRepository = require('./repositories/FamilyRepository');
+const FamilyInvitationRepository = require('./repositories/FamilyInvitationRepository');
 
 // Services
 const ExpenseService = require('./services/ExpenseService');
 const UserService = require('./services/UserService');
 const PremiumService = require('./services/PremiumService');
 const LocalizationService = require('./services/LocalizationService');
+const FamilyService = require('./services/FamilyService');
+const NotificationService = require('./services/NotificationService');
 
 // Handlers
 const CommandHandlers = require('./handlers/commands');
@@ -78,6 +82,12 @@ class Container {
 
       case 'currencyRepository':
         return new CurrencyRepository();
+
+      case 'familyRepository':
+        return new FamilyRepository();
+
+      case 'familyInvitationRepository':
+        return new FamilyInvitationRepository();
 
       case 'currencyUtils':
         return createCurrencyUtils(this.get('currencyRepository'));
@@ -128,11 +138,26 @@ class Container {
       case 'localizationService':
         return new LocalizationService();
 
+      case 'notificationService':
+        return new NotificationService(
+          this.get('localizationService')
+        );
+
+      case 'familyService':
+        return new FamilyService(
+          this.get('familyRepository'),
+          this.get('familyInvitationRepository'),
+          this.get('userRepository'),
+          this.get('expenseRepository'),
+          this.get('notificationService')
+        );
+
       case 'commandHandlers':
         return new CommandHandlers({
           expenseService: this.get('expenseService'),
           userService: this.get('userService'),
           premiumService: this.get('premiumService'),
+          familyService: this.get('familyService'),
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
           stateService: this.get('stateService'),
@@ -144,6 +169,7 @@ class Container {
           expenseService: this.get('expenseService'),
           userService: this.get('userService'),
           premiumService: this.get('premiumService'),
+          familyService: this.get('familyService'),
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
           commandHandlers: this.get('commandHandlers'),
@@ -155,6 +181,7 @@ class Container {
         return new CallbackHandlers({
           expenseService: this.get('expenseService'),
           premiumService: this.get('premiumService'),
+          familyService: this.get('familyService'),
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
           stateService: this.get('stateService'),
@@ -164,7 +191,13 @@ class Container {
         });
 
       case 'bot':
-        return new Telegraf(process.env.BOT_TOKEN);
+        const bot = new Telegraf(process.env.BOT_TOKEN);
+        // Устанавливаем бота в NotificationService после его создания
+        const notificationService = this.get('notificationService');
+        if (notificationService) {
+          notificationService.setBot(bot);
+        }
+        return bot;
 
       case 'cron':
         return cron;
@@ -200,6 +233,7 @@ class Container {
       expenseService: this.get('expenseService'),
       userService: this.get('userService'),
       premiumService: this.get('premiumService'),
+      familyService: this.get('familyService'),
       localizationService: this.get('localizationService'),
       currencyUtils: this.get('currencyUtils'),
       formatter: this.get('formatter'),

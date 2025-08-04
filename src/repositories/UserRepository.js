@@ -71,6 +71,12 @@ class UserRepository extends BaseRepository {
     const query = 'UPDATE users SET language = $1 WHERE id = $2';
     await this.query(query, [language, userId]);
   }
+
+  async getUserByUsername(username) {
+    const query = 'SELECT * FROM users WHERE username = $1';
+    const result = await this.query(query, [username]);
+    return result.rows[0];
+  }
 }
 
 module.exports = UserRepository; 

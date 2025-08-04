@@ -14,6 +14,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.command('timezone', errorHandler((ctx) => commandHandlers.timezone(ctx))); // настройка часового пояса
   bot.command('settings', errorHandler((ctx) => commandHandlers.settings(ctx))); // настройки пользователя
   bot.command('limits', errorHandler((ctx) => commandHandlers.limits(ctx))); // лимиты и премиум функции
+  bot.command('family', errorHandler((ctx) => commandHandlers.family(ctx))); // управление семейными группами
   bot.command('menu', errorHandler((ctx) => commandHandlers.mainMenu(ctx))); // главное меню
   bot.command('cancel', async (ctx) => {
     if (userEditState.has(ctx.from.id)) {
@@ -62,6 +63,10 @@ module.exports = function registerBotRoutes(bot, handlers) {
     await ctx.answerCbQuery();
     await commandHandlers.limits(ctx);
   })); // лимиты и премиум функции
+  bot.action('family', errorHandler(async (ctx) => {
+    await ctx.answerCbQuery();
+    await commandHandlers.family(ctx);
+  })); // управление семейными группами
   bot.action(/^set_currency\|/, async (ctx) => {
     const userId = ctx.from.id;
     const userLanguage = await handlers.userService.getUserLanguage(userId);
@@ -263,6 +268,28 @@ module.exports = function registerBotRoutes(bot, handlers) {
       }
     });
   }); // режим редактирования расходов по категории
+
+  // ========================================
+  // FAMILY CALLBACK HANDLERS
+  // ========================================
+  
+  bot.action('family_create', errorHandler((ctx) => callbackHandlers.handleFamilyCreate(ctx)));
+  bot.action('family_join', errorHandler((ctx) => callbackHandlers.handleFamilyJoin(ctx)));
+  bot.action('family_invite', errorHandler((ctx) => callbackHandlers.handleFamilyInvite(ctx)));
+  bot.action('family_active_invitations', errorHandler((ctx) => callbackHandlers.handleFamilyActiveInvitations(ctx)));
+  bot.action('family_members', errorHandler((ctx) => callbackHandlers.handleFamilyMembers(ctx)));
+  bot.action('family_stats', errorHandler((ctx) => callbackHandlers.handleFamilyStats(ctx)));
+  bot.action('family_add_expense', errorHandler((ctx) => callbackHandlers.handleFamilyAddExpense(ctx)));
+  bot.action('family_delete', errorHandler((ctx) => callbackHandlers.handleFamilyDelete(ctx)));
+  bot.action('family_delete_confirm', errorHandler((ctx) => callbackHandlers.handleFamilyDeleteConfirm(ctx)));
+  bot.action('family_leave', errorHandler((ctx) => callbackHandlers.handleFamilyLeave(ctx)));
+  bot.action('family_cancel', errorHandler((ctx) => callbackHandlers.handleFamilyCancel(ctx)));
+  bot.action('family_menu', errorHandler((ctx) => callbackHandlers.handleFamilyMenu(ctx)));
+  
+  // Обработчики для приглашений (с параметрами)
+  bot.action(/^accept_invitation\|(.+)$/, errorHandler((ctx) => callbackHandlers.handleAcceptInvitation(ctx)));
+  bot.action(/^reject_invitation\|(.+)$/, errorHandler((ctx) => callbackHandlers.handleRejectInvitation(ctx)));
+  bot.action(/^cancel_invitation\|(.+)$/, errorHandler((ctx) => callbackHandlers.handleCancelInvitation(ctx)));
 
   // Глобальный обработчик ошибок
   bot.catch((error, ctx) => {

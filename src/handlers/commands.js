@@ -1,10 +1,11 @@
 const { MAIN_MENU_KEYBOARD, CURRENCY_KEYBOARD, SETTINGS_KEYBOARD } = require('../utils/constants');
 
 class CommandHandlers {
-  constructor({ expenseService, userService, premiumService, localizationService, formatter, stateService, keyboardGenerators }) {
+  constructor({ expenseService, userService, premiumService, familyService, localizationService, formatter, stateService, keyboardGenerators }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
+    this.familyService = familyService;
     this.localizationService = localizationService;
     this.formatter = formatter;
     this.stateService = stateService;
@@ -315,6 +316,170 @@ class CommandHandlers {
       await ctx.reply(message, { parse_mode: 'Markdown' });
     } catch (error) {
       console.error('Error in limits command:', error);
+      const errorText = this.localizationService.getText(userLanguage, 'error');
+      await ctx.reply(errorText);
+    }
+  }
+
+  async family(ctx) {
+    try {
+      const userId = ctx.from.id;
+      const userLanguage = await this.userService.getUserLanguage(userId);
+      
+      // Проверяем премиум статус пользователя
+      const isPremium = await this.premiumService.isPremiumUser(userId);
+      if (!isPremium) {
+        const premiumRequiredText = this.localizationService.getText(userLanguage, 'premium_required');
+        const upgradeText = this.localizationService.getText(userLanguage, 'upgrade_to_premium');
+        const message = `${premiumRequiredText}\n\n${upgradeText}`;
+        
+        const backText = this.localizationService.getText(userLanguage, 'button_back');
+        await ctx.reply(message, {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: backText, callback_data: 'back_to_menu' }]
+            ]
+          }
+        });
+        return;
+      }
+      
+      // Получаем информацию о семье пользователя
+      const userFamily = await this.familyService.getUserFamily(userId);
+      
+      // Формируем сообщение в зависимости от статуса пользователя
+      let message;
+      let keyboard = [];
+      
+      if (userFamily) {
+        // Пользователь уже в семье
+        const isOwner = userFamily.owner_id === userId;
+        const familyInfoText = this.localizationService.getText(userLanguage, 'family_info');
+        const familyName = userFamily.name;
+        const ownerName = userFamily.owner_username || userFamily.owner_first_name || 'Unknown';
+        
+        message = `${familyInfoText}\n\n🏠 *Семья:* ${familyName}\n👑 *Владелец:* ${ownerName}`;
+        
+        if (isOwner) {
+          // Владелец семьи
+          const membersText = this.localizationService.getText(userLanguage, 'family_members');
+          const inviteText = this.localizationService.getText(userLanguage, 'invite_member');
+          const activeInvitationsText = this.localizationService.getText(userLanguage, 'active_invitations');
+          const statsText = this.localizationService.getText(userLanguage, 'family_stats');
+          const addExpenseText = this.localizationService.getText(userLanguage, 'family_add_expense');
+          const deleteText = this.localizationService.getText(userLanguage, 'delete_family');
+          
+          keyboard = [
+            [{ text: membersText, callback_data: 'family_members' }],
+            [{ text: inviteText, callback_data: 'family_invite' }],
+            [{ text: activeInvitationsText, callback_data: 'family_active_invitations' }],
+            [{ text: statsText, callback_data: 'family_stats' }],
+            [{ text: addExpenseText, callback_data: 'family_add_expense' }],
+            [{ text: deleteText, callback_data: 'family_delete' }]
+          ];
+        } else {
+          // Обычный член семьи
+          const statsText = this.localizationService.getText(userLanguage, 'family_stats');
+          const leaveText = this.localizationService.getText(userLanguage, 'leave_family');
+          const addExpenseText = this.localizationService.getText(userLanguage, 'family_add_expense');
+          
+          keyboard = [
+            [{ text: statsText, callback_data: 'family_stats' }],
+            [{ text: addExpenseText, callback_data: 'family_add_expense' }],
+            [{ text: leaveText, callback_data: 'family_leave' }]
+          ];
+        }
+      } else {
+        // Пользователь не в семье
+        const familyInfoText = this.localizationService.getText(userLanguage, 'family_info');
+        const createText = this.localizationService.getText(userLanguage, 'create_family');
+        const joinText = this.localizationService.getText(userLanguage, 'join_family');
+        
+        message = `${familyInfoText}\n\nВыберите действие:`;
+        
+        keyboard = [
+          [{ text: createText, callback_data: 'family_create' }],
+          [{ text: joinText, callback_data: 'family_join' }]
+        ];
+      }
+      
+      // Добавляем кнопку "Назад"
+      const backText = this.localizationService.getText(userLanguage, 'button_back');
+      keyboard.push([{ text: backText, callback_data: 'back_to_menu' }]);
+      
+      await ctx.reply(message, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: keyboard
+        }
+      });
+    } catch (error) {
+      console.error('Error in family command:', error);
+      const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
+      const errorText = this.localizationService.getText(userLanguage, 'error');
+      await ctx.reply(errorText);
+    }
+  }
+
+  async familyStats(ctx) {
+    try {
+      const userId = ctx.from.id;
+      const userLanguage = await this.userService.getUserLanguage(userId);
+      
+      // Проверяем премиум статус
+      const isPremium = await this.premiumService.isPremiumUser(userId);
+      if (!isPremium) {
+        const premiumRequiredText = this.localizationService.getText(userLanguage, 'premium_required');
+        await ctx.reply(premiumRequiredText, { parse_mode: 'Markdown' });
+        return;
+      }
+      
+      // Получаем информацию о семье пользователя
+      const userFamily = await this.familyService.getUserFamily(userId);
+      if (!userFamily) {
+        const notFamilyMemberText = this.localizationService.getText(userLanguage, 'not_family_member');
+        await ctx.reply(notFamilyMemberText, { parse_mode: 'Markdown' });
+        return;
+      }
+      
+      // Получаем статистику семьи
+      const userTimezone = await this.userService.getUserTimezone(userId);
+      const stats = await this.familyService.getFamilyStats(userFamily.id, 'month', userTimezone);
+      
+      // Формируем сообщение
+      const monthlyStatsText = this.localizationService.getText(userLanguage, 'family_monthly_stats');
+      const totalSpentText = this.localizationService.getText(userLanguage, 'family_total_spent', { 
+        amount: this.formatter.formatAmount(stats.total, 'RUB') 
+      });
+      
+      let message = `${monthlyStatsText}\n\n${totalSpentText}`;
+      
+      // Добавляем статистику по категориям
+      if (stats.byCategory && stats.byCategory.length > 0) {
+        message += '\n\n📊 *По категориям:*\n';
+        stats.byCategory.forEach(category => {
+          const categoryName = this.formatter.translateCategoryName(category.name, this.localizationService, userLanguage);
+          const amount = this.formatter.formatAmount(category.total, 'RUB');
+          message += `• ${category.icon} ${categoryName}: ${amount}\n`;
+        });
+      } else {
+        const noExpensesText = this.localizationService.getText(userLanguage, 'family_no_expenses');
+        message += `\n\n${noExpensesText}`;
+      }
+      
+      const backText = this.localizationService.getText(userLanguage, 'button_back');
+      await ctx.reply(message, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: backText, callback_data: 'family_menu' }]
+          ]
+        }
+      });
+    } catch (error) {
+      console.error('Error in familyStats command:', error);
+      const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
       const errorText = this.localizationService.getText(userLanguage, 'error');
       await ctx.reply(errorText);
     }
