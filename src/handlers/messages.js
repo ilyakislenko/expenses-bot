@@ -318,8 +318,12 @@ class MessageHandlers {
       
       if (error.message.includes('not found')) {
         errorText = this.localizationService.getText(userLanguage, 'user_not_found');
-      } else if (error.message.includes('already in family')) {
-        errorText = this.localizationService.getText(userLanguage, 'user_already_in_family');
+      } else if (error.message.includes('already a member of your family')) {
+        errorText = this.localizationService.getText(userLanguage, 'user_already_in_your_family');
+      } else if (error.message.includes('already a member of another family')) {
+        errorText = this.localizationService.getText(userLanguage, 'user_already_in_other_family');
+      } else if (error.message.includes('does not have premium status')) {
+        errorText = this.localizationService.getText(userLanguage, 'user_not_premium');
       } else if (error.message.includes('already has a pending invitation')) {
         errorText = this.localizationService.getText(userLanguage, 'user_already_has_invitation');
       } else if (error.message.includes('only owner can invite')) {

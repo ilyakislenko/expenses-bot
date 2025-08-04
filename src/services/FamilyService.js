@@ -147,10 +147,20 @@ class FamilyService {
         throw new Error('User not found');
       }
 
+      // Проверяем премиум-статус приглашаемого
+      const isPremium = await this.userRepository.getUserPremium(invitee.id);
+      if (!isPremium) {
+        throw new Error('User does not have premium status');
+      }
+
       // Проверяем, не является ли приглашаемый уже членом семьи
       const inviteeFamily = await this.familyRepository.getUserFamily(invitee.id);
       if (inviteeFamily) {
-        throw new Error('User is already a member of a family');
+        if (inviteeFamily.id === userFamily.id) {
+          throw new Error('User is already a member of your family');
+        } else {
+          throw new Error('User is already a member of another family');
+        }
       }
 
       // Проверяем, нет ли уже активного приглашения
