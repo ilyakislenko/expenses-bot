@@ -17,6 +17,50 @@ const USER_LIMITS = {
   }
 };
 
+// Константы для тарифов премиум подписки
+const PREMIUM_TARIFFS = {
+  MONTH_1: {
+    duration: 30,
+    stars: 149,
+    usd: 2.99,
+    rub: 259,
+    originalStars: null,
+    discount: null,
+    monthlyUsd: null,
+    monthlyRub: null
+  },
+  MONTH_3: {
+    duration: 90,
+    stars: 349,
+    usd: 6.99,
+    rub: 589,
+    originalStars: 447,
+    discount: 25,
+    monthlyUsd: 2.33,
+    monthlyRub: 196
+  },
+  MONTH_6: {
+    duration: 180,
+    stars: 599,
+    usd: 11.98,
+    rub: 999,
+    originalStars: 894,
+    discount: 36,
+    monthlyUsd: 1.99,
+    monthlyRub: 167
+  },
+  MONTH_12: {
+    duration: 365,
+    stars: 999,
+    usd: 19.99,
+    rub: 1649,
+    originalStars: 1788,
+    discount: 48,
+    monthlyUsd: 1.67,
+    monthlyRub: 137
+  }
+};
+
 // Функция для генерации главного меню (reply-клавиатура)
 function generateMainMenuKeyboard(localizationService, userLanguage) {
   return [
@@ -107,11 +151,66 @@ function generateTimeKeyboard(localizationService, userLanguage) {
   return keyboard;
 }
 
+// Функция для форматирования тарифов премиум подписки
+function formatPremiumTariff(tariff, localizationService, userLanguage) {
+  const { duration, stars, usd, rub, originalStars, discount, monthlyUsd, monthlyRub } = tariff;
+  
+  let starsText = `${stars} ⭐️`;
+  if (originalStars) {
+    starsText = `~~${originalStars}~~ ${stars} ⭐️`;
+  }
+  
+  let priceText = `(~ $${usd} / ${rub}₽)`;
+  if (discount) {
+    priceText = `(~ $${usd} / ${rub}₽, экономия ${discount}%)`;
+  }
+  
+  let monthlyText = '';
+  if (monthlyUsd && monthlyRub) {
+    monthlyText = `\n  (~ $${monthlyUsd} / ${monthlyRub}₽ в месяц)`;
+  }
+  
+  const durationText = duration === 30 ? 'месяц' : 
+                      duration === 90 ? 'месяца' : 
+                      duration === 180 ? 'месяцев' : 'месяцев';
+  
+  return `- **${duration === 30 ? '1' : duration === 90 ? '3' : duration === 180 ? '6' : '12'} ${durationText} (${duration} дней)** — ${starsText}\n  ${priceText}${monthlyText}`;
+}
+
+// Функция для форматирования тарифов на английском языке
+function formatPremiumTariffEn(tariff, localizationService, userLanguage) {
+  const { duration, stars, usd, rub, originalStars, discount, monthlyUsd, monthlyRub } = tariff;
+  
+  let starsText = `${stars} ⭐️`;
+  if (originalStars) {
+    starsText = `~~${originalStars}~~ ${stars} ⭐️`;
+  }
+  
+  let priceText = `(~ $${usd} / ${rub}₽)`;
+  if (discount) {
+    priceText = `(~ $${usd} / ${rub}₽, save ${discount}%)`;
+  }
+  
+  let monthlyText = '';
+  if (monthlyUsd && monthlyRub) {
+    monthlyText = `\n  (~ $${monthlyUsd} / ${monthlyRub}₽ per month)`;
+  }
+  
+  const durationText = duration === 30 ? 'month' : 
+                      duration === 90 ? 'months' : 
+                      duration === 180 ? 'months' : 'months';
+  
+  return `- **${duration === 30 ? '1' : duration === 90 ? '3' : duration === 180 ? '6' : '12'} ${durationText} (${duration} days)** — ${starsText}\n  ${priceText}${monthlyText}`;
+}
+
 module.exports = {
   USER_LIMITS,
+  PREMIUM_TARIFFS,
   generateMainMenuKeyboard,
   generateInlineMainMenu,
   generateCurrencyKeyboard,
   generateSettingsKeyboard,
-  generateTimeKeyboard
+  generateTimeKeyboard,
+  formatPremiumTariff,
+  formatPremiumTariffEn
 }; 

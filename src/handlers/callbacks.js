@@ -1015,17 +1015,22 @@ class CallbackHandlers {
       const userId = ctx.from.id;
       const userLanguage = await this.userService.getUserLanguage(userId);
       
+      const { PREMIUM_TARIFFS, formatPremiumTariff, formatPremiumTariffEn } = require('../utils/constants');
+      
       const tariffsTitle = this.localizationService.getText(userLanguage, 'premium_tariffs_title');
-      const month1 = this.localizationService.getText(userLanguage, 'premium_month_1');
-      const month3 = this.localizationService.getText(userLanguage, 'premium_month_3');
-      const month6 = this.localizationService.getText(userLanguage, 'premium_month_6');
-      const month12 = this.localizationService.getText(userLanguage, 'premium_month_12');
       const paymentInfo = this.localizationService.getText(userLanguage, 'premium_payment_info');
       const renewalInfo = this.localizationService.getText(userLanguage, 'premium_renewal_info');
       const starsInfo = this.localizationService.getText(userLanguage, 'premium_stars_info');
       const explanationTitle = this.localizationService.getText(userLanguage, 'premium_explanation_title');
       const whyPaidTitle = this.localizationService.getText(userLanguage, 'premium_why_paid_title');
       const backButton = this.localizationService.getText(userLanguage, 'premium_back_button');
+      
+      // Форматируем тарифы используя константы
+      const formatTariff = userLanguage === 'en' ? formatPremiumTariffEn : formatPremiumTariff;
+      const month1 = formatTariff(PREMIUM_TARIFFS.MONTH_1, this.localizationService, userLanguage);
+      const month3 = formatTariff(PREMIUM_TARIFFS.MONTH_3, this.localizationService, userLanguage);
+      const month6 = formatTariff(PREMIUM_TARIFFS.MONTH_6, this.localizationService, userLanguage);
+      const month12 = formatTariff(PREMIUM_TARIFFS.MONTH_12, this.localizationService, userLanguage);
       
       const message = `${tariffsTitle}\n\n${month1}\n\n${month3}\n\n${month6}\n\n${month12}\n\n${paymentInfo}\n\n${renewalInfo}\n\n${starsInfo}\n\n${explanationTitle}\n\n${whyPaidTitle}`;
       
