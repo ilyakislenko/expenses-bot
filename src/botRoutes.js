@@ -345,6 +345,14 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^reject_invitation\|(.+)$/, errorHandler((ctx) => callbackHandlers.handleRejectInvitation(ctx)));
   bot.action(/^cancel_invitation\|(.+)$/, errorHandler((ctx) => callbackHandlers.handleCancelInvitation(ctx)));
 
+  // ========================================
+  // PREMIUM CALLBACK HANDLERS
+  // ========================================
+  
+  bot.action('premium_tariffs', errorHandler((ctx) => callbackHandlers.handlePremiumTariffs(ctx)));
+  bot.action('premium_why_paid', errorHandler((ctx) => callbackHandlers.handlePremiumWhyPaid(ctx)));
+  bot.action('premium_subscription', errorHandler((ctx) => callbackHandlers.handlePremiumSubscription(ctx)));
+
   // Глобальный обработчик ошибок
   bot.catch((error, ctx) => {
     console.error('Bot error:', error);

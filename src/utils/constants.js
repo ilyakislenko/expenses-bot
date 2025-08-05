@@ -28,7 +28,8 @@ function generateMainMenuKeyboard(localizationService, userLanguage) {
     [{ text: localizationService.getText(userLanguage, 'button_expenses_categories') }],
     [{ text: localizationService.getText(userLanguage, 'button_family') }],
     [{ text: localizationService.getText(userLanguage, 'button_settings') }],
-    [{ text: localizationService.getText(userLanguage, 'button_delete_last') }]
+    [{ text: localizationService.getText(userLanguage, 'button_delete_last') }],
+    [{ text: localizationService.getText(userLanguage, 'premium_subscription_title') }]
   ];
 }
 
@@ -43,7 +44,8 @@ function generateInlineMainMenu(localizationService, userLanguage) {
     [{ text: localizationService.getText(userLanguage, 'button_expenses_categories'), callback_data: 'categories' }],
     [{ text: localizationService.getText(userLanguage, 'button_family'), callback_data: 'family' }],
     [{ text: localizationService.getText(userLanguage, 'button_settings'), callback_data: 'settings' }],
-    [{ text: localizationService.getText(userLanguage, 'button_delete_last'), callback_data: 'undo' }]
+    [{ text: localizationService.getText(userLanguage, 'button_delete_last'), callback_data: 'undo' }],
+    [{ text: localizationService.getText(userLanguage, 'premium_subscription_title'), callback_data: 'premium_subscription' }]
   ];
 }
 

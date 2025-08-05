@@ -63,6 +63,13 @@ class MessageHandlers {
         return;
       }
       
+      // Обработка премиум подписки
+      const premiumSubscriptionText = this.localizationService.getText(userLanguage, 'premium_subscription_title');
+      if (text === premiumSubscriptionText) {
+        await this.commandHandlers.premiumSubscription(ctx);
+        return;
+      }
+      
       // Обработка семейных состояний
       if (this.stateService.hasUserState(userId)) {
         const userState = this.stateService.getUserState(userId);

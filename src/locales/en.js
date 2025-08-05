@@ -112,7 +112,7 @@ Now all your expenses will be correctly displayed in your local time.`,
   
   // Limits
   limits_title: '📊 *Limits Information*',
-  status_regular: '👤 Regular',
+  status_regular: '👤 Standard',
   status_premium: '💎 Premium',
   status_label: '*Status:* {status}',
   records_usage: '*Records:* {current}/{max} ({percentage}%)',
@@ -312,5 +312,26 @@ Now all your expenses will be correctly displayed in your local time.`,
   
   // Premium features
   premium_required: '❌ This feature is only available for premium users.',
-  upgrade_to_premium: '💎 Upgrade to premium for access to family budget!'
+  upgrade_to_premium: '💎 Upgrade to premium for access to family budget!',
+  
+  // Premium subscription
+  premium_subscription_title: '⭐️ Subscription',
+  premium_status_header: '**Your Status:**',
+  premium_privileges: 'Privileges: {status}',
+  premium_limits_info: 'Here your limits are displayed, for example: number of categories, expenses, access to family features, current premium period or its absence.',
+  premium_menu_title: '**Menu:**',
+  premium_tariff_button: '⭐️ Tariff',
+  premium_why_paid_button: '👀 Why is the service paid?',
+  premium_back_button: '⬅️ Back',
+  premium_tariffs_title: '### ⭐️ Tariffs (Telegram Stars)',
+  premium_month_1: '- **1 month (30 days)** — 149 ⭐️\n  (~ $2.99 / 259₽)',
+  premium_month_3: '- **3 months (90 days)** — ~~447~~ 349 ⭐️\n  (~ $6.99 / 589₽, save 25%)\n  (~ $2.33 / 196₽ per month)',
+  premium_month_6: '- **6 months (180 days)** — ~~894~~ 599 ⭐️\n  (~ $11.98 / 999₽, save 36%)\n  (~ $1.99 / 167₽ per month)',
+  premium_month_12: '- **1 year (365 days)** — ~~1788~~ 999 ⭐️\n  (~ $19.99 / 1649₽, save 48%)\n  (~ $1.67 / 137₽ per month)',
+  premium_payment_info: '💳 Payment is made using Telegram Stars — Telegram\'s internal currency for convenient and secure payment within the messenger. *No automatic renewal.*',
+  premium_renewal_info: '📅 You can renew your subscription at any time. The corresponding number of days will be added to the remaining period.',
+  premium_stars_info: '💡 You can purchase stars without Apple / Google commission in the official bot [@PremiumBot].',
+  premium_explanation_title: '_Explanation:_',
+  premium_why_paid_title: '👀 Why is the service paid?',
+  premium_why_paid_text: 'Keeping the server running for this bot costs about 10,000₽ a month — and that’s even without accounting for the rapidly growing number of users. And as the developer, I also need to eat so I have the energy to keep building this service for you :)'
 }; 

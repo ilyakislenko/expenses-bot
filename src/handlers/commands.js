@@ -587,6 +587,56 @@ class CommandHandlers {
     }
   }
 
+  async premiumSubscription(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    
+    // Получаем информацию о статусе пользователя
+    const limitsInfo = await this.premiumService.getLimitsInfo(userId);
+    const status = limitsInfo.isPremium ? 
+      this.localizationService.getText(userLanguage, 'status_premium') : 
+      this.localizationService.getText(userLanguage, 'status_regular');
+    
+    // Формируем детальную информацию о лимитах
+    const recordsUsage = this.localizationService.getText(userLanguage, 'records_usage', { 
+      current: limitsInfo.currentCount, 
+      max: limitsInfo.maxCount, 
+      percentage: limitsInfo.percentage 
+    });
+    const recordsRemaining = this.localizationService.getText(userLanguage, 'records_remaining', { 
+      remaining: limitsInfo.remaining 
+    });
+    const maxDescriptionLength = this.localizationService.getText(userLanguage, 'max_description_length', { 
+      length: limitsInfo.maxDescriptionLength 
+    });
+    
+    // Формируем сообщение о статусе
+    const subscriptionTitle = this.localizationService.getText(userLanguage, 'premium_subscription_title');
+    const statusHeader = this.localizationService.getText(userLanguage, 'premium_status_header');
+    const privileges = this.localizationService.getText(userLanguage, 'premium_privileges', { status });
+    const menuTitle = this.localizationService.getText(userLanguage, 'premium_menu_title');
+    
+    const message = `${subscriptionTitle}\n\n${statusHeader}\n- ${privileges}\n- ${recordsUsage}\n- ${recordsRemaining}\n- ${maxDescriptionLength}\n\n${menuTitle}`;
+    
+    // Создаем inline клавиатуру для премиум меню
+    const tariffButton = this.localizationService.getText(userLanguage, 'premium_tariff_button');
+    const whyPaidButton = this.localizationService.getText(userLanguage, 'premium_why_paid_button');
+    const backButton = this.localizationService.getText(userLanguage, 'premium_back_button');
+    
+    const inlineKeyboard = [
+      [{ text: tariffButton, callback_data: 'premium_tariffs' }],
+      [{ text: whyPaidButton, callback_data: 'premium_why_paid' }],
+      [{ text: backButton, callback_data: 'back_to_menu' }]
+    ];
+    
+    await ctx.reply(message, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: inlineKeyboard
+      }
+    });
+  }
+
   async mainMenu(ctx) {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);

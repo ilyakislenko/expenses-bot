@@ -91,7 +91,9 @@ class PremiumService {
       remaining: limits.MAX_NOTES_COUNT - currentCount,
       maxDescriptionLength: limits.MAX_DESCRIPTION_LENGTH,
       allowCustomCategories: limits.ALLOW_CUSTOM_CATEGORIES,
-      maxCustomCategories: limits.MAX_CUSTOM_CATEGORIES
+      maxCustomCategories: limits.MAX_CUSTOM_CATEGORIES,
+      noteRetentionDays: limits.NOTE_RETENTION_DAYS,
+      percentage: Math.round((currentCount / limits.MAX_NOTES_COUNT) * 100)
     };
   }
 

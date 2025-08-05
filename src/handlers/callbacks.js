@@ -1010,6 +1010,84 @@ class CallbackHandlers {
     }
   }
 
+  async handlePremiumTariffs(ctx) {
+    try {
+      const userId = ctx.from.id;
+      const userLanguage = await this.userService.getUserLanguage(userId);
+      
+      const tariffsTitle = this.localizationService.getText(userLanguage, 'premium_tariffs_title');
+      const month1 = this.localizationService.getText(userLanguage, 'premium_month_1');
+      const month3 = this.localizationService.getText(userLanguage, 'premium_month_3');
+      const month6 = this.localizationService.getText(userLanguage, 'premium_month_6');
+      const month12 = this.localizationService.getText(userLanguage, 'premium_month_12');
+      const paymentInfo = this.localizationService.getText(userLanguage, 'premium_payment_info');
+      const renewalInfo = this.localizationService.getText(userLanguage, 'premium_renewal_info');
+      const starsInfo = this.localizationService.getText(userLanguage, 'premium_stars_info');
+      const explanationTitle = this.localizationService.getText(userLanguage, 'premium_explanation_title');
+      const whyPaidTitle = this.localizationService.getText(userLanguage, 'premium_why_paid_title');
+      const backButton = this.localizationService.getText(userLanguage, 'premium_back_button');
+      
+      const message = `${tariffsTitle}\n\n${month1}\n\n${month3}\n\n${month6}\n\n${month12}\n\n${paymentInfo}\n\n${renewalInfo}\n\n${starsInfo}\n\n${explanationTitle}\n\n${whyPaidTitle}`;
+      
+      const inlineKeyboard = [
+        [{ text: backButton, callback_data: 'premium_subscription' }]
+      ];
+      
+      await ctx.editMessageText(message, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: inlineKeyboard
+        }
+      });
+    } catch (error) {
+      console.error('Error handling premium tariffs:', error);
+      const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
+      const errorText = this.localizationService.getText(userLanguage, 'error');
+      await ctx.answerCbQuery(errorText);
+    }
+  }
+
+  async handlePremiumWhyPaid(ctx) {
+    try {
+      const userId = ctx.from.id;
+      const userLanguage = await this.userService.getUserLanguage(userId);
+      
+      const whyPaidTitle = this.localizationService.getText(userLanguage, 'premium_why_paid_title');
+      const whyPaidText = this.localizationService.getText(userLanguage, 'premium_why_paid_text');
+      const backButton = this.localizationService.getText(userLanguage, 'premium_back_button');
+      
+      const message = `${whyPaidTitle}\n\n${whyPaidText}`;
+      
+      const inlineKeyboard = [
+        [{ text: backButton, callback_data: 'premium_subscription' }]
+      ];
+      
+      await ctx.editMessageText(message, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: inlineKeyboard
+        }
+      });
+    } catch (error) {
+      console.error('Error handling premium why paid:', error);
+      const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
+      const errorText = this.localizationService.getText(userLanguage, 'error');
+      await ctx.answerCbQuery(errorText);
+    }
+  }
+
+  async handlePremiumSubscription(ctx) {
+    try {
+      await ctx.answerCbQuery();
+      await this.commandHandlers.premiumSubscription(ctx);
+    } catch (error) {
+      console.error('Error handling premium subscription:', error);
+      const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
+      const errorText = this.localizationService.getText(userLanguage, 'error');
+      await ctx.answerCbQuery(errorText);
+    }
+  }
+
 
 }
 
