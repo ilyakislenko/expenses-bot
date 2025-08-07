@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS currency_rates (
 CREATE TABLE IF NOT EXISTS premium_transactions (
     id SERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
-    transaction_type VARCHAR(20) NOT NULL CHECK (transaction_type IN ('purchase', 'refund', 'extension', 'activation')),
+    transaction_type VARCHAR(20) NOT NULL,
     tariff_duration INTEGER NOT NULL, -- количество дней
     stars_amount INTEGER NOT NULL, -- количество звезд
     usd_amount DECIMAL(10,2) NOT NULL, -- сумма в USD
@@ -72,6 +72,11 @@ CREATE TABLE IF NOT EXISTS premium_transactions (
     -- Индексы для быстрого поиска
     CONSTRAINT fk_premium_transactions_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+-- Add constraint for transaction_type
+ALTER TABLE premium_transactions 
+ADD CONSTRAINT premium_transactions_transaction_type_check 
+CHECK (transaction_type IN ('purchase', 'refund', 'extension', 'activation', 'trial'));
 
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_expenses_user_id ON expenses(user_id);

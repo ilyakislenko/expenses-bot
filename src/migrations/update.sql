@@ -222,7 +222,7 @@ COMMENT ON COLUMN users.premium_activated_at IS 'Дата первой акти�
 CREATE TABLE IF NOT EXISTS premium_transactions (
     id SERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
-    transaction_type VARCHAR(20) NOT NULL CHECK (transaction_type IN ('purchase', 'refund', 'extension', 'activation')),
+               transaction_type VARCHAR(20) NOT NULL CHECK (transaction_type IN ('purchase', 'refund', 'extension', 'activation', 'trial')),
     tariff_duration INTEGER NOT NULL, -- количество дней
     stars_amount INTEGER NOT NULL, -- количество звезд
     usd_amount DECIMAL(10,2) NOT NULL, -- сумма в USD
@@ -247,9 +247,26 @@ CREATE INDEX IF NOT EXISTS idx_premium_transactions_status ON premium_transactio
 CREATE INDEX IF NOT EXISTS idx_premium_transactions_created_at ON premium_transactions(created_at);
 CREATE INDEX IF NOT EXISTS idx_premium_transactions_telegram_payment_id ON premium_transactions(telegram_payment_id);
 
+-- Update transaction_type constraint to include 'trial' if table exists
+DO $$
+BEGIN
+    -- Удаляем старый constraint если он существует
+    IF EXISTS (
+        SELECT 1 FROM information_schema.check_constraints 
+        WHERE constraint_name = 'premium_transactions_transaction_type_check'
+    ) THEN
+        ALTER TABLE premium_transactions DROP CONSTRAINT premium_transactions_transaction_type_check;
+    END IF;
+    
+    -- Добавляем новый constraint с поддержкой 'trial'
+    ALTER TABLE premium_transactions 
+    ADD CONSTRAINT premium_transactions_transaction_type_check 
+    CHECK (transaction_type IN ('purchase', 'refund', 'extension', 'activation', 'trial'));
+END $$;
+
 -- Add comments for premium transactions table
 COMMENT ON TABLE premium_transactions IS 'Таблица для хранения всех транзакций премиум подписок';
-COMMENT ON COLUMN premium_transactions.transaction_type IS 'Тип транзакции: purchase (покупка), refund (возврат), extension (продление), activation (активация)';
+COMMENT ON COLUMN premium_transactions.transaction_type IS 'Тип транзакции: purchase (покупка), refund (возврат), extension (продление), activation (активация), trial (пробный период)';
 COMMENT ON COLUMN premium_transactions.tariff_duration IS 'Продолжительность тарифа в днях';
 COMMENT ON COLUMN premium_transactions.stars_amount IS 'Количество Telegram Stars';
 COMMENT ON COLUMN premium_transactions.telegram_payment_id IS 'Уникальный ID платежа в Telegram';

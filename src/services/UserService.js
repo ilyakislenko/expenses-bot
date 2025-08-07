@@ -1,5 +1,6 @@
 const logger = require('../utils/logger');
 const { newUsersTotal } = require('../utils/metrics');
+const { TRIAL_PERIOD } = require('../utils/constants');
 
 class UserService {
   constructor(userRepository, categoryRepository, premiumTransactionRepository) {
@@ -12,13 +13,30 @@ class UserService {
     try {
       const user = await this.userRepository.createUser(userId, username, firstName);
       
+      // Даем пробный премиум на 14 дней новым пользователям
+      const trialTransactionData = {
+        stars: 0,
+        usd: 0,
+        rub: 0,
+        telegram_payment_id: null,
+        invoice_payload: JSON.stringify({
+          user_id: userId,
+          tariff: TRIAL_PERIOD.DAYS,
+          stars: 0,
+          type: TRIAL_PERIOD.TYPE
+        })
+      };
+      
+      await this.activatePremium(userId, TRIAL_PERIOD.DAYS, trialTransactionData);
+      
       // Обновляем метрики
       newUsersTotal.inc({ source: 'telegram' });
       
-      logger.info('New user registered', {
+      logger.info('New user registered with trial premium', {
         userId,
         username,
         firstName,
+        trialDays: TRIAL_PERIOD.DAYS,
         timestamp: new Date().toISOString()
       });
       
@@ -147,7 +165,20 @@ class UserService {
       
       // Записываем транзакцию, если предоставлены данные
       if (transactionData) {
-        const transactionType = isNewActivation ? 'activation' : 'extension';
+        let transactionType = isNewActivation ? 'activation' : 'extension';
+        
+        // Определяем тип транзакции на основе данных
+        if (transactionData.invoice_payload) {
+          try {
+            const payload = JSON.parse(transactionData.invoice_payload);
+            if (payload.type === 'trial') {
+              transactionType = 'trial';
+            }
+          } catch (e) {
+            // Игнорируем ошибки парсинга
+          }
+        }
+        
         await this.premiumTransactionRepository.createTransaction({
           user_id: userId,
           transaction_type: transactionType,

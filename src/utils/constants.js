@@ -17,6 +17,12 @@ const USER_LIMITS = {
   }
 };
 
+// Константы для пробного периода
+const TRIAL_PERIOD = {
+  DAYS: 14, // 14 дней пробного периода для новых пользователей
+  TYPE: 'trial'
+};
+
 // Константы для тарифов премиум подписки
 // const PREMIUM_TARIFFS = {
 //   MONTH_1: {
@@ -291,6 +297,7 @@ function formatPremiumTariffEn(tariff, localizationService, userLanguage) {
 module.exports = {
   USER_LIMITS,
   PREMIUM_TARIFFS,
+  TRIAL_PERIOD,
   generateMainMenuKeyboard,
   generateInlineMainMenu,
   generateCurrencyKeyboard,
