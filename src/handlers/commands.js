@@ -590,6 +590,7 @@ class CommandHandlers {
   async premiumSubscription(ctx) {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
+    const userTimezone = await this.userService.getUserTimezone(userId);
     
     // Получаем информацию о статусе пользователя
     const limitsInfo = await this.premiumService.getLimitsInfo(userId);
@@ -621,7 +622,7 @@ class CommandHandlers {
       // Добавляем информацию о дате истечения премиума
       if (limitsInfo.isPremium && limitsInfo.premiumExpiresAt) {
         const expiryInfo = this.localizationService.getText(userLanguage, 'premium_expires', {
-          date: this.formatter.formatDate(limitsInfo.premiumExpiresAt, userLanguage),
+          date: this.formatter.formatDate(limitsInfo.premiumExpiresAt, userTimezone),
           days: limitsInfo.daysRemaining
         });
         message += `\n\n${expiryInfo}`;
@@ -641,12 +642,14 @@ class CommandHandlers {
     ];
     
     await ctx.reply(message, {
-      parse_mode: 'Markdown',
+      parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: inlineKeyboard
       }
     });
   }
+
+
 
   async mainMenu(ctx) {
     const userId = ctx.from.id;

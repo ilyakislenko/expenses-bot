@@ -71,15 +71,27 @@ class PaymentService {
    */
   async handleSuccessfulPayment(payment, userService) {
     try {
-      const { invoice_payload, total_amount } = payment;
+      const { invoice_payload, total_amount, telegram_payment_charge_id } = payment;
       const payload = JSON.parse(invoice_payload);
       
       logger.info(`Successful payment received: ${JSON.stringify(payload)}`);
       
       const { user_id, tariff, stars } = payload;
       
-      // Активируем премиум подписку с правильной логикой продления
-      const result = await userService.activatePremium(user_id, tariff);
+      // Получаем данные тарифа для записи транзакции
+      const tariffData = this.getTariffData(tariff);
+      
+      // Подготавливаем данные транзакции
+      const transactionData = {
+        stars: stars,
+        usd: tariffData.usd,
+        rub: tariffData.rub,
+        telegram_payment_id: telegram_payment_charge_id || null,
+        invoice_payload: invoice_payload
+      };
+      
+      // Активируем премиум подписку с записью транзакции
+      const result = await userService.activatePremium(user_id, tariff, transactionData);
       
       logger.info(`Premium subscription ${result.isNewActivation ? 'activated' : 'extended'} for user ${user_id}, expires at ${result.newExpiryDate}`);
       
@@ -89,6 +101,22 @@ class PaymentService {
       logger.error('Error handling successful payment:', error);
       throw error;
     }
+  }
+
+  /**
+   * Получает данные тарифа по количеству дней
+   */
+  getTariffData(days) {
+    const { PREMIUM_TARIFFS } = require('../utils/constants');
+    
+    for (const [key, tariff] of Object.entries(PREMIUM_TARIFFS)) {
+      if (tariff.duration === days) {
+        return tariff;
+      }
+    }
+    
+    // Возвращаем дефолтные значения, если тариф не найден
+    return { usd: 0, rub: 0 };
   }
 
   /**

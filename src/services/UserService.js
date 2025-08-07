@@ -2,9 +2,10 @@ const logger = require('../utils/logger');
 const { newUsersTotal } = require('../utils/metrics');
 
 class UserService {
-  constructor(userRepository, categoryRepository) {
+  constructor(userRepository, categoryRepository, premiumTransactionRepository) {
     this.userRepository = userRepository;
     this.categoryRepository = categoryRepository;
+    this.premiumTransactionRepository = premiumTransactionRepository;
   }
 
   async registerUser(userId, username, firstName) {
@@ -110,7 +111,7 @@ class UserService {
     return this.categoryRepository.updateUserCategory(userId, categoryId, data);
   }
 
-  async activatePremium(userId, daysToAdd) {
+  async activatePremium(userId, daysToAdd, transactionData = null) {
     try {
       // Получаем текущий статус пользователя
       const user = await this.getUserById(userId);
@@ -118,6 +119,7 @@ class UserService {
       
       let newExpiryDate;
       let isNewActivation = false;
+      const previousExpiryDate = user.premium_expires_at;
       
       if (user.premium && user.premium_expires_at && user.premium_expires_at > now) {
         // У пользователя уже есть активная подписка - добавляем к существующей
@@ -143,6 +145,24 @@ class UserService {
       
       await this.userRepository.query(query, [newExpiryDate, userId]);
       
+      // Записываем транзакцию, если предоставлены данные
+      if (transactionData) {
+        const transactionType = isNewActivation ? 'activation' : 'extension';
+        await this.premiumTransactionRepository.createTransaction({
+          user_id: userId,
+          transaction_type: transactionType,
+          tariff_duration: daysToAdd,
+          stars_amount: transactionData.stars || 0,
+          usd_amount: transactionData.usd || 0,
+          rub_amount: transactionData.rub || 0,
+          telegram_payment_id: transactionData.telegram_payment_id || null,
+          invoice_payload: transactionData.invoice_payload || null,
+          previous_expiry_date: previousExpiryDate,
+          new_expiry_date: newExpiryDate,
+          status: 'completed'
+        });
+      }
+      
       logger.info(`Premium subscription ${isNewActivation ? 'activated' : 'extended'} for user ${userId}, expires at ${newExpiryDate}`);
       
       return {
@@ -165,15 +185,81 @@ class UserService {
     if (!user.premium || !user.premium_expires_at) {
       return false;
     }
-    return user.premium_expires_at > new Date();
+    
+    const now = new Date();
+    const isActive = user.premium_expires_at > now;
+    
+    // Если подписка истекла, но флаг premium все еще true, отключаем его
+    if (!isActive && user.premium) {
+      await this.disableExpiredPremium(userId);
+      logger.info(`Automatically disabled expired premium for user ${userId}`);
+    }
+    
+    return isActive;
+  }
+
+  async disableExpiredPremium(userId) {
+    const query = `
+      UPDATE users 
+      SET premium = false
+      WHERE id = $1 AND premium = true AND premium_expires_at <= NOW()
+    `;
+    await this.userRepository.query(query, [userId]);
+  }
+
+  async disableAllExpiredPremium() {
+    const query = `
+      UPDATE users 
+      SET premium = false
+      WHERE premium = true AND premium_expires_at <= NOW()
+    `;
+    const result = await this.userRepository.query(query);
+    logger.info(`Disabled expired premium for ${result.rowCount} users`);
+    return result.rowCount;
+  }
+
+  /**
+   * Получает транзакции пользователя
+   */
+  async getUserTransactions(userId, limit = 50, offset = 0) {
+    return this.premiumTransactionRepository.getUserTransactions(userId, limit, offset);
+  }
+
+  /**
+   * Получает статистику транзакций пользователя
+   */
+  async getUserTransactionStats(userId) {
+    return this.premiumTransactionRepository.getTransactionStats(userId);
+  }
+
+  /**
+   * Получает общую статистику транзакций
+   */
+  async getGlobalTransactionStats() {
+    return this.premiumTransactionRepository.getTransactionStats();
+  }
+
+  /**
+   * Проверяет, существует ли транзакция с данным Telegram payment ID
+   */
+  async transactionExists(telegramPaymentId) {
+    return this.premiumTransactionRepository.transactionExists(telegramPaymentId);
   }
 
   async getPremiumStatus(userId) {
     const user = await this.getUserById(userId);
     const now = new Date();
     
+    const isPremium = user.premium && user.premium_expires_at && user.premium_expires_at > now;
+    
+    // Если подписка истекла, но флаг premium все еще true, отключаем его
+    if (!isPremium && user.premium && user.premium_expires_at) {
+      await this.disableExpiredPremium(userId);
+      logger.info(`Automatically disabled expired premium for user ${userId} in getPremiumStatus`);
+    }
+    
     return {
-      isPremium: user.premium && user.premium_expires_at && user.premium_expires_at > now,
+      isPremium,
       expiresAt: user.premium_expires_at,
       activatedAt: user.premium_activated_at,
       daysRemaining: user.premium_expires_at && user.premium_expires_at > now ? 

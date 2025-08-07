@@ -114,15 +114,22 @@ describe('Premium Subscription Activation', () => {
       expect(result).toBe(false);
     });
 
-    it('should return false for expired premium', async () => {
+    it('should return false for expired premium and disable it', async () => {
       mockUserRepository.getUserById.mockResolvedValue({
         id: 123456,
         premium: true,
         premium_expires_at: new Date('2020-01-01')
       });
 
+      mockUserRepository.query.mockResolvedValue({ rowCount: 1 });
+
       const result = await userService.isPremiumActive(123456);
+      
       expect(result).toBe(false);
+      expect(mockUserRepository.query).toHaveBeenCalledWith(
+        expect.stringMatching(/UPDATE users\s+SET premium = false/),
+        [123456]
+      );
     });
 
     it('should return true for active premium', async () => {
@@ -160,7 +167,7 @@ describe('Premium Subscription Activation', () => {
       expect(status.activatedAt).toEqual(new Date('2024-01-01'));
     });
 
-    it('should return correct premium status for expired subscription', async () => {
+    it('should return correct premium status for expired subscription and disable it', async () => {
       const pastDate = new Date('2020-01-01');
       
       mockUserRepository.getUserById.mockResolvedValue({
@@ -170,10 +177,29 @@ describe('Premium Subscription Activation', () => {
         premium_activated_at: new Date('2019-01-01')
       });
 
+      mockUserRepository.query.mockResolvedValue({ rowCount: 1 });
+
       const status = await userService.getPremiumStatus(123456);
       
       expect(status.isPremium).toBe(false);
       expect(status.daysRemaining).toBe(0);
+      expect(mockUserRepository.query).toHaveBeenCalledWith(
+        expect.stringMatching(/UPDATE users\s+SET premium = false/),
+        [123456]
+      );
+    });
+  });
+
+  describe('UserService.disableAllExpiredPremium', () => {
+    it('should disable all expired premium subscriptions', async () => {
+      mockUserRepository.query.mockResolvedValue({ rowCount: 5 });
+
+      const disabledCount = await userService.disableAllExpiredPremium();
+
+      expect(disabledCount).toBe(5);
+      expect(mockUserRepository.query).toHaveBeenCalledWith(
+        expect.stringMatching(/UPDATE users\s+SET premium = false/)
+      );
     });
   });
 

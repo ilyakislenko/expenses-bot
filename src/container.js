@@ -30,6 +30,7 @@ const CategoryRepository = require('./repositories/CategoryRepository');
 const CurrencyRepository = require('./repositories/CurrencyRepository');
 const FamilyRepository = require('./repositories/FamilyRepository');
 const FamilyInvitationRepository = require('./repositories/FamilyInvitationRepository');
+const PremiumTransactionRepository = require('./repositories/PremiumTransactionRepository');
 
 // Services
 const ExpenseService = require('./services/ExpenseService');
@@ -90,6 +91,9 @@ class Container {
       case 'familyInvitationRepository':
         return new FamilyInvitationRepository();
 
+      case 'premiumTransactionRepository':
+        return new PremiumTransactionRepository();
+
       case 'currencyUtils':
         return createCurrencyUtils(this.get('currencyRepository'));
 
@@ -124,11 +128,12 @@ class Container {
           this.get('categoryRepository')
         );
 
-      case 'userService':
-        return new UserService(
-          this.get('userRepository'),
-          this.get('categoryRepository')
-        );
+          case 'userService':
+      return new UserService(
+        this.get('userRepository'),
+        this.get('categoryRepository'),
+        this.get('premiumTransactionRepository')
+      );
 
       case 'premiumService':
         return new PremiumService(

@@ -1021,8 +1021,7 @@ class CallbackHandlers {
       const paymentInfo = this.localizationService.getText(userLanguage, 'premium_payment_info');
       const renewalInfo = this.localizationService.getText(userLanguage, 'premium_renewal_info');
       const starsInfo = this.localizationService.getText(userLanguage, 'premium_stars_info');
-      const explanationTitle = this.localizationService.getText(userLanguage, 'premium_explanation_title');
-      const whyPaidTitle = this.localizationService.getText(userLanguage, 'premium_why_paid_title');
+
       const backButton = this.localizationService.getText(userLanguage, 'premium_back_button');
       
       // Форматируем тарифы используя константы
@@ -1032,7 +1031,7 @@ class CallbackHandlers {
       const month6 = formatTariff(PREMIUM_TARIFFS.MONTH_6, this.localizationService, userLanguage);
       const month12 = formatTariff(PREMIUM_TARIFFS.MONTH_12, this.localizationService, userLanguage);
       
-      const message = `${tariffsTitle}\n\n${month1}\n\n${month3}\n\n${month6}\n\n${month12}\n\n${paymentInfo}\n\n${renewalInfo}\n\n${starsInfo}\n\n${explanationTitle}\n\n${whyPaidTitle}`;
+      const message = `${tariffsTitle}\n\n${month1}\n\n${month3}\n\n${month6}\n\n${month12}\n\n${paymentInfo}\n\n${renewalInfo}\n\n${starsInfo}`;
       
       // Генерируем кнопки оплаты
       const paymentButtons = generatePremiumPaymentButtons(PREMIUM_TARIFFS, this.localizationService, userLanguage);
@@ -1058,7 +1057,7 @@ class CallbackHandlers {
       ];
       
       await ctx.editMessageText(message, {
-        parse_mode: 'Markdown',
+        parse_mode: 'HTML',
         reply_markup: {
           inline_keyboard: inlineKeyboard
         }
@@ -1087,7 +1086,7 @@ class CallbackHandlers {
       ];
       
       await ctx.editMessageText(message, {
-        parse_mode: 'Markdown',
+        parse_mode: 'HTML',
         reply_markup: {
           inline_keyboard: inlineKeyboard
         }

@@ -121,13 +121,13 @@ describe('Premium Subscription Menu', () => {
       jest.spyOn(localizationService, 'getText').mockImplementation((lang, key, params) => {
         const texts = {
           'premium_subscription_title': '⭐️ Подписка',
-          'premium_status_header': '**Ваш статус:**',
+          'premium_status_header': '<b>Ваш статус:</b>',
           'status_regular': '👤 Стандарт',
           'premium_privileges': `Привилегии: ${params?.status || '👤 Обычный'}`,
-          'records_usage': `*Записей:* ${params?.current || 0}/${params?.max || 0} (${params?.percentage || 0}%)`,
-          'records_remaining': `*Осталось:* ${params?.remaining || 0} записей`,
-          'max_description_length': `*Макс. длина описания:* ${params?.length || 0} символов`,
-          'premium_menu_title': '**Меню:**',
+          'records_usage': `<b>Записей:</b> ${params?.current || 0}/${params?.max || 0} (${params?.percentage || 0}%)`,
+          'records_remaining': `<b>Осталось:</b> ${params?.remaining || 0} записей`,
+          'max_description_length': `<b>Макс. длина описания:</b> ${params?.length || 0} символов`,
+          'premium_menu_title': '<b>Меню:</b>',
           'premium_tariff_button': '⭐️ Тариф',
           'premium_why_paid_button': '👀 Почему сервис платный?',
           'premium_back_button': '⬅️ Назад'
@@ -140,7 +140,69 @@ describe('Premium Subscription Menu', () => {
       expect(mockCtx.reply).toHaveBeenCalledWith(
         expect.stringContaining('⭐️ Подписка'),
         expect.objectContaining({
-          parse_mode: 'Markdown',
+          parse_mode: 'HTML',
+          reply_markup: expect.objectContaining({
+            inline_keyboard: expect.arrayContaining([
+              expect.arrayContaining([
+                expect.objectContaining({ text: '⭐️ Тариф', callback_data: 'premium_tariffs' })
+              ]),
+              expect.arrayContaining([
+                expect.objectContaining({ text: '👀 Почему сервис платный?', callback_data: 'premium_why_paid' })
+              ]),
+              expect.arrayContaining([
+                expect.objectContaining({ text: '⬅️ Назад', callback_data: 'back_to_menu' })
+              ])
+            ])
+          })
+        })
+      );
+    });
+
+    it('should generate premium subscription menu with premium user and expiry date', async () => {
+      // Mock context
+      const mockCtx = {
+        from: { id: 123456 },
+        reply: jest.fn()
+      };
+
+      // Mock premium service with premium user
+      const mockLimitsInfo = {
+        isPremium: true,
+        currentCount: 45,
+        maxCount: 1000,
+        remaining: 955,
+        maxDescriptionLength: 200,
+        percentage: 4.5,
+        premiumExpiresAt: new Date('2025-12-31T23:59:59.000Z'),
+        daysRemaining: 145
+      };
+
+      jest.spyOn(premiumService, 'getLimitsInfo').mockResolvedValue(mockLimitsInfo);
+      jest.spyOn(localizationService, 'getText').mockImplementation((lang, key, params) => {
+        const texts = {
+          'premium_subscription_title': '⭐️ Подписка',
+          'premium_status_header': '<b>Ваш статус:</b>',
+          'status_premium': '⭐️ Премиум',
+          'premium_privileges': `Привилегии: ${params?.status || '👤 Обычный'}`,
+          'records_usage': `<b>Записей:</b> ${params?.current || 0}/${params?.max || 0} (${params?.percentage || 0}%)`,
+          'records_remaining': `<b>Осталось:</b> ${params?.remaining || 0} записей`,
+          'max_description_length': `<b>Макс. длина описания:</b> ${params?.length || 0} символов`,
+          'premium_expires': `📅 Премиум подписка действительна до: <b>${params?.date || 'Unknown'}</b>\n⏰ Осталось дней: <b>${params?.days || 0}</b>`,
+          'premium_menu_title': '<b>Меню:</b>',
+          'premium_tariff_button': '⭐️ Тариф',
+          'premium_why_paid_button': '👀 Почему сервис платный?',
+          'premium_back_button': '⬅️ Назад'
+        };
+        return texts[key] || key;
+      });
+
+      await commandHandlers.premiumSubscription(mockCtx);
+
+      expect(mockCtx.reply).toHaveBeenCalledWith(
+        expect.stringContaining('⭐️ Подписка'),
+        expect.stringContaining('📅 Премиум подписка действительна до:'),
+        expect.objectContaining({
+          parse_mode: 'HTML',
           reply_markup: expect.objectContaining({
             inline_keyboard: expect.arrayContaining([
               expect.arrayContaining([
@@ -179,8 +241,6 @@ describe('Premium Subscription Menu', () => {
           'premium_payment_info': '💳 Оплата происходит с помощью Telegram Stars',
           'premium_renewal_info': '📅 Продлить подписку можно в любой момент',
           'premium_stars_info': '💡 Приобрести звёзды без комиссии',
-          'premium_explanation_title': '_Пояснение:_',
-          'premium_why_paid_title': '👀 Почему сервис платный?',
           'premium_back_button': '⬅️ Назад'
         };
         return texts[key] || key;
@@ -191,7 +251,7 @@ describe('Premium Subscription Menu', () => {
       expect(mockCtx.editMessageText).toHaveBeenCalledWith(
         expect.stringContaining('⭐️ Тарифы (Telegram Stars)'),
         expect.objectContaining({
-          parse_mode: 'Markdown',
+          parse_mode: 'HTML',
           reply_markup: expect.objectContaining({
             inline_keyboard: expect.arrayContaining([
               expect.arrayContaining([
@@ -225,7 +285,7 @@ describe('Premium Subscription Menu', () => {
       expect(mockCtx.editMessageText).toHaveBeenCalledWith(
         expect.stringContaining('👀 Почему сервис платный?'),
         expect.objectContaining({
-          parse_mode: 'Markdown',
+          parse_mode: 'HTML',
           reply_markup: expect.objectContaining({
             inline_keyboard: expect.arrayContaining([
               expect.arrayContaining([
