@@ -1,9 +1,9 @@
-const { getTimezoneByCode } = require('../utils/timezone');
 
 class CallbackHandlers {
-  constructor({ expenseService, premiumService, familyService, localizationService, formatter, stateService, userService, commandHandlers, keyboardGenerators }) {
+  constructor({ expenseService, premiumService, paymentService, familyService, localizationService, formatter, stateService, userService, commandHandlers, keyboardGenerators }) {
     this.expenseService = expenseService;
     this.premiumService = premiumService;
+    this.paymentService = paymentService;
     this.familyService = familyService;
     this.localizationService = localizationService;
     this.formatter = formatter;
@@ -1015,7 +1015,7 @@ class CallbackHandlers {
       const userId = ctx.from.id;
       const userLanguage = await this.userService.getUserLanguage(userId);
       
-      const { PREMIUM_TARIFFS, formatPremiumTariff, formatPremiumTariffEn } = require('../utils/constants');
+      const { PREMIUM_TARIFFS, formatPremiumTariff, formatPremiumTariffEn, generatePremiumPaymentButtons } = require('../utils/constants');
       
       const tariffsTitle = this.localizationService.getText(userLanguage, 'premium_tariffs_title');
       const paymentInfo = this.localizationService.getText(userLanguage, 'premium_payment_info');
@@ -1034,7 +1034,26 @@ class CallbackHandlers {
       
       const message = `${tariffsTitle}\n\n${month1}\n\n${month3}\n\n${month6}\n\n${month12}\n\n${paymentInfo}\n\n${renewalInfo}\n\n${starsInfo}\n\n${explanationTitle}\n\n${whyPaidTitle}`;
       
+      // Генерируем кнопки оплаты
+      const paymentButtons = generatePremiumPaymentButtons(PREMIUM_TARIFFS, this.localizationService, userLanguage);
+      
+      // Создаем кнопки с прямыми ссылками на оплату
+      const buttonsWithLinks = [];
+      for (const row of paymentButtons) {
+        const newRow = [];
+        for (const button of row) {
+          const tariff = PREMIUM_TARIFFS[button.tariffKey.toUpperCase()];
+          const paymentLink = await this.paymentService.createInvoiceLink(userId, tariff, userLanguage);
+          newRow.push({
+            text: button.text,
+            url: paymentLink
+          });
+        }
+        buttonsWithLinks.push(newRow);
+      }
+      
       const inlineKeyboard = [
+        ...buttonsWithLinks,
         [{ text: backButton, callback_data: 'premium_subscription' }]
       ];
       
@@ -1092,6 +1111,8 @@ class CallbackHandlers {
       await ctx.answerCbQuery(errorText);
     }
   }
+
+
 
 
 }

@@ -21,43 +21,43 @@ const USER_LIMITS = {
 const PREMIUM_TARIFFS = {
   MONTH_1: {
     duration: 30,
-    stars: 149,
-    usd: 2.99,
-    rub: 259,
+    stars: 87,
+    usd: 1.99,
+    rub: 156,
     originalStars: null,
     discount: null,
-    monthlyUsd: null,
-    monthlyRub: null
+    monthlyUsd: 1.99,
+    monthlyRub: 156
   },
   MONTH_3: {
     duration: 90,
-    stars: 349,
-    usd: 6.99,
-    rub: 589,
-    originalStars: 447,
-    discount: 25,
-    monthlyUsd: 2.33,
-    monthlyRub: 196
+    stars: 222,
+    usd: 4.99,
+    rub: 399,
+    originalStars: 261,
+    discount: 15,
+    monthlyUsd: 1.69,
+    monthlyRub: 132
   },
   MONTH_6: {
     duration: 180,
-    stars: 599,
-    usd: 11.98,
-    rub: 999,
-    originalStars: 894,
-    discount: 36,
-    monthlyUsd: 1.99,
-    monthlyRub: 167
+    stars: 392,
+    usd: 8.99,
+    rub: 719,
+    originalStars: 522,
+    discount: 25,
+    monthlyUsd: 1.49,
+    monthlyRub: 117
   },
   MONTH_12: {
     duration: 365,
-    stars: 999,
-    usd: 19.99,
-    rub: 1649,
-    originalStars: 1788,
-    discount: 48,
-    monthlyUsd: 1.67,
-    monthlyRub: 137
+    stars: 679,
+    usd: 14.99,
+    rub: 1199,
+    originalStars: 1044,
+    discount: 35,
+    monthlyUsd: 1.29,
+    monthlyRub: 103
   }
 };
 
@@ -177,6 +177,49 @@ function formatPremiumTariff(tariff, localizationService, userLanguage) {
   return `- **${duration === 30 ? '1' : duration === 90 ? '3' : duration === 180 ? '6' : '12'} ${durationText} (${duration} дней)** — ${starsText}\n  ${priceText}${monthlyText}`;
 }
 
+// Функция для генерации кнопок оплаты тарифов (синхронная версия)
+function generatePremiumPaymentButtons(tariffs, localizationService, userLanguage) {
+  const buttons = [];
+  
+  // Создаем кнопки для каждого тарифа
+  Object.keys(tariffs).forEach((tariffKey) => {
+    const tariff = tariffs[tariffKey];
+    const duration = tariff.duration;
+    
+    // Определяем текст кнопки в зависимости от длительности
+    let buttonText;
+    if (duration === 30) {
+      buttonText = userLanguage === 'en' ? '1 Month' : '1 Месяц';
+    } else if (duration === 90) {
+      buttonText = userLanguage === 'en' ? '3 Months' : '3 Месяца';
+    } else if (duration === 180) {
+      buttonText = userLanguage === 'en' ? '6 Months' : '6 Месяцев';
+    } else if (duration === 365) {
+      buttonText = userLanguage === 'en' ? '1 Year' : '1 Год';
+    }
+    
+    // Добавляем звезды к тексту кнопки
+    buttonText += ` - ${tariff.stars} ⭐️`;
+    
+    buttons.push({
+      text: buttonText,
+      tariffKey: tariffKey.toLowerCase()
+    });
+  });
+  
+  // Группируем кнопки по 2 в ряд
+  const groupedButtons = [];
+  for (let i = 0; i < buttons.length; i += 2) {
+    const row = [buttons[i]];
+    if (buttons[i + 1]) {
+      row.push(buttons[i + 1]);
+    }
+    groupedButtons.push(row);
+  }
+  
+  return groupedButtons;
+}
+
 // Функция для форматирования тарифов на английском языке
 function formatPremiumTariffEn(tariff, localizationService, userLanguage) {
   const { duration, stars, usd, rub, originalStars, discount, monthlyUsd, monthlyRub } = tariff;
@@ -212,5 +255,6 @@ module.exports = {
   generateSettingsKeyboard,
   generateTimeKeyboard,
   formatPremiumTariff,
-  formatPremiumTariffEn
+  formatPremiumTariffEn,
+  generatePremiumPaymentButtons
 }; 

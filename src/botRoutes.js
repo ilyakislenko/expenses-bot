@@ -352,6 +352,22 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('premium_tariffs', errorHandler((ctx) => callbackHandlers.handlePremiumTariffs(ctx)));
   bot.action('premium_why_paid', errorHandler((ctx) => callbackHandlers.handlePremiumWhyPaid(ctx)));
   bot.action('premium_subscription', errorHandler((ctx) => callbackHandlers.handlePremiumSubscription(ctx)));
+  
+  
+  
+  // Обработчик успешных платежей
+  bot.on('pre_checkout_query', errorHandler(async (ctx) => {
+    await ctx.answerPreCheckoutQuery(true);
+  }));
+  
+  bot.on('successful_payment', errorHandler(async (ctx) => {
+    const paymentService = handlers.paymentService;
+    await paymentService.handleSuccessfulPayment(ctx.message.successful_payment, handlers.userService);
+    
+    const userLanguage = await handlers.userService.getUserLanguage(ctx.from.id);
+    const successText = handlers.localizationService.getText(userLanguage, 'payment_success');
+    await ctx.reply(successText, { parse_mode: 'Markdown' });
+  }));
 
   // Глобальный обработчик ошибок
   bot.catch((error, ctx) => {

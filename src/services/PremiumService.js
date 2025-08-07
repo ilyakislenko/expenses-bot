@@ -2,9 +2,10 @@ const { USER_LIMITS } = require('../utils/constants');
 const logger = require('../utils/logger');
 
 class PremiumService {
-  constructor(userRepository, expenseRepository) {
+  constructor(userRepository, expenseRepository, userService) {
     this.userRepository = userRepository;
     this.expenseRepository = expenseRepository;
+    this.userService = userService;
   }
 
   /**
@@ -12,8 +13,7 @@ class PremiumService {
    */
   async isPremiumUser(userId) {
     try {
-      const user = await this.userRepository.getUserById(userId);
-      return user ? user.premium : false;
+      return await this.userService.isPremiumActive(userId);
     } catch (error) {
       logger.error('Error checking premium status:', error);
       return false;
@@ -83,6 +83,7 @@ class PremiumService {
     const isPremium = await this.isPremiumUser(userId);
     const limits = await this.getUserLimits(userId);
     const currentCount = await this.expenseRepository.getExpenseCount(userId);
+    const user = await this.userRepository.getUserById(userId);
     
     return {
       isPremium,
@@ -93,7 +94,10 @@ class PremiumService {
       allowCustomCategories: limits.ALLOW_CUSTOM_CATEGORIES,
       maxCustomCategories: limits.MAX_CUSTOM_CATEGORIES,
       noteRetentionDays: limits.NOTE_RETENTION_DAYS,
-      percentage: Math.round((currentCount / limits.MAX_NOTES_COUNT) * 100)
+      percentage: Math.round((currentCount / limits.MAX_NOTES_COUNT) * 100),
+      premiumExpiresAt: user.premium_expires_at,
+      daysRemaining: user.premium_expires_at ? 
+        Math.ceil((user.premium_expires_at - new Date()) / (1000 * 60 * 60 * 24)) : 0
     };
   }
 

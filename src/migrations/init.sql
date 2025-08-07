@@ -7,7 +7,9 @@ CREATE TABLE IF NOT EXISTS users (
     timezone VARCHAR(50) DEFAULT 'UTC',
     currency VARCHAR(3) DEFAULT 'RUB',
     language VARCHAR(5) DEFAULT 'ru',
-    premium BOOLEAN DEFAULT FALSE
+    premium BOOLEAN DEFAULT FALSE,
+    premium_expires_at TIMESTAMP NULL,
+    premium_activated_at TIMESTAMP NULL
 );
 
 CREATE TABLE IF NOT EXISTS categories (

@@ -616,7 +616,18 @@ class CommandHandlers {
     const privileges = this.localizationService.getText(userLanguage, 'premium_privileges', { status });
     const menuTitle = this.localizationService.getText(userLanguage, 'premium_menu_title');
     
-    const message = `${subscriptionTitle}\n\n${statusHeader}\n- ${privileges}\n- ${recordsUsage}\n- ${recordsRemaining}\n- ${maxDescriptionLength}\n\n${menuTitle}`;
+          let message = `${subscriptionTitle}\n\n${statusHeader}\n- ${privileges}\n- ${recordsUsage}\n- ${recordsRemaining}\n- ${maxDescriptionLength}`;
+      
+      // Добавляем информацию о дате истечения премиума
+      if (limitsInfo.isPremium && limitsInfo.premiumExpiresAt) {
+        const expiryInfo = this.localizationService.getText(userLanguage, 'premium_expires', {
+          date: this.formatter.formatDate(limitsInfo.premiumExpiresAt, userLanguage),
+          days: limitsInfo.daysRemaining
+        });
+        message += `\n\n${expiryInfo}`;
+      }
+      
+      message += `\n\n${menuTitle}`;
     
     // Создаем inline клавиатуру для премиум меню
     const tariffButton = this.localizationService.getText(userLanguage, 'premium_tariff_button');

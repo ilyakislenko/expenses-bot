@@ -35,6 +35,7 @@ const FamilyInvitationRepository = require('./repositories/FamilyInvitationRepos
 const ExpenseService = require('./services/ExpenseService');
 const UserService = require('./services/UserService');
 const PremiumService = require('./services/PremiumService');
+const PaymentService = require('./services/PaymentService');
 const LocalizationService = require('./services/LocalizationService');
 const FamilyService = require('./services/FamilyService');
 const NotificationService = require('./services/NotificationService');
@@ -132,8 +133,18 @@ class Container {
       case 'premiumService':
         return new PremiumService(
           this.get('userRepository'),
-          this.get('expenseRepository')
+          this.get('expenseRepository'),
+          this.get('userService')
         );
+
+      case 'paymentService':
+        // Создаем PaymentService с отложенной инициализацией бота
+        const paymentService = new PaymentService();
+        // Устанавливаем бота позже, когда он будет создан
+        if (this.instances.has('bot')) {
+          paymentService.setBot(this.get('bot'));
+        }
+        return paymentService;
 
       case 'localizationService':
         return new LocalizationService();
@@ -181,6 +192,7 @@ class Container {
         return new CallbackHandlers({
           expenseService: this.get('expenseService'),
           premiumService: this.get('premiumService'),
+          paymentService: this.get('paymentService'),
           familyService: this.get('familyService'),
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
@@ -192,10 +204,14 @@ class Container {
 
       case 'bot':
         const bot = new Telegraf(process.env.BOT_TOKEN);
-        // Устанавливаем бота в NotificationService после его создания
+        // Устанавливаем бота в сервисы после его создания
         const notificationService = this.get('notificationService');
         if (notificationService) {
           notificationService.setBot(bot);
+        }
+        const paymentServiceInstance = this.get('paymentService');
+        if (paymentServiceInstance) {
+          paymentServiceInstance.setBot(bot);
         }
         return bot;
 
@@ -233,6 +249,7 @@ class Container {
       expenseService: this.get('expenseService'),
       userService: this.get('userService'),
       premiumService: this.get('premiumService'),
+      paymentService: this.get('paymentService'),
       familyService: this.get('familyService'),
       localizationService: this.get('localizationService'),
       currencyUtils: this.get('currencyUtils'),

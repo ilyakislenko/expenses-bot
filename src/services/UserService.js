@@ -109,6 +109,77 @@ class UserService {
     }
     return this.categoryRepository.updateUserCategory(userId, categoryId, data);
   }
+
+  async activatePremium(userId, daysToAdd) {
+    try {
+      // Получаем текущий статус пользователя
+      const user = await this.getUserById(userId);
+      const now = new Date();
+      
+      let newExpiryDate;
+      let isNewActivation = false;
+      
+      if (user.premium && user.premium_expires_at && user.premium_expires_at > now) {
+        // У пользователя уже есть активная подписка - добавляем к существующей
+        newExpiryDate = new Date(user.premium_expires_at.getTime() + (daysToAdd * 24 * 60 * 60 * 1000));
+        logger.info(`Extending existing premium subscription for user ${userId} by ${daysToAdd} days`);
+      } else {
+        // Новая подписка или истекшая - начинаем с текущей даты
+        newExpiryDate = new Date(now.getTime() + (daysToAdd * 24 * 60 * 60 * 1000));
+        isNewActivation = true;
+        logger.info(`Activating new premium subscription for user ${userId} for ${daysToAdd} days`);
+      }
+      
+      const query = `
+        UPDATE users 
+        SET premium = true, 
+            premium_expires_at = $1,
+            premium_activated_at = CASE 
+              WHEN premium_activated_at IS NULL THEN NOW()
+              ELSE premium_activated_at 
+            END
+        WHERE id = $2
+      `;
+      
+      await this.userRepository.query(query, [newExpiryDate, userId]);
+      
+      logger.info(`Premium subscription ${isNewActivation ? 'activated' : 'extended'} for user ${userId}, expires at ${newExpiryDate}`);
+      
+      return {
+        isNewActivation,
+        newExpiryDate,
+        daysAdded: daysToAdd
+      };
+    } catch (error) {
+      logger.error('Failed to activate premium subscription', {
+        userId,
+        daysToAdd,
+        error: error.message
+      });
+      throw error;
+    }
+  }
+
+  async isPremiumActive(userId) {
+    const user = await this.getUserById(userId);
+    if (!user.premium || !user.premium_expires_at) {
+      return false;
+    }
+    return user.premium_expires_at > new Date();
+  }
+
+  async getPremiumStatus(userId) {
+    const user = await this.getUserById(userId);
+    const now = new Date();
+    
+    return {
+      isPremium: user.premium && user.premium_expires_at && user.premium_expires_at > now,
+      expiresAt: user.premium_expires_at,
+      activatedAt: user.premium_activated_at,
+      daysRemaining: user.premium_expires_at && user.premium_expires_at > now ? 
+        Math.ceil((user.premium_expires_at - now) / (1000 * 60 * 60 * 24)) : 0
+    };
+  }
 }
 
 module.exports = UserService; 

@@ -329,5 +329,9 @@ Now all your expenses will be correctly displayed in your local time.`,
   premium_stars_info: '💡 You can purchase stars without Apple / Google commission in the official bot [@PremiumBot].',
   premium_explanation_title: '_Explanation:_',
   premium_why_paid_title: '👀 Why is the service paid?',
-  premium_why_paid_text: 'Keeping the server running for this bot costs about 10,000₽ a month — and that’s even without accounting for the rapidly growing number of users. And as the developer, I also need to eat so I have the energy to keep building this service for you :)'
+  premium_why_paid_text: 'Keeping the server running for this bot costs about 10,000₽ a month — and that\'s even without accounting for the rapidly growing number of users. And as the developer, I also need to eat so I have the energy to keep building this service for you :)',
+  premium_payment_title: '💳 *Premium Subscription Payment*',
+  premium_payment_description: 'You selected tariff: **{duration}**\nCost: **{stars} ⭐️**\n\nClick the button below to proceed to payment via Telegram Stars.',
+  payment_success: '🎉 *Payment successful!*\n\nYour premium subscription has been activated. You now have access to all advanced bot features!',
+  premium_expires: '📅 Premium subscription valid until: **{date}**\n⏰ Days remaining: **{days}**'
 }; 

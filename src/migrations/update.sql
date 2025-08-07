@@ -195,3 +195,21 @@ BEGIN
         ALTER TABLE expenses ADD CONSTRAINT fk_expenses_family_id FOREIGN KEY (family_id) REFERENCES families(id) ON DELETE SET NULL;
     END IF;
 END $$; 
+
+-- Add premium subscription fields to users table
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS premium_expires_at TIMESTAMP NULL,
+ADD COLUMN IF NOT EXISTS premium_activated_at TIMESTAMP NULL;
+
+-- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_users_premium_expires_at 
+ON users(premium_expires_at) 
+WHERE premium_expires_at IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_users_premium_active 
+ON users(id) 
+WHERE premium = true AND premium_expires_at > NOW();
+
+-- Add comments for documentation
+COMMENT ON COLUMN users.premium_expires_at IS 'Дата истечения премиум подписки';
+COMMENT ON COLUMN users.premium_activated_at IS 'Дата первой активации премиум подписки'; 
