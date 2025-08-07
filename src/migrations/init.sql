@@ -19,7 +19,7 @@ WHERE premium_expires_at IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_users_premium_active 
 ON users(id) 
-WHERE premium = true AND premium_expires_at > NOW();
+WHERE premium = true AND premium_expires_at IS NOT NULL;
 
 -- Comments for premium subscription fields
 COMMENT ON COLUMN users.premium_expires_at IS 'Дата истечения премиум подписки';

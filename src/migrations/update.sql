@@ -206,9 +206,10 @@ CREATE INDEX IF NOT EXISTS idx_users_premium_expires_at
 ON users(premium_expires_at) 
 WHERE premium_expires_at IS NOT NULL;
 
+-- Create index for active premium users (without NOW() function)
 CREATE INDEX IF NOT EXISTS idx_users_premium_active 
 ON users(id) 
-WHERE premium = true AND premium_expires_at > NOW();
+WHERE premium = true AND premium_expires_at IS NOT NULL;
 
 -- Add comments for documentation
 COMMENT ON COLUMN users.premium_expires_at IS 'Дата истечения премиум подписки';
