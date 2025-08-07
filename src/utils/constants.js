@@ -23,54 +23,11 @@ const TRIAL_PERIOD = {
   TYPE: 'trial'
 };
 
-// Константы для тарифов премиум подписки
-// const PREMIUM_TARIFFS = {
-//   MONTH_1: {
-//     duration: 30,
-//     stars: 87,
-//     usd: 1.99,
-//     rub: 156,
-//     originalStars: null,
-//     discount: null,
-//     monthlyUsd: 1.99,
-//     monthlyRub: 156
-//   },
-//   MONTH_3: {
-//     duration: 90,
-//     stars: 222,
-//     usd: 4.99,
-//     rub: 399,
-//     originalStars: 261,
-//     discount: 15,
-//     monthlyUsd: 1.69,
-//     monthlyRub: 132
-//   },
-//   MONTH_6: {
-//     duration: 180,
-//     stars: 392,
-//     usd: 8.99,
-//     rub: 719,
-//     originalStars: 522,
-//     discount: 25,
-//     monthlyUsd: 1.49,
-//     monthlyRub: 117
-//   },
-//   MONTH_12: {
-//     duration: 365,
-//     stars: 679,
-//     usd: 14.99,
-//     rub: 1199,
-//     originalStars: 1044,
-//     discount: 35,
-//     monthlyUsd: 1.29,
-//     monthlyRub: 103
-//   }
-// };
-
+//Константы для тарифов премиум подписки
 const PREMIUM_TARIFFS = {
   MONTH_1: {
     duration: 30,
-    stars: 1,
+    stars: 87,
     usd: 1.99,
     rub: 156,
     originalStars: null,
@@ -80,7 +37,7 @@ const PREMIUM_TARIFFS = {
   },
   MONTH_3: {
     duration: 90,
-    stars: 1,
+    stars: 222,
     usd: 4.99,
     rub: 399,
     originalStars: 261,
@@ -90,7 +47,7 @@ const PREMIUM_TARIFFS = {
   },
   MONTH_6: {
     duration: 180,
-    stars: 1,
+    stars: 392,
     usd: 8.99,
     rub: 719,
     originalStars: 522,
@@ -100,7 +57,7 @@ const PREMIUM_TARIFFS = {
   },
   MONTH_12: {
     duration: 365,
-    stars: 1,
+    stars: 679,
     usd: 14.99,
     rub: 1199,
     originalStars: 1044,
@@ -109,6 +66,8 @@ const PREMIUM_TARIFFS = {
     monthlyRub: 103
   }
 };
+
+
 // Функция для генерации главного меню (reply-клавиатура)
 function generateMainMenuKeyboard(localizationService, userLanguage) {
   return [
