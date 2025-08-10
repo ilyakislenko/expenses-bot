@@ -118,7 +118,8 @@ class ExpenseService {
   }
 
   async getCategories(userId, localizationService = null, userLanguage = 'ru') {
-    const categories = await this.categoryRepository.getCategories(userId);
+    // Показываем системные + пользовательские категории
+    const categories = await this.categoryRepository.getAllCategories(userId);
     
     // Если есть локализация, переводим названия категорий
     if (localizationService) {

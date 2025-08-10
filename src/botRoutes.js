@@ -1,5 +1,5 @@
 module.exports = function registerBotRoutes(bot, handlers) {
-  const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, userEditState, ExpenseService, UserService, currencyUtils } = handlers;
+  const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, stateService, currencyUtils } = handlers;
 
   // Команды
   bot.command('start', errorHandler((ctx) => commandHandlers.start(ctx))); // главное меню бота
@@ -17,13 +17,18 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.command('family', errorHandler((ctx) => commandHandlers.family(ctx))); // управление семейными группами
   bot.command('menu', errorHandler((ctx) => commandHandlers.mainMenu(ctx))); // главное меню
   bot.command('cancel', async (ctx) => {
-    if (userEditState.has(ctx.from.id)) {
-      userEditState.delete(ctx.from.id);
+    if (stateService.hasUserEditState(ctx.from.id)) {
+      stateService.deleteUserEditState(ctx.from.id);
       await ctx.reply('Редактирование отменено.');
     } else {
       await ctx.reply('Нет активного редактирования.');
     }
   });
+  // Custom categories (premium)
+  bot.action('custom_categories', errorHandler((ctx) => callbackHandlers.handleCustomCategoriesMenu(ctx)));
+  bot.action('custom_categories_add', errorHandler((ctx) => callbackHandlers.handleCustomCategoriesAdd(ctx)));
+  bot.action('custom_categories_manage', errorHandler((ctx) => callbackHandlers.handleCustomCategoriesManage(ctx)));
+  bot.action(/^custom_categories_delete\|(\d+)$/, errorHandler((ctx) => callbackHandlers.handleCustomCategoriesDelete(ctx)));
 
   // Текстовые сообщения
   bot.on('text', errorHandler((ctx) => messageHandlers.handleExpense(ctx))); // обработка ввода расходов

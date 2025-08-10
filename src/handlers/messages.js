@@ -1,11 +1,12 @@
 const { errorMessages,SETTINGS_KEYBOARD } = require('../utils/constants');
 
 class MessageHandlers {
-  constructor({ expenseService, userService, premiumService, familyService, localizationService, formatter, commandHandlers, stateService, validator }) {
+  constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
     this.familyService = familyService;
+    this.categoryService = categoryService;
     this.localizationService = localizationService;
     this.formatter = formatter;
     this.commandHandlers = commandHandlers;
@@ -88,6 +89,10 @@ class MessageHandlers {
         
         if (userState === 'inviting_member') {
           return await this.handleInviteMember(ctx, text, userLanguage);
+        }
+
+        if (userState === 'adding_custom_category') {
+          return await this.handleAddCustomCategory(ctx, text, userLanguage);
         }
       }
       
@@ -458,6 +463,34 @@ class MessageHandlers {
       console.error('Error handling family expense:', error);
       const errorText = this.localizationService.getText(userLanguage, 'error');
       await ctx.reply(errorText);
+    }
+  }
+
+  async handleAddCustomCategory(ctx, text, userLanguage) {
+    try {
+      const userId = ctx.from.id;
+      const name = (text || '').trim();
+      if (name.length < 1 || name.length > 30) {
+        const enterName = this.localizationService.getText(userLanguage, 'custom_categories_enter_name');
+        return await ctx.reply(enterName);
+      }
+
+      // Требуется премиум: сервис проверит и бросит ошибку при отсутствии
+      const created = await this.categoryService.createUserCategory(userId, name);
+
+      this.stateService.deleteUserState(userId);
+      const okText = this.localizationService.getText(userLanguage, 'custom_categories_created', { name: created.name });
+      const backText = this.localizationService.getText(userLanguage, 'button_back');
+      await ctx.reply(okText, { reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'custom_categories' }]] } });
+    } catch (error) {
+      let msgKey = 'error';
+      if (error.code === 'ALREADY_EXISTS') msgKey = 'custom_categories_exists';
+      if (error.code === 'LIMIT_REACHED') msgKey = 'custom_categories_limit_reached';
+      if (error.code === 'PREMIUM_REQUIRED') msgKey = 'custom_categories_premium_required';
+      const userId = ctx.from.id;
+      const userLanguage2 = await this.userService.getUserLanguage(userId);
+      const message = this.localizationService.getText(userLanguage2, msgKey, { max: error.max });
+      await ctx.reply(message);
     }
   }
 }

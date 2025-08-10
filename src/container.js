@@ -40,6 +40,7 @@ const PaymentService = require('./services/PaymentService');
 const LocalizationService = require('./services/LocalizationService');
 const FamilyService = require('./services/FamilyService');
 const NotificationService = require('./services/NotificationService');
+const CategoryService = require('./services/CategoryService');
 
 // Handlers
 const CommandHandlers = require('./handlers/commands');
@@ -168,6 +169,12 @@ class Container {
           this.get('notificationService')
         );
 
+      case 'categoryService':
+        return new CategoryService(
+          this.get('categoryRepository'),
+          this.get('premiumService')
+        );
+
       case 'commandHandlers':
         return new CommandHandlers({
           expenseService: this.get('expenseService'),
@@ -186,6 +193,7 @@ class Container {
           userService: this.get('userService'),
           premiumService: this.get('premiumService'),
           familyService: this.get('familyService'),
+          categoryService: this.get('categoryService'),
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
           commandHandlers: this.get('commandHandlers'),
@@ -199,6 +207,7 @@ class Container {
           premiumService: this.get('premiumService'),
           paymentService: this.get('paymentService'),
           familyService: this.get('familyService'),
+          categoryService: this.get('categoryService'),
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
           stateService: this.get('stateService'),

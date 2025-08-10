@@ -153,6 +153,7 @@ Now all your expenses will be correctly displayed in your local time.`,
   button_change_currency: '💱 Change Currency',
   button_change_timezone: '🌍 Timezone',
   button_change_language: '🌐 Language',
+  button_custom_categories: '🏷️ Custom Categories',
   
   // Main menu
   main_menu_title: '🏠 *Main Menu*\n\nChoose an action:',
@@ -334,4 +335,19 @@ Now all your expenses will be correctly displayed in your local time.`,
 
   payment_success: '🎉 *Payment successful!*\n\nYour premium subscription has been activated. You now have access to all advanced bot features!',
   premium_expires: '📅 Premium subscription valid until: <b>{date}</b>\n⏰ Days remaining: <b>{days}</b>'
+  ,
+  // Custom categories (premium)
+  custom_categories_title: '🏷️ Custom Categories',
+  custom_categories_info: 'Here you can create your own expense categories (premium only).',
+  custom_categories_add: '➕ Add Category',
+  custom_categories_manage: '🗂️ Manage Categories',
+  custom_categories_enter_name: 'Enter the new category name (1-30 characters):',
+  custom_categories_created: '✅ Category created: {name}',
+  custom_categories_exists: '❌ This category already exists.',
+  custom_categories_limit_reached: '❌ Custom categories limit reached: {max}',
+  custom_categories_list_empty: 'You have no custom categories.',
+  custom_categories_list_title: 'Your custom categories:',
+  custom_categories_delete: '🗑️ Delete',
+  custom_categories_deleted: '✅ Category deleted.',
+  custom_categories_premium_required: '💎 This feature is only available for premium users.'
 }; 

@@ -1,10 +1,11 @@
 
 class CallbackHandlers {
-  constructor({ expenseService, premiumService, paymentService, familyService, localizationService, formatter, stateService, userService, commandHandlers, keyboardGenerators }) {
+  constructor({ expenseService, premiumService, paymentService, familyService, categoryService, localizationService, formatter, stateService, userService, commandHandlers, keyboardGenerators }) {
     this.expenseService = expenseService;
     this.premiumService = premiumService;
     this.paymentService = paymentService;
     this.familyService = familyService;
+    this.categoryService = categoryService;
     this.localizationService = localizationService;
     this.formatter = formatter;
     this.stateService = stateService;
@@ -1108,6 +1109,120 @@ class CallbackHandlers {
       const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
       const errorText = this.localizationService.getText(userLanguage, 'error');
       await ctx.answerCbQuery(errorText);
+    }
+  }
+
+  // ========================================
+  // CUSTOM CATEGORIES (PREMIUM)
+  // ========================================
+
+  async handleCustomCategoriesMenu(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    try {
+      const isPremium = await this.premiumService.isPremiumUser(userId);
+      if (!isPremium) {
+        const text = this.localizationService.getText(userLanguage, 'custom_categories_premium_required');
+        await ctx.answerCbQuery(text, { show_alert: true });
+        return;
+      }
+
+      const title = this.localizationService.getText(userLanguage, 'custom_categories_title');
+      const info = this.localizationService.getText(userLanguage, 'custom_categories_info');
+      const addText = this.localizationService.getText(userLanguage, 'custom_categories_add');
+      const manageText = this.localizationService.getText(userLanguage, 'custom_categories_manage');
+      const backText = this.localizationService.getText(userLanguage, 'button_back');
+
+      const keyboard = [
+        [{ text: addText, callback_data: 'custom_categories_add' }],
+        [{ text: manageText, callback_data: 'custom_categories_manage' }],
+        [{ text: backText, callback_data: 'back_to_settings' }]
+      ];
+
+      await ctx.answerCbQuery();
+      await ctx.editMessageText(`${title}\n\n${info}`, {
+        reply_markup: { inline_keyboard: keyboard }
+      });
+    } catch (error) {
+      console.error('Error opening custom categories menu:', error);
+      await ctx.answerCbQuery(this.localizationService.getText(userLanguage, 'error'));
+    }
+  }
+
+  async handleCustomCategoriesAdd(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    try {
+      const isPremium = await this.premiumService.isPremiumUser(userId);
+      if (!isPremium) {
+        const text = this.localizationService.getText(userLanguage, 'custom_categories_premium_required');
+        await ctx.answerCbQuery(text, { show_alert: true });
+        return;
+      }
+
+      // Ставим состояние ожидания имени категории
+      this.stateService.setUserState(userId, 'adding_custom_category');
+      const enterName = this.localizationService.getText(userLanguage, 'custom_categories_enter_name');
+      const backText = this.localizationService.getText(userLanguage, 'button_back');
+
+      await ctx.answerCbQuery();
+      await ctx.editMessageText(enterName, {
+        reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'custom_categories' }]] }
+      });
+    } catch (error) {
+      console.error('Error opening add custom category:', error);
+      await ctx.answerCbQuery(this.localizationService.getText(userLanguage, 'error'));
+    }
+  }
+
+  async handleCustomCategoriesManage(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    try {
+      const isPremium = await this.premiumService.isPremiumUser(userId);
+      if (!isPremium) {
+        const text = this.localizationService.getText(userLanguage, 'custom_categories_premium_required');
+        await ctx.answerCbQuery(text, { show_alert: true });
+        return;
+      }
+
+      const list = await this.categoryService.getUserCategories(userId);
+      const backText = this.localizationService.getText(userLanguage, 'button_back');
+      const deleteText = this.localizationService.getText(userLanguage, 'custom_categories_delete');
+      let message;
+      const keyboard = [];
+      if (!list.length) {
+        message = this.localizationService.getText(userLanguage, 'custom_categories_list_empty');
+      } else {
+        const title = this.localizationService.getText(userLanguage, 'custom_categories_list_title');
+        message = `${title}\n\n` + list.map(c => `${c.icon || '📦'} ${c.name}`).join('\n');
+        list.forEach(c => {
+          keyboard.push([{ text: `${deleteText} ${c.name}`, callback_data: `custom_categories_delete|${c.id}` }]);
+        });
+      }
+      keyboard.push([{ text: backText, callback_data: 'custom_categories' }]);
+
+      await ctx.answerCbQuery();
+      await ctx.editMessageText(message, { reply_markup: { inline_keyboard: keyboard } });
+    } catch (error) {
+      console.error('Error opening manage custom categories:', error);
+      await ctx.answerCbQuery(this.localizationService.getText(userLanguage, 'error'));
+    }
+  }
+
+  async handleCustomCategoriesDelete(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    try {
+      const [, idStr] = ctx.callbackQuery.data.split('|');
+      const deleted = await this.categoryService.deleteUserCategory(userId, parseInt(idStr, 10));
+      const backText = this.localizationService.getText(userLanguage, 'button_back');
+      const deletedText = this.localizationService.getText(userLanguage, 'custom_categories_deleted');
+      await ctx.answerCbQuery(deletedText);
+      await ctx.editMessageText(deletedText, { reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'custom_categories_manage' }]] } });
+    } catch (error) {
+      console.error('Error deleting custom category:', error);
+      await ctx.answerCbQuery(this.localizationService.getText(userLanguage, 'error'));
     }
   }
 

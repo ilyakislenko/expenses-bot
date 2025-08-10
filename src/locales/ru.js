@@ -274,6 +274,7 @@ module.exports = {
   button_change_currency: '💱 Сменить валюту',
   button_change_timezone: '🌍 Часовой пояс',
   button_change_language: '🌐 Язык',
+  button_custom_categories: '🏷️ Кастомные категории',
   
   // Главное меню
   main_menu_title: '🏠 *Главное меню*\n\nВыберите действие:',
@@ -336,4 +337,19 @@ module.exports = {
   category_shopping: 'Покупки',
   category_health: 'Здоровье',
   category_other: 'Другое'
+  ,
+  // Кастомные категории (премиум)
+  custom_categories_title: '🏷️ Кастомные категории',
+  custom_categories_info: 'Здесь вы можете создать собственные категории расходов (только для премиум).',
+  custom_categories_add: '➕ Добавить категорию',
+  custom_categories_manage: '🗂️ Управление категориями',
+  custom_categories_enter_name: 'Введите название новой категории (1-30 символов):',
+  custom_categories_created: '✅ Категория создана: {name}',
+  custom_categories_exists: '❌ Такая категория уже существует.',
+  custom_categories_limit_reached: '❌ Достигнут лимит кастомных категорий: {max}',
+  custom_categories_list_empty: 'У вас нет кастомных категорий.',
+  custom_categories_list_title: 'Ваши кастомные категории:',
+  custom_categories_delete: '🗑️ Удалить',
+  custom_categories_deleted: '✅ Категория удалена.',
+  custom_categories_premium_required: '💎 Эта функция доступна только премиум пользователям.'
 }; 

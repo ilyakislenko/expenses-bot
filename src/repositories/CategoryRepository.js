@@ -1,6 +1,13 @@
 const BaseRepository = require('./BaseRepository');
 
 class CategoryRepository extends BaseRepository {
+  async getCategoryById(categoryId) {
+    const query = `
+      SELECT * FROM categories WHERE id = $1
+    `;
+    const result = await this.query(query, [categoryId]);
+    return result.rows[0];
+  }
   async getCategories(userId) {
     // Получаем только системные категории (user_id = 0)
     const query = `

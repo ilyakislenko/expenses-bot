@@ -23,7 +23,8 @@ class EnhancedValidator {
       firstName: /^[а-яёa-z\s\-']+$/i,
       lastName: /^[а-яёa-z\s\-']+$/i,
       currency: /^[A-Z]{3}$/,
-      callbackData: /^[a-zA-Z0-9а-яё_\-:|]+$/i,
+      // Разрешаем пробелы в callback_data, так как кнопки могут содержать названия с пробелами
+      callbackData: /^[a-zA-Z0-9а-яё_\-:|\s]+$/i,
       command: /^\/[a-zA-Z0-9_]+$/
     };
 
