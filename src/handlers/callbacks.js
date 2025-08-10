@@ -88,16 +88,24 @@ class CallbackHandlers {
       const descriptionLabelText = this.localizationService.getText(userLanguage, 'description_label');
       const categoryLabelText = this.localizationService.getText(userLanguage, 'category_label');
       
+      // Клавиатура: для семейных трат добавляем кнопку "Добавить ещё"
+      let keyboard = [];
+      if (familyId) {
+        const addAnotherText = this.localizationService.getText(userLanguage, 'family_add_expense');
+        keyboard = [[
+          { text: addAnotherText, callback_data: 'family_add_expense' },
+          { text: backText, callback_data: 'family_menu' }
+        ]];
+      } else {
+        keyboard = [[{ text: backText, callback_data: 'back_to_menu' }]];
+      }
+
       await ctx.editMessageText(
         `✅ *${expenseAddedTitleText}*\n\n` +
         `💰 ${amountLabelText}: *${formattedAmount}*\n` +
         `📝 ${descriptionLabelText}: ${formattedDescription}\n` +
         `🏷️ ${categoryLabelText}: ${localizedCategoryName}`,
-        { parse_mode: 'Markdown', reply_markup: {
-          inline_keyboard: [
-            [{ text: backText, callback_data: 'back_to_menu' }]
-          ]
-        } }
+        { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } }
       );
     } catch (error) {
       console.error('Error handling category selection:', error);
