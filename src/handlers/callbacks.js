@@ -1211,6 +1211,7 @@ class CallbackHandlers {
       const list = await this.categoryService.getUserCategories(userId);
       const backText = this.localizationService.getText(userLanguage, 'button_back');
       const deleteText = this.localizationService.getText(userLanguage, 'custom_categories_delete');
+      const editText = this.localizationService.getText(userLanguage, 'button_edit');
       let message;
       const keyboard = [];
       if (!list.length) {
@@ -1219,7 +1220,10 @@ class CallbackHandlers {
         const title = this.localizationService.getText(userLanguage, 'custom_categories_list_title');
         message = `${title}\n\n` + list.map(c => `${c.icon || '📦'} ${c.name}`).join('\n');
         list.forEach(c => {
-          keyboard.push([{ text: `${deleteText} ${c.name}`, callback_data: `custom_categories_delete|${c.id}` }]);
+          keyboard.push([
+            { text: `${editText} ${c.name}`, callback_data: `custom_categories_rename|${c.id}` },
+            { text: `${deleteText} ${c.name}`, callback_data: `custom_categories_delete|${c.id}` }
+          ]);
         });
       }
       keyboard.push([{ text: backText, callback_data: 'custom_categories' }]);
@@ -1244,6 +1248,30 @@ class CallbackHandlers {
       await ctx.editMessageText(deletedText, { reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'custom_categories_manage' }]] } });
     } catch (error) {
       console.error('Error deleting custom category:', error);
+      await ctx.answerCbQuery(this.localizationService.getText(userLanguage, 'error'));
+    }
+  }
+
+  async handleCustomCategoriesRename(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    try {
+      const isPremium = await this.premiumService.isPremiumUser(userId);
+      if (!isPremium) {
+        const text = this.localizationService.getText(userLanguage, 'custom_categories_premium_required');
+        await ctx.answerCbQuery(text, { show_alert: true });
+        return;
+      }
+
+      const [, idStr] = ctx.callbackQuery.data.split('|');
+      // Ставим состояние ожидания нового имени категории
+      this.stateService.setUserState(userId, `renaming_custom_category:${idStr}`);
+      const enterName = this.localizationService.getText(userLanguage, 'custom_categories_enter_name');
+      const backText = this.localizationService.getText(userLanguage, 'button_back');
+      await ctx.answerCbQuery();
+      await ctx.editMessageText(enterName, { reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'custom_categories_manage' }]] } });
+    } catch (error) {
+      console.error('Error opening rename custom category:', error);
       await ctx.answerCbQuery(this.localizationService.getText(userLanguage, 'error'));
     }
   }

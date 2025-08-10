@@ -29,6 +29,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('custom_categories_add', errorHandler((ctx) => callbackHandlers.handleCustomCategoriesAdd(ctx)));
   bot.action('custom_categories_manage', errorHandler((ctx) => callbackHandlers.handleCustomCategoriesManage(ctx)));
   bot.action(/^custom_categories_delete\|(\d+)$/, errorHandler((ctx) => callbackHandlers.handleCustomCategoriesDelete(ctx)));
+  bot.action(/^custom_categories_rename\|(\d+)$/, errorHandler((ctx) => callbackHandlers.handleCustomCategoriesRename(ctx)));
 
   // Текстовые сообщения
   bot.on('text', errorHandler((ctx) => messageHandlers.handleExpense(ctx))); // обработка ввода расходов

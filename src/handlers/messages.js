@@ -94,6 +94,11 @@ class MessageHandlers {
         if (userState === 'adding_custom_category') {
           return await this.handleAddCustomCategory(ctx, text, userLanguage);
         }
+
+        if (userState.startsWith && userState.startsWith('renaming_custom_category:')) {
+          const categoryId = userState.split(':')[1];
+          return await this.handleRenameCustomCategory(ctx, text, userLanguage, categoryId);
+        }
       }
       
       if (this.stateService.hasUserEditState(ctx.from.id)) {
@@ -504,6 +509,41 @@ class MessageHandlers {
       const userId = ctx.from.id;
       const userLanguage2 = await this.userService.getUserLanguage(userId);
       const message = this.localizationService.getText(userLanguage2, msgKey, { max: error.max });
+      await ctx.reply(message);
+    }
+  }
+
+  async handleRenameCustomCategory(ctx, text, userLanguage, categoryId) {
+    try {
+      const userId = ctx.from.id;
+      const raw = (text || '').trim();
+      let icon = '📦';
+      let name = raw;
+      try {
+        const emojiMatch = raw.match(/\p{Extended_Pictographic}/u);
+        if (emojiMatch && emojiMatch[0]) {
+          icon = emojiMatch[0];
+          name = raw.replace(emojiMatch[0], '').trim();
+        }
+      } catch (_) {}
+
+      if (name.length < 1 || name.length > 30) {
+        const enterName = this.localizationService.getText(userLanguage, 'custom_categories_enter_name');
+        return await ctx.reply(enterName);
+      }
+
+      await this.categoryService.updateUserCategory(userId, Number(categoryId), name, icon);
+      this.stateService.deleteUserState(userId);
+      const okText = this.localizationService.getText(userLanguage, 'custom_categories_created', { name });
+      const backText = this.localizationService.getText(userLanguage, 'button_back');
+      await ctx.reply(okText, { reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'custom_categories_manage' }]] } });
+    } catch (error) {
+      let msgKey = 'error';
+      if (error.code === 'ALREADY_EXISTS') msgKey = 'custom_categories_exists';
+      if (error.code === 'PREMIUM_REQUIRED') msgKey = 'custom_categories_premium_required';
+      const userId = ctx.from.id;
+      const userLanguage2 = await this.userService.getUserLanguage(userId);
+      const message = this.localizationService.getText(userLanguage2, msgKey);
       await ctx.reply(message);
     }
   }

@@ -83,6 +83,29 @@ class CategoryService {
   async getCategoryById(categoryId) {
     return this.categoryRepository.getCategoryById(categoryId);
   }
+
+  async updateUserCategory(userId, categoryId, name, icon = '📦') {
+    const isPremium = await this.premiumService.isPremiumUser(userId);
+    if (!isPremium) {
+      const error = new Error('premium_required');
+      error.code = 'PREMIUM_REQUIRED';
+      throw error;
+    }
+
+    const existing = await this.categoryRepository.getUserCategories(userId);
+    const duplicate = existing.find(
+      (c) => c.id !== Number(categoryId) && c.name.trim().toLowerCase() === name.trim().toLowerCase()
+    );
+    if (duplicate) {
+      const error = new Error('custom_category_exists');
+      error.code = 'ALREADY_EXISTS';
+      throw error;
+    }
+
+    const updated = await this.categoryRepository.updateUserCategory(userId, categoryId, { name: name.trim(), icon });
+    logger.info('User category renamed', { userId, categoryId, name });
+    return updated;
+  }
 }
 
 module.exports = CategoryService;
