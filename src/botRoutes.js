@@ -34,7 +34,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.on('text', errorHandler((ctx) => messageHandlers.handleExpense(ctx))); // обработка ввода расходов
 
   // Callback actions
-  bot.action(/^category\|/, (ctx) => callbackHandlers.handleCategorySelection(ctx)); // выбор категории для расхода
+  bot.action(/^category\|/, (ctx) => callbackHandlers.handleCategorySelection(ctx)); // выбор категории для расхода (id или имя)
   bot.action('cancel', (ctx) => callbackHandlers.handleCancel(ctx)); // отмена операции
   bot.action('menu', errorHandler(async (ctx) => {
     await ctx.answerCbQuery();

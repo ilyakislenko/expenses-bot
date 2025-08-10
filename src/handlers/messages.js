@@ -187,7 +187,8 @@ class MessageHandlers {
         const localizedCategoryName = this.formatter.translateCategoryName(category.name, this.localizationService, userLanguage);
         const button = {
           text: `${category.icon} ${localizedCategoryName}`,
-          callback_data: `category|${category.name}`
+          // Кодируем id, чтобы корректно обрабатывать любые названия (включая emoji)
+          callback_data: `category|${category.id}`
         };
         row.push(button);
         if (row.length === 2 || index === categories.length - 1) {
@@ -469,14 +470,27 @@ class MessageHandlers {
   async handleAddCustomCategory(ctx, text, userLanguage) {
     try {
       const userId = ctx.from.id;
-      const name = (text || '').trim();
+      const raw = (text || '').trim();
+      // Пытаемся извлечь эмодзи для иконки (первый найденный символ-пиктограмма)
+      let icon = '📦';
+      let name = raw;
+      try {
+        const emojiMatch = raw.match(/\p{Extended_Pictographic}/u);
+        if (emojiMatch && emojiMatch[0]) {
+          icon = emojiMatch[0];
+          name = raw.replace(emojiMatch[0], '').trim();
+        }
+      } catch (_) {
+        // В средах без поддержки Unicode property escapes просто игнорируем
+      }
+
       if (name.length < 1 || name.length > 30) {
         const enterName = this.localizationService.getText(userLanguage, 'custom_categories_enter_name');
         return await ctx.reply(enterName);
       }
 
       // Требуется премиум: сервис проверит и бросит ошибку при отсутствии
-      const created = await this.categoryService.createUserCategory(userId, name);
+      const created = await this.categoryService.createUserCategory(userId, name, icon);
 
       this.stateService.deleteUserState(userId);
       const okText = this.localizationService.getText(userLanguage, 'custom_categories_created', { name: created.name });

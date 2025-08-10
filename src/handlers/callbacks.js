@@ -26,7 +26,7 @@ class CallbackHandlers {
     
     try {
       const callbackData = ctx.callbackQuery.data;
-      const [, categoryName] = callbackData.split('|');
+      const [, categoryPart] = callbackData.split('|');
       const pending = this.stateService.getPendingExpense(userId);
       if (!pending) {
         const dataNotFoundText = this.localizationService.getText(userLanguage, 'callback_data_not_found');
@@ -52,19 +52,33 @@ class CallbackHandlers {
         const buttonNotFoundText = this.localizationService.getText(userLanguage, 'callback_button_not_found');
         return await ctx.answerCbQuery(buttonNotFoundText);
       }
-      // Добавляем расход через сервис
+      // Определяем категорию: по id (предпочтительно) или по имени (совместимость)
+      let resolvedCategoryName = null;
+      if (/^\d+$/.test(categoryPart)) {
+        const category = await this.categoryService.getCategoryById(Number(categoryPart));
+        if (!category) {
+          const notFound = this.localizationService.getText(userLanguage, 'callback_data_not_found');
+          await ctx.answerCbQuery(notFound);
+          return;
+        }
+        resolvedCategoryName = category.name;
+      } else {
+        resolvedCategoryName = categoryPart;
+      }
+
+      // Добавляем расход через сервис (по имени категории)
       const expense = await this.expenseService.addExpense(
         userId,
         parseFloat(amount),
         description,
-        categoryName,
+        resolvedCategoryName,
         familyId
       );
       const formattedAmount = this.formatter.formatAmount(expense.amount, expense.currency);
       const formattedDescription = expense.description || this.localizationService.getText(userLanguage, 'not_found');
       
       // Локализуем название категории
-      const localizedCategoryName = this.formatter.translateCategoryName(categoryName, this.localizationService, userLanguage);
+      const localizedCategoryName = this.formatter.translateCategoryName(resolvedCategoryName, this.localizationService, userLanguage);
       const expenseAddedText = this.localizationService.getText(userLanguage, 'callback_expense_added', { category: localizedCategoryName });
       const backText = this.localizationService.getText(userLanguage, 'button_back');
       
