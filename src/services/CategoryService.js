@@ -1,9 +1,10 @@
 const logger = require('../utils/logger');
 
 class CategoryService {
-  constructor(categoryRepository, premiumService) {
+  constructor(categoryRepository, premiumService, expenseRepository) {
     this.categoryRepository = categoryRepository;
     this.premiumService = premiumService;
+    this.expenseRepository = expenseRepository;
   }
 
   async getUserCategories(userId) {
@@ -58,6 +59,23 @@ class CategoryService {
       throw error;
     }
 
+    // Находим системную категорию "Другое"
+    let fallback = await this.categoryRepository.getCategoryByName(0, 'Другое');
+    if (!fallback) {
+      // На всякий случай получим первую системную
+      const systemCategories = await this.categoryRepository.getCategories(0);
+      if (!systemCategories.length) {
+        const err = new Error('no_fallback_category');
+        err.code = 'NO_FALLBACK';
+        throw err;
+      }
+      fallback = systemCategories[0];
+    }
+
+    // Переназначаем все расходы пользователя с этой категории на "Другое"
+    await this.expenseRepository.reassignExpensesCategory(userId, categoryId, fallback.id);
+
+    // Удаляем категорию
     const deleted = await this.categoryRepository.deleteUserCategory(userId, categoryId);
     return deleted;
   }

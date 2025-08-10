@@ -172,7 +172,8 @@ class Container {
       case 'categoryService':
         return new CategoryService(
           this.get('categoryRepository'),
-          this.get('premiumService')
+          this.get('premiumService'),
+          this.get('expenseRepository')
         );
 
       case 'commandHandlers':

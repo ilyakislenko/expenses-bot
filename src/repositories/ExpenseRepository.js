@@ -3,6 +3,15 @@ const periodsConfig = require('../config/periods');
 const currencyConfig = require('../config/currencies');
 
 class ExpenseRepository extends BaseRepository {
+  async reassignExpensesCategory(userId, fromCategoryId, toCategoryId) {
+    const query = `
+      UPDATE expenses
+      SET category_id = $3
+      WHERE user_id = $1 AND category_id = $2
+    `;
+    const result = await this.query(query, [userId, fromCategoryId, toCategoryId]);
+    return result.rowCount;
+  }
   async addExpense(userId, amount, description, categoryId, currency = currencyConfig.BASE_CURRENCY, userTimezone = 'UTC', familyId = null) {
     const query = `
       INSERT INTO expenses (user_id, amount, description, category_id, currency, family_id, created_at_utc) 
