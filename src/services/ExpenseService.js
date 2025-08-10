@@ -2,10 +2,11 @@ const logger = require('../utils/logger');
 const { expensesTotal, expensesAmountTotal, newUsersTotal } = require('../utils/metrics');
 
 class ExpenseService {
-  constructor(expenseRepository, userRepository, categoryRepository) {
+  constructor(expenseRepository, userRepository, categoryRepository, premiumService) {
     this.expenseRepository = expenseRepository;
     this.userRepository = userRepository;
     this.categoryRepository = categoryRepository;
+    this.premiumService = premiumService;
   }
 
   async getMonthlyStats(userId) {
@@ -118,8 +119,9 @@ class ExpenseService {
   }
 
   async getCategories(userId, localizationService = null, userLanguage = 'ru') {
-    // Показываем системные + пользовательские категории
-    const categories = await this.categoryRepository.getAllCategories(userId);
+    // Показываем пользовательские категории только для премиум
+    const isPremium = await this.premiumService.isPremiumUser(userId);
+    const categories = await this.categoryRepository.getCategoriesWithPremium(userId, isPremium);
     
     // Если есть локализация, переводим названия категорий
     if (localizationService) {

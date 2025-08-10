@@ -313,7 +313,7 @@ class CommandHandlers {
         message += '\n' + this.localizationService.getText(userLanguage, 'premium_benefits');
       }
       
-      await ctx.reply(message, { parse_mode: 'Markdown' });
+      await ctx.reply(message, { parse_mode: 'HTML' });
     } catch (error) {
       console.error('Error in limits command:', error);
       const errorText = this.localizationService.getText(userLanguage, 'error');
@@ -616,6 +616,7 @@ class CommandHandlers {
     const statusHeader = this.localizationService.getText(userLanguage, 'premium_status_header');
     const privileges = this.localizationService.getText(userLanguage, 'premium_privileges', { status });
     const menuTitle = this.localizationService.getText(userLanguage, 'premium_menu_title');
+    const benefits = this.localizationService.getText(userLanguage, 'premium_benefits');
     
           let message = `${subscriptionTitle}\n\n${statusHeader}\n- ${privileges}\n- ${recordsUsage}\n- ${recordsRemaining}\n- ${maxDescriptionLength}`;
       
@@ -628,7 +629,7 @@ class CommandHandlers {
         message += `\n\n${expiryInfo}`;
       }
       
-      message += `\n\n${menuTitle}`;
+      message += `\n\n${benefits}\n\n${menuTitle}`;
     
     // Создаем inline клавиатуру для премиум меню
     const tariffButton = this.localizationService.getText(userLanguage, 'premium_tariff_button');

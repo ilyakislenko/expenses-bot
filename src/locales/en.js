@@ -120,10 +120,10 @@ Now all your expenses will be correctly displayed in your local time.`,
   max_description_length: '<b>Max description length:</b> {length} characters',
   near_limit_warning: '⚠️ *Warning:* You are close to the record limit!',
   limit_reached: '❌ *Record limit reached!*',
-  premium_benefits: `💎 *Premium benefits:*
+  premium_benefits: `💎 <b>Premium benefits:</b>
 • 160 characters in description (instead of 80)
 • 300 records (instead of 100)
-• Custom categories
+ • Up to 5 custom categories
 • Extended statistics`,
   
   // Validation errors
@@ -325,7 +325,7 @@ Now all your expenses will be correctly displayed in your local time.`,
   premium_why_paid_button: '👀 Why is the service paid?',
   premium_back_button: '⬅️ Back',
   premium_tariffs_title: '⭐️ Tariffs (Telegram Stars)',
-  premium_payment_info: '💳 Payment is made using Telegram Stars — Telegram\'s internal currency for convenient and secure payment within the messenger. *No automatic renewal.*',
+  premium_payment_info: '💳 Payment is made using Telegram Stars — Telegram\'s internal currency for convenient and secure payment within the messenger. <b>No automatic renewal.</b>',
   premium_renewal_info: '📅 You can renew your subscription at any time. The corresponding number of days will be added to the remaining period.',
   premium_stars_info: '💡 You can purchase stars without Apple / Google commission in the official bot [@PremiumBot].',
   premium_why_paid_title: '👀 Why is the service paid?',

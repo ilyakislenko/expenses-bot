@@ -126,7 +126,8 @@ class Container {
         return new ExpenseService(
           this.get('expenseRepository'),
           this.get('userRepository'),
-          this.get('categoryRepository')
+          this.get('categoryRepository'),
+          this.get('premiumService')
         );
 
           case 'userService':
