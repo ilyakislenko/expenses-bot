@@ -1,7 +1,7 @@
 const { errorMessages,SETTINGS_KEYBOARD } = require('../utils/constants');
 
 class MessageHandlers {
-  constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator }) {
+  constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, donationRepository }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -12,6 +12,8 @@ class MessageHandlers {
     this.commandHandlers = commandHandlers;
     this.stateService = stateService;
     this.validator = validator;
+    this.paymentService = paymentService;
+    this.donationRepository = donationRepository;
   }
 
   async handleExpense(ctx) {
@@ -93,6 +95,10 @@ class MessageHandlers {
 
         if (userState === 'setting_period_start') {
           return await this.handleSetPeriodStart(ctx, text, userLanguage);
+        }
+
+        if (userState === 'entering_donation') {
+          return await this.handleDonationInput(ctx, text, userLanguage);
         }
 
         if (userState === 'adding_custom_category') {
@@ -473,6 +479,40 @@ class MessageHandlers {
       console.error('Error handling family expense:', error);
       const errorText = this.localizationService.getText(userLanguage, 'error');
       await ctx.reply(errorText);
+    }
+  }
+
+  async handleDonationInput(ctx, text, userLanguage) {
+    try {
+      const userId = ctx.from.id;
+      const raw = (text || '').trim();
+      // Поддерживаем два формата: "<число>" ИЛИ "<число> <письмо>" ИЛИ "<число>\n<письмо>"
+      const match = raw.match(/^\s*(\d{1,4})\s*(?:[\n\r]+(.+)|\s+(.+))?$/s);
+      const stars = match ? parseInt(match[1], 10) : NaN;
+      let message = '';
+      if (match) {
+        message = (match[2] || match[3] || '').trim();
+      }
+      if (!Number.isInteger(stars) || stars < 1 || stars > 2500 || message.length > 500) {
+        const invalid = this.localizationService.getText(userLanguage, 'donate_invalid');
+        return await ctx.reply(invalid);
+      }
+      // создаём pending донат
+      const donation = await this.donationRepository.createPendingDonation(userId, stars, message || null);
+      this.stateService.deleteUserState(userId);
+
+      const ok = this.localizationService.getText(userLanguage, 'donate_created', { stars });
+      await ctx.reply(ok);
+
+      // создаём ссылку оплаты через инжектированный PaymentService
+      if (this.paymentService && this.paymentService.createDonationInvoiceLink) {
+        const link = await this.paymentService.createDonationInvoiceLink(userId, stars, userLanguage, donation.id);
+        await ctx.reply(link);
+      }
+    } catch (error) {
+      console.error('Error handling donation input:', error);
+      const err = this.localizationService.getText(userLanguage, 'error');
+      await ctx.reply(err);
     }
   }
 

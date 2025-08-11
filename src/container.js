@@ -31,6 +31,7 @@ const CurrencyRepository = require('./repositories/CurrencyRepository');
 const FamilyRepository = require('./repositories/FamilyRepository');
 const FamilyInvitationRepository = require('./repositories/FamilyInvitationRepository');
 const PremiumTransactionRepository = require('./repositories/PremiumTransactionRepository');
+const DonationRepository = require('./repositories/DonationRepository');
 
 // Services
 const ExpenseService = require('./services/ExpenseService');
@@ -95,6 +96,9 @@ class Container {
       case 'premiumTransactionRepository':
         return new PremiumTransactionRepository();
 
+      case 'donationRepository':
+        return new DonationRepository();
+
       case 'currencyUtils':
         return createCurrencyUtils(this.get('currencyRepository'));
 
@@ -146,7 +150,7 @@ class Container {
 
       case 'paymentService':
         // Создаем PaymentService с отложенной инициализацией бота
-        const paymentService = new PaymentService();
+        const paymentService = new PaymentService(this.get('donationRepository'));
         // Устанавливаем бота позже, когда он будет создан
         if (this.instances.has('bot')) {
           paymentService.setBot(this.get('bot'));
@@ -186,7 +190,8 @@ class Container {
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
           stateService: this.get('stateService'),
-          keyboardGenerators: this.get('keyboardGenerators')
+          keyboardGenerators: this.get('keyboardGenerators'),
+          paymentService: this.get('paymentService')
         });
 
       case 'messageHandlers':
@@ -200,7 +205,9 @@ class Container {
           formatter: this.get('formatter'),
           commandHandlers: this.get('commandHandlers'),
           stateService: this.get('stateService'),
-          validator: this.get('enhancedValidator')
+          validator: this.get('enhancedValidator'),
+          paymentService: this.get('paymentService'),
+          donationRepository: this.get('donationRepository')
         });
 
       case 'callbackHandlers':
@@ -266,6 +273,7 @@ class Container {
       userService: this.get('userService'),
       premiumService: this.get('premiumService'),
       paymentService: this.get('paymentService'),
+      donationRepository: this.get('donationRepository'),
       familyService: this.get('familyService'),
       localizationService: this.get('localizationService'),
       currencyUtils: this.get('currencyUtils'),

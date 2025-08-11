@@ -292,6 +292,24 @@ BEGIN
     END IF;
 END $$;
 
+-- ========================================
+-- DONATIONS TABLE
+-- ========================================
+
+CREATE TABLE IF NOT EXISTS donations (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    stars INTEGER NOT NULL CHECK (stars >= 1 AND stars <= 2500),
+    message TEXT,
+    telegram_payment_id VARCHAR(255),
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','completed','failed')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_donations_user_id ON donations(user_id);
+CREATE INDEX IF NOT EXISTS idx_donations_status ON donations(status);
+
 -- Ensure constraint 1..31 exists
 DO $$
 BEGIN

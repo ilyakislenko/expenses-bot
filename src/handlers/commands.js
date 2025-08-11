@@ -1,7 +1,7 @@
 const { MAIN_MENU_KEYBOARD, CURRENCY_KEYBOARD, SETTINGS_KEYBOARD } = require('../utils/constants');
 
 class CommandHandlers {
-  constructor({ expenseService, userService, premiumService, familyService, localizationService, formatter, stateService, keyboardGenerators }) {
+  constructor({ expenseService, userService, premiumService, familyService, localizationService, formatter, stateService, keyboardGenerators, paymentService }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -10,6 +10,7 @@ class CommandHandlers {
     this.formatter = formatter;
     this.stateService = stateService;
     this.keyboardGenerators = keyboardGenerators;
+    this.paymentService = paymentService;
   }
 
   async start(ctx) {
@@ -658,8 +659,12 @@ class CommandHandlers {
     const whyPaidButton = this.localizationService.getText(userLanguage, 'premium_why_paid_button');
     const backButton = this.localizationService.getText(userLanguage, 'premium_back_button');
     
+    const donateButton = this.localizationService.getText(userLanguage, 'premium_donate_button');
     const inlineKeyboard = [
-      [{ text: tariffButton, callback_data: 'premium_tariffs' }],
+      [
+        { text: tariffButton, callback_data: 'premium_tariffs' },
+        { text: donateButton, callback_data: 'premium_donate' }
+      ],
       [{ text: whyPaidButton, callback_data: 'premium_why_paid' }],
       [{ text: backButton, callback_data: 'back_to_menu' }]
     ];

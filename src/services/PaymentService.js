@@ -1,8 +1,9 @@
 const logger = require('../utils/logger');
 
 class PaymentService {
-  constructor() {
+  constructor(donationRepository) {
     this.bot = null;
+    this.donationRepository = donationRepository;
   }
 
   setBot(bot) {
@@ -76,26 +77,30 @@ class PaymentService {
       
       logger.info(`Successful payment received: ${JSON.stringify(payload)}`);
       
-      const { user_id, tariff, stars } = payload;
+      const { user_id, tariff, stars, type, donation_id } = payload;
       
-      // Получаем данные тарифа для записи транзакции
-      const tariffData = this.getTariffData(tariff);
-      
-      // Подготавливаем данные транзакции
-      const transactionData = {
-        stars: stars,
-        usd: tariffData.usd,
-        rub: tariffData.rub,
-        telegram_payment_id: telegram_payment_charge_id || null,
-        invoice_payload: invoice_payload
-      };
-      
-      // Активируем премиум подписку с записью транзакции
-      const result = await userService.activatePremium(user_id, tariff, transactionData);
-      
-      logger.info(`Premium subscription ${result.isNewActivation ? 'activated' : 'extended'} for user ${user_id}, expires at ${result.newExpiryDate}`);
-      
-      return result;
+      if (type === 'donation') {
+        if (!this.donationRepository || !donation_id) {
+          logger.warn('Donation payment received without repository or donation_id');
+          return { type: 'donation', status: 'ignored' };
+        }
+        await this.donationRepository.markDonationCompleted(donation_id, telegram_payment_charge_id || null);
+        logger.info(`Donation completed for user ${user_id}, stars: ${stars}`);
+        return { type: 'donation', status: 'completed' };
+      } else {
+        // Премиум подписка
+        const tariffData = this.getTariffData(tariff);
+        const transactionData = {
+          stars: stars,
+          usd: tariffData.usd,
+          rub: tariffData.rub,
+          telegram_payment_id: telegram_payment_charge_id || null,
+          invoice_payload: invoice_payload
+        };
+        const result = await userService.activatePremium(user_id, tariff, transactionData);
+        logger.info(`Premium subscription ${result.isNewActivation ? 'activated' : 'extended'} for user ${user_id}, expires at ${result.newExpiryDate}`);
+        return result;
+      }
       
     } catch (error) {
       logger.error('Error handling successful payment:', error);
@@ -174,6 +179,45 @@ class PaymentService {
       
     } catch (error) {
       logger.error('Error creating invoice link:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Создает прямую ссылку для доната через createInvoiceLink
+   */
+  async createDonationInvoiceLink(userId, stars, userLanguage, donationId) {
+    const title = userLanguage === 'en' ? 'Donation' : 'Пожертвование';
+    const description = userLanguage === 'en' ? 'Support the project' : 'Поддержать проект';
+    const payload = JSON.stringify({
+      type: 'donation',
+      stars,
+      user_id: userId,
+      donation_id: donationId
+    });
+
+    const prices = JSON.stringify([{ label: title, amount: stars }]);
+
+    const params = new URLSearchParams({
+      title,
+      description,
+      payload,
+      provider_token: '',
+      currency: 'XTR',
+      prices
+    }).toString();
+
+    const url = `https://api.telegram.org/bot${this.bot.token}/createInvoiceLink?${params}`;
+
+    try {
+      const response = await fetch(url);
+      const result = await response.json();
+      if (!result.ok) {
+        throw new Error(`Telegram API error: ${result.description}`);
+      }
+      return result.result;
+    } catch (error) {
+      logger.error('Error creating donation invoice link:', error);
       throw error;
     }
   }

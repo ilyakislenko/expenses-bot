@@ -1135,6 +1135,30 @@ class CallbackHandlers {
     }
   }
 
+  async handlePremiumDonate(ctx) {
+    try {
+      const userId = ctx.from.id;
+      const userLanguage = await this.userService.getUserLanguage(userId);
+      const title = this.localizationService.getText(userLanguage, 'donate_prompt_title');
+      const text = this.localizationService.getText(userLanguage, 'donate_prompt_text');
+      const backText = this.localizationService.getText(userLanguage, 'premium_back_button');
+      
+      // Ставим состояние ожидания доната
+      this.stateService.setUserState(userId, 'entering_donation');
+      
+      await ctx.answerCbQuery();
+      await ctx.editMessageText(`${title}\n\n${text}`, {
+        parse_mode: 'HTML',
+        reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'premium_subscription' }]] }
+      });
+    } catch (error) {
+      console.error('Error handling premium donate:', error);
+      const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
+      const errorText = this.localizationService.getText(userLanguage, 'error');
+      await ctx.answerCbQuery(errorText);
+    }
+  }
+
   async handlePremiumSubscription(ctx) {
     try {
       await ctx.answerCbQuery();

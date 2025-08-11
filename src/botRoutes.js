@@ -392,6 +392,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   
   bot.action('premium_tariffs', errorHandler((ctx) => callbackHandlers.handlePremiumTariffs(ctx)));
   bot.action('premium_why_paid', errorHandler((ctx) => callbackHandlers.handlePremiumWhyPaid(ctx)));
+  bot.action('premium_donate', errorHandler((ctx) => callbackHandlers.handlePremiumDonate(ctx)));
   bot.action('premium_subscription', errorHandler((ctx) => callbackHandlers.handlePremiumSubscription(ctx)));
   
   
@@ -403,7 +404,10 @@ module.exports = function registerBotRoutes(bot, handlers) {
   
   bot.on('successful_payment', errorHandler(async (ctx) => {
     const paymentService = handlers.paymentService;
-    await paymentService.handleSuccessfulPayment(ctx.message.successful_payment, handlers.userService);
+    await paymentService.handleSuccessfulPayment(
+      ctx.message.successful_payment,
+      handlers.userService
+    );
     
     const userLanguage = await handlers.userService.getUserLanguage(ctx.from.id);
     const successText = handlers.localizationService.getText(userLanguage, 'payment_success');
