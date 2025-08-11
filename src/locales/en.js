@@ -11,6 +11,13 @@ module.exports = {
   ],
   reminder_message_title: 'Reminder',
   reminder_turn_on_off: (enabled) => enabled ? 'Turn reminders OFF' : 'Turn reminders ON',
+  
+  // Bug reports
+  button_bug_report: '🐛 Report Bug / Suggest Improvement',
+  bug_report_prompt: '🐛 *Report a Bug or Suggest Improvement*\n\nDescribe the issue or suggest an improvement (up to 1000 characters):',
+  bug_report_success: '✅ Thank you! Your message has been sent to developers.',
+  bug_report_too_long: '❌ Message too long! Please reduce by {excess} characters (maximum 1000).',
+  bug_report_empty: '❌ Empty message. Please describe the issue or suggestion.',
   // General messages
   welcome: 'Hello, {name}! 👋',
   error: 'An error occurred 😞',

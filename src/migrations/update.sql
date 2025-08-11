@@ -342,3 +342,17 @@ BEGIN
         ALTER TABLE users ADD COLUMN last_reminder_local_date DATE NULL;
     END IF;
 END $$;
+
+-- Create bug reports table if not exists
+CREATE TABLE IF NOT EXISTS bug_reports (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    report_text TEXT NOT NULL CHECK (LENGTH(report_text) <= 1000),
+    status VARCHAR(20) NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'in_progress', 'resolved', 'closed')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_bug_reports_user_id ON bug_reports(user_id);
+CREATE INDEX IF NOT EXISTS idx_bug_reports_status ON bug_reports(status);
+CREATE INDEX IF NOT EXISTS idx_bug_reports_created_at ON bug_reports(created_at);

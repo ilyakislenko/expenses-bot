@@ -129,6 +129,7 @@ function generateSettingsKeyboard(localizationService, userLanguage, reminderEna
     [{ text: localizationService.getText(userLanguage, 'button_change_period_start'), callback_data: 'change_period_start' }],
     [{ text: reminderText, callback_data: 'toggle_reminders' }],
     [{ text: localizationService.getText(userLanguage, 'button_custom_categories'), callback_data: 'custom_categories' }],
+    [{ text: localizationService.getText(userLanguage, 'button_bug_report'), callback_data: 'bug_report' }],
     [{ text: localizationService.getText(userLanguage, 'button_back'), callback_data: 'back_to_menu' }]
   ];
 }

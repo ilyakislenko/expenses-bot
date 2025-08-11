@@ -34,6 +34,28 @@ class CallbackHandlers {
     await ctx.answerCbQuery();
   }
 
+  async handleBugReport(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    
+    // Устанавливаем состояние "ожидание баг-репорта"
+    this.stateService.setUserState(userId, 'bug_report');
+    
+    const prompt = this.localizationService.getText(userLanguage, 'bug_report_prompt');
+    const backText = this.localizationService.getText(userLanguage, 'button_back');
+    
+    await ctx.reply(prompt, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: backText, callback_data: 'back_to_settings' }]
+        ]
+      }
+    });
+    
+    await ctx.answerCbQuery();
+  }
+
   async handleCategorySelection(ctx) {
     const userId = ctx.from.id;
     let userLanguage = 'en'; // fallback язык

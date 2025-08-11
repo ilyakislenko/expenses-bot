@@ -1,7 +1,7 @@
 const { errorMessages,SETTINGS_KEYBOARD } = require('../utils/constants');
 
 class MessageHandlers {
-  constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, donationRepository }) {
+  constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, donationRepository, bugReportRepository }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -14,6 +14,7 @@ class MessageHandlers {
     this.validator = validator;
     this.paymentService = paymentService;
     this.donationRepository = donationRepository;
+    this.bugReportRepository = bugReportRepository;
   }
 
   async handleExpense(ctx) {
@@ -99,6 +100,10 @@ class MessageHandlers {
 
         if (userState === 'entering_donation') {
           return await this.handleDonationInput(ctx, text, userLanguage);
+        }
+
+        if (userState === 'bug_report') {
+          return await this.handleBugReportInput(ctx, text, userLanguage);
         }
 
         if (userState === 'adding_custom_category') {
@@ -617,6 +622,37 @@ class MessageHandlers {
       const userLanguage2 = await this.userService.getUserLanguage(userId);
       const message = this.localizationService.getText(userLanguage2, msgKey);
       await ctx.reply(message);
+    }
+  }
+
+  async handleBugReportInput(ctx, text, userLanguage) {
+    try {
+      const userId = ctx.from.id;
+      const reportText = (text || '').trim();
+      
+      // Валидация длины
+      if (!reportText) {
+        const errorText = this.localizationService.getText(userLanguage, 'bug_report_empty');
+        return await ctx.reply(errorText);
+      }
+      
+      if (reportText.length > 1000) {
+        const excess = reportText.length - 1000;
+        const errorText = this.localizationService.getText(userLanguage, 'bug_report_too_long', { excess });
+        return await ctx.reply(errorText);
+      }
+      
+      // Создаем баг-репорт
+      await this.bugReportRepository.createBugReport(userId, reportText);
+      this.stateService.deleteUserState(userId);
+      
+      const successText = this.localizationService.getText(userLanguage, 'bug_report_success');
+      await ctx.reply(successText);
+      
+    } catch (error) {
+      console.error('Error handling bug report input:', error);
+      const errorText = this.localizationService.getText(userLanguage, 'error');
+      await ctx.reply(errorText);
     }
   }
 }

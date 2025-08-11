@@ -32,6 +32,7 @@ const FamilyRepository = require('./repositories/FamilyRepository');
 const FamilyInvitationRepository = require('./repositories/FamilyInvitationRepository');
 const PremiumTransactionRepository = require('./repositories/PremiumTransactionRepository');
 const DonationRepository = require('./repositories/DonationRepository');
+const BugReportRepository = require('./repositories/BugReportRepository');
 
 // Services
 const ExpenseService = require('./services/ExpenseService');
@@ -98,6 +99,9 @@ class Container {
 
       case 'donationRepository':
         return new DonationRepository();
+
+      case 'bugReportRepository':
+        return new BugReportRepository();
 
       case 'currencyUtils':
         return createCurrencyUtils(this.get('currencyRepository'));
@@ -207,7 +211,8 @@ class Container {
           stateService: this.get('stateService'),
           validator: this.get('enhancedValidator'),
           paymentService: this.get('paymentService'),
-          donationRepository: this.get('donationRepository')
+          donationRepository: this.get('donationRepository'),
+          bugReportRepository: this.get('bugReportRepository')
         });
 
       case 'callbackHandlers':
