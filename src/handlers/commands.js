@@ -83,9 +83,14 @@ class CommandHandlers {
       const editText = this.localizationService.getText(userLanguage, 'button_edit');
       const backText = this.localizationService.getText(userLanguage, 'button_back');
       
+      const isPremium = await this.premiumService.isPremiumUser(userId);
+      const keyboardRow = isPremium
+        ? [{ text: editText, callback_data: 'edit_history' }, { text: backText, callback_data: 'back_to_menu' }]
+        : [{ text: backText, callback_data: 'back_to_menu' }];
+      
       await ctx.reply(message, { parse_mode: 'Markdown', reply_markup: {
         inline_keyboard: [
-          [{ text: editText, callback_data: 'edit_history' }, { text: backText, callback_data: 'back_to_menu' }]
+          keyboardRow
         ]
       } });
     } catch (error) {
@@ -107,6 +112,7 @@ class CommandHandlers {
       const message = await this.formatter.formatStats(total, categoryStats, userCurrency, 'месяц', this.localizationService, userLanguage);
       
       const backText = this.localizationService.getText(userLanguage, 'button_back');
+      const isPremium = await this.premiumService.isPremiumUser(userId);
       
       await ctx.reply(message, { parse_mode: 'Markdown' , reply_markup: {
         inline_keyboard: [

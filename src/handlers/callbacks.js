@@ -99,7 +99,7 @@ class CallbackHandlers {
       } else {
         keyboard = [[{ text: backText, callback_data: 'back_to_menu' }]];
       }
-
+      
       await ctx.editMessageText(
         `✅ *${expenseAddedTitleText}*\n\n` +
         `💰 ${amountLabelText}: *${formattedAmount}*\n` +

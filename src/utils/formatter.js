@@ -249,7 +249,7 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationServic
     return categoryName; // Возвращаем оригинальное название, если перевод не найден
   }
 
-  formatExpenseWithActions(expense, userTimezone = 'UTC', localizationService = null, userLanguage = 'ru', showActions = true) {
+  formatExpenseWithActions(expense, userTimezone = 'UTC', localizationService = null, userLanguage = 'ru', showEdit = true, showDelete = true) {
     const icon = expense.category_icon || '📦';
     const amount = this.formatAmount(expense.amount, expense.currency || 'RUB');
     const description = expense.description || (localizationService ? 
@@ -273,22 +273,25 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationServic
     
     const text = `${icon} ${amount} - ${description}\n📅 ${date}${userInfo}`;
     
-    if (!showActions) {
+    if (!showEdit && !showDelete) {
       return {
         text,
         reply_markup: { inline_keyboard: [] }
       };
     }
     
+    const buttons = [];
+    if (showEdit) {
+      buttons.push({ text: editText, callback_data: `edit_expense|${expense.id}` });
+    }
+    if (showDelete) {
+      buttons.push({ text: deleteText, callback_data: `delete_expense|${expense.id}` });
+    }
+    
     return {
       text,
       reply_markup: {
-        inline_keyboard: [
-          [
-            { text: editText, callback_data: `edit_expense|${expense.id}` },
-            { text: deleteText, callback_data: `delete_expense|${expense.id}` }
-          ]
-        ]
+        inline_keyboard: [buttons]
       }
     };
   }

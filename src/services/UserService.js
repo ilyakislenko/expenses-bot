@@ -13,32 +13,43 @@ class UserService {
     try {
       const user = await this.userRepository.createUser(userId, username, firstName);
       
-      // Даем пробный премиум на 14 дней новым пользователям
-      const trialTransactionData = {
-        stars: 0,
-        usd: 0,
-        rub: 0,
-        telegram_payment_id: null,
-        invoice_payload: JSON.stringify({
-          user_id: userId,
-          tariff: TRIAL_PERIOD.DAYS,
+      // Проверяем, был ли у пользователя уже премиум когда-либо
+      // Если premium_activated_at не NULL, значит премиум уже был активирован
+      if (!user.premium_activated_at) {
+        // Даем пробный премиум на 14 дней только новым пользователям
+        const trialTransactionData = {
           stars: 0,
-          type: TRIAL_PERIOD.TYPE
-        })
-      };
-      
-      await this.activatePremium(userId, TRIAL_PERIOD.DAYS, trialTransactionData);
-      
-      // Обновляем метрики
-      newUsersTotal.inc({ source: 'telegram' });
-      
-      logger.info('New user registered with trial premium', {
-        userId,
-        username,
-        firstName,
-        trialDays: TRIAL_PERIOD.DAYS,
-        timestamp: new Date().toISOString()
-      });
+          usd: 0,
+          rub: 0,
+          telegram_payment_id: null,
+          invoice_payload: JSON.stringify({
+            user_id: userId,
+            tariff: TRIAL_PERIOD.DAYS,
+            stars: 0,
+            type: TRIAL_PERIOD.TYPE
+          })
+        };
+        
+        await this.activatePremium(userId, TRIAL_PERIOD.DAYS, trialTransactionData);
+        
+        // Обновляем метрики
+        newUsersTotal.inc({ source: 'telegram' });
+        
+        logger.info('New user registered with trial premium', {
+          userId,
+          username,
+          firstName,
+          trialDays: TRIAL_PERIOD.DAYS,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        logger.info('Existing user registered (no trial premium)', {
+          userId,
+          username,
+          firstName,
+          timestamp: new Date().toISOString()
+        });
+      }
       
       return user;
     } catch (error) {
@@ -134,6 +145,29 @@ class UserService {
       // Получаем текущий статус пользователя
       const user = await this.getUserById(userId);
       const now = new Date();
+      
+      // Проверяем, является ли это попыткой активации триального премиума
+      let isTrialAttempt = false;
+      if (transactionData && transactionData.invoice_payload) {
+        try {
+          const payload = JSON.parse(transactionData.invoice_payload);
+          if (payload.type === 'trial') {
+            isTrialAttempt = true;
+          }
+        } catch (e) {
+          // Игнорируем ошибки парсинга
+        }
+      }
+      
+      // Если это попытка активации триального премиума и у пользователя уже был премиум, запрещаем
+      if (isTrialAttempt && user.premium_activated_at) {
+        logger.warn(`Trial premium activation blocked for user ${userId} - user already had premium`, {
+          userId,
+          premium_activated_at: user.premium_activated_at,
+          timestamp: new Date().toISOString()
+        });
+        throw new Error('Trial premium is not available for users who already had premium');
+      }
       
       let newExpiryDate;
       let isNewActivation = false;

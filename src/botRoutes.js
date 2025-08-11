@@ -159,21 +159,26 @@ module.exports = function registerBotRoutes(bot, handlers) {
     };
     const userLanguage = await handlers.userService.getUserLanguage(userId);
     let message = await formatter.formatStats(total, [], userCurrency, 'месяц', handlers.localizationService, userLanguage) + '\n' + formatter.formatExpenseList(expenses, userTimezone, handlers.localizationService, userLanguage);
-    const editText = handlers.localizationService.getText(userLanguage, 'button_edit');
     const backText = handlers.localizationService.getText(userLanguage, 'button_back');
     
-    await ctx.reply(message, { parse_mode: 'Markdown',reply_markup: {
-      inline_keyboard: [
-        [
-          { text: editText, callback_data: `edit_category|${categoryId}` },
-          { text: backText, callback_data: 'back_to_categories' }
-        ]
-      ]
+    // Проверяем премиум статус для показа кнопки редактирования
+    const isPremium = await handlers.premiumService.isPremiumUser(userId);
+    
+    let inlineKeyboardButtons = [[{ text: backText, callback_data: 'back_to_categories' }]];
+    
+    if (isPremium) {
+      const editText = handlers.localizationService.getText(userLanguage, 'button_edit');
+      inlineKeyboardButtons.unshift([{ text: editText, callback_data: `edit_category|${categoryId}` }]);
+    }
+    
+    await ctx.reply(message, { parse_mode: 'Markdown', reply_markup: {
+      inline_keyboard: inlineKeyboardButtons
     } });
   }); // список расходов по конкретной категории
   bot.action(/^delete_expense\|(\d+)$/, async (ctx) => {
     const expenseId = ctx.match[1];
     const userId = ctx.from.id;
+    
     const deleted = await handlers.expenseService.deleteExpenseById(userId, expenseId);
     const userLanguage = await handlers.userService.getUserLanguage(userId);
     if (deleted) {
@@ -189,7 +194,13 @@ module.exports = function registerBotRoutes(bot, handlers) {
     const expenseId = ctx.match[1];
     const userId = ctx.from.id;
     
-
+    // Проверяем премиум статус
+    const isPremium = await handlers.premiumService.isPremiumUser(userId);
+    if (!isPremium) {
+      const userLanguage = await handlers.userService.getUserLanguage(userId);
+      const premiumRequiredText = handlers.localizationService.getText(userLanguage, 'premium_required');
+      return ctx.answerCbQuery(premiumRequiredText);
+    }
     
     handlers.stateService.setUserEditState(userId, expenseId);
     const userLanguage = await handlers.userService.getUserLanguage(userId);
@@ -231,7 +242,15 @@ module.exports = function registerBotRoutes(bot, handlers) {
     }
     const formatter = handlers.formatter;
     for (const expense of expenses) {
-      const { text, reply_markup } = formatter.formatExpenseWithActions(expense, userTimezone, handlers.localizationService, userLanguage);
+      const isPremium = await handlers.premiumService.isPremiumUser(userId);
+      const { text, reply_markup } = formatter.formatExpenseWithActions(
+        expense,
+        userTimezone,
+        handlers.localizationService,
+        userLanguage,
+        isPremium, // showEdit
+        true       // showDelete - всегда показываем кнопку удаления
+      );
       await ctx.reply(text, { reply_markup, parse_mode: 'Markdown' });
     }
     const exitEditModeText = handlers.localizationService.getText(userLanguage, 'callback_edit_mode');
@@ -273,13 +292,15 @@ module.exports = function registerBotRoutes(bot, handlers) {
     
     const formatter = handlers.formatter;
     for (const expense of expenses) {
-      // Показываем кнопки редактирования только для трат текущего пользователя
+      const isPremium = await handlers.premiumService.isPremiumUser(userId);
+      // Показываем кнопки редактирования только для премиум и для своих записей
       const { text, reply_markup } = formatter.formatExpenseWithActions(
-        expense, 
-        userTimezone, 
-        handlers.localizationService, 
+        expense,
+        userTimezone,
+        handlers.localizationService,
         userLanguage,
-        Number(expense.user_id) === userId // Приводим к числу для корректного сравнения
+        isPremium && Number(expense.user_id) === userId, // showEdit
+        true                                            // showDelete - всегда показываем кнопку удаления
       );
       await ctx.reply(text, { reply_markup, parse_mode: 'Markdown' });
     }
@@ -299,7 +320,13 @@ module.exports = function registerBotRoutes(bot, handlers) {
     const categoryId = ctx.match[1];
     const userId = ctx.from.id;
     
-
+    // Проверяем премиум статус
+    const isPremium = await handlers.premiumService.isPremiumUser(userId);
+    if (!isPremium) {
+      const userLanguage = await handlers.userService.getUserLanguage(userId);
+      const premiumRequiredText = handlers.localizationService.getText(userLanguage, 'premium_required');
+      return ctx.answerCbQuery(premiumRequiredText);
+    }
     
     const userLanguage = await handlers.userService.getUserLanguage(userId);
     const userTimezone = await handlers.userService.getUserTimezone(userId);
@@ -310,7 +337,14 @@ module.exports = function registerBotRoutes(bot, handlers) {
     }
     const formatter = handlers.formatter;
     for (const expense of expenses) {
-      const { text, reply_markup } = formatter.formatExpenseWithActions(expense, userTimezone, handlers.localizationService, userLanguage);
+      const { text, reply_markup } = formatter.formatExpenseWithActions(
+        expense, 
+        userTimezone, 
+        handlers.localizationService, 
+        userLanguage, 
+        isPremium, // showEdit
+        true       // showDelete - всегда показываем кнопку удаления
+      );
       await ctx.reply(text, { reply_markup, parse_mode: 'Markdown' });
     }
     const exitEditModeText = handlers.localizationService.getText(userLanguage, 'callback_edit_mode');
