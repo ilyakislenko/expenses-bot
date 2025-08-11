@@ -28,6 +28,11 @@ class RateLimiter {
       export: {
         requests: 5,
         windowMs: 300000 // 5 минут
+      },
+      // Лимиты для баг-репортов
+      bug_report: {
+        requests: 3,
+        windowMs: 600000 // 10 минут - только 3 баг-репорта за 10 минут
       }
     };
   }

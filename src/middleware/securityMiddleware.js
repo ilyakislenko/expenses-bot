@@ -84,6 +84,11 @@ class SecurityMiddleware {
       limitType = 'export';
     }
 
+    // Специальная проверка для баг-репортов
+    if (ctx.callbackQuery?.data === 'bug_report') {
+      limitType = 'bug_report';
+    }
+
     return this.rateLimiter.checkLimit(userId, limitType);
   }
 

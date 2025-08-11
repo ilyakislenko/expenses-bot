@@ -628,6 +628,17 @@ class MessageHandlers {
   async handleBugReportInput(ctx, text, userLanguage) {
     try {
       const userId = ctx.from.id;
+      
+      // Дополнительная защита: проверяем количество баг-репортов за последние 10 минут
+      const recentReports = await this.bugReportRepository.getBugReportsByUserId(userId, 5, 0);
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+      const recentCount = recentReports.filter(r => new Date(r.created_at) > tenMinutesAgo).length;
+      
+      if (recentCount >= 3) {
+        const errorText = `⚠️ Слишком много баг-репортов!\n\nМожно отправлять только 3 репорта за 10 минут`;
+        return await ctx.reply(errorText);
+      }
+      
       const reportText = (text || '').trim();
       
       // Валидация длины
@@ -640,6 +651,22 @@ class MessageHandlers {
         const excess = reportText.length - 1000;
         const errorText = this.localizationService.getText(userLanguage, 'bug_report_too_long', { excess });
         return await ctx.reply(errorText);
+      }
+
+      // Проверка на подозрительные паттерны
+      const suspiciousPatterns = [
+        /\b(union|select|insert|update|delete|drop|truncate|exec|script)\s+/gi,
+        /[<>'"=;(){}\[\]]/g,  // HTML/JS символы
+        /(http|https|ftp):\/\/[^\s]+/gi,  // Ссылки
+        /(@everyone|@here|@channel)/gi,   // Спам-упоминания
+        /(.)\1{20,}/g  // Повторяющиеся символы (больше 20 подряд)
+      ];
+
+      for (const pattern of suspiciousPatterns) {
+        if (pattern.test(reportText)) {
+          const errorText = `⚠️ Сообщение содержит недопустимые символы или подозрительный контент`;
+          return await ctx.reply(errorText);
+        }
       }
       
       // Создаем баг-репорт
