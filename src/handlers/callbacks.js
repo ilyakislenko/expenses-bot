@@ -310,8 +310,11 @@ class CallbackHandlers {
         }
       });
       
+      // Проверяем статус админа для корректного отображения клавиатуры
+      const isAdmin = await this.userService.isUserAdmin(userId);
+      
       // Обновляем reply-клавиатуру на новом языке
-      const newMainMenuKeyboard = this.keyboardGenerators.generateMainMenuKeyboard(languageCode);
+      const newMainMenuKeyboard = this.keyboardGenerators.generateMainMenuKeyboard(languageCode, isAdmin);
       
       await ctx.telegram.sendMessage(ctx.chat.id, 
         this.localizationService.getText(languageCode, 'keyboard_updated'), 

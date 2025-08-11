@@ -354,6 +354,35 @@ class UserService {
         Math.ceil((user.premium_expires_at - now) / (1000 * 60 * 60 * 24)) : 0
     };
   }
+
+  // Административные методы
+  async isUserAdmin(userId) {
+    return this.userRepository.isUserAdmin(userId);
+  }
+
+  async setUserAdmin(userId, isAdmin) {
+    return this.userRepository.setUserAdmin(userId, isAdmin);
+  }
+
+  async getAllAdmins() {
+    return this.userRepository.getAllAdmins();
+  }
+
+  async getUserById(userId) {
+    return this.userRepository.getUserById(userId);
+  }
+
+  async getUserByUsername(username) {
+    return this.userRepository.getUserByUsername(username);
+  }
+
+  async getAllUsers(limit = 50, offset = 0) {
+    return this.userRepository.getAllUsers(limit, offset);
+  }
+
+  async getUsersCount() {
+    return this.userRepository.getUsersCount();
+  }
 }
 
 module.exports = UserService; 

@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS users (
     premium_activated_at TIMESTAMP NULL,
     period_start_day INTEGER NOT NULL DEFAULT 1,
     reminder_enabled BOOLEAN NOT NULL DEFAULT FALSE,
-    last_reminder_local_date DATE NULL
+    last_reminder_local_date DATE NULL,
+    is_admin BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 -- Create indexes for premium subscription fields

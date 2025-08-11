@@ -1,7 +1,7 @@
 const { errorMessages,SETTINGS_KEYBOARD } = require('../utils/constants');
 
 class MessageHandlers {
-  constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, donationRepository, bugReportRepository }) {
+constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, donationRepository, bugReportRepository, adminHandlers }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -15,6 +15,7 @@ class MessageHandlers {
     this.paymentService = paymentService;
     this.donationRepository = donationRepository;
     this.bugReportRepository = bugReportRepository;
+    this.adminHandlers = adminHandlers;
   }
 
   async handleExpense(ctx) {
@@ -73,6 +74,23 @@ class MessageHandlers {
         await this.commandHandlers.premiumSubscription(ctx);
         return;
       }
+
+      // Обработка админки
+      const adminText = this.localizationService.getText(userLanguage, 'button_admin');
+      if (text === adminText) {
+        // Проверяем, является ли пользователь админом перед показом панели
+        const isAdmin = await this.userService.isUserAdmin(userId);
+        if (isAdmin) {
+          // Нужно добавить adminHandlers в конструктор
+          if (this.adminHandlers) {
+            await this.adminHandlers.showAdminPanel(ctx);
+          }
+        } else {
+          const accessDeniedText = this.localizationService.getText(userLanguage, 'admin_access_denied');
+          await ctx.reply(accessDeniedText);
+        }
+        return;
+      }
       
       // Обработка семейных состояний
       if (this.stateService.hasUserState(userId)) {
@@ -104,6 +122,10 @@ class MessageHandlers {
 
         if (userState === 'bug_report') {
           return await this.handleBugReportInput(ctx, text, userLanguage);
+        }
+
+        if (userState === 'admin_search') {
+          return await this.handleAdminSearchInput(ctx, text, userLanguage);
         }
 
         if (userState === 'adding_custom_category') {
@@ -680,6 +702,32 @@ class MessageHandlers {
       
     } catch (error) {
       console.error('Error handling bug report input:', error);
+      const errorText = this.localizationService.getText(userLanguage, 'error');
+      await ctx.reply(errorText);
+    }
+  }
+
+  // Обработка ввода поискового запроса в админке
+  async handleAdminSearchInput(ctx, text, userLanguage) {
+    const userId = ctx.from.id;
+    
+    try {
+      // Проверяем права админа
+      const isAdmin = await this.userService.isUserAdmin(userId);
+      if (!isAdmin) {
+        const accessDeniedText = this.localizationService.getText(userLanguage, 'admin_access_denied');
+        await ctx.reply(accessDeniedText);
+        return;
+      }
+
+      // Очищаем состояние
+      this.stateService.deleteUserState(userId);
+      
+      // Выполняем поиск через AdminHandlers
+      await this.adminHandlers.handleSearch(ctx, text);
+      
+    } catch (error) {
+      console.error('Error handling admin search input:', error);
       const errorText = this.localizationService.getText(userLanguage, 'error');
       await ctx.reply(errorText);
     }

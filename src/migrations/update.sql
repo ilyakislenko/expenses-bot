@@ -356,3 +356,9 @@ CREATE TABLE IF NOT EXISTS bug_reports (
 CREATE INDEX IF NOT EXISTS idx_bug_reports_user_id ON bug_reports(user_id);
 CREATE INDEX IF NOT EXISTS idx_bug_reports_status ON bug_reports(status);
 CREATE INDEX IF NOT EXISTS idx_bug_reports_created_at ON bug_reports(created_at);
+
+-- Добавляем поле is_admin в таблицу users
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Добавляем индекс для администраторов
+CREATE INDEX IF NOT EXISTS idx_users_is_admin ON users(id) WHERE is_admin = true;

@@ -20,13 +20,16 @@ class CommandHandlers {
     // Получаем язык пользователя
     const userLanguage = await this.userService.getUserLanguage(user.id);
     
+    // Проверяем, является ли пользователь админом
+    const isAdmin = await this.userService.isUserAdmin(user.id);
+    
     // Получаем локализованное приветствие
     const welcomeMessage = this.localizationService.getText(userLanguage, 'welcome', { name: user.first_name });
     const startMessage = this.localizationService.getText(userLanguage, 'start_message');
 
     const message = `${welcomeMessage}\n\n${startMessage}`;
 
-    const mainMenuKeyboard = this.keyboardGenerators.generateMainMenuKeyboard(userLanguage);
+    const mainMenuKeyboard = this.keyboardGenerators.generateMainMenuKeyboard(userLanguage, isAdmin);
     await ctx.reply(message, {
       parse_mode: 'Markdown',
       reply_markup: {
@@ -684,11 +687,12 @@ class CommandHandlers {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
     
-
+    // Проверяем, является ли пользователь админом
+    const isAdmin = await this.userService.isUserAdmin(userId);
     
     const message = this.localizationService.getText(userLanguage, 'main_menu_title');
     
-    const inlineMainMenu = this.keyboardGenerators.generateInlineMainMenu(userLanguage);
+    const inlineMainMenu = this.keyboardGenerators.generateInlineMainMenu(userLanguage, isAdmin);
     
     await ctx.reply(message, {
       parse_mode: 'Markdown',

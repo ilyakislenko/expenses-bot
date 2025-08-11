@@ -1,5 +1,5 @@
 module.exports = function registerBotRoutes(bot, handlers) {
-  const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, stateService, currencyUtils } = handlers;
+  const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, adminHandlers, stateService, currencyUtils } = handlers;
 
   // Команды
   bot.command('start', errorHandler((ctx) => commandHandlers.start(ctx))); // главное меню бота
@@ -415,6 +415,57 @@ module.exports = function registerBotRoutes(bot, handlers) {
     const successText = handlers.localizationService.getText(userLanguage, 'payment_success');
     await ctx.reply(successText, { parse_mode: 'Markdown' });
   }));
+
+  // ========================================
+  // ADMIN PANEL CALLBACK HANDLERS  
+  // ========================================
+  
+  // Главная панель админа
+  bot.action('panel_main', errorHandler((ctx) => adminHandlers.showAdminPanel(ctx)));
+  
+  // Статистика
+  bot.action('panel_stats', errorHandler((ctx) => adminHandlers.showStats(ctx)));
+  
+  // Управление пользователями
+  bot.action('panel_users', errorHandler((ctx) => adminHandlers.showUsers(ctx, 1)));
+  bot.action(/panel_users_page_(\d+)/, errorHandler((ctx) => {
+    const page = parseInt(ctx.match[1], 10);
+    return adminHandlers.showUsers(ctx, page);
+  }));
+  
+  // Баг-репорты
+  bot.action('panel_bug_reports', errorHandler((ctx) => adminHandlers.showBugReports(ctx)));
+  
+  // Донаты
+  bot.action('panel_donations', errorHandler((ctx) => adminHandlers.showDonations(ctx)));
+  
+  // Премиум
+  bot.action('panel_premium', errorHandler((ctx) => adminHandlers.showPremiumStats(ctx)));
+  
+  // Администраторы
+  bot.action('panel_managers', errorHandler((ctx) => adminHandlers.showAdmins(ctx)));
+  
+  // Поиск
+  bot.action('panel_search', errorHandler((ctx) => adminHandlers.initiateSearch(ctx)));
+  
+  // Действия с пользователями
+  bot.action(/panel_user_(\d+)/, errorHandler((ctx) => {
+    const targetUserId = parseInt(ctx.match[1], 10);
+    return adminHandlers.showUserDetails(ctx, targetUserId);
+  }));
+  
+  bot.action(/panel_promote_(\d+)/, errorHandler((ctx) => {
+    const targetUserId = parseInt(ctx.match[1], 10);
+    return adminHandlers.promoteUser(ctx, targetUserId);
+  }));
+  
+  bot.action(/panel_demote_(\d+)/, errorHandler((ctx) => {
+    const targetUserId = parseInt(ctx.match[1], 10);
+    return adminHandlers.demoteUser(ctx, targetUserId);
+  }));
+  
+  // Общие действия
+  bot.action('back_to_main', errorHandler((ctx) => commandHandlers.start(ctx)));
 
   // Глобальный обработчик ошибок
   bot.catch((error, ctx) => {

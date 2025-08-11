@@ -52,6 +52,12 @@ class UserRepository extends BaseRepository {
     return result.rows[0];
   }
 
+  async getUserByUsername(username) {
+    const query = 'SELECT * FROM users WHERE username = $1';
+    const result = await this.query(query, [username]);
+    return result.rows[0];
+  }
+
   async getReminderSettings(userId) {
     const query = 'SELECT reminder_enabled, last_reminder_local_date, timezone FROM users WHERE id = $1';
     const result = await this.query(query, [userId]);
@@ -102,6 +108,39 @@ class UserRepository extends BaseRepository {
     const query = 'SELECT * FROM users WHERE username = $1';
     const result = await this.query(query, [username]);
     return result.rows[0];
+  }
+
+  async isUserAdmin(userId) {
+    const result = await this.query('SELECT is_admin FROM users WHERE id = $1', [userId]);
+    return result.rows[0]?.is_admin || false;
+  }
+
+  async setUserAdmin(userId, isAdmin) {
+    const query = 'UPDATE users SET is_admin = $1 WHERE id = $2';
+    await this.query(query, [isAdmin, userId]);
+  }
+
+  async getAllAdmins() {
+    const query = 'SELECT id, username, first_name, created_at FROM users WHERE is_admin = true ORDER BY created_at ASC';
+    const result = await this.query(query, []);
+    return result.rows;
+  }
+
+  async getAllUsers(limit = 50, offset = 0) {
+    const query = `
+      SELECT id, username, first_name, created_at, premium, is_admin, language, currency, timezone
+      FROM users 
+      ORDER BY created_at DESC 
+      LIMIT $1 OFFSET $2
+    `;
+    const result = await this.query(query, [limit, offset]);
+    return result.rows;
+  }
+
+  async getUsersCount() {
+    const query = 'SELECT COUNT(*) as count FROM users';
+    const result = await this.query(query, []);
+    return parseInt(result.rows[0].count, 10);
   }
 }
 

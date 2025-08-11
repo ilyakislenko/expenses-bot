@@ -69,8 +69,8 @@ const PREMIUM_TARIFFS = {
 
 
 // Функция для генерации главного меню (reply-клавиатура)
-function generateMainMenuKeyboard(localizationService, userLanguage) {
-  return [
+function generateMainMenuKeyboard(localizationService, userLanguage, isAdmin = false) {
+  const keyboard = [
     [{ text: localizationService.getText(userLanguage, 'button_help') }],
     [
       { text: localizationService.getText(userLanguage, 'button_expenses_month') }, 
@@ -82,11 +82,18 @@ function generateMainMenuKeyboard(localizationService, userLanguage) {
     [{ text: localizationService.getText(userLanguage, 'button_delete_last') }],
     [{ text: localizationService.getText(userLanguage, 'premium_subscription_title') }]
   ];
+
+  // Добавляем кнопку админки только для администраторов
+  if (isAdmin) {
+    keyboard.push([{ text: localizationService.getText(userLanguage, 'button_admin') }]);
+  }
+
+  return keyboard;
 }
 
 // Функция для генерации inline-меню
-function generateInlineMainMenu(localizationService, userLanguage) {
-  return [
+function generateInlineMainMenu(localizationService, userLanguage, isAdmin = false) {
+  const keyboard = [
     [{ text: localizationService.getText(userLanguage, 'button_help'), callback_data: 'help' }],
     [
       { text: localizationService.getText(userLanguage, 'button_expenses_month'), callback_data: 'stats' }, 
@@ -98,6 +105,13 @@ function generateInlineMainMenu(localizationService, userLanguage) {
     [{ text: localizationService.getText(userLanguage, 'button_delete_last'), callback_data: 'undo' }],
     [{ text: localizationService.getText(userLanguage, 'premium_subscription_title'), callback_data: 'premium_subscription' }]
   ];
+
+  // Добавляем кнопку админки только для администраторов
+  if (isAdmin) {
+    keyboard.push([{ text: localizationService.getText(userLanguage, 'button_admin'), callback_data: 'panel_main' }]);
+  }
+
+  return keyboard;
 }
 
 // Функция для генерации клавиатуры выбора валюты

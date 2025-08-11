@@ -25,8 +25,101 @@ module.exports = {
   security_rate_limit: '⚠️ *Слишком много запросов*\n\nПопробуйте через {resetTime} секунд\nЛимит: {limit} запросов в минуту',
   security_validation_error: '⚠️ *Ошибка валидации*\n\n{message}',
   security_error: '❌ *Ошибка безопасности*\n\nПопробуйте позже или обратитесь к администратору.',
+  
+  // Admin panel
+  button_admin: '👑 Админка',
+  admin_access_denied: '❌ У вас нет прав администратора.',
+  admin_panel_title: '👑 *Панель администратора*\n\nВыберите действие:',
+  admin_error: '❌ Произошла ошибка при выполнении администраторского действия.',
+  
+  // Admin stats
+  admin_stats_text: `📊 *Статистика бота*
+
+👥 **Пользователи:**
+• Всего: {totalUsers}
+• Премиум: {activePremium}
+• Новых за неделю: {newUsersWeek}
+• Новых за месяц: {newUsersMonth}
+
+💰 **Расходы:**
+• Всего записей: {totalExpenses}
+• За неделю: {expensesWeek}
+• Активных пользователей: {activeUsers}
+
+🐛 **Баг-репорты:** {totalBugReports}
+
+💎 **Донаты:**
+• Всего: {totalDonations}
+• Звезд собрано: {totalStars}
+
+⭐ **Премиум транзакции:** {premiumTransactions}`,
+
+  // Admin users
+  admin_users_title: '👥 *Пользователи* (стр. {page}/{totalPages})\n\nВсего: {totalUsers}\n',
+  
+  // Admin bug reports
+  admin_bug_reports_title: '🐛 *Баг-репорты*',
+  bug_report_status_new: '🆕 Новые',
+  bug_report_status_in_progress: '🔄 В работе',
+  bug_report_status_resolved: '✅ Решены',
+  bug_report_status_closed: '🔒 Закрыты',
+  
+  // Admin donations
+  admin_donations_text: `💰 *Статистика донатов*
+
+📊 **Общая статистика:**
+• Всего донатов: {totalDonations}
+• Завершенных: {completedDonations}
+• В ожидании: {pendingDonations}
+
+⭐ **Звезды:**
+• Всего собрано: {totalStars}
+• Средний донат: {avgStars} звезд`,
+
+  // Admin premium 
+  admin_premium_stats: `⭐ *Статистика премиума*
+
+📊 **Пользователи:**
+• Всего премиум: {totalPremiumUsers}
+• Активных сейчас: {activePremiumUsers}
+
+💳 **Транзакции:**
+• Всего операций: {totalTransactions}
+• Общий доход: {totalRevenue} звезд`,
+
+  // Admin admins
+  admin_admins_title: '👑 *Администраторы* ({count})\n',
+  
+  // Admin search
+  admin_search_prompt: '🔍 *Поиск пользователя*\n\nВведите ID пользователя или username:',
+  admin_search_not_found: '❌ Пользователь не найден.',
+  admin_search_results: '🔍 *Результаты поиска* "{query}"\n\nНайдено: {count}\n',
+  
+  // Admin user details
+  admin_user_not_found: '❌ Пользователь не найден.',
+  admin_user_details: `👤 *Информация о пользователе*
+
+{adminFlag}{premiumFlag} **{firstName}** (@{username})
+🆔 ID: {userId}
+🌐 Язык: {language}
+💱 Валюта: {currency}
+🕐 Часовой пояс: {timezone}
+📅 Регистрация: {createdAt}
+
+📊 **Статистика:**
+• Записей расходов: {totalExpenses}
+• Общая сумма: {totalAmount}
+• Баг-репортов: {bugReportsCount}
+• Транзакций: {transactionsCount}`,
+
+  // Admin actions
+  admin_promote_success: '✅ Пользователь {userId} назначен администратором.',
+  admin_demote_success: '✅ У пользователя {userId} удалены права администратора.',
+  admin_cannot_demote_self: '❌ Нельзя удалить права администратора у самого себя.',
+  
   // Общие сообщения
   welcome: 'Привет, {name}! 👋',
+  main_menu_title: '🏠 *Главное меню*\n\nВыберите действие:',
   error: 'Произошла ошибка 😞',
   unknown_error: 'Произошла неожиданная ошибка. Попробуйте позже.',
   not_found: 'Не найдено',

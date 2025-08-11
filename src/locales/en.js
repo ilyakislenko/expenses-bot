@@ -25,8 +25,101 @@ module.exports = {
   security_rate_limit: '⚠️ *Too many requests*\n\nTry again in {resetTime} seconds\nLimit: {limit} requests per minute',
   security_validation_error: '⚠️ *Validation error*\n\n{message}',
   security_error: '❌ *Security error*\n\nPlease try again later or contact administrator.',
+  
+  // Admin panel
+  button_admin: '👑 Admin Panel',
+  admin_access_denied: '❌ You do not have administrator rights.',
+  admin_panel_title: '👑 *Administrator Panel*\n\nChoose an action:',
+  admin_error: '❌ An error occurred while performing administrator action.',
+  
+  // Admin stats
+  admin_stats_text: `📊 *Bot Statistics*
+
+👥 **Users:**
+• Total: {totalUsers}
+• Premium: {activePremium}
+• New this week: {newUsersWeek}
+• New this month: {newUsersMonth}
+
+💰 **Expenses:**
+• Total records: {totalExpenses}
+• This week: {expensesWeek}
+• Active users: {activeUsers}
+
+🐛 **Bug reports:** {totalBugReports}
+
+💎 **Donations:**
+• Total: {totalDonations}
+• Stars collected: {totalStars}
+
+⭐ **Premium transactions:** {premiumTransactions}`,
+
+  // Admin users
+  admin_users_title: '👥 *Users* (page {page}/{totalPages})\n\nTotal: {totalUsers}\n',
+  
+  // Admin bug reports
+  admin_bug_reports_title: '🐛 *Bug Reports*',
+  bug_report_status_new: '🆕 New',
+  bug_report_status_in_progress: '🔄 In Progress',
+  bug_report_status_resolved: '✅ Resolved',
+  bug_report_status_closed: '🔒 Closed',
+  
+  // Admin donations
+  admin_donations_text: `💰 *Donation Statistics*
+
+📊 **Overall statistics:**
+• Total donations: {totalDonations}
+• Completed: {completedDonations}
+• Pending: {pendingDonations}
+
+⭐ **Stars:**
+• Total collected: {totalStars}
+• Average donation: {avgStars} stars`,
+
+  // Admin premium 
+  admin_premium_stats: `⭐ *Premium Statistics*
+
+📊 **Users:**
+• Total premium: {totalPremiumUsers}
+• Currently active: {activePremiumUsers}
+
+💳 **Transactions:**
+• Total operations: {totalTransactions}
+• Total revenue: {totalRevenue} stars`,
+
+  // Admin admins
+  admin_admins_title: '👑 *Administrators* ({count})\n',
+  
+  // Admin search
+  admin_search_prompt: '🔍 *User Search*\n\nEnter user ID or username:',
+  admin_search_not_found: '❌ User not found.',
+  admin_search_results: '🔍 *Search results* "{query}"\n\nFound: {count}\n',
+  
+  // Admin user details
+  admin_user_not_found: '❌ User not found.',
+  admin_user_details: `👤 *User Information*
+
+{adminFlag}{premiumFlag} **{firstName}** (@{username})
+🆔 ID: {userId}
+🌐 Language: {language}
+💱 Currency: {currency}
+🕐 Timezone: {timezone}
+📅 Registered: {createdAt}
+
+📊 **Statistics:**
+• Expense records: {totalExpenses}
+• Total amount: {totalAmount}
+• Bug reports: {bugReportsCount}
+• Transactions: {transactionsCount}`,
+
+  // Admin actions
+  admin_promote_success: '✅ User {userId} has been promoted to administrator.',
+  admin_demote_success: '✅ Administrator rights removed from user {userId}.',
+  admin_cannot_demote_self: '❌ Cannot remove administrator rights from yourself.',
+  
   // General messages
   welcome: 'Hello, {name}! 👋',
+  main_menu_title: '🏠 *Main Menu*\n\nChoose an action:',
   error: 'An error occurred 😞',
   unknown_error: 'An unexpected error occurred. Please try again later.',
   not_found: 'Not found',

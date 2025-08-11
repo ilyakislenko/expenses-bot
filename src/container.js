@@ -43,11 +43,13 @@ const LocalizationService = require('./services/LocalizationService');
 const FamilyService = require('./services/FamilyService');
 const NotificationService = require('./services/NotificationService');
 const CategoryService = require('./services/CategoryService');
+const AdminService = require('./services/AdminService');
 
 // Handlers
 const CommandHandlers = require('./handlers/commands');
 const MessageHandlers = require('./handlers/messages');
 const CallbackHandlers = require('./handlers/callbacks');
+const AdminHandlers = require('./handlers/AdminHandlers');
 
 // State management
 const StateService = require('./services/StateService');
@@ -187,6 +189,15 @@ class Container {
           this.get('expenseRepository')
         );
 
+      case 'adminService':
+        return new AdminService(
+          this.get('userService'),
+          this.get('expenseRepository'),
+          this.get('bugReportRepository'),
+          this.get('donationRepository'),
+          this.get('premiumTransactionRepository')
+        );
+
       case 'commandHandlers':
         return new CommandHandlers({
           expenseService: this.get('expenseService'),
@@ -214,7 +225,8 @@ class Container {
           validator: this.get('enhancedValidator'),
           paymentService: this.get('paymentService'),
           donationRepository: this.get('donationRepository'),
-          bugReportRepository: this.get('bugReportRepository')
+          bugReportRepository: this.get('bugReportRepository'),
+          adminHandlers: this.get('adminHandlers')
         });
 
       case 'callbackHandlers':
@@ -231,6 +243,15 @@ class Container {
           commandHandlers: this.get('commandHandlers'),
           keyboardGenerators: this.get('keyboardGenerators')
         });
+
+      case 'adminHandlers':
+        return new AdminHandlers(
+          this.get('adminService'),
+          this.get('userService'),
+          this.get('localizationService'),
+          this.get('formatter'),
+          this.get('stateService')
+        );
 
       case 'bot':
         const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -256,8 +277,8 @@ class Container {
 
       case 'keyboardGenerators':
         return {
-          generateMainMenuKeyboard: (userLanguage) => generateMainMenuKeyboard(this.get('localizationService'), userLanguage),
-          generateInlineMainMenu: (userLanguage) => generateInlineMainMenu(this.get('localizationService'), userLanguage),
+          generateMainMenuKeyboard: (userLanguage, isAdmin = false) => generateMainMenuKeyboard(this.get('localizationService'), userLanguage, isAdmin),
+          generateInlineMainMenu: (userLanguage, isAdmin = false) => generateInlineMainMenu(this.get('localizationService'), userLanguage, isAdmin),
           generateCurrencyKeyboard: (userLanguage) => generateCurrencyKeyboard(this.get('localizationService'), userLanguage),
           generateSettingsKeyboard: (userLanguage, reminderEnabled) => generateSettingsKeyboard(this.get('localizationService'), userLanguage, reminderEnabled),
           generateTimeKeyboard: (userLanguage) => generateTimeKeyboard(this.get('localizationService'), userLanguage)
@@ -275,6 +296,7 @@ class Container {
       commandHandlers: this.get('commandHandlers'),
       messageHandlers: this.get('messageHandlers'),
       callbackHandlers: this.get('callbackHandlers'),
+      adminHandlers: this.get('adminHandlers'),
       stateService: this.get('stateService'),
       expenseService: this.get('expenseService'),
       userService: this.get('userService'),
@@ -289,7 +311,8 @@ class Container {
       callbackDeduplicator: this.get('callbackDeduplicator'),
       securityMiddleware: this.get('securityMiddleware'),
       rateLimiter: this.get('rateLimiter'),
-      enhancedValidator: this.get('enhancedValidator')
+      enhancedValidator: this.get('enhancedValidator'),
+      adminService: this.get('adminService')
     };
   }
 }
