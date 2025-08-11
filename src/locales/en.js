@@ -116,6 +116,9 @@ module.exports = {
   admin_promote_success: '✅ User {userId} has been promoted to administrator.',
   admin_demote_success: '✅ Administrator rights removed from user {userId}.',
   admin_cannot_demote_self: '❌ Cannot remove administrator rights from yourself.',
+  admin_grant_premium_options: '⭐ *Grant premium to user {userId}*\n\nSelect period:',
+  admin_grant_premium_success: '✅ Premium granted to user {userId} for {days} days.',
+  admin_revoke_premium_success: '✅ Premium revoked from user {userId}.',
   
   // General messages
   welcome: 'Hello, {name}! 👋',

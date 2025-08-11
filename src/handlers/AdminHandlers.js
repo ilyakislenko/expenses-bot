@@ -430,7 +430,12 @@ class AdminHandlers {
         actionsRow.push({ text: '📉 Убрать админа', callback_data: `panel_demote_${targetUserId}` });
       }
       
-      actionsRow.push({ text: '⭐ Дать премиум', callback_data: `panel_grant_premium_${targetUserId}` });
+      // Кнопка премиума
+      if (user.premium) {
+        actionsRow.push({ text: '❌ Убрать премиум', callback_data: `panel_revoke_premium_${targetUserId}` });
+      } else {
+        actionsRow.push({ text: '⭐ Дать премиум', callback_data: `panel_grant_premium_${targetUserId}` });
+      }
       
       if (actionsRow.length > 0) {
         keyboard.push(actionsRow);
@@ -464,12 +469,16 @@ class AdminHandlers {
         userId: targetUserId
       });
       
-      await ctx.reply(successText);
+      // Отправляем уведомление
+      await ctx.answerCbQuery(successText);
+      
+      // Обновляем детали пользователя
+      await this.showUserDetails(ctx, targetUserId);
       
     } catch (error) {
       logger.error('Error promoting user:', error);
       const errorText = this.localizationService.getText(userLanguage, 'admin_error');
-      await ctx.reply(errorText);
+      await ctx.answerCbQuery(errorText);
     }
   }
 
@@ -487,17 +496,110 @@ class AdminHandlers {
         userId: targetUserId
       });
       
-      await ctx.reply(successText);
+      // Отправляем уведомление
+      await ctx.answerCbQuery(successText);
+      
+      // Обновляем детали пользователя
+      await this.showUserDetails(ctx, targetUserId);
       
     } catch (error) {
       if (error.message === 'Cannot remove admin rights from yourself') {
         const errorText = this.localizationService.getText(userLanguage, 'admin_cannot_demote_self');
-        await ctx.reply(errorText);
+        await ctx.answerCbQuery(errorText);
       } else {
         logger.error('Error demoting user:', error);
         const errorText = this.localizationService.getText(userLanguage, 'admin_error');
-        await ctx.reply(errorText);
+        await ctx.answerCbQuery(errorText);
       }
+    }
+  }
+
+  // Показать варианты премиум периодов
+  async showGrantPremiumOptions(ctx, targetUserId) {
+    if (!(await this.checkAdminAccess(ctx))) return;
+
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+
+    const premiumOptionsText = this.localizationService.getText(userLanguage, 'admin_grant_premium_options', { userId: targetUserId });
+    
+    const keyboard = [
+      [
+        { text: '1 день', callback_data: `panel_grant_premium_days_${targetUserId}_1` },
+        { text: '7 дней', callback_data: `panel_grant_premium_days_${targetUserId}_7` },
+        { text: '14 дней', callback_data: `panel_grant_premium_days_${targetUserId}_14` }
+      ],
+      [
+        { text: '30 дней', callback_data: `panel_grant_premium_days_${targetUserId}_30` },
+        { text: '90 дней', callback_data: `panel_grant_premium_days_${targetUserId}_90` },
+        { text: '180 дней', callback_data: `panel_grant_premium_days_${targetUserId}_180` }
+      ],
+      [
+        { text: '1 год', callback_data: `panel_grant_premium_days_${targetUserId}_365` }
+      ],
+      [
+        { text: '🔙 Назад', callback_data: `panel_user_${targetUserId}` }
+      ]
+    ];
+
+    await ctx.editMessageText(premiumOptionsText, {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: keyboard }
+    });
+  }
+
+  // Выдать премиум на определенный период
+  async grantPremium(ctx, targetUserId, days) {
+    if (!(await this.checkAdminAccess(ctx))) return;
+
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+
+    try {
+      await this.adminService.grantPremium(targetUserId, days, userId);
+      
+      const successText = this.localizationService.getText(userLanguage, 'admin_grant_premium_success', {
+        userId: targetUserId,
+        days: days
+      });
+      
+      // Отправляем уведомление
+      await ctx.answerCbQuery(successText);
+      
+      // Обновляем детали пользователя
+      await this.showUserDetails(ctx, targetUserId);
+      
+    } catch (error) {
+      logger.error('Error granting premium:', error);
+      const errorText = this.localizationService.getText(userLanguage, 'admin_error');
+      await ctx.answerCbQuery(errorText);
+    }
+  }
+
+  // Убрать премиум
+  async revokePremium(ctx, targetUserId) {
+    if (!(await this.checkAdminAccess(ctx))) return;
+
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+
+    try {
+      await this.adminService.revokePremium(targetUserId, userId);
+      
+      const successText = this.localizationService.getText(userLanguage, 'admin_revoke_premium_success', {
+        userId: targetUserId
+      });
+      
+      // Отправляем уведомление
+      await ctx.answerCbQuery(successText);
+      
+      // Обновляем детали пользователя
+      await this.showUserDetails(ctx, targetUserId);
+      
+    } catch (error) {
+      logger.error('Error revoking premium:', error);
+      const errorText = this.localizationService.getText(userLanguage, 'admin_error');
+      await ctx.answerCbQuery(errorText);
     }
   }
 }

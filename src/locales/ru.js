@@ -116,6 +116,9 @@ module.exports = {
   admin_promote_success: '✅ Пользователь {userId} назначен администратором.',
   admin_demote_success: '✅ У пользователя {userId} удалены права администратора.',
   admin_cannot_demote_self: '❌ Нельзя удалить права администратора у самого себя.',
+  admin_grant_premium_options: '⭐ *Выдать премиум пользователю {userId}*\n\nВыберите период:',
+  admin_grant_premium_success: '✅ Пользователю {userId} выдан премиум на {days} дней.',
+  admin_revoke_premium_success: '✅ У пользователя {userId} отозван премиум.',
   
   // Общие сообщения
   welcome: 'Привет, {name}! 👋',

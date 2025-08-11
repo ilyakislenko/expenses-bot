@@ -383,6 +383,15 @@ class UserService {
   async getUsersCount() {
     return this.userRepository.getUsersCount();
   }
+
+  async deactivatePremium(userId) {
+    await this.userRepository.deactivatePremium(userId);
+    
+    logger.info('Premium deactivated', {
+      userId,
+      timestamp: new Date().toISOString()
+    });
+  }
 }
 
 module.exports = UserService; 

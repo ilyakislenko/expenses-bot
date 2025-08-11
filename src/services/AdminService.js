@@ -152,6 +152,36 @@ class AdminService {
     return user ? [user] : [];
   }
 
+  // Выдать премиум пользователю
+  async grantPremium(targetUserId, days, adminUserId) {
+    logger.info('Admin granting premium', { adminUserId, targetUserId, days });
+    
+    const transactionData = {
+      stars: 0,
+      usd: 0,
+      rub: 0,
+      telegram_payment_id: null,
+      invoice_payload: JSON.stringify({
+        user_id: targetUserId,
+        tariff: days,
+        stars: 0,
+        type: 'admin_grant',
+        granted_by: adminUserId
+      })
+    };
+    
+    await this.userService.activatePremium(targetUserId, days, transactionData);
+    logger.info('Premium granted successfully', { adminUserId, targetUserId, days });
+  }
+
+  // Убрать премиум у пользователя
+  async revokePremium(targetUserId, adminUserId) {
+    logger.info('Admin revoking premium', { adminUserId, targetUserId });
+    
+    await this.userService.deactivatePremium(targetUserId);
+    logger.info('Premium revoked successfully', { adminUserId, targetUserId });
+  }
+
   // Управление пользователями
   async getAllUsers(page = 1, limit = 20) {
     const offset = (page - 1) * limit;

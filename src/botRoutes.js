@@ -464,6 +464,23 @@ module.exports = function registerBotRoutes(bot, handlers) {
     return adminHandlers.demoteUser(ctx, targetUserId);
   }));
   
+  // Управление премиумом
+  bot.action(/panel_grant_premium_(\d+)/, errorHandler((ctx) => {
+    const targetUserId = parseInt(ctx.match[1], 10);
+    return adminHandlers.showGrantPremiumOptions(ctx, targetUserId);
+  }));
+  
+  bot.action(/panel_grant_premium_days_(\d+)_(\d+)/, errorHandler((ctx) => {
+    const targetUserId = parseInt(ctx.match[1], 10);
+    const days = parseInt(ctx.match[2], 10);
+    return adminHandlers.grantPremium(ctx, targetUserId, days);
+  }));
+  
+  bot.action(/panel_revoke_premium_(\d+)/, errorHandler((ctx) => {
+    const targetUserId = parseInt(ctx.match[1], 10);
+    return adminHandlers.revokePremium(ctx, targetUserId);
+  }));
+  
   // Общие действия
   bot.action('back_to_main', errorHandler((ctx) => commandHandlers.start(ctx)));
 

@@ -142,6 +142,11 @@ class UserRepository extends BaseRepository {
     const result = await this.query(query, []);
     return parseInt(result.rows[0].count, 10);
   }
+
+  async deactivatePremium(userId) {
+    const query = 'UPDATE users SET premium = false, premium_expires_at = NULL WHERE id = $1';
+    await this.query(query, [userId]);
+  }
 }
 
 module.exports = UserRepository; 
