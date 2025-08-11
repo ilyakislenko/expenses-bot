@@ -118,12 +118,16 @@ function generateCurrencyKeyboard(localizationService, userLanguage) {
 }
 
 // Функция для генерации клавиатуры настроек
-function generateSettingsKeyboard(localizationService, userLanguage) {
+function generateSettingsKeyboard(localizationService, userLanguage, reminderEnabled = false) {
+  const reminderIcon = reminderEnabled ? '🟢' : '⚫';
+  const reminderText = `${reminderIcon} ${localizationService.getText(userLanguage, 'button_reminders')}`;
+  
   return [
     [{ text: localizationService.getText(userLanguage, 'button_change_currency'), callback_data: 'change_currency' }],
     [{ text: localizationService.getText(userLanguage, 'button_change_timezone'), callback_data: 'change_timezone' }],
     [{ text: localizationService.getText(userLanguage, 'button_change_language'), callback_data: 'change_language' }],
     [{ text: localizationService.getText(userLanguage, 'button_change_period_start'), callback_data: 'change_period_start' }],
+    [{ text: reminderText, callback_data: 'toggle_reminders' }],
     [{ text: localizationService.getText(userLanguage, 'button_custom_categories'), callback_data: 'custom_categories' }],
     [{ text: localizationService.getText(userLanguage, 'button_back'), callback_data: 'back_to_menu' }]
   ];

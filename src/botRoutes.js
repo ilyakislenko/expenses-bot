@@ -102,6 +102,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
     await commandHandlers.language(ctx);
   }); // выбор языка интерфейса
   bot.action('change_period_start', errorHandler((ctx) => callbackHandlers.handleChangePeriodStart(ctx))); // настройка начала периода
+  bot.action('toggle_reminders', errorHandler((ctx) => callbackHandlers.handleToggleReminders(ctx))); // вкл/выкл напоминаний
   bot.action(/^tz\|/, errorHandler((ctx) => callbackHandlers.handleTimezoneSelection(ctx))); // установка часового пояса
   bot.action(/^time\|/, errorHandler((ctx) => callbackHandlers.handleTimezoneSelection(ctx))); // установка часового пояса (альтернативный формат)
   bot.action(/^set_language\|/, errorHandler((ctx) => callbackHandlers.handleLanguageSelection(ctx))); // установка языка интерфейса

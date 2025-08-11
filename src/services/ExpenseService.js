@@ -9,6 +9,11 @@ class ExpenseService {
     this.premiumService = premiumService;
   }
 
+  async hasAnyExpenseToday(userId, userTimezone) {
+    // Выбираем есть ли записи за локальный день
+    return this.expenseRepository.hasAnyExpenseToday(userId, userTimezone);
+  }
+
   async getMonthlyStats(userId) {
     const userCurrency = await this.userRepository.getUserCurrency(userId);
     const userTimezone = await this.userRepository.getUserTimezone(userId);

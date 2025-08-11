@@ -10,7 +10,9 @@ CREATE TABLE IF NOT EXISTS users (
     premium BOOLEAN DEFAULT FALSE,
     premium_expires_at TIMESTAMP NULL,
     premium_activated_at TIMESTAMP NULL,
-    period_start_day INTEGER NOT NULL DEFAULT 1
+    period_start_day INTEGER NOT NULL DEFAULT 1,
+    reminder_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    last_reminder_local_date DATE NULL
 );
 
 -- Create indexes for premium subscription fields
@@ -26,6 +28,8 @@ WHERE premium = true AND premium_expires_at IS NOT NULL;
 COMMENT ON COLUMN users.premium_expires_at IS 'Дата истечения премиум подписки';
 COMMENT ON COLUMN users.premium_activated_at IS 'Дата первой активации премиум подписки';
 COMMENT ON COLUMN users.period_start_day IS 'Число начала пользовательского периода (1-31), в месяцах короче используется последний день';
+COMMENT ON COLUMN users.reminder_enabled IS 'Флаг включения ежедневных напоминаний';
+COMMENT ON COLUMN users.last_reminder_local_date IS 'Дата последней отправленной напоминалки в локальном дне пользователя';
 
 -- Ensure correct constraints
 ALTER TABLE users 

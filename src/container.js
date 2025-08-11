@@ -252,7 +252,7 @@ class Container {
           generateMainMenuKeyboard: (userLanguage) => generateMainMenuKeyboard(this.get('localizationService'), userLanguage),
           generateInlineMainMenu: (userLanguage) => generateInlineMainMenu(this.get('localizationService'), userLanguage),
           generateCurrencyKeyboard: (userLanguage) => generateCurrencyKeyboard(this.get('localizationService'), userLanguage),
-          generateSettingsKeyboard: (userLanguage) => generateSettingsKeyboard(this.get('localizationService'), userLanguage),
+          generateSettingsKeyboard: (userLanguage, reminderEnabled) => generateSettingsKeyboard(this.get('localizationService'), userLanguage, reminderEnabled),
           generateTimeKeyboard: (userLanguage) => generateTimeKeyboard(this.get('localizationService'), userLanguage)
         };
 

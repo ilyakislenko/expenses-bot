@@ -235,10 +235,11 @@ class CommandHandlers {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
     
-
+    // Получаем состояние напоминалок
+    const reminderSettings = await this.userService.getReminderSettings(userId);
     
     const settingsTitle = this.localizationService.getText(userLanguage, 'settings_title');
-    const settingsKeyboard = require('../utils/constants').generateSettingsKeyboard(this.localizationService, userLanguage);
+    const settingsKeyboard = require('../utils/constants').generateSettingsKeyboard(this.localizationService, userLanguage, reminderSettings.reminder_enabled);
     
     await ctx.reply(settingsTitle, {
       reply_markup: {

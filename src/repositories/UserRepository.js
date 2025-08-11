@@ -52,6 +52,22 @@ class UserRepository extends BaseRepository {
     return result.rows[0];
   }
 
+  async getReminderSettings(userId) {
+    const query = 'SELECT reminder_enabled, last_reminder_local_date, timezone FROM users WHERE id = $1';
+    const result = await this.query(query, [userId]);
+    return result.rows[0] || { reminder_enabled: false, last_reminder_local_date: null, timezone: 'UTC' };
+  }
+
+  async setReminderEnabled(userId, enabled) {
+    const query = 'UPDATE users SET reminder_enabled = $2 WHERE id = $1';
+    await this.query(query, [userId, !!enabled]);
+  }
+
+  async updateLastReminderLocalDate(userId, dateStr) {
+    const query = 'UPDATE users SET last_reminder_local_date = $2 WHERE id = $1';
+    await this.query(query, [userId, dateStr]);
+  }
+
   async updateUser(userId, updates) {
     const fields = Object.keys(updates);
     const values = Object.values(updates);

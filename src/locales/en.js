@@ -1,4 +1,16 @@
 module.exports = {
+  button_reminders: '🔔 Remind me',
+  reminders_enabled: 'Reminders are ON. If you haven’t recorded anything by 18:00 — I’ll poke you with some humor 😉',
+  reminders_disabled: 'Reminders are OFF. I’ll be quiet 🤐',
+  reminder_sample_variants: [
+    "Hey! If your wallet is silent, it doesn't mean it’s happy. Log your expenses 😉",
+    'Spent anything today? Write it down before your memory goes shopping 🧠🥖',
+    'If you didn’t track it — you basically threw it away. Let’s fix that 💸',
+    'Drop by drop — the budget becomes a river. Log today’s expenses 🌊',
+    'Not nagging, just reminding: time to record your spending 😌'
+  ],
+  reminder_message_title: 'Reminder',
+  reminder_turn_on_off: (enabled) => enabled ? 'Turn reminders OFF' : 'Turn reminders ON',
   // General messages
   welcome: 'Hello, {name}! 👋',
   error: 'An error occurred 😞',

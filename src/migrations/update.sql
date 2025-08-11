@@ -325,3 +325,20 @@ BEGIN
         ALTER TABLE users ADD CONSTRAINT users_period_start_day_check CHECK (period_start_day >= 1 AND period_start_day <= 31);
     END IF;
 END $$;
+
+-- Add reminder fields to users if not exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name='users' AND column_name='reminder_enabled'
+    ) THEN
+        ALTER TABLE users ADD COLUMN reminder_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name='users' AND column_name='last_reminder_local_date'
+    ) THEN
+        ALTER TABLE users ADD COLUMN last_reminder_local_date DATE NULL;
+    END IF;
+END $$;

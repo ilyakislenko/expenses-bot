@@ -25,8 +25,15 @@ async function startApplication() {
     applyBotMiddleware(bot, handlers.errorHandler, handlers.callbackDeduplicator, handlers.securityMiddleware);
     logger.startup('Bot middleware applied');
 
-    // 3. Cron задачи (обновление курсов валют)
-    setupBotCron(container.get('cron'), handlers.currencyUtils, handlers.donationRepository);
+    // 3. Cron задачи (обновление курсов валют, донаты, напоминалки)
+    setupBotCron(
+      container.get('cron'),
+      handlers.currencyUtils,
+      handlers.donationRepository,
+      handlers.userService,
+      handlers.expenseService,
+      handlers.notificationService
+    );
     logger.startup('Cron jobs configured');
 
     // 4. Роутинг команд, сообщений, callback-ов

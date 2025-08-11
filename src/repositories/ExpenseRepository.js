@@ -332,6 +332,26 @@ class ExpenseRepository extends BaseRepository {
     return result.rows;
   }
 
+  async hasAnyExpenseToday(userId, userTimezone = 'UTC') {
+    const query = `
+      WITH local_now AS (
+        SELECT (NOW() AT TIME ZONE $2) AS ln
+      ), day_bounds AS (
+        SELECT DATE_TRUNC('day', ln) AS start_date,
+               (DATE_TRUNC('day', ln) + INTERVAL '1 day' - INTERVAL '1 second') AS end_date
+        FROM local_now
+      )
+      SELECT 1
+      FROM expenses
+      WHERE user_id = $1
+        AND (created_at_utc AT TIME ZONE $2) >= (SELECT start_date FROM day_bounds)
+        AND (created_at_utc AT TIME ZONE $2) <= (SELECT end_date FROM day_bounds)
+      LIMIT 1
+    `;
+    const result = await this.query(query, [userId, userTimezone]);
+    return result.rows.length > 0;
+  }
+
   async deleteLastExpense(userId) {
     const query = `
       DELETE FROM expenses 

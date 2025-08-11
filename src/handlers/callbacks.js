@@ -14,6 +14,26 @@ class CallbackHandlers {
     this.keyboardGenerators = keyboardGenerators;
   }
 
+  async handleToggleReminders(ctx) {
+    const userId = ctx.from.id;
+    let userLanguage = await this.userService.getUserLanguage(userId);
+    const settings = await this.userService.getReminderSettings(userId);
+    const newValue = !settings.reminder_enabled;
+    await this.userService.setReminderEnabled(userId, newValue);
+    
+    const text = this.localizationService.getText(userLanguage, newValue ? 'reminders_enabled' : 'reminders_disabled');
+    
+    // Отправляем сообщение в чат
+    await ctx.reply(text);
+    
+    // Обновляем клавиатуру с новым состоянием
+    const keyboard = this.keyboardGenerators.generateSettingsKeyboard(userLanguage, newValue);
+    await ctx.editMessageReplyMarkup({ inline_keyboard: keyboard });
+    
+    // Простое подтверждение в callback
+    await ctx.answerCbQuery();
+  }
+
   async handleCategorySelection(ctx) {
     const userId = ctx.from.id;
     let userLanguage = 'en'; // fallback язык

@@ -97,6 +97,18 @@ class UserService {
     return this.userRepository.getUserLanguage(userId);
   }
 
+  async getReminderSettings(userId) {
+    return this.userRepository.getReminderSettings(userId);
+  }
+
+  async setReminderEnabled(userId, enabled) {
+    return this.userRepository.setReminderEnabled(userId, enabled);
+  }
+
+  async updateLastReminderLocalDate(userId, dateStr) {
+    return this.userRepository.updateLastReminderLocalDate(userId, dateStr);
+  }
+
   async setUserPeriodStartDay(userId, day) {
     if (typeof day !== 'number' || day < 1 || day > 31) {
       throw new Error('Invalid period start day');
