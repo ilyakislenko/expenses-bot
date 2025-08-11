@@ -242,6 +242,8 @@ class MessageHandlers {
       );
     } catch (error) {
       console.error('Error handling expense:', error);
+      const userId = ctx.from.id;
+      const userLanguage = await this.userService.getUserLanguage(userId);
       const errorText = this.localizationService.getText(userLanguage, 'expense_save_error');
       await ctx.reply(errorText);
     }
@@ -635,7 +637,7 @@ class MessageHandlers {
       const recentCount = recentReports.filter(r => new Date(r.created_at) > tenMinutesAgo).length;
       
       if (recentCount >= 3) {
-        const errorText = `⚠️ Слишком много баг-репортов!\n\nМожно отправлять только 3 репорта за 10 минут`;
+        const errorText = this.localizationService.getText(userLanguage, 'bug_report_rate_limit');
         return await ctx.reply(errorText);
       }
       
@@ -664,7 +666,7 @@ class MessageHandlers {
 
       for (const pattern of suspiciousPatterns) {
         if (pattern.test(reportText)) {
-          const errorText = `⚠️ Сообщение содержит недопустимые символы или подозрительный контент`;
+          const errorText = this.localizationService.getText(userLanguage, 'bug_report_suspicious');
           return await ctx.reply(errorText);
         }
       }

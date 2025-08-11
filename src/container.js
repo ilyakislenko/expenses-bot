@@ -118,7 +118,9 @@ class Container {
       case 'securityMiddleware':
         return new SecurityMiddleware(
           this.get('rateLimiter'),
-          this.get('enhancedValidator')
+          this.get('enhancedValidator'),
+          this.get('localizationService'),
+          this.get('userService')
         );
 
       case 'errorHandler':

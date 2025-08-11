@@ -7,9 +7,11 @@ const {
 } = require('../utils/metrics');
 
 class SecurityMiddleware {
-  constructor(rateLimiter, enhancedValidator) {
+  constructor(rateLimiter, enhancedValidator, localizationService = null, userService = null) {
     this.rateLimiter = rateLimiter;
     this.enhancedValidator = enhancedValidator;
+    this.localizationService = localizationService;
+    this.userService = userService;
   }
 
   // Основной middleware для безопасности
@@ -97,9 +99,19 @@ class SecurityMiddleware {
     const resetTime = rateLimitResult.resetTime;
     const limit = rateLimitResult.limit;
     
-    const message = `⚠️ *Слишком много запросов*\n\n` +
+    let message = `⚠️ *Слишком много запросов*\n\n` +
       `Попробуйте через ${resetTime} секунд\n` +
       `Лимит: ${limit} запросов в минуту`;
+
+    // Пытаемся получить локализованное сообщение
+    if (this.localizationService && this.userService) {
+      try {
+        const userLanguage = await this.userService.getUserLanguage(ctx.from?.id);
+        message = this.localizationService.getText(userLanguage, 'security_rate_limit', { resetTime, limit });
+      } catch (error) {
+        // Используем сообщение по умолчанию
+      }
+    }
 
     logger.warn('Rate limit exceeded', {
       userId: ctx.from?.id,
@@ -288,11 +300,25 @@ class SecurityMiddleware {
 
   // Отправка общего сообщения об ошибке
   async sendErrorResponse(ctx, errorMessage) {
+    let message = '❌ *Ошибка безопасности*\n\nПопробуйте позже или обратитесь к администратору.';
+    let shortMessage = '❌ Ошибка безопасности';
+
+    // Пытаемся получить локализованное сообщение
+    if (this.localizationService && this.userService) {
+      try {
+        const userLanguage = await this.userService.getUserLanguage(ctx.from?.id);
+        message = this.localizationService.getText(userLanguage, 'security_error');
+        shortMessage = this.localizationService.getText(userLanguage, 'security_error').split('\n')[0];
+      } catch (error) {
+        // Используем сообщение по умолчанию
+      }
+    }
+
     try {
       if (ctx.updateType === 'callback_query') {
-        await ctx.answerCbQuery('❌ Ошибка безопасности', { show_alert: true });
+        await ctx.answerCbQuery(shortMessage, { show_alert: true });
       } else {
-        await ctx.reply('❌ *Ошибка безопасности*\n\nПопробуйте позже или обратитесь к администратору.', {
+        await ctx.reply(message, {
           parse_mode: 'Markdown'
         });
       }

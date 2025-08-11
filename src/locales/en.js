@@ -18,11 +18,20 @@ module.exports = {
   bug_report_success: '✅ Thank you! Your message has been sent to developers.',
   bug_report_too_long: '❌ Message too long! Please reduce by {excess} characters (maximum 1000).',
   bug_report_empty: '❌ Empty message. Please describe the issue or suggestion.',
+  bug_report_rate_limit: '⚠️ Too many bug reports!\n\nYou can only send 3 reports per 10 minutes',
+  bug_report_suspicious: '⚠️ Message contains forbidden characters or suspicious content',
+  
+  // Security messages
+  security_rate_limit: '⚠️ *Too many requests*\n\nTry again in {resetTime} seconds\nLimit: {limit} requests per minute',
+  security_validation_error: '⚠️ *Validation error*\n\n{message}',
+  security_error: '❌ *Security error*\n\nPlease try again later or contact administrator.',
   // General messages
   welcome: 'Hello, {name}! 👋',
   error: 'An error occurred 😞',
   unknown_error: 'An unexpected error occurred. Please try again later.',
   not_found: 'Not found',
+  error_invalid_description_format: '❌ Invalid expense format. Use: amount description or amount category description',
+  expense_save_error: '❌ Error saving expense. Please try again.',
   cancel: 'Cancel',
   back: 'Back',
   confirm: 'Confirm',
