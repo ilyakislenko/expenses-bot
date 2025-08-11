@@ -246,6 +246,22 @@ class CommandHandlers {
     });
   }
 
+  async periodStart(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const prompt = this.localizationService.getText(userLanguage, 'period_start_prompt');
+    const backText = this.localizationService.getText(userLanguage, 'button_back');
+    
+    // ставим состояние ожидания ввода числа
+    this.stateService.setUserState(userId, 'setting_period_start');
+    
+    await ctx.reply(prompt, {
+      reply_markup: {
+        inline_keyboard: [[{ text: backText, callback_data: 'back_to_settings' }]]
+      }
+    });
+  }
+
   async language(ctx) {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);

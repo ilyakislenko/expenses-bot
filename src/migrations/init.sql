@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS users (
     language VARCHAR(5) DEFAULT 'ru',
     premium BOOLEAN DEFAULT FALSE,
     premium_expires_at TIMESTAMP NULL,
-    premium_activated_at TIMESTAMP NULL
+    premium_activated_at TIMESTAMP NULL,
+    period_start_day INTEGER NOT NULL DEFAULT 1
 );
 
 -- Create indexes for premium subscription fields
@@ -24,6 +25,11 @@ WHERE premium = true AND premium_expires_at IS NOT NULL;
 -- Comments for premium subscription fields
 COMMENT ON COLUMN users.premium_expires_at IS 'Дата истечения премиум подписки';
 COMMENT ON COLUMN users.premium_activated_at IS 'Дата первой активации премиум подписки';
+COMMENT ON COLUMN users.period_start_day IS 'Число начала пользовательского периода (1-31), в месяцах короче используется последний день';
+
+-- Ensure correct constraints
+ALTER TABLE users 
+  ADD CONSTRAINT IF NOT EXISTS users_period_start_day_check CHECK (period_start_day >= 1 AND period_start_day <= 31);
 
 CREATE TABLE IF NOT EXISTS categories (
     id SERIAL PRIMARY KEY,

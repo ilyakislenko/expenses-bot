@@ -274,4 +274,31 @@ COMMENT ON COLUMN premium_transactions.telegram_payment_id IS 'Уникальн�
 COMMENT ON COLUMN premium_transactions.invoice_payload IS 'Payload инвойса для отладки';
 COMMENT ON COLUMN premium_transactions.previous_expiry_date IS 'Дата истечения подписки до транзакции';
 COMMENT ON COLUMN premium_transactions.new_expiry_date IS 'Дата истечения подписки после транзакции';
-COMMENT ON COLUMN premium_transactions.status IS 'Статус транзакции: pending, completed, failed, refunded'; 
+COMMENT ON COLUMN premium_transactions.status IS 'Статус транзакции: pending, completed, failed, refunded';
+
+-- ========================================
+-- PERIOD START DAY PER-USER SETTING
+-- ========================================
+
+-- Add period_start_day to users (1..31), default 1
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'users' AND column_name = 'period_start_day'
+    ) THEN
+        ALTER TABLE users ADD COLUMN period_start_day INTEGER NOT NULL DEFAULT 1;
+        COMMENT ON COLUMN users.period_start_day IS 'Число начала пользовательского периода (1-31), в месяцах короче используется последний день';
+    END IF;
+END $$;
+
+-- Ensure constraint 1..31 exists
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE table_name = 'users' AND constraint_type = 'CHECK' AND constraint_name = 'users_period_start_day_check'
+    ) THEN
+        ALTER TABLE users ADD CONSTRAINT users_period_start_day_check CHECK (period_start_day >= 1 AND period_start_day <= 31);
+    END IF;
+END $$;

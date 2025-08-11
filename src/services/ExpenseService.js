@@ -12,8 +12,9 @@ class ExpenseService {
   async getMonthlyStats(userId) {
     const userCurrency = await this.userRepository.getUserCurrency(userId);
     const userTimezone = await this.userRepository.getUserTimezone(userId);
-    const total = await this.expenseRepository.getTotalExpenses(userId, 'month', userTimezone);
-    const categoryStats = await this.expenseRepository.getExpensesByCategory(userId, 'month', userTimezone);
+    const startDay = await this.userRepository.getUserPeriodStartDay(userId);
+    const total = await this.expenseRepository.getTotalExpensesForCustomMonth(userId, userTimezone, startDay);
+    const categoryStats = await this.expenseRepository.getExpensesByCategoryForCustomMonth(userId, userTimezone, startDay);
     return { total, categoryStats, userCurrency };
   }
 
@@ -158,6 +159,10 @@ class ExpenseService {
 
   async getExpensesByCategoryId(userId, categoryId, period = 'month') {
     const userTimezone = await this.userRepository.getUserTimezone(userId);
+    if (period === 'month') {
+      const startDay = await this.userRepository.getUserPeriodStartDay(userId);
+      return this.expenseRepository.getExpensesByCategoryIdForCustomMonth(userId, categoryId, userTimezone, startDay);
+    }
     return this.expenseRepository.getExpensesByCategoryId(userId, categoryId, period, userTimezone);
   }
 

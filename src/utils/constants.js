@@ -123,6 +123,7 @@ function generateSettingsKeyboard(localizationService, userLanguage) {
     [{ text: localizationService.getText(userLanguage, 'button_change_currency'), callback_data: 'change_currency' }],
     [{ text: localizationService.getText(userLanguage, 'button_change_timezone'), callback_data: 'change_timezone' }],
     [{ text: localizationService.getText(userLanguage, 'button_change_language'), callback_data: 'change_language' }],
+    [{ text: localizationService.getText(userLanguage, 'button_change_period_start'), callback_data: 'change_period_start' }],
     [{ text: localizationService.getText(userLanguage, 'button_custom_categories'), callback_data: 'custom_categories' }],
     [{ text: localizationService.getText(userLanguage, 'button_back'), callback_data: 'back_to_menu' }]
   ];

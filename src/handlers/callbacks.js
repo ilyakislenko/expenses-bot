@@ -220,6 +220,19 @@ class CallbackHandlers {
     }
   }
 
+  async handleChangePeriodStart(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    try {
+      await ctx.answerCbQuery();
+      await this.commandHandlers.periodStart(ctx);
+    } catch (error) {
+      console.error('Error handling change period start:', error);
+      const errorText = this.localizationService.getText(userLanguage, 'error');
+      await ctx.answerCbQuery(errorText);
+    }
+  }
+
   async handleLanguageSelection(ctx) {
     const userId = ctx.from.id;
     let userLanguage = 'en'; // fallback язык

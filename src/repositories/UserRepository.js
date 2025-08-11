@@ -72,6 +72,16 @@ class UserRepository extends BaseRepository {
     await this.query(query, [language, userId]);
   }
 
+  async getUserPeriodStartDay(userId) {
+    const result = await this.query('SELECT period_start_day FROM users WHERE id = $1', [userId]);
+    return result.rows[0]?.period_start_day || 1;
+  }
+
+  async setUserPeriodStartDay(userId, day) {
+    const query = 'UPDATE users SET period_start_day = $1 WHERE id = $2';
+    await this.query(query, [day, userId]);
+  }
+
   async getUserByUsername(username) {
     const query = 'SELECT * FROM users WHERE username = $1';
     const result = await this.query(query, [username]);

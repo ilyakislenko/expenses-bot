@@ -91,6 +91,10 @@ class MessageHandlers {
           return await this.handleInviteMember(ctx, text, userLanguage);
         }
 
+        if (userState === 'setting_period_start') {
+          return await this.handleSetPeriodStart(ctx, text, userLanguage);
+        }
+
         if (userState === 'adding_custom_category') {
           return await this.handleAddCustomCategory(ctx, text, userLanguage);
         }
@@ -469,6 +473,31 @@ class MessageHandlers {
       console.error('Error handling family expense:', error);
       const errorText = this.localizationService.getText(userLanguage, 'error');
       await ctx.reply(errorText);
+    }
+  }
+
+  async handleSetPeriodStart(ctx, text, userLanguage) {
+    try {
+      const userId = ctx.from.id;
+      const raw = (text || '').trim();
+      const num = Number(raw);
+      if (!Number.isInteger(num) || num < 1 || num > 31) {
+        const invalid = this.localizationService.getText(userLanguage, 'period_start_invalid');
+        return await ctx.reply(invalid);
+      }
+      await this.userService.setUserPeriodStartDay(userId, num);
+      this.stateService.deleteUserState(userId);
+      const ok = this.localizationService.getText(userLanguage, 'period_start_set', { day: num });
+      const backText = this.localizationService.getText(userLanguage, 'button_back');
+      await ctx.reply(ok, {
+        reply_markup: {
+          inline_keyboard: [[{ text: backText, callback_data: 'back_to_settings' }]]
+        }
+      });
+    } catch (error) {
+      console.error('Error setting period start day:', error);
+      const errText = this.localizationService.getText(userLanguage, 'error');
+      await ctx.reply(errText);
     }
   }
 

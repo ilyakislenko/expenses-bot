@@ -90,6 +90,10 @@ Happy tracking! 💰`,
   currency_select: 'Select the currency that will be used by default:',
   currency_set: 'Currency set: {currency}',
   currency_updated: 'Currency successfully changed to {currency}',
+  button_change_period_start: '📅 Period start day',
+  period_start_prompt: 'Enter the day from which each month your new period will start 👇🏼\n\nIt must be a number from 1 to 31. For shorter months, the last day will be used.',
+  period_start_invalid: '❌ Invalid number. Please enter an integer from 1 to 31.',
+  period_start_set: '✅ Period start day set: {day}',
   timezone_setup: `🕐 *Timezone Setup*
 
 What time is it for you now?
