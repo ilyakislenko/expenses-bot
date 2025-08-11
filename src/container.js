@@ -195,7 +195,9 @@ class Container {
           this.get('expenseRepository'),
           this.get('bugReportRepository'),
           this.get('donationRepository'),
-          this.get('premiumTransactionRepository')
+          this.get('premiumTransactionRepository'),
+          this.get('notificationService'),
+          this.get('localizationService')
         );
 
       case 'commandHandlers':
@@ -263,6 +265,10 @@ class Container {
         const paymentServiceInstance = this.get('paymentService');
         if (paymentServiceInstance) {
           paymentServiceInstance.setBot(bot);
+        }
+        const adminService = this.get('adminService');
+        if (adminService) {
+          adminService.setBot(bot);
         }
         return bot;
 

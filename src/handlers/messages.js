@@ -128,6 +128,10 @@ constructor({ expenseService, userService, premiumService, familyService, catego
           return await this.handleAdminSearchInput(ctx, text, userLanguage);
         }
 
+        if (userState === 'admin_broadcast') {
+          return await this.handleAdminBroadcastInput(ctx, text, userLanguage);
+        }
+
         if (userState === 'adding_custom_category') {
           return await this.handleAddCustomCategory(ctx, text, userLanguage);
         }
@@ -728,6 +732,32 @@ constructor({ expenseService, userService, premiumService, familyService, catego
       
     } catch (error) {
       console.error('Error handling admin search input:', error);
+      const errorText = this.localizationService.getText(userLanguage, 'error');
+      await ctx.reply(errorText);
+    }
+  }
+
+  // Обработка ввода текста массового уведомления
+  async handleAdminBroadcastInput(ctx, text, userLanguage) {
+    const userId = ctx.from.id;
+    
+    try {
+      // Проверяем права админа
+      const isAdmin = await this.userService.isUserAdmin(userId);
+      if (!isAdmin) {
+        const accessDeniedText = this.localizationService.getText(userLanguage, 'admin_access_denied');
+        await ctx.reply(accessDeniedText);
+        return;
+      }
+
+      // Очищаем состояние
+      this.stateService.deleteUserState(userId);
+      
+      // Обрабатываем сообщение через AdminHandlers
+      await this.adminHandlers.handleBroadcast(ctx, text);
+      
+    } catch (error) {
+      console.error('Error handling admin broadcast input:', error);
       const errorText = this.localizationService.getText(userLanguage, 'error');
       await ctx.reply(errorText);
     }

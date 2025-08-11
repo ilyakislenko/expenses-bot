@@ -119,6 +119,14 @@ module.exports = {
   admin_grant_premium_options: '⭐ *Выдать премиум пользователю {userId}*\n\nВыберите период:',
   admin_grant_premium_success: '✅ Пользователю {userId} выдан премиум на {days} дней.',
   admin_revoke_premium_success: '✅ У пользователя {userId} отозван премиум.',
+
+  // Admin broadcast
+  admin_broadcast_prompt: '📢 *Массовое уведомление*\n\nВведите текст уведомления для всех пользователей (до 3600 символов):',
+  admin_broadcast_too_long: '❌ Сообщение слишком длинное!\n\n📏 Текущая длина: {current} символов\n📏 Максимум: {max} символов\n📏 Нужно убрать: {excess} символов',
+  admin_broadcast_confirm: '📢 *Подтвердите отправку массового уведомления*\n\n📝 **Текст сообщения:**\n{message}\n\n📏 **Длина:** {length} символов\n\n⚠️ Это сообщение будет отправлено **ВСЕМ** пользователям бота!',
+  admin_broadcast_started: '📢 Рассылка начата...',
+  admin_broadcast_result: '📢 *Рассылка завершена!*\n\n📊 **Статистика:**\n• Всего пользователей: {total}\n• Успешно отправлено: {sent}\n• Ошибок: {failed}',
+  admin_broadcast_header: '🔴🔴🔴 *Уведомление!* 🔴🔴🔴',
   
   // Общие сообщения
   welcome: 'Привет, {name}! 👋',

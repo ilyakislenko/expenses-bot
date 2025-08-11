@@ -481,6 +481,11 @@ module.exports = function registerBotRoutes(bot, handlers) {
     return adminHandlers.revokePremium(ctx, targetUserId);
   }));
   
+  // Массовые уведомления
+  bot.action('panel_broadcast', errorHandler((ctx) => adminHandlers.initiateBroadcast(ctx)));
+  
+  bot.action('panel_broadcast_confirm', errorHandler((ctx) => adminHandlers.confirmBroadcast(ctx)));
+  
   // Общие действия
   bot.action('back_to_main', errorHandler((ctx) => commandHandlers.start(ctx)));
 

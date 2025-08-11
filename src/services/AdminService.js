@@ -1,12 +1,19 @@
 const logger = require('../utils/logger');
 
 class AdminService {
-  constructor(userService, expenseRepository, bugReportRepository, donationRepository, premiumTransactionRepository) {
+  constructor(userService, expenseRepository, bugReportRepository, donationRepository, premiumTransactionRepository, notificationService, localizationService) {
     this.userService = userService;
     this.expenseRepository = expenseRepository;
     this.bugReportRepository = bugReportRepository;
     this.donationRepository = donationRepository;
     this.premiumTransactionRepository = premiumTransactionRepository;
+    this.notificationService = notificationService;
+    this.localizationService = localizationService;
+    this.bot = null; // Для прямого доступа к боту
+  }
+
+  setBot(bot) {
+    this.bot = bot;
   }
 
   async isUserAdmin(userId) {
@@ -180,6 +187,93 @@ class AdminService {
     
     await this.userService.deactivatePremium(targetUserId);
     logger.info('Premium revoked successfully', { adminUserId, targetUserId });
+  }
+
+  // Отправить массовое уведомление всем пользователям
+  async sendBroadcastMessage(messageText, adminUserId) {
+    logger.info('Admin initiating broadcast', { adminUserId, messageLength: messageText.length });
+    
+    // Получаем всех пользователей
+    const allUsers = await this.userService.getAllUsersForBroadcast();
+    const total = allUsers.length;
+    let sent = 0;
+    let failed = 0;
+
+    logger.info('Broadcasting to users', { total, adminUserId });
+
+    // Отправляем сообщения с задержкой для избежания лимитов Telegram
+    for (const user of allUsers) {
+      try {
+        // Получаем язык пользователя для локализованного заголовка
+        const userLanguage = await this.userService.getUserLanguage(user.id);
+        const broadcastHeader = this.localizationService.getText(userLanguage, 'admin_broadcast_header');
+        const broadcastMessage = `${broadcastHeader}\n\n${messageText}`;
+
+        // Пробуем разные способы отправки
+        let messageSent = false;
+        
+        // Способ 1: NotificationService
+        if (this.notificationService && this.notificationService.sendMessage) {
+          try {
+            await this.notificationService.sendMessage(user.id, broadcastMessage, { parse_mode: 'Markdown' });
+            messageSent = true;
+          } catch (notificationError) {
+            logger.warn('NotificationService failed, trying direct bot access', {
+              userId: user.id,
+              error: notificationError.message
+            });
+          }
+        }
+        
+        // Способ 2: Прямой доступ к bot через AdminService
+        if (!messageSent && this.bot) {
+          try {
+            await this.bot.telegram.sendMessage(user.id, broadcastMessage, { parse_mode: 'Markdown' });
+            messageSent = true;
+          } catch (botError) {
+            logger.warn('Direct bot access failed, trying userService bot', {
+              userId: user.id,
+              error: botError.message
+            });
+          }
+        }
+        
+        // Способ 3: Fallback через userService (если есть)
+        if (!messageSent && this.userService.bot) {
+          await this.userService.bot.telegram.sendMessage(user.id, broadcastMessage, { parse_mode: 'Markdown' });
+          messageSent = true;
+        }
+        
+        if (messageSent) {
+          sent++;
+          
+          // Добавляем небольшую задержку для избежания rate limits
+          if (sent % 30 === 0) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        } else {
+          throw new Error('No bot access available');
+        }
+        
+      } catch (error) {
+        failed++;
+        logger.warn('Failed to send broadcast message to user', { 
+          userId: user.id, 
+          error: error.message,
+          adminUserId 
+        });
+      }
+    }
+
+    logger.info('Broadcast completed', { 
+      adminUserId, 
+      total, 
+      sent, 
+      failed,
+      messageLength: messageText.length 
+    });
+
+    return { total, sent, failed };
   }
 
   // Управление пользователями

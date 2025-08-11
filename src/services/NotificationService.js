@@ -127,6 +127,26 @@ class NotificationService {
       });
     }
   }
+
+  // Универсальный метод для отправки сообщений
+  async sendMessage(userId, text, options = {}) {
+    try {
+      if (!this.bot) {
+        logger.warn('Bot not available for sending message', { userId });
+        throw new Error('Bot not available');
+      }
+
+      await this.bot.telegram.sendMessage(userId, text, options);
+      
+      logger.info('Message sent successfully', { userId, textLength: text.length });
+    } catch (error) {
+      logger.error('Failed to send message', {
+        userId,
+        error: error.message
+      });
+      throw error;
+    }
+  }
 }
 
 module.exports = NotificationService; 

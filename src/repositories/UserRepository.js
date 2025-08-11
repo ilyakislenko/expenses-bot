@@ -147,6 +147,12 @@ class UserRepository extends BaseRepository {
     const query = 'UPDATE users SET premium = false, premium_expires_at = NULL WHERE id = $1';
     await this.query(query, [userId]);
   }
+
+  async getAllUsersForBroadcast() {
+    const query = 'SELECT id FROM users WHERE id > 0 ORDER BY id';
+    const result = await this.query(query, []);
+    return result.rows;
+  }
 }
 
 module.exports = UserRepository; 

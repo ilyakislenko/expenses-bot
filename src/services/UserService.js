@@ -392,6 +392,10 @@ class UserService {
       timestamp: new Date().toISOString()
     });
   }
+
+  async getAllUsersForBroadcast() {
+    return this.userRepository.getAllUsersForBroadcast();
+  }
 }
 
 module.exports = UserService; 

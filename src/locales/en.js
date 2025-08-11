@@ -119,6 +119,14 @@ module.exports = {
   admin_grant_premium_options: '⭐ *Grant premium to user {userId}*\n\nSelect period:',
   admin_grant_premium_success: '✅ Premium granted to user {userId} for {days} days.',
   admin_revoke_premium_success: '✅ Premium revoked from user {userId}.',
+
+  // Admin broadcast
+  admin_broadcast_prompt: '📢 *Broadcast Message*\n\nEnter notification text for all users (up to 3600 characters):',
+  admin_broadcast_too_long: '❌ Message too long!\n\n📏 Current length: {current} characters\n📏 Maximum: {max} characters\n📏 Need to remove: {excess} characters',
+  admin_broadcast_confirm: '📢 *Confirm broadcast message*\n\n📝 **Message text:**\n{message}\n\n📏 **Length:** {length} characters\n\n⚠️ This message will be sent to **ALL** bot users!',
+  admin_broadcast_started: '📢 Broadcast started...',
+  admin_broadcast_result: '📢 *Broadcast completed!*\n\n📊 **Statistics:**\n• Total users: {total}\n• Successfully sent: {sent}\n• Errors: {failed}',
+  admin_broadcast_header: '🔴🔴🔴 *Notification!* 🔴🔴🔴',
   
   // General messages
   welcome: 'Hello, {name}! 👋',

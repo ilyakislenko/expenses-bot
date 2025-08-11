@@ -51,6 +51,9 @@ class AdminHandlers {
         { text: '👑 Админы', callback_data: 'panel_managers' }
       ],
       [
+        { text: '📢 Массовое уведомление', callback_data: 'panel_broadcast' }
+      ],
+      [
         { text: '🔍 Поиск', callback_data: 'panel_search' },
         { text: '🔙 Назад', callback_data: 'back_to_main' }
       ]
@@ -598,6 +601,121 @@ class AdminHandlers {
       
     } catch (error) {
       logger.error('Error revoking premium:', error);
+      const errorText = this.localizationService.getText(userLanguage, 'admin_error');
+      await ctx.answerCbQuery(errorText);
+    }
+  }
+
+  // Инициировать массовое уведомление
+  async initiateBroadcast(ctx) {
+    if (!(await this.checkAdminAccess(ctx))) return;
+
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+
+    // Устанавливаем состояние для ввода сообщения
+    this.stateService.setUserState(userId, 'admin_broadcast');
+
+    const broadcastPromptText = this.localizationService.getText(userLanguage, 'admin_broadcast_prompt');
+    const keyboard = [
+      [{ text: '🔙 Назад', callback_data: 'panel_main' }]
+    ];
+
+    await ctx.reply(broadcastPromptText, {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: keyboard }
+    });
+  }
+
+  // Обработка и отправка массового уведомления
+  async handleBroadcast(ctx, messageText) {
+    if (!(await this.checkAdminAccess(ctx))) return;
+
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+
+    try {
+      // Валидация длины сообщения
+      if (messageText.length > 3600) {
+        const errorText = this.localizationService.getText(userLanguage, 'admin_broadcast_too_long', {
+          current: messageText.length,
+          max: 3600,
+          excess: messageText.length - 3600
+        });
+        await ctx.reply(errorText);
+        return;
+      }
+
+      // Сохраняем сообщение в состоянии пользователя
+      this.stateService.setUserState(userId, { 
+        type: 'admin_broadcast_confirm', 
+        data: { message: messageText } 
+      });
+
+      // Подтверждение отправки
+      const confirmText = this.localizationService.getText(userLanguage, 'admin_broadcast_confirm', {
+        message: messageText.length > 200 ? messageText.substring(0, 200) + '...' : messageText,
+        length: messageText.length
+      });
+
+      const keyboard = [
+        [
+          { text: '✅ Отправить всем', callback_data: 'panel_broadcast_confirm' },
+          { text: '❌ Отмена', callback_data: 'panel_main' }
+        ]
+      ];
+
+      await ctx.reply(confirmText, {
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard: keyboard }
+      });
+
+    } catch (error) {
+      logger.error('Error handling broadcast:', error);
+      const errorText = this.localizationService.getText(userLanguage, 'admin_error');
+      await ctx.reply(errorText);
+    }
+  }
+
+  // Подтверждение и отправка массового уведомления
+  async confirmBroadcast(ctx) {
+    if (!(await this.checkAdminAccess(ctx))) return;
+
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+
+    try {
+      // Получаем сообщение из состояния пользователя
+      const userState = this.stateService.getUserState(userId);
+      if (!userState || userState.type !== 'admin_broadcast_confirm' || !userState.data.message) {
+        const errorText = this.localizationService.getText(userLanguage, 'admin_error');
+        await ctx.answerCbQuery(errorText);
+        return;
+      }
+
+      const messageText = userState.data.message;
+      
+      // Очищаем состояние
+      this.stateService.deleteUserState(userId);
+
+      // Отправляем уведомление о начале рассылки
+      const startText = this.localizationService.getText(userLanguage, 'admin_broadcast_started');
+      await ctx.answerCbQuery(startText);
+
+      // Запускаем процесс рассылки
+      const result = await this.adminService.sendBroadcastMessage(messageText, userId);
+
+      // Отправляем результат
+      const resultText = this.localizationService.getText(userLanguage, 'admin_broadcast_result', {
+        total: result.total,
+        sent: result.sent,
+        failed: result.failed
+      });
+
+      await ctx.reply(resultText, { parse_mode: 'Markdown' });
+
+    } catch (error) {
+      logger.error('Error confirming broadcast:', error);
       const errorText = this.localizationService.getText(userLanguage, 'admin_error');
       await ctx.answerCbQuery(errorText);
     }
