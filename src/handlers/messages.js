@@ -497,7 +497,10 @@ class MessageHandlers {
         const invalid = this.localizationService.getText(userLanguage, 'donate_invalid');
         return await ctx.reply(invalid);
       }
-      // создаём pending донат
+      // отменяем все предыдущие pending донаты пользователя
+      await this.donationRepository.cancelUserPendingDonations(userId);
+      
+      // создаём новый pending донат
       const donation = await this.donationRepository.createPendingDonation(userId, stars, message || null);
       this.stateService.deleteUserState(userId);
 

@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS donations (
     stars INTEGER NOT NULL CHECK (stars >= 1 AND stars <= 2500),
     message TEXT,
     telegram_payment_id VARCHAR(255),
-    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','completed','failed')),
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','completed','failed','expired','cancelled')),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );

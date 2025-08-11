@@ -32,6 +32,29 @@ class DonationRepository extends BaseRepository {
     const result = await this.query(query, [donationId]);
     return result.rows[0];
   }
+
+  async cleanupOldPendingDonations(hoursOld = 24) {
+    const query = `
+      UPDATE donations
+      SET status = 'expired', updated_at = NOW()
+      WHERE status = 'pending' 
+        AND created_at < NOW() - INTERVAL '${hoursOld} hours'
+      RETURNING id
+    `;
+    const result = await this.query(query, []);
+    return result.rows.length;
+  }
+
+  async cancelUserPendingDonations(userId) {
+    const query = `
+      UPDATE donations
+      SET status = 'cancelled', updated_at = NOW()
+      WHERE user_id = $1 AND status = 'pending'
+      RETURNING id
+    `;
+    const result = await this.query(query, [userId]);
+    return result.rows.length;
+  }
 }
 
 module.exports = DonationRepository;

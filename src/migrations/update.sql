@@ -310,6 +310,11 @@ CREATE TABLE IF NOT EXISTS donations (
 CREATE INDEX IF NOT EXISTS idx_donations_user_id ON donations(user_id);
 CREATE INDEX IF NOT EXISTS idx_donations_status ON donations(status);
 
+-- Update donations status constraint to include new statuses
+ALTER TABLE donations DROP CONSTRAINT IF EXISTS donations_status_check;
+ALTER TABLE donations ADD CONSTRAINT donations_status_check 
+  CHECK (status IN ('pending', 'completed', 'failed', 'expired', 'cancelled'));
+
 -- Ensure constraint 1..31 exists
 DO $$
 BEGIN
