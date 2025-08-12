@@ -249,7 +249,15 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationServic
     return categoryName; // Возвращаем оригинальное название, если перевод не найден
   }
 
-  formatExpenseWithActions(expense, userTimezone = 'UTC', localizationService = null, userLanguage = 'ru', showEdit = true, showDelete = true) {
+  formatExpenseWithActions(
+    expense,
+    userTimezone = 'UTC',
+    localizationService = null,
+    userLanguage = 'ru',
+    showEdit = true,
+    showDelete = true,
+    showMarkFamily = false
+  ) {
     const icon = expense.category_icon || '📦';
     const amount = this.formatAmount(expense.amount, expense.currency || 'RUB');
     const description = expense.description || (localizationService ? 
@@ -270,6 +278,9 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationServic
     const deleteText = localizationService ? 
       localizationService.getText(userLanguage, 'button_delete') : 
       '🗑️ Удалить';
+    const markFamilyText = localizationService ?
+      localizationService.getText(userLanguage, 'button_mark_as_family') :
+      '👨‍👩‍👧‍👦 В семью';
     
     const text = `${icon} ${amount} - ${description}\n📅 ${date}${userInfo}`;
     
@@ -286,6 +297,9 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationServic
     }
     if (showDelete) {
       buttons.push({ text: deleteText, callback_data: `delete_expense|${expense.id}` });
+    }
+    if (showMarkFamily && !expense.family_id) {
+      buttons.push({ text: markFamilyText, callback_data: `mark_as_family|${expense.id}` });
     }
     
     return {

@@ -188,6 +188,42 @@ class ExpenseService {
     return this.expenseRepository.deleteExpenseById(userId, expenseId);
   }
 
+  async convertToFamilyExpense(userId, expenseId, familyId) {
+    try {
+      // Получаем запись для проверки
+      const expense = await this.expenseRepository.getExpenseById(userId, expenseId);
+      if (!expense) {
+        throw new Error('Expense not found');
+      }
+
+      // Проверяем, что запись еще не семейная
+      if (expense.family_id) {
+        throw new Error('Expense is already family expense');
+      }
+
+      // Обновляем запись, добавляя family_id
+      const updatedExpense = await this.expenseRepository.updateExpenseFamilyId(userId, expenseId, familyId);
+      
+      logger.info('Expense converted to family expense', {
+        userId,
+        expenseId,
+        familyId,
+        amount: expense.amount,
+        category: expense.category_id
+      });
+
+      return updatedExpense;
+    } catch (error) {
+      logger.error('Failed to convert expense to family expense', {
+        userId,
+        expenseId,
+        familyId,
+        error: error.message
+      });
+      throw error;
+    }
+  }
+
   async addFamilyExpense(userId, amount, description, categoryName, familyId) {
     return this.addExpense(userId, amount, description, categoryName, familyId);
   }

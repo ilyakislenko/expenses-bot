@@ -309,6 +309,7 @@ class Container {
       premiumService: this.get('premiumService'),
       paymentService: this.get('paymentService'),
       donationRepository: this.get('donationRepository'),
+      expenseRepository: this.get('expenseRepository'),
       familyService: this.get('familyService'),
       localizationService: this.get('localizationService'),
       currencyUtils: this.get('currencyUtils'),

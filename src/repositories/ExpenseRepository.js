@@ -388,6 +388,17 @@ class ExpenseRepository extends BaseRepository {
     return result.rows[0];
   }
 
+  async updateExpenseFamilyId(userId, expenseId, familyId) {
+    const query = `
+      UPDATE expenses
+      SET family_id = $3
+      WHERE id = $1 AND user_id = $2
+      RETURNING *
+    `;
+    const result = await this.query(query, [expenseId, userId, familyId]);
+    return result.rows[0];
+  }
+
   async getExpenseById(userId, expenseId) {
     const query = `
       SELECT * FROM expenses WHERE id = $1 AND user_id = $2
