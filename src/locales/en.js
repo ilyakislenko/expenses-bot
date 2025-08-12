@@ -302,7 +302,9 @@ Now all your expenses will be correctly displayed in your local time.`,
 • 160 characters in description (instead of 80)
 • 300 records (instead of 100)
  • Up to 5 custom categories
-• Extended statistics`,
+• Extended statistics
+• Family budget
+• Ability to edit and delete expenses(not only the last one)`,
   
   // Validation errors
   error_too_long_regular: '❌ Description is too long!\nMaximum 80 characters for regular users.',

@@ -55,7 +55,7 @@ class AdminHandlers {
       ],
       [
         { text: '🔍 Поиск', callback_data: 'panel_search' },
-        { text: '🔙 Назад', callback_data: 'back_to_main' }
+        { text: '🔙 Назад', callback_data: 'back_to_menu' }
       ]
     ];
 
