@@ -512,6 +512,12 @@ module.exports = {
     category_health: 'Gesundheit',
     category_other: 'Andere',
     
+    // CSV-Export
+    date_label: 'Datum',
+    currency_label: 'Währung',
+    total_by_currencies: 'Gesamt nach Währungen:',
+    total_in_currency: 'Gesamt in {currency}',
+    
     // Eigene Kategorien (Premium)
     custom_categories_title: '🏷️ Eigene Kategorien',
     custom_categories_info: 'Hier kannst du eigene Ausgabenkategorien erstellen (nur Premium).',

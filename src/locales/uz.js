@@ -510,6 +510,12 @@ module.exports = {
     category_health: 'Sog‘liq',
     category_other: 'Boshqa',
     
+    // CSV eksport
+    date_label: 'Sana',
+    currency_label: 'Valyuta',
+    total_by_currencies: 'Valyutalar bo\'yicha jami:',
+    total_in_currency: '{currency} bo\'yicha jami',
+    
     // Maxsus kategoriyalar (Premium)
     custom_categories_title: '🏷️ Maxsus kategoriyalar',
     custom_categories_info: 'Siz o‘zingizning xarajat kategoriyalaringizni yaratishingiz mumkin (faqat Premium).',

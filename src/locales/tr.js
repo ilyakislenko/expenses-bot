@@ -503,13 +503,19 @@ module.exports = {
     callback_edit_mode: 'Düzenleme modundan çıkıldı:',
     callback_no_cards: 'Kayıt bulunamadı... Hata oluştu',
     
-    // Varsayılan kategoriler
-    category_food: 'Yemek',
-    category_transport: 'Ulaşım',
-    category_entertainment: 'Eğlence',
-    category_shopping: 'Alışveriş',
-    category_health: 'Sağlık',
-    category_other: 'Diğer',
+      // Varsayılan kategoriler
+  category_food: 'Yemek',
+  category_transport: 'Ulaşım',
+  category_entertainment: 'Eğlence',
+  category_shopping: 'Alışveriş',
+  category_health: 'Sağlık',
+  category_other: 'Diğer',
+  
+  // CSV Dışa aktarma
+  date_label: 'Tarih',
+  currency_label: 'Para birimi',
+  total_by_currencies: 'Para birimlerine göre toplam:',
+  total_in_currency: '{currency} cinsinden toplam',
     
     // Özel kategoriler (Premium)
     custom_categories_title: '🏷️ Özel kategoriler',

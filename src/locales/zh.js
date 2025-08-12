@@ -502,13 +502,19 @@ module.exports = {
     callback_edit_mode: '退出编辑模式：',
     callback_no_cards: '没有记录…发生错误',
     
-    // 默认类别
-    category_food: '餐饮',
-    category_transport: '交通',
-    category_entertainment: '娱乐',
-    category_shopping: '购物',
-    category_health: '健康',
-    category_other: '其他',
+      // 默认类别
+  category_food: '餐饮',
+  category_transport: '交通',
+  category_entertainment: '娱乐',
+  category_shopping: '购物',
+  category_health: '健康',
+  category_other: '其他',
+  
+  // CSV导出
+  date_label: '日期',
+  currency_label: '货币',
+  total_by_currencies: '按货币总计:',
+  total_in_currency: '{currency}总计',
     
     // 自定义类别（高级）
     custom_categories_title: '🏷️ 自定义类别',

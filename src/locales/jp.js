@@ -510,6 +510,12 @@ module.exports = {
     category_health: '健康',
     category_other: 'その他',
     
+    // CSVエクスポート
+    date_label: '日付',
+    currency_label: '通貨',
+    total_by_currencies: '通貨別合計:',
+    total_in_currency: '{currency}での合計',
+    
     // カスタムカテゴリー（プレミアム）
     custom_categories_title: '🏷️ カスタムカテゴリー',
     custom_categories_info: 'ここで独自の支出カテゴリーを作成できます（プレミアムのみ）。',

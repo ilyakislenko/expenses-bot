@@ -120,9 +120,20 @@ function generateCurrencyKeyboard(localizationService, userLanguage) {
     [
       { text: '₽ RUB', callback_data: 'set_currency|RUB' },
       { text: '$ USD', callback_data: 'set_currency|USD' },
-      { text: '€ EUR', callback_data: 'set_currency|EUR' },
+      { text: '€ EUR', callback_data: 'set_currency|EUR' }
+    ],
+    [
       { text: '₸ KZT', callback_data: 'set_currency|KZT' },
       { text: '¥ CNY', callback_data: 'set_currency|CNY' },
+      { text: '¥ JPY', callback_data: 'set_currency|JPY' }
+    ],
+    [
+      { text: '₹ INR', callback_data: 'set_currency|INR' },
+      { text: '₺ TRY', callback_data: 'set_currency|TRY' },
+      { text: '₾ GEL', callback_data: 'set_currency|GEL' }
+    ],
+    [
+      { text: 'сум UZS', callback_data: 'set_currency|UZS' },
       { text: '฿ THB', callback_data: 'set_currency|THB' }
     ],
     [

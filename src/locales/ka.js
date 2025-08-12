@@ -508,6 +508,12 @@ module.exports = {
     category_health: 'ჯანმრთელობა',
     category_other: 'სხვა',
     
+    // CSV ექსპორტი
+    date_label: 'თარიღი',
+    currency_label: 'ვალუტა',
+    total_by_currencies: 'სულ ვალუტების მიხედვით:',
+    total_in_currency: 'სულ {currency}-ში',
+    
     // პერსონალური კატეგორიები (პრემიუმი)
     custom_categories_title: '🏷️ პერსონალური კატეგორიები',
     custom_categories_info: 'შეგიძლია შექმნა საკუთარი ხარჯების კატეგორიები (მხოლოდ პრემიუმისთვის).',

@@ -510,6 +510,12 @@ module.exports = {
     category_health: 'Santé',
     category_other: 'Autres',
     
+    // Exportation CSV
+    date_label: 'Date',
+    currency_label: 'Devise',
+    total_by_currencies: 'Total par devises:',
+    total_in_currency: 'Total en {currency}',
+    
     // Catégories personnalisées (premium)
     custom_categories_title: '🏷️ Catégories personnalisées',
     custom_categories_info: 'Vous pouvez créer vos propres catégories de dépenses (premium uniquement).',

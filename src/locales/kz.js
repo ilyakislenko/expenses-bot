@@ -510,6 +510,12 @@ module.exports = {
     category_health: 'Денсаулық',
     category_other: 'Басқа',
     
+    // CSV экспорт
+    date_label: 'Күні',
+    currency_label: 'Валюта',
+    total_by_currencies: 'Валюталар бойынша жалпы:',
+    total_in_currency: '{currency} бойынша жалпы',
+    
     // Жеке санаттар (premium)
     custom_categories_title: '🏷️ Жеке санаттар',
     custom_categories_info: 'Мұнда сіз өзіңіздің жеке шығын санаттарыңызды жасай аласыз (тек premium).',

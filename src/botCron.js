@@ -1,4 +1,6 @@
-module.exports = function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, supportedCurrencies = ['RUB', 'USD', 'EUR', 'KZT', 'CNY', 'THB']) {
+const currencyConfig = require('./config/currencies');
+
+module.exports = function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, supportedCurrencies = currencyConfig.SUPPORTED_CURRENCIES) {
   // Проверяем, нужно ли обновлять курсы при запуске
   (async () => {
     try {

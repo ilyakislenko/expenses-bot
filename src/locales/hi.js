@@ -512,6 +512,12 @@ module.exports = {
     category_health: 'स्वास्थ्य',
     category_other: 'अन्य',
     
+    // CSV निर्यात
+    date_label: 'तारीख',
+    currency_label: 'मुद्रा',
+    total_by_currencies: 'मुद्राओं के अनुसार कुल:',
+    total_in_currency: '{currency} में कुल',
+    
     // कस्टम श्रेणियाँ (प्रीमियम)
     custom_categories_title: '🏷️ कस्टम श्रेणियाँ',
     custom_categories_info: 'आप अपनी श्रेणियाँ बना सकते हैं (केवल प्रीमियम)।',

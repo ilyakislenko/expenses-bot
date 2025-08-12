@@ -502,13 +502,19 @@ module.exports = {
     callback_edit_mode: 'Saindo do modo de edição:',
     callback_no_cards: 'Nenhum registro encontrado... ocorreu um erro',
     
-    // Categorias padrão
-    category_food: 'Comida',
-    category_transport: 'Transporte',
-    category_entertainment: 'Entretenimento',
-    category_shopping: 'Compras',
-    category_health: 'Saúde',
-    category_other: 'Outros',
+      // Categorias padrão
+  category_food: 'Comida',
+  category_transport: 'Transporte',
+  category_entertainment: 'Entretenimento',
+  category_shopping: 'Compras',
+  category_health: 'Saúde',
+  category_other: 'Outros',
+  
+  // Exportação CSV
+  date_label: 'Data',
+  currency_label: 'Moeda',
+  total_by_currencies: 'Total por moedas:',
+  total_in_currency: 'Total em {currency}',
     
     // Categorias personalizadas (premium)
     custom_categories_title: '🏷️ Categorias personalizadas',
