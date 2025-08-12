@@ -599,7 +599,7 @@ class CallbackHandlers {
           const name = member.username ? `@${member.username}` : member.first_name;
           const date = new Date(member.joined_at_utc).toLocaleDateString('ru-RU');
           
-          message += `• ${name} (${role}) - присоединился ${date}\n`;
+          message += `• ${name} (${role}) - ${date}\n`;
           
           // Добавляем кнопку исключения только для участников (не для владельца)
           if (member.role !== 'owner') {
