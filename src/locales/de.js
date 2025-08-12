@@ -419,7 +419,7 @@ module.exports = {
     premium_renewal_info: '📅 Kann jederzeit verlängert werden. Die Zeit wird hinzugefügt.',
     premium_stars_info: '💡 Sterne können gebührenfrei über [@PremiumBot] gekauft werden.',
     premium_why_paid_title: '👀 Warum kostenpflichtig?',
-    premium_why_paid_text: 'Der Betrieb dieses Bots kostet etwa 13.000₽ pro Monat. Die Nutzerzahl wächst und als Entwickler muss ich auch meinen Lebensunterhalt verdienen :)',
+    premium_why_paid_text: 'Der Betrieb dieses Bots kostet etwa $200 pro Monat. Die Nutzerzahl wächst und als Entwickler muss ich auch meinen Lebensunterhalt verdienen :)',
     premium_payment_title: '💳 *Premium-Abonnement bezahlen*',
     premium_payment_description: 'Ausgewählt: <b>{duration}</b>\nPreis: <b>{stars} ⭐️</b>\n\nZum Bezahlen unten klicken.',
   

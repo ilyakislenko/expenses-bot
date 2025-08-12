@@ -418,7 +418,7 @@ module.exports = {
     premium_renewal_info: '📅 İstediğiniz zaman yenileyebilirsiniz. Süre kalan zamana eklenir.',
     premium_stars_info: '💡 Yıldızları komisyonsuz olarak [@PremiumBot] üzerinden satın alabilirsiniz.',
     premium_why_paid_title: '👀 Neden ücretli?',
-    premium_why_paid_text: 'Bu botun sunucu masrafı ayda yaklaşık 13.000₽. Kullanıcı sayısı sürekli artıyor ve geliştirici olarak hizmeti geliştirmeye devam etmek için gelire ihtiyacım var :)',
+    premium_why_paid_text: 'Bu botun sunucu masrafı ayda yaklaşık $200. Kullanıcı sayısı sürekli artıyor ve geliştirici olarak hizmeti geliştirmeye devam etmek için gelire ihtiyacım var :)',
     premium_payment_title: '💳 *Premium abonelik ödeme*',
     premium_payment_description: 'Seçilen: <b>{duration}</b>\nFiyat: <b>{stars} ⭐️</b>\n\nÖdemek için aşağıya tıklayın.',
   

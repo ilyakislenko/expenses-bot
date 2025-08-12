@@ -417,7 +417,7 @@ module.exports = {
     premium_renewal_info: '📅 Pode renovar a qualquer momento. O tempo será somado ao restante.',
     premium_stars_info: '💡 Compre estrelas sem taxa pelo bot oficial [@PremiumBot].',
     premium_why_paid_title: '👀 Por que é pago?',
-    premium_why_paid_text: 'Manter o servidor deste bot custa cerca de 13.000₽ por mês, sem contar o crescente número de usuários. E como desenvolvedor, também preciso comer para ter forças de melhorar o serviço :)',
+    premium_why_paid_text: 'Manter o servidor deste bot custa cerca de $200 por mês, sem contar o crescente número de usuários. E como desenvolvedor, também preciso comer para ter forças de melhorar o serviço :)',
     premium_payment_title: '💳 *Pagamento de assinatura premium*',
     premium_payment_description: 'Você escolheu: <b>{duration}</b>\nPreço: <b>{stars} ⭐️</b>\n\nClique no botão abaixo para pagar com Telegram Stars.',
   

@@ -517,7 +517,7 @@ Now all your expenses will be correctly displayed in your local time.`,
   premium_renewal_info: '📅 You can renew your subscription at any time. The corresponding number of days will be added to the remaining period.',
   premium_stars_info: '💡 You can purchase stars without Apple / Google commission in the official bot [@PremiumBot].',
   premium_why_paid_title: '👀 Why is the service paid?',
-  premium_why_paid_text: 'Keeping the server running for this bot costs about 13,000₽ a month — and that\'s even without accounting for the rapidly growing number of users. And as the developer, I also need to eat so I have the energy to keep building this service for you :)',
+  premium_why_paid_text: 'Keeping the server running for this bot costs about $200 a month — and that\'s even without accounting for the rapidly growing number of users. And as the developer, I also need to eat to have the strength to improve the service :)',
   premium_payment_title: '💳 *Premium Subscription Payment*',
   premium_payment_description: 'You selected tariff: <b>{duration}</b>\nCost: <b>{stars} ⭐️</b>\n\nClick the button below to proceed to payment via Telegram Stars.',
 

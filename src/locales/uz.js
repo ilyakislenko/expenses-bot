@@ -417,7 +417,7 @@ module.exports = {
     premium_renewal_info: '📅 Istalgan vaqtda yangilash mumkin. Vaqt ustiga qo‘shiladi.',
     premium_stars_info: '💡 Yulduzlarni komissiyasiz [@PremiumBot] orqali sotib olish mumkin.',
     premium_why_paid_title: '👀 Nega pullik?',
-    premium_why_paid_text: 'Ushbu botni saqlash xarajati oyiga ~13 000₽. Foydalanuvchilar soni oshib bormoqda va men xizmatni yaxshilash uchun daromadga muhtojman :)',
+    premium_why_paid_text: 'Ushbu botni saqlash xarajati oyiga ~$200. Foydalanuvchilar soni oshib bormoqda va men xizmatni yaxshilash uchun daromadga muhtojman :)',
     premium_payment_title: '💳 *Premium obuna to‘lovi*',
     premium_payment_description: 'Tanlangan: <b>{duration}</b>\nNarxi: <b>{stars} ⭐️</b>\n\nTo‘lash uchun pastdagi tugmani bosing.',
   

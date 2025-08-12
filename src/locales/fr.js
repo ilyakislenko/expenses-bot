@@ -417,7 +417,7 @@ module.exports = {
     premium_renewal_info: '📅 Renouvelable à tout moment. Les jours seront ajoutés à la durée restante.',
     premium_stars_info: '💡 Achetez des étoiles sans commission via le bot officiel [@PremiumBot].',
     premium_why_paid_title: '👀 Pourquoi payant ?',
-    premium_why_paid_text: 'L’hébergement coûte environ 13 000₽ par mois, sans compter la croissance des utilisateurs. Et moi, développeur, j’ai aussi besoin de manger pour continuer à améliorer le service :)',
+    premium_why_paid_text: 'L\'hébergement coûte environ $200 par mois, sans compter la croissance des utilisateurs. Et moi, développeur, j\'ai aussi besoin de manger pour continuer à améliorer le service :)',
     premium_payment_title: '💳 *Paiement de l’abonnement premium*',
     premium_payment_description: 'Vous avez choisi : <b>{duration}</b>\nPrix : <b>{stars} ⭐️</b>\n\nCliquez ci-dessous pour payer via Telegram Stars.',
   

@@ -417,7 +417,7 @@ module.exports = {
     premium_renewal_info: '📅 いつでも延長可能です。残り時間に加算されます。',
     premium_stars_info: '💡 公認 [@PremiumBot] から手数料なしでスターを購入できます。',
     premium_why_paid_title: '👀 なぜ有料？',
-    premium_why_paid_text: 'このボットのサーバー維持には毎月約13,000₽かかります。利用者が増え続ける中、開発者としてサービス改善のために生活費も必要です :)',
+    premium_why_paid_text: 'このボットのサーバー維持には毎月約$200かかります。利用者が増え続ける中、開発者としてサービス改善のために生活費も必要です :)',
     premium_payment_title: '💳 *プレミアム購読の支払い*',
     premium_payment_description: '選択内容: <b>{duration}</b>\n価格: <b>{stars} ⭐️</b>\n\n下のボタンを押してTelegram Starsで支払ってください。',
   

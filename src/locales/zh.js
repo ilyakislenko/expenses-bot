@@ -417,7 +417,7 @@ module.exports = {
     premium_renewal_info: '📅 可随时续费，时长将累加。',
     premium_stars_info: '💡 可通过官方 [@PremiumBot] 无手续费购买星星。',
     premium_why_paid_title: '👀 为什么收费？',
-    premium_why_paid_text: '运行此机器人服务器每月约需 13,000₽，且用户数量持续增长。作为开发者，我也需要维持生活来改进服务 :)',
+    premium_why_paid_text: '运行此机器人服务器每月约需 $200，且用户数量持续增长。作为开发者，我也需要维持生活来改进服务 :)',
     premium_payment_title: '💳 *高级订阅付款*',
     premium_payment_description: '你选择了: <b>{duration}</b>\n价格: <b>{stars} ⭐️</b>\n\n点击下方按钮通过 Telegram Stars 支付。',
   
