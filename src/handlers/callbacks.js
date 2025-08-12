@@ -164,6 +164,8 @@ class CallbackHandlers {
       const userId = ctx.from.id;
       userLanguage = await this.userService.getUserLanguage(userId);
       
+
+      
       const canceledText = this.localizationService.getText(userLanguage, 'callback_canceled');
       const expenseCanceledText = this.localizationService.getText(userLanguage, 'callback_expense_canceled');
       

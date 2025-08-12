@@ -26,6 +26,8 @@ constructor({ expenseService, userService, premiumService, familyService, catego
       // Получаем язык пользователя для локализации
       const userLanguage = await this.userService.getUserLanguage(userId);
       
+
+      
       // Обработка нажатия на reply-кнопки (локализованные)
       const menuText = this.localizationService.getText(userLanguage, 'button_menu');
       const expensesDayText = this.localizationService.getText(userLanguage, 'button_expenses_day');
@@ -91,6 +93,8 @@ constructor({ expenseService, userService, premiumService, familyService, catego
         }
         return;
       }
+      
+
       
       // Обработка семейных состояний
       if (this.stateService.hasUserState(userId)) {

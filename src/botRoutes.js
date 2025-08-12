@@ -1,5 +1,11 @@
 module.exports = function registerBotRoutes(bot, handlers) {
   const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, adminHandlers, stateService, currencyUtils } = handlers;
+  
+  // Импортируем middleware для автоматической очистки состояний
+  const stateCleanupMiddleware = require('./middleware/stateCleanupMiddleware');
+  
+  // Регистрируем глобальный middleware для автоматической очистки состояний
+  bot.use(stateCleanupMiddleware(handlers));
 
   // Команды
   bot.command('start', errorHandler((ctx) => commandHandlers.start(ctx))); // главное меню бота
@@ -17,11 +23,17 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.command('family', errorHandler((ctx) => commandHandlers.family(ctx))); // управление семейными группами
   bot.command('menu', errorHandler((ctx) => commandHandlers.mainMenu(ctx))); // главное меню
   bot.command('cancel', async (ctx) => {
+    const userId = ctx.from.id;
+    const userLanguage = await handlers.userService.getUserLanguage(userId);
+    
+    // Сбрасываем состояние редактирования
     if (stateService.hasUserEditState(ctx.from.id)) {
       stateService.deleteUserEditState(ctx.from.id);
-      await ctx.reply('Редактирование отменено.');
+      const editCanceledText = handlers.localizationService.getText(userLanguage, 'edit_canceled') || 'Редактирование отменено.';
+      await ctx.reply(editCanceledText);
     } else {
-      await ctx.reply('Нет активного редактирования.');
+      const noActiveStateText = handlers.localizationService.getText(userLanguage, 'no_active_state') || 'Нет активного состояния.';
+      await ctx.reply(noActiveStateText);
     }
   });
   // Custom categories (premium)
