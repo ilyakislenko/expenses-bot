@@ -224,6 +224,46 @@ class ExpenseService {
     }
   }
 
+  async removeFromFamilyExpense(userId, expenseId) {
+    try {
+      // Получаем запись для проверки
+      const expense = await this.expenseRepository.getExpenseById(userId, expenseId);
+      if (!expense) {
+        throw new Error('Expense not found');
+      }
+
+      // Проверяем, что запись семейная
+      if (!expense.family_id) {
+        throw new Error('Expense is not family expense');
+      }
+
+      // Проверяем, что пользователь является автором траты
+      if (Number(expense.user_id) !== userId) {
+        throw new Error('User is not the owner of this expense');
+      }
+
+      // Убираем family_id, делая трату личной
+      const updatedExpense = await this.expenseRepository.removeExpenseFamilyId(userId, expenseId);
+      
+      logger.info('Expense removed from family budget', {
+        userId,
+        expenseId,
+        familyId: expense.family_id,
+        amount: expense.amount,
+        category: expense.category_id
+      });
+
+      return updatedExpense;
+    } catch (error) {
+      logger.error('Failed to remove expense from family budget', {
+        userId,
+        expenseId,
+        error: error.message
+      });
+      throw error;
+    }
+  }
+
   async addFamilyExpense(userId, amount, description, categoryName, familyId) {
     return this.addExpense(userId, amount, description, categoryName, familyId);
   }

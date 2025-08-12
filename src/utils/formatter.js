@@ -256,7 +256,8 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationServic
     userLanguage = 'ru',
     showEdit = true,
     showDelete = true,
-    showMarkFamily = false
+    showMarkFamily = false,
+    currentUserId = null
   ) {
     const icon = expense.category_icon || '📦';
     const amount = this.formatAmount(expense.amount, expense.currency || 'RUB');
@@ -281,6 +282,9 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationServic
     const markFamilyText = localizationService ?
       localizationService.getText(userLanguage, 'button_mark_as_family') :
       '👨‍👩‍👧‍👦 В семью';
+    const removeFromFamilyText = localizationService ?
+      localizationService.getText(userLanguage, 'button_remove_from_family') :
+      '🚫 Из семейного бюджета';
     
     const text = `${icon} ${amount} - ${description}\n📅 ${date}${userInfo}`;
     
@@ -292,14 +296,25 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationServic
     }
     
     const buttons = [];
-    if (showEdit) {
+    
+    // Проверяем, является ли текущий пользователь автором траты
+    const isOwner = currentUserId && Number(expense.user_id) === currentUserId;
+    
+    if (showEdit && isOwner) {
       buttons.push({ text: editText, callback_data: `edit_expense|${expense.id}` });
     }
-    if (showDelete) {
+    if (showDelete && isOwner) {
       buttons.push({ text: deleteText, callback_data: `delete_expense|${expense.id}` });
     }
+    
+    // Кнопка "Пометить как семейную" только для личных трат
     if (showMarkFamily && !expense.family_id) {
       buttons.push({ text: markFamilyText, callback_data: `mark_as_family|${expense.id}` });
+    }
+    
+    // Кнопка "Вычеркнуть из семейного бюджета" только для семейных трат и только для автора
+    if (expense.family_id && isOwner) {
+      buttons.push({ text: removeFromFamilyText, callback_data: `remove_from_family|${expense.id}` });
     }
     
     return {

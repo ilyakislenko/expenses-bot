@@ -242,6 +242,47 @@ module.exports = function registerBotRoutes(bot, handlers) {
     await ctx.answerCbQuery(convertedText);
     await ctx.editMessageReplyMarkup();
   }));
+
+  // Вычеркнуть трату из семейного бюджета
+  bot.action(/^remove_from_family\|(\d+)$/, errorHandler(async (ctx) => {
+    const expenseId = parseInt(ctx.match[1], 10);
+    const userId = ctx.from.id;
+    const userLanguage = await handlers.userService.getUserLanguage(userId);
+
+    // Премиум требование
+    const isPremium = await handlers.premiumService.isPremiumUser(userId);
+    if (!isPremium) {
+      const premiumRequiredText = handlers.localizationService.getText(userLanguage, 'premium_required');
+      return ctx.answerCbQuery(premiumRequiredText);
+    }
+
+    // Получаем трату и проверяем, что она семейная
+    const expense = await handlers.expenseService.getExpenseById(userId, expenseId);
+    if (!expense) {
+      const notFoundText = handlers.localizationService.getText(userLanguage, 'expense_not_found');
+      return ctx.answerCbQuery(notFoundText);
+    }
+
+    // Проверяем, что трата семейная
+    if (!expense.family_id) {
+      const notFamilyText = handlers.localizationService.getText(userLanguage, 'expense_already_family');
+      return ctx.answerCbQuery(notFamilyText);
+    }
+
+    // Проверяем, что пользователь является автором траты
+    if (Number(expense.user_id) !== userId) {
+      const notOwnerText = handlers.localizationService.getText(userLanguage, 'not_owner');
+      return ctx.answerCbQuery(notOwnerText);
+    }
+
+    // Убираем family_id, делая трату личной
+    await handlers.expenseService.removeFromFamilyExpense(userId, expenseId);
+
+    const removedText = handlers.localizationService.getText(userLanguage, 'expense_removed_from_family');
+    await ctx.answerCbQuery(removedText);
+    await ctx.editMessageReplyMarkup();
+  }));
+
   bot.action(/^edit_expense\|(\d+)$/, async (ctx) => {
     const expenseId = ctx.match[1];
     const userId = ctx.from.id;
@@ -303,7 +344,8 @@ module.exports = function registerBotRoutes(bot, handlers) {
         userLanguage,
         isPremium, // showEdit
         true,      // showDelete - всегда показываем кнопку удаления
-        isPremium && userFamily ? true : false       // showMarkFamily - показываем кнопку пометки как семейной
+        isPremium && userFamily ? true : false,      // showMarkFamily - показываем кнопку пометки как семейной
+        userId     // currentUserId - для проверки владельца траты
       );
       await ctx.reply(text, { reply_markup, parse_mode: 'Markdown' });
     }
@@ -355,7 +397,8 @@ module.exports = function registerBotRoutes(bot, handlers) {
         userLanguage,
         isPremium && Number(expense.user_id) === userId, // showEdit
         true,                                           // showDelete - всегда показываем кнопку удаления
-        isPremium && userFamily ? true : false       // showMarkFamily - показываем кнопку пометки как семейной
+        isPremium && userFamily ? true : false,          // showMarkFamily - показываем кнопку пометки как семейной
+        userId                                          // currentUserId - для проверки владельца траты
       );
       await ctx.reply(text, { reply_markup, parse_mode: 'Markdown' });
     }
@@ -400,7 +443,8 @@ module.exports = function registerBotRoutes(bot, handlers) {
         userLanguage, 
         isPremium, // showEdit
         true,      // showDelete - всегда показываем кнопку удаления
-        isPremium && userFamily ? true : false       // showMarkFamily - показываем кнопку пометки как семейной
+        isPremium && userFamily ? true : false,      // showMarkFamily - показываем кнопку пометки как семейной
+        userId     // currentUserId - для проверки владельца траты
       );
       await ctx.reply(text, { reply_markup, parse_mode: 'Markdown' });
     }
