@@ -125,7 +125,7 @@ class CommandHandlers {
       } });
     } catch (error) {
       console.error('Error in stats command:', error);
-      const errorText = this.localizationService.getText(userLanguage, 'error');
+      const errorText = this.localizationService.getText(userLanguage || 'en', 'error');
       await ctx.reply(errorText);
     }
   }

@@ -17,14 +17,17 @@ class EnhancedValidator {
     // Паттерны для валидации
     this.patterns = {
       amount: /^[0-9]+([.,][0-9]{1,2})?$/,
-      description: /^[а-яёa-z0-9\s\-_.,!?()]+$/i,
-      categoryName: /^[а-яёa-z0-9\s\-_]+$/i,
+      // Разрешаем любые символы, кроме явно запрещенных
+      description: /^[^\x00-\x1F\x7F<>]+$/,
+      // Разрешаем любые символы, кроме явно запрещенных
+      categoryName: /^[^\x00-\x1F\x7F<>]+$/,
       username: /^[a-zA-Z0-9_]{5,32}$/,
-      firstName: /^[а-яёa-z\s\-']+$/i,
-      lastName: /^[а-яёa-z\s\-']+$/i,
+      // Разрешаем любые символы, кроме явно запрещенных
+      firstName: /^[^\x00-\x1F\x7F<>]+$/,
+      lastName: /^[^\x00-\x1F\x7F<>]+$/,
       currency: /^[A-Z]{3}$/,
       // Разрешаем пробелы в callback_data, так как кнопки могут содержать названия с пробелами
-      callbackData: /^[a-zA-Z0-9а-яё_\-:|\s]+$/i,
+      callbackData: /^[^\x00-\x1F\x7F<>]+$/,
       command: /^\/[a-zA-Z0-9_]+$/
     };
 
@@ -310,6 +313,12 @@ class EnhancedValidator {
     const amount = parseFloat(amountStr);
     if (isNaN(amount)) {
       return { isValid: false, error: 'invalid_amount', message: 'Некорректная сумма' };
+    }
+
+    // Валидация описания
+    const descriptionValidation = this.validateDescription(description);
+    if (!descriptionValidation.isValid) {
+      return descriptionValidation;
     }
 
     return {

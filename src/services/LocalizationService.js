@@ -3,6 +3,17 @@ const logger = require('../utils/logger');
 // Импортируем все локализации
 const ru = require('../locales/ru');
 const en = require('../locales/en');
+const es = require('../locales/es');
+const fr = require('../locales/fr');
+const de = require('../locales/de');
+const pt = require('../locales/pt');
+const tr = require('../locales/tr');
+const hi = require('../locales/hi');
+const ka = require('../locales/ka');
+const kz = require('../locales/kz');
+const uz = require('../locales/uz');
+const jp = require('../locales/jp');
+const zh = require('../locales/zh');
 
 class LocalizationService {
   constructor() {
@@ -17,6 +28,61 @@ class LocalizationService {
         name: 'English',
         flag: '🇺🇸',
         locale: en
+      },
+      'es': {
+        name: 'Español',
+        flag: '🇪🇸',
+        locale: es
+      },
+      'fr': {
+        name: 'Français',
+        flag: '🇫🇷',
+        locale: fr
+      },
+      'de': {
+        name: 'Deutsch',
+        flag: '🇩🇪',
+        locale: de
+      },
+      'pt': {
+        name: 'Português',
+        flag: '🇵🇹',
+        locale: pt
+      },
+      'tr': {
+        name: 'Türkçe',
+        flag: '🇹🇷',
+        locale: tr
+      },
+      'hi': {
+        name: 'हिन्दी',
+        flag: '🇮🇳',
+        locale: hi
+      },
+      'ka': {
+        name: 'ქართული',
+        flag: '🇬🇪',
+        locale: ka
+      },
+      'kz': {
+        name: 'Қазақша',
+        flag: '🇰🇿',
+        locale: kz
+      },
+      'uz': {
+        name: 'O\'zbekcha',
+        flag: '🇺🇿',
+        locale: uz
+      },
+      'jp': {
+        name: '日本語',
+        flag: '🇯🇵',
+        locale: jp
+      },
+      'zh': {
+        name: '中文',
+        flag: '🇨🇳',
+        locale: zh
       }
     };
     
