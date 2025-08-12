@@ -478,6 +478,8 @@ Now all your expenses will be correctly displayed in your local time.`,
   premium_payment_description: 'You selected tariff: <b>{duration}</b>\nCost: <b>{stars} ⭐️</b>\n\nClick the button below to proceed to payment via Telegram Stars.',
 
   payment_success: '🎉 *Payment successful!*\n\nYour premium subscription has been activated. You now have access to all advanced bot features!',
+  donation_success: '🙏 *Thank you for supporting the project!*\n\nYour donation will help develop the bot and add new features.',
+  general_payment_success: '✅ *Payment successful!*\n\nThank you for using our bot.',
   premium_expires: '📅 Premium subscription valid until: <b>{date}</b>\n⏰ Days remaining: <b>{days}</b>'
   ,
   // Donations

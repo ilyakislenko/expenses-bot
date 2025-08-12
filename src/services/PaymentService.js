@@ -87,7 +87,7 @@ class PaymentService {
         await this.donationRepository.markDonationCompleted(donation_id, telegram_payment_charge_id || null);
         logger.info(`Donation completed for user ${user_id}, stars: ${stars}`);
         return { type: 'donation', status: 'completed' };
-      } else {
+      } else if (type === 'premium_subscription') {
         // Премиум подписка
         const tariffData = this.getTariffData(tariff);
         const transactionData = {
@@ -99,7 +99,11 @@ class PaymentService {
         };
         const result = await userService.activatePremium(user_id, tariff, transactionData);
         logger.info(`Premium subscription ${result.isNewActivation ? 'activated' : 'extended'} for user ${user_id}, expires at ${result.newExpiryDate}`);
-        return result;
+        return { type: 'premium_subscription', ...result };
+      } else {
+        // Неизвестный тип платежа
+        logger.warn(`Unknown payment type: ${type}, payload: ${JSON.stringify(payload)}`);
+        return { type: 'unknown', status: 'ignored' };
       }
       
     } catch (error) {

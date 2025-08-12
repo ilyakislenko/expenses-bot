@@ -504,14 +504,26 @@ module.exports = function registerBotRoutes(bot, handlers) {
   
   bot.on('successful_payment', errorHandler(async (ctx) => {
     const paymentService = handlers.paymentService;
-    await paymentService.handleSuccessfulPayment(
+    const result = await paymentService.handleSuccessfulPayment(
       ctx.message.successful_payment,
       handlers.userService
     );
     
     const userLanguage = await handlers.userService.getUserLanguage(ctx.from.id);
-    const successText = handlers.localizationService.getText(userLanguage, 'payment_success');
-    await ctx.reply(successText, { parse_mode: 'Markdown' });
+    
+    if (result.type === 'donation') {
+      // Для донатов показываем сообщение о благодарности
+      const donationSuccessText = handlers.localizationService.getText(userLanguage, 'donation_success');
+      await ctx.reply(donationSuccessText, { parse_mode: 'Markdown' });
+    } else if (result.type === 'premium_subscription') {
+      // Для премиум подписок показываем сообщение об активации
+      const successText = handlers.localizationService.getText(userLanguage, 'payment_success');
+      await ctx.reply(successText, { parse_mode: 'Markdown' });
+    } else {
+      // Для неизвестных типов платежей показываем общее сообщение
+      const generalSuccessText = handlers.localizationService.getText(userLanguage, 'general_payment_success');
+      await ctx.reply(generalSuccessText, { parse_mode: 'Markdown' });
+    }
   }));
 
   // ========================================
