@@ -142,55 +142,97 @@ module.exports = {
   save: 'Save',
   
   // Commands
-  start_message: `I'll help you track your expenses.
+  start_message: `Hello! 👋 I'll help you track your expenses and control your budget.
 
 *How to add an expense:*
 Just write the amount and description separated by a space:
 -  \`200 groceries at the store\`
 -  \`1500 lunch at restaurant\`
 -  \`50 transportation\`
+-  \`150.50 coffee\`
 
 After entering, a menu with category buttons will appear - choose the appropriate one! 🏷️
 
-*Commands:*
+*Main commands:*
 /start - restart the bot
 /menu - open interactive menu (Recommended)
 /history - recent entries for the day
-/stats - detailed statistics
-/export - download data (CSV)
+/stats - detailed statistics by categories
+
+/export - download data in CSV
 /undo - cancel last entry
-/categories - list of categories
-/currency - set base currency
+
+*Settings:*
 /settings - open settings
-/help - show help
+/currency - set base currency
+/timezone - configure timezone
+/categories - manage categories
+
+*Additional features:*
+/family - manage family budget
+/limits - limits and premium features
+/help - show detailed help
 
 Start entering your expenses! 💰`,
 
-  help_message: `📋 *Command Help*
+  help_message: `📋 *Detailed Command Help*
 
 *Adding expenses:*
-Write amount and description:
+Write amount and description separated by a space:
 \`200 groceries\` - a menu with category buttons will appear
+\`150.50 coffee\` - decimal numbers are supported
 
-*Commands:*
-/start - restart the bot
-/menu - open interactive menu (Recommended)
-/history - recent entries for the day
-/stats - detailed statistics
-/export - download data (CSV)
-/undo - cancel last entry
-/categories - list of categories
-/currency - set base currency
-/settings - open settings
-/help - this help
+*Main commands:*
+/start - restart the bot and show welcome message
+/menu - open interactive menu with all functions
+/history - show recent entries for today
+/stats - detailed statistics by categories for the month
 
-*Tips:*
--  You can use comma: \`150.50 coffee\`
--  After entering, choose a category from the buttons
--  Description helps you remember what you spent on
--  Use /stats to analyze your spending
+/export - download all data in CSV format
+/undo - cancel last added entry
 
-Happy tracking! 💰`,
+*Settings and management:*
+/settings - open main settings menu
+/currency - change base currency (RUB, USD, EUR, KZT, CNY, THB)
+/timezone - configure timezone for accurate tracking
+/categories - manage custom categories (premium)
+
+*Family budget:*
+/family - manage family groups and shared expenses
+- Create family, invite members
+- Shared expenses and statistics
+- Export family data
+
+*Premium features:*
+/limits - information about limits and premium capabilities
+- Custom categories
+- Extended statistics
+- Family budget
+- Priority support
+
+*Usage tips:*
+• Use descriptions for better expense understanding
+• Regularly check statistics via /stats
+• Set timezone for accurate tracking
+• Use /menu for quick access to functions
+• Export data via /export for analysis
+
+*Editing expenses:*
+• In edit mode (/history) you can delete and edit entries
+• Button "👨‍👩‍👧‍👦 To Family" allows moving personal expenses to family budget
+• Button "🚫 From Family Budget" returns family expenses to personal
+• You can only edit and delete your own expenses
+
+*Reminders:*
+• Bot automatically reminds you to record expenses at 18:00 your local time
+• Reminders are sent only if you haven't recorded expenses for the day
+• Reminders can be enabled/disabled in settings
+• Maximum one reminder is sent per day
+
+*Support:*
+If you have questions or issues, use /start to return to the main menu.
+
+Happy expense tracking! 💰📊`,
 
   // Expenses
   expense_added: '✅ Recorded: {amount} - {description}',
