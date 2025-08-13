@@ -421,6 +421,17 @@ module.exports = {
     premium_why_paid_text: 'Bu botun sunucu masrafı ayda yaklaşık $200. Kullanıcı sayısı sürekli artıyor ve geliştirici olarak hizmeti geliştirmeye devam etmek için gelire ihtiyacım var :)',
     premium_payment_title: '💳 *Premium abonelik ödeme*',
     premium_payment_description: 'Seçilen: <b>{duration}</b>\nFiyat: <b>{stars} ⭐️</b>\n\nÖdemek için aşağıya tıklayın.',
+    // Tarife etiketleri ve ürün adı
+    tariff_button_30: '1 Ay',
+    tariff_button_90: '3 Ay',
+    tariff_button_180: '6 Ay',
+    tariff_button_365: '1 Yıl',
+    tariff_item_30: '1 ay (30 gün)',
+    tariff_item_90: '3 ay (90 gün)',
+    tariff_item_180: '6 ay (180 gün)',
+    tariff_item_365: '12 ay (365 gün)',
+    premium_product: 'Premium abonelik',
+    discount_save: '%{percent} tasarruf',
   
     payment_success: '🎉 *Ödeme başarılı!* Premium etkinleştirildi. Gelişmiş özelliklerin tadını çıkar.',
     donation_success: '🙏 *Desteğiniz için teşekkürler!* Bağışınız botun geliştirilmesine yardımcı olacak.',

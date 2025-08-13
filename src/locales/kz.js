@@ -420,6 +420,17 @@ module.exports = {
     premium_why_paid_text: 'Бұл бот серверін ұстау айына шамамен $200 тұрады. Пайдаланушылар саны өсуде, ал мен де әзірлеуші ретінде тамақ ішуім керек :)',
     premium_payment_title: '💳 *Premium жазылымды төлеу*',
     premium_payment_description: 'Сіздікі: <b>{duration}</b>\nБағасы: <b>{stars} ⭐️</b>\n\nТөлеу үшін төмендегі батырманы басыңыз.',
+    // Тариф белгілері және өнім атауы
+    tariff_button_30: '1 ай',
+    tariff_button_90: '3 ай',
+    tariff_button_180: '6 ай',
+    tariff_button_365: '1 жыл',
+    tariff_item_30: '1 ай (30 күн)',
+    tariff_item_90: '3 ай (90 күн)',
+    tariff_item_180: '6 ай (180 күн)',
+    tariff_item_365: '12 ай (365 күн)',
+    premium_product: 'Premium жазылым',
+    discount_save: '{percent}% үнем',
   
     payment_success: '🎉 *Төлем сәтті өтті!* Premium қосылды. Кеңейтілген функцияларды пайдаланыңыз.',
     donation_success: '🙏 *Қолдауыңыз үшін рахмет!* Бұл ботты дамытуға көмектесесіз.',

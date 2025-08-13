@@ -1098,7 +1098,7 @@ class CallbackHandlers {
       const userId = ctx.from.id;
       const userLanguage = await this.userService.getUserLanguage(userId);
       
-      const { PREMIUM_TARIFFS, formatPremiumTariff, formatPremiumTariffEn, generatePremiumPaymentButtons } = require('../utils/constants');
+      const { PREMIUM_TARIFFS, generatePremiumPaymentButtons } = require('../utils/constants');
       
       const tariffsTitle = this.localizationService.getText(userLanguage, 'premium_tariffs_title');
       const paymentInfo = this.localizationService.getText(userLanguage, 'premium_payment_info');
@@ -1107,14 +1107,50 @@ class CallbackHandlers {
 
       const backButton = this.localizationService.getText(userLanguage, 'premium_back_button');
       
-      // Форматируем тарифы используя константы
-      const formatTariff = userLanguage === 'en' ? formatPremiumTariffEn : formatPremiumTariff;
-      const month1 = formatTariff(PREMIUM_TARIFFS.MONTH_1, this.localizationService, userLanguage);
-      const month3 = formatTariff(PREMIUM_TARIFFS.MONTH_3, this.localizationService, userLanguage);
-      const month6 = formatTariff(PREMIUM_TARIFFS.MONTH_6, this.localizationService, userLanguage);
-      const month12 = formatTariff(PREMIUM_TARIFFS.MONTH_12, this.localizationService, userLanguage);
-      
-      const message = `${tariffsTitle}\n\n${month1}\n\n${month3}\n\n${month6}\n\n${month12}\n\n${paymentInfo}\n\n${renewalInfo}\n\n${starsInfo}`;
+      // Формируем строки тарифов: звезды + цена в базовой валюте пользователя
+      const user = await this.userService.getUserById(userId);
+      const userCurrency = user.currency || 'RUB';
+      const linesArr = [];
+      const tariffsArr = [PREMIUM_TARIFFS.MONTH_1, PREMIUM_TARIFFS.MONTH_3, PREMIUM_TARIFFS.MONTH_6, PREMIUM_TARIFFS.MONTH_12];
+      for (const t of tariffsArr) {
+        const durationKey = t.duration === 30 ? 'tariff_item_30' : t.duration === 90 ? 'tariff_item_90' : t.duration === 180 ? 'tariff_item_180' : 'tariff_item_365';
+        const durationLabel = this.localizationService.getText(userLanguage, durationKey);
+        let priceFormatted = '';
+        try {
+          const priceInCurrency = await this.formatter.currencyUtils.convert(Number(t.usd), 'USD', userCurrency);
+          priceFormatted = this.formatter.formatAmount(priceInCurrency, userCurrency);
+        } catch (e) {
+          // если нет курсов, показываем USD как запасной вариант
+          priceFormatted = this.formatter.formatAmount(Number(t.usd), 'USD');
+        }
+        let line = `- ${durationLabel} — `;
+        // Stars part with original if exists
+        if (t.originalStars) {
+          line += `<s>${t.originalStars}</s> ${t.stars} ⭐`;
+        } else {
+          line += `${t.stars} ⭐`;
+        }
+        // Currency part with possible discount/original
+        if (typeof t.discount === 'number' && t.discount > 0) {
+          let originalFormatted = '';
+          try {
+            const originalUsd = Number(t.usd) / (1 - t.discount / 100);
+            const originalInCurrency = await this.formatter.currencyUtils.convert(originalUsd, 'USD', userCurrency);
+            originalFormatted = this.formatter.formatAmount(originalInCurrency, userCurrency);
+          } catch (e) {
+            const originalUsd = Number(t.usd) / (1 - t.discount / 100);
+            originalFormatted = this.formatter.formatAmount(originalUsd, 'USD');
+          }
+          const discountText = this.localizationService.getText(userLanguage, 'discount_save', { percent: t.discount }) || `${t.discount}%`;
+          line += ` / <s>${originalFormatted}</s> ${priceFormatted} (${discountText})`;
+        } else {
+          line += ` / ${priceFormatted}`;
+        }
+        linesArr.push(line);
+      }
+      const lines = linesArr.join('\n');
+
+      const message = `${tariffsTitle}\n\n${lines}\n\n${paymentInfo}\n\n${renewalInfo}\n\n${starsInfo}`;
       
       // Генерируем кнопки оплаты
       const paymentButtons = generatePremiumPaymentButtons(PREMIUM_TARIFFS, this.localizationService, userLanguage);

@@ -420,6 +420,17 @@ module.exports = {
     premium_why_paid_text: 'Mantener el servidor cuesta unos $200 mensuales, sin contar el aumento de usuarios. Y yo como desarrollador también necesito comer para seguir creando funciones :)',
     premium_payment_title: '💳 *Pago de suscripción premium*',
     premium_payment_description: 'Has elegido: <b>{duration}</b>\nCoste: <b>{stars} ⭐️</b>\n\nHaz clic abajo para pagar con Telegram Stars.',
+    // Etiquetas de tarifas y nombre del producto
+    tariff_button_30: '1 Mes',
+    tariff_button_90: '3 Meses',
+    tariff_button_180: '6 Meses',
+    tariff_button_365: '1 Año',
+    tariff_item_30: '1 mes (30 días)',
+    tariff_item_90: '3 meses (90 días)',
+    tariff_item_180: '6 meses (180 días)',
+    tariff_item_365: '12 meses (365 días)',
+    premium_product: 'Suscripción premium',
+    discount_save: 'ahorro {percent}%',
   
     payment_success: '🎉 *Pago exitoso!*\n\nPremium activado. Disfruta las funciones avanzadas.',
     donation_success: '🙏 *Gracias por tu apoyo!*\n\nAportas al desarrollo del bot.',

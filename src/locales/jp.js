@@ -420,6 +420,17 @@ module.exports = {
     premium_why_paid_text: 'このボットのサーバー維持には毎月約$200かかります。利用者が増え続ける中、開発者としてサービス改善のために生活費も必要です :)',
     premium_payment_title: '💳 *プレミアム購読の支払い*',
     premium_payment_description: '選択内容: <b>{duration}</b>\n価格: <b>{stars} ⭐️</b>\n\n下のボタンを押してTelegram Starsで支払ってください。',
+    // 料金プランのラベルと商品名
+    tariff_button_30: '1 Month',
+    tariff_button_90: '3 Months',
+    tariff_button_180: '6 Months',
+    tariff_button_365: '1 Year',
+    tariff_item_30: '1 month (30 days)',
+    tariff_item_90: '3 months (90 days)',
+    tariff_item_180: '6 months (180 days)',
+    tariff_item_365: '12 months (365 days)',
+    premium_product: 'プレミアム購読',
+    discount_save: '{percent}% お得',
   
     payment_success: '🎉 *支払い成功!* プレミアムが有効になりました。高度な機能をご利用ください。',
     donation_success: '🙏 *ご支援ありがとうございます!* 寄付はボットの開発に役立ちます。',

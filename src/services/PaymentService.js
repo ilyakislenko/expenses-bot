@@ -1,9 +1,10 @@
 const logger = require('../utils/logger');
 
 class PaymentService {
-  constructor(donationRepository) {
+  constructor(donationRepository, localizationService) {
     this.bot = null;
     this.donationRepository = donationRepository;
+    this.localizationService = localizationService;
   }
 
   setBot(bot) {
@@ -21,19 +22,24 @@ class PaymentService {
     try {
       const { duration, stars, usd, rub } = tariff;
       
-      // Определяем название тарифа
-      const tariffName = duration === 30 ? '1 месяц' : 
-                        duration === 90 ? '3 месяца' : 
-                        duration === 180 ? '6 месяцев' : '1 год';
+      // Определяем локализованное название тарифа
+      const durationKey = duration === 30 ? 'tariff_button_30' :
+                        duration === 90 ? 'tariff_button_90' :
+                        duration === 180 ? 'tariff_button_180' : 'tariff_button_365';
+      const tariffName = this.localizationService
+        ? this.localizationService.getText(userLanguage, durationKey)
+        : `${duration}d`;
       
+      const productName = this.localizationService
+        ? this.localizationService.getText(userLanguage, 'premium_product')
+        : (userLanguage === 'en' ? 'Premium subscription' : 'Премиум подписка');
+
       // Создаем описание для инвойса
-      const description = userLanguage === 'en' 
-        ? `Premium subscription for ${tariffName} - ${stars} Stars`
-        : `Премиум подписка на ${tariffName} - ${stars} ⭐️`;
+      const description = `${productName} — ${tariffName} • ${stars} ⭐️`;
       
       // Создаем инвойс используя правильный API Telegraf
       const invoice = await this.bot.telegram.sendInvoice(userId, {
-        title: userLanguage === 'en' ? 'Premium Subscription' : 'Премиум подписка',
+        title: productName,
         description: description,
         payload: JSON.stringify({
           type: 'premium_subscription',
@@ -44,7 +50,7 @@ class PaymentService {
         provider_token: '', // Тестовый токен, нужно заменить на реальный
         currency: 'XTR', // Telegram Stars
         prices: [{
-          label: userLanguage === 'en' ? 'Premium Subscription' : 'Премиум подписка',
+          label: productName,
           amount: stars  // Сумма в копейках (1 звезда = 100 копеек)
         }],
         start_parameter: `premium_${duration}_${stars}`,
@@ -138,14 +144,19 @@ class PaymentService {
   async createInvoiceLink(userId, tariff, userLanguage) {
     const { duration, stars } = tariff;
     
-    const tariffName = duration === 30 ? '1 месяц' :
-                      duration === 90 ? '3 месяца' :
-                      duration === 180 ? '6 месяцев' : '1 год';
+    const durationKey = duration === 30 ? 'tariff_button_30' :
+                      duration === 90 ? 'tariff_button_90' :
+                      duration === 180 ? 'tariff_button_180' : 'tariff_button_365';
+    const tariffName = this.localizationService
+      ? this.localizationService.getText(userLanguage, durationKey)
+      : `${duration}d`;
     
-    const title = userLanguage === 'en' ? 'Premium Subscription' : 'Премиум подписка';
-    const description = userLanguage === 'en' ? 
-      `Premium subscription for ${tariffName}` : 
-      `Премиум подписка на ${tariffName}`;
+    const productName = this.localizationService
+      ? this.localizationService.getText(userLanguage, 'premium_product')
+      : (userLanguage === 'en' ? 'Premium subscription' : 'Премиум подписка');
+
+    const title = productName;
+    const description = `${productName} — ${tariffName}`;
     
     const payload = JSON.stringify({
       type: 'premium_subscription',
@@ -155,7 +166,7 @@ class PaymentService {
     });
     
     const prices = JSON.stringify([{
-      label: userLanguage === 'en' ? 'Premium Subscription' : 'Премиум подписка',
+      label: productName,
       amount: stars
     }]);
     

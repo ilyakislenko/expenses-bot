@@ -420,6 +420,17 @@ module.exports = {
     premium_why_paid_text: '运行此机器人服务器每月约需 $200，且用户数量持续增长。作为开发者，我也需要维持生活来改进服务 :)',
     premium_payment_title: '💳 *高级订阅付款*',
     premium_payment_description: '你选择了: <b>{duration}</b>\n价格: <b>{stars} ⭐️</b>\n\n点击下方按钮通过 Telegram Stars 支付。',
+    // 套餐标签与产品名
+    tariff_button_30: '1 个月',
+    tariff_button_90: '3 个月',
+    tariff_button_180: '6 个月',
+    tariff_button_365: '1 年',
+    tariff_item_30: '1 个月（30 天）',
+    tariff_item_90: '3 个月（90 天）',
+    tariff_item_180: '6 个月（180 天）',
+    tariff_item_365: '12 个月（365 天）',
+    premium_product: '高级订阅',
+    discount_save: '省 {percent}%',
   
     payment_success: '🎉 *付款成功!* 已激活高级订阅，享受全部高级功能。',
     donation_success: '🙏 *感谢支持!* 你的捐赠将帮助我们改进机器人。',

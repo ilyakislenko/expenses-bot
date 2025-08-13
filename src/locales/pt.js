@@ -420,6 +420,17 @@ module.exports = {
     premium_why_paid_text: 'Manter o servidor deste bot custa cerca de $200 por mês, sem contar o crescente número de usuários. E como desenvolvedor, também preciso comer para ter forças de melhorar o serviço :)',
     premium_payment_title: '💳 *Pagamento de assinatura premium*',
     premium_payment_description: 'Você escolheu: <b>{duration}</b>\nPreço: <b>{stars} ⭐️</b>\n\nClique no botão abaixo para pagar com Telegram Stars.',
+    // Rótulos de tarifas e nome do produto
+    tariff_button_30: '1 Mês',
+    tariff_button_90: '3 Meses',
+    tariff_button_180: '6 Meses',
+    tariff_button_365: '1 Ano',
+    tariff_item_30: '1 mês (30 dias)',
+    tariff_item_90: '3 meses (90 dias)',
+    tariff_item_180: '6 meses (180 dias)',
+    tariff_item_365: '12 meses (365 dias)',
+    premium_product: 'Assinatura premium',
+    discount_save: 'economize {percent}% ',
   
     payment_success: '🎉 *Pagamento realizado com sucesso!*\n\nSua assinatura premium foi ativada. Aproveite todos os recursos avançados.',
     donation_success: '🙏 *Obrigado pelo apoio!*\n\nSua doação ajuda a desenvolver o bot.',

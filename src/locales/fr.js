@@ -420,6 +420,17 @@ module.exports = {
     premium_why_paid_text: 'L\'hébergement coûte environ $200 par mois, sans compter la croissance des utilisateurs. Et moi, développeur, j\'ai aussi besoin de manger pour continuer à améliorer le service :)',
     premium_payment_title: '💳 *Paiement de l’abonnement premium*',
     premium_payment_description: 'Vous avez choisi : <b>{duration}</b>\nPrix : <b>{stars} ⭐️</b>\n\nCliquez ci-dessous pour payer via Telegram Stars.',
+    // Libellés des tarifs et nom du produit
+    tariff_button_30: '1 mois',
+    tariff_button_90: '3 mois',
+    tariff_button_180: '6 mois',
+    tariff_button_365: '1 an',
+    tariff_item_30: '1 mois (30 jours)',
+    tariff_item_90: '3 mois (90 jours)',
+    tariff_item_180: '6 mois (180 jours)',
+    tariff_item_365: '12 mois (365 jours)',
+    premium_product: 'Abonnement premium',
+    discount_save: 'économie {percent}%',
   
     payment_success: '🎉 *Paiement réussi !* Votre abonnement premium est activé. Profitez des fonctionnalités avancées.',
     donation_success: '🙏 *Merci pour votre soutien !* Vos dons aident à développer le bot.',

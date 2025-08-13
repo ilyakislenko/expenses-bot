@@ -190,31 +190,9 @@ function generateTimeKeyboard(localizationService, userLanguage) {
   return keyboard;
 }
 
-// Функция для форматирования тарифов премиум подписки
-function formatPremiumTariff(tariff, localizationService, userLanguage) {
-  const { duration, stars, usd, rub, originalStars, discount, monthlyUsd, monthlyRub } = tariff;
-  
-  let starsText = `${stars} ⭐️`;
-  if (originalStars) {
-    starsText = `<s>${originalStars}</s> ${stars} ⭐️`;
-  }
-  
-  let priceText = `(~ $${usd} / ${rub}₽)`;
-  if (discount) {
-    priceText = `(~ $${usd} / ${rub}₽, экономия ${discount}%)`;
-  }
-  
-  let monthlyText = '';
-  if (monthlyUsd && monthlyRub) {
-    monthlyText = `\n  (~ $${monthlyUsd} / ${monthlyRub}₽ в месяц)`;
-  }
-  
-  const durationText = duration === 30 ? 'месяц' : 
-                      duration === 90 ? 'месяца' : 
-                      duration === 180 ? 'месяцев' : 'месяцев';
-  
-  return `- <b>${duration === 30 ? '1' : duration === 90 ? '3' : duration === 180 ? '6' : '12'} ${durationText} (${duration} дней)</b> — ${starsText}\n  ${priceText}${monthlyText}`;
-}
+// Ранее здесь были функции форматирования тарифов с USD/RUB и русским текстом.
+// Они удалены в пользу полностью локализованного рендеринга в обработчике, 
+// где известно, какая базовая валюта у пользователя и какой язык интерфейса.
 
 // Функция для генерации кнопок оплаты тарифов (синхронная версия)
 function generatePremiumPaymentButtons(tariffs, localizationService, userLanguage) {
@@ -225,17 +203,13 @@ function generatePremiumPaymentButtons(tariffs, localizationService, userLanguag
     const tariff = tariffs[tariffKey];
     const duration = tariff.duration;
     
-    // Определяем текст кнопки в зависимости от длительности
-    let buttonText;
-    if (duration === 30) {
-      buttonText = userLanguage === 'en' ? '1 Month' : '1 Месяц';
-    } else if (duration === 90) {
-      buttonText = userLanguage === 'en' ? '3 Months' : '3 Месяца';
-    } else if (duration === 180) {
-      buttonText = userLanguage === 'en' ? '6 Months' : '6 Месяцев';
-    } else if (duration === 365) {
-      buttonText = userLanguage === 'en' ? '1 Year' : '1 Год';
-    }
+    // Локализованный текст кнопки
+    const key = duration === 30 ? 'tariff_button_30' 
+      : duration === 90 ? 'tariff_button_90' 
+      : duration === 180 ? 'tariff_button_180' 
+      : 'tariff_button_365';
+    const durationLabel = localizationService.getText(userLanguage, key);
+    let buttonText = durationLabel || `${duration}d`;
     
     // Добавляем звезды к тексту кнопки
     buttonText += ` - ${tariff.stars} ⭐️`;
@@ -259,32 +233,6 @@ function generatePremiumPaymentButtons(tariffs, localizationService, userLanguag
   return groupedButtons;
 }
 
-// Функция для форматирования тарифов на английском языке
-function formatPremiumTariffEn(tariff, localizationService, userLanguage) {
-  const { duration, stars, usd, rub, originalStars, discount, monthlyUsd, monthlyRub } = tariff;
-  
-  let starsText = `${stars} ⭐️`;
-  if (originalStars) {
-    starsText = `<s>${originalStars}</s> ${stars} ⭐️`;
-  }
-  
-  let priceText = `(~ $${usd} / ${rub}₽)`;
-  if (discount) {
-    priceText = `(~ $${usd} / ${rub}₽, save ${discount}%)`;
-  }
-  
-  let monthlyText = '';
-  if (monthlyUsd && monthlyRub) {
-    monthlyText = `\n  (~ $${monthlyUsd} / ${monthlyRub}₽ per month)`;
-  }
-  
-  const durationText = duration === 30 ? 'month' : 
-                      duration === 90 ? 'months' : 
-                      duration === 180 ? 'months' : 'months';
-  
-  return `- <b>${duration === 30 ? '1' : duration === 90 ? '3' : duration === 180 ? '6' : '12'} ${durationText} (${duration} days)</b> — ${starsText}\n  ${priceText}${monthlyText}`;
-}
-
 module.exports = {
   USER_LIMITS,
   PREMIUM_TARIFFS,
@@ -294,7 +242,5 @@ module.exports = {
   generateCurrencyKeyboard,
   generateSettingsKeyboard,
   generateTimeKeyboard,
-  formatPremiumTariff,
-  formatPremiumTariffEn,
   generatePremiumPaymentButtons
 }; 

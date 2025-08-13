@@ -158,7 +158,7 @@ class Container {
 
       case 'paymentService':
         // Создаем PaymentService с отложенной инициализацией бота
-        const paymentService = new PaymentService(this.get('donationRepository'));
+        const paymentService = new PaymentService(this.get('donationRepository'), this.get('localizationService'));
         // Устанавливаем бота позже, когда он будет создан
         if (this.instances.has('bot')) {
           paymentService.setBot(this.get('bot'));

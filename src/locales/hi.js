@@ -422,6 +422,17 @@ module.exports = {
     premium_why_paid_text: 'इस बॉट के सर्वर का खर्च लगभग $200/माह आता है, और उपयोगकर्ताओं की संख्या लगातार बढ़ रही है। डेवलपर होने के नाते, मुझे भी सेवा सुधारने के लिए जीवित रहना है :)',
     premium_payment_title: '💳 *प्रीमियम सदस्यता भुगतान*',
     premium_payment_description: 'आपने चुना है: <b>{duration}</b>\nकीमत: <b>{stars} ⭐️</b>\n\nभुगतान के लिए नीचे क्लिक करें।',
+    // टैरिफ लेबल्स और उत्पाद नाम
+    tariff_button_30: '1 माह',
+    tariff_button_90: '3 माह',
+    tariff_button_180: '6 माह',
+    tariff_button_365: '1 वर्ष',
+    tariff_item_30: '1 माह (30 दिन)',
+    tariff_item_90: '3 माह (90 दिन)',
+    tariff_item_180: '6 माह (180 दिन)',
+    tariff_item_365: '12 माह (365 दिन)',
+    premium_product: 'प्रीमियम सदस्यता',
+    discount_save: '{percent}% बचत',
   
     payment_success: '🎉 *भुगतान सफल!* प्रीमियम सक्रिय हो गया। उन्नत सुविधाओं का आनंद लें।',
     donation_success: '🙏 *समर्थन के लिए धन्यवाद!* आपका दान बॉट के विकास में सहायता करेगा।',

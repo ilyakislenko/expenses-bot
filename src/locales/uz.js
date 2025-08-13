@@ -420,6 +420,17 @@ module.exports = {
     premium_why_paid_text: 'Ushbu botni saqlash xarajati oyiga ~$200. Foydalanuvchilar soni oshib bormoqda va men xizmatni yaxshilash uchun daromadga muhtojman :)',
     premium_payment_title: '💳 *Premium obuna to‘lovi*',
     premium_payment_description: 'Tanlangan: <b>{duration}</b>\nNarxi: <b>{stars} ⭐️</b>\n\nTo‘lash uchun pastdagi tugmani bosing.',
+    // Tarif yorliqlari va mahsulot nomi
+    tariff_button_30: '1 Oy',
+    tariff_button_90: '3 Oy',
+    tariff_button_180: '6 Oy',
+    tariff_button_365: '1 Yil',
+    tariff_item_30: '1 oy (30 kun)',
+    tariff_item_90: '3 oy (90 kun)',
+    tariff_item_180: '6 oy (180 kun)',
+    tariff_item_365: '12 oy (365 kun)',
+    premium_product: 'Premium obuna',
+    discount_save: '{percent}% tejash',
   
     payment_success: '🎉 *To‘lov muvaffaqiyatli!* Premium faollashtirildi. Kengaytirilgan funksiyalardan foydalaning.',
     donation_success: '🙏 *Qo‘llab-quvvatlaganingiz uchun rahmat!* Xayriyangiz botni rivojlantirishga yordam beradi.',

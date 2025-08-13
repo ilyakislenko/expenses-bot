@@ -422,6 +422,17 @@ module.exports = {
     premium_why_paid_text: 'Der Betrieb dieses Bots kostet etwa $200 pro Monat. Die Nutzerzahl wächst und als Entwickler muss ich auch meinen Lebensunterhalt verdienen :)',
     premium_payment_title: '💳 *Premium-Abonnement bezahlen*',
     premium_payment_description: 'Ausgewählt: <b>{duration}</b>\nPreis: <b>{stars} ⭐️</b>\n\nZum Bezahlen unten klicken.',
+    // Labels für Tarife und Produktname
+    tariff_button_30: '1 Monat',
+    tariff_button_90: '3 Monate',
+    tariff_button_180: '6 Monate',
+    tariff_button_365: '1 Jahr',
+    tariff_item_30: '1 Monat (30 Tage)',
+    tariff_item_90: '3 Monate (90 Tage)',
+    tariff_item_180: '6 Monate (180 Tage)',
+    tariff_item_365: '12 Monate (365 Tage)',
+    premium_product: 'Premium-Abonnement',
+    discount_save: 'sparen {percent}%',
   
     payment_success: '🎉 *Zahlung erfolgreich!* Premium wurde aktiviert. Genieße die erweiterten Funktionen.',
     donation_success: '🙏 *Danke für deine Unterstützung!* Deine Spende hilft bei der Weiterentwicklung des Bots.',
