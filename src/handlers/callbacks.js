@@ -300,34 +300,46 @@ class CallbackHandlers {
       // Устанавливаем язык пользователя
       await this.userService.setUserLanguage(userId, languageCode);
       
-      // Получаем сообщение на новом языке
-      const languageSetMessage = this.localizationService.getText(languageCode, 'language_set');
-      
-      await ctx.answerCbQuery(languageSetMessage);
-      await ctx.editMessageText(languageSetMessage, {
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: backText, callback_data: 'back_to_settings' }]
-          ]
-        }
-      });
-      
-      // Проверяем статус админа для корректного отображения клавиатуры
-      const isAdmin = await this.userService.isUserAdmin(userId);
-      
-      // Обновляем reply-клавиатуру на новом языке
-      const newMainMenuKeyboard = this.keyboardGenerators.generateMainMenuKeyboard(languageCode, isAdmin);
-      
-      await ctx.telegram.sendMessage(ctx.chat.id, 
-        this.localizationService.getText(languageCode, 'keyboard_updated'), 
-        {
+      // Если это шаг onboarding языка — сразу просим выбрать валюту
+      const currentState = this.stateService.getUserState(userId);
+      if (currentState === 'onboarding_language') {
+        this.stateService.setUserState(userId, 'onboarding_currency');
+        const currencyPrompt = this.localizationService.getText(languageCode, 'currency_select');
+        const currencyKeyboard = require('../utils/constants').generateCurrencyKeyboard(this.localizationService, languageCode);
+        await ctx.answerCbQuery(this.localizationService.getText(languageCode, 'language_set'));
+        await ctx.editMessageText(currencyPrompt, {
+          reply_markup: { inline_keyboard: currencyKeyboard }
+        });
+        return;
+      } else {
+        // Обычное изменение языка в настройках
+        const languageSetMessage = this.localizationService.getText(languageCode, 'language_set');
+        await ctx.answerCbQuery(languageSetMessage);
+        await ctx.editMessageText(languageSetMessage, {
           reply_markup: {
-            keyboard: newMainMenuKeyboard,
-            resize_keyboard: true,
-            one_time_keyboard: false
+            inline_keyboard: [
+              [{ text: backText, callback_data: 'back_to_settings' }]
+            ]
           }
-        }
-      );
+        });
+        
+        // Проверяем статус админа для корректного отображения клавиатуры
+        const isAdmin = await this.userService.isUserAdmin(userId);
+        
+        // Обновляем reply-клавиатуру на новом языке
+        const newMainMenuKeyboard = this.keyboardGenerators.generateMainMenuKeyboard(languageCode, isAdmin);
+        
+        await ctx.telegram.sendMessage(ctx.chat.id, 
+          this.localizationService.getText(languageCode, 'keyboard_updated'), 
+          {
+            reply_markup: {
+              keyboard: newMainMenuKeyboard,
+              resize_keyboard: true,
+              one_time_keyboard: false
+            }
+          }
+        );
+      }
     } catch (error) {
       console.error('Error handling language selection:', error);
       const languageChangeErrorText = this.localizationService.getText(userLanguage, 'language_change_error');

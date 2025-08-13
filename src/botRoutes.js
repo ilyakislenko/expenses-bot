@@ -94,7 +94,18 @@ module.exports = function registerBotRoutes(bot, handlers) {
     const currencySetText = handlers.localizationService.getText(userLanguage, 'currency_set', { currency });
     const currencyUpdatedText = handlers.localizationService.getText(userLanguage, 'currency_updated', { currency });
     const backText = handlers.localizationService.getText(userLanguage, 'button_back');
-    
+
+    // Если это шаг onboarding валюты — завершаем onboarding и показываем главное меню
+    const currentState = handlers.stateService.getUserState(userId);
+    if (currentState === 'onboarding_currency') {
+      handlers.stateService.clearUserState(userId);
+      await ctx.answerCbQuery(currencySetText);
+      await ctx.editMessageText(currencyUpdatedText);
+      // Показать главное меню
+      await handlers.commandHandlers.start(ctx);
+      return;
+    }
+
     await ctx.answerCbQuery(currencySetText);
     await ctx.editMessageText(currencyUpdatedText, {
       reply_markup: {

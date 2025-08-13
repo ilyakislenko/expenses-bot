@@ -15,7 +15,26 @@ class CommandHandlers {
 
   async start(ctx) {
     const user = ctx.from;
+    // Проверяем, существовал ли пользователь ранее (до регистрации)
+    const existedUser = await this.userService.getUserById(user.id);
     await this.userService.registerUser(user.id, user.username, user.first_name);
+
+    // Если пользователь новый — запускаем одноразовый onboarding (язык → валюта)
+    if (!existedUser) {
+      // Выбираем стартовый язык для показа клавиатуры (если язык Telegram поддерживается — используем его, иначе en)
+      const tgLang = (user && user.language_code) ? user.language_code : null;
+      const initialLanguage = (tgLang && this.localizationService.isLanguageSupported(tgLang)) ? tgLang : 'en';
+      this.stateService.setUserState(user.id, 'onboarding_language');
+
+      const languageSelectText = this.localizationService.getText(initialLanguage, 'language_select');
+      const keyboard = this.localizationService.getLanguageKeyboardLocalized(initialLanguage);
+      await ctx.reply(languageSelectText, {
+        reply_markup: {
+          inline_keyboard: keyboard
+        }
+      });
+      return;
+    }
 
     // Получаем язык пользователя
     const userLanguage = await this.userService.getUserLanguage(user.id);
