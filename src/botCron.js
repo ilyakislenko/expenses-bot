@@ -45,11 +45,17 @@ module.exports = function setupBotCron(cron, currencyUtils, donationRepository, 
         const formatter = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false, year: 'numeric', month: '2-digit', day: '2-digit' });
         const parts = formatter.formatToParts(nowUtc).reduce((acc, p) => (acc[p.type] = p.value, acc), {});
         const localHour = parseInt(parts.hour, 10);
+
         const localDateStr = `${parts.year}-${parts.month}-${parts.day}`;
 
         // Отправляем только около 18:00 (с 18:00 по 18:59, раз в день)
         if (localHour !== 18) continue;
-        if (user.last_reminder_local_date && user.last_reminder_local_date.toISOString().slice(0,10) === localDateStr) continue;
+        const lastReminderDateStr = user.last_reminder_local_date
+          ? (typeof user.last_reminder_local_date === 'string'
+              ? user.last_reminder_local_date
+              : user.last_reminder_local_date.toISOString().slice(0, 10))
+          : null;
+        if (lastReminderDateStr === localDateStr) continue;
 
         // Проверяем, были ли сегодня траты у пользователя в его таймзоне
         const hasExpenses = await expenseService.hasAnyExpenseToday(user.id, tz);

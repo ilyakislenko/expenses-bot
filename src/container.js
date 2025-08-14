@@ -307,6 +307,7 @@ class Container {
       expenseService: this.get('expenseService'),
       userService: this.get('userService'),
       premiumService: this.get('premiumService'),
+      notificationService: this.get('notificationService'),
       paymentService: this.get('paymentService'),
       donationRepository: this.get('donationRepository'),
       expenseRepository: this.get('expenseRepository'),
