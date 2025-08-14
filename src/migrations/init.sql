@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS users (
     period_start_day INTEGER NOT NULL DEFAULT 1,
     reminder_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     last_reminder_local_date DATE NULL,
+    reminder_hours INTEGER[] DEFAULT NULL,
+    reminder_sent_today_hours INTEGER[] DEFAULT NULL,
     is_admin BOOLEAN NOT NULL DEFAULT FALSE
 );
 
@@ -31,6 +33,8 @@ COMMENT ON COLUMN users.premium_activated_at IS 'Дата первой акти�
 COMMENT ON COLUMN users.period_start_day IS 'Число начала пользовательского периода (1-31), в месяцах короче используется последний день';
 COMMENT ON COLUMN users.reminder_enabled IS 'Флаг включения ежедневных напоминаний';
 COMMENT ON COLUMN users.last_reminder_local_date IS 'Дата последней отправленной напоминалки в локальном дне пользователя';
+COMMENT ON COLUMN users.reminder_hours IS 'Часы отправки напоминалок в локальном времени пользователя (0-23), максимум 3';
+COMMENT ON COLUMN users.reminder_sent_today_hours IS 'Часы, по которым напоминалки уже отправлены в текущий локальный день пользователя';
 
 -- Ensure correct constraints
 ALTER TABLE users 

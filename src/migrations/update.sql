@@ -341,6 +341,20 @@ BEGIN
     ) THEN
         ALTER TABLE users ADD COLUMN last_reminder_local_date DATE NULL;
     END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name='users' AND column_name='reminder_hours'
+    ) THEN
+        ALTER TABLE users ADD COLUMN reminder_hours INTEGER[] NULL;
+        COMMENT ON COLUMN users.reminder_hours IS 'Часы отправки напоминалок в локальном времени пользователя (0-23), максимум 3';
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name='users' AND column_name='reminder_sent_today_hours'
+    ) THEN
+        ALTER TABLE users ADD COLUMN reminder_sent_today_hours INTEGER[] NULL;
+        COMMENT ON COLUMN users.reminder_sent_today_hours IS 'Часы, по которым напоминалки уже отправлены в текущий локальный день пользователя';
+    END IF;
 END $$;
 
 -- Create bug reports table if not exists
