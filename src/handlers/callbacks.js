@@ -264,7 +264,7 @@ class CallbackHandlers {
       const [, timezoneCode] = parts;
       
       // Проверяем, это новый формат времени или старый формат городов
-      if (callbackData.startsWith('time|')) {
+        if (callbackData.startsWith('time|')) {
         // Новый формат: time|hour|minute
         const [, hour, minute] = callbackData.split('|');
         const { calculateTimezoneFromUserTime, getTimezoneDisplayName } = require('../utils/timezoneCalculator');
@@ -284,13 +284,20 @@ class CallbackHandlers {
         });
         
         await ctx.answerCbQuery(timezoneSetText);
-        await ctx.editMessageText(timezoneUpdatedText,
-          { parse_mode: 'Markdown', reply_markup: {
-            inline_keyboard: [
-              [{ text: backText, callback_data: 'back_to_settings' }]
-            ]
-          } }
-        );
+        const currentState = this.stateService.getUserState(userId);
+        if (currentState === 'onboarding_timezone') {
+          // Завершаем онбординг и показываем главное меню
+          this.stateService.clearUserState(userId);
+          await this.commandHandlers.start(ctx);
+        } else {
+          await ctx.editMessageText(timezoneUpdatedText,
+            { parse_mode: 'Markdown', reply_markup: {
+              inline_keyboard: [
+                [{ text: backText, callback_data: 'back_to_settings' }]
+              ]
+            } }
+          );
+        }
       } else {
         // Старый формат: tz|city
         const { getTimezoneByCode } = require('../utils/timezone');
@@ -326,13 +333,19 @@ class CallbackHandlers {
         const timezoneUpdatedText = this.localizationService.getText(userLanguage, 'timezone_updated_simple', { timezone: timezoneLabel });
         
         await ctx.answerCbQuery(timezoneSetText);
-        await ctx.editMessageText(timezoneUpdatedText,
-          { parse_mode: 'Markdown', reply_markup: {
-            inline_keyboard: [
-              [{ text: backText, callback_data: 'back_to_settings' }]
-            ]
-          } }
-        );
+        const currentState2 = this.stateService.getUserState(userId);
+        if (currentState2 === 'onboarding_timezone') {
+          this.stateService.clearUserState(userId);
+          await this.commandHandlers.start(ctx);
+        } else {
+          await ctx.editMessageText(timezoneUpdatedText,
+            { parse_mode: 'Markdown', reply_markup: {
+              inline_keyboard: [
+                [{ text: backText, callback_data: 'back_to_settings' }]
+              ]
+            } }
+          );
+        }
       }
     } catch (error) {
       console.error('Error handling timezone selection:', error);
