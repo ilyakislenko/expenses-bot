@@ -68,10 +68,20 @@ class CallbackHandlers {
     keyboard.push([{ text: backText, callback_data: 'back_to_settings' }]);
 
     const list = current.map(h => `${h.toString().padStart(2,'0')}:00`).join(', ');
-    await ctx.editMessageText(`${infoText} ${list || '-'}`, {
-      reply_markup: { inline_keyboard: keyboard },
-      parse_mode: 'Markdown'
-    });
+    const newText = `${infoText} ${list || '-'}`;
+    try {
+      await ctx.editMessageText(newText, {
+        reply_markup: { inline_keyboard: keyboard },
+        parse_mode: 'Markdown'
+      });
+    } catch (e) {
+      const desc = e?.response?.description || e?.description || '';
+      if (desc.includes('message is not modified')) {
+        await ctx.answerCbQuery();
+        return;
+      }
+      throw e;
+    }
     await ctx.answerCbQuery();
   }
 
@@ -79,7 +89,9 @@ class CallbackHandlers {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
     const settings = await this.userService.getReminderSettings(userId);
-    const hours = Array.isArray(settings.reminder_hours) ? [...settings.reminder_hours] : [];
+    const hours = (Array.isArray(settings.reminder_hours) && settings.reminder_hours.length)
+      ? [...settings.reminder_hours]
+      : [10, 14, 18];
     const hour = parseInt(ctx.callbackQuery.data.split('|')[1], 10);
     const idx = hours.indexOf(hour);
     if (idx >= 0) {
@@ -107,6 +119,13 @@ class CallbackHandlers {
 
   async handleClearReminderHours(ctx) {
     const userId = ctx.from.id;
+    const settings = await this.userService.getReminderSettings(userId);
+    const alreadyEmpty = !Array.isArray(settings.reminder_hours) || settings.reminder_hours.length === 0;
+    if (alreadyEmpty) {
+      // Ничего не меняем, просто подтверждаем callback, чтобы избежать ошибки Telegram
+      await ctx.answerCbQuery();
+      return;
+    }
     await this.userService.setReminderHours(userId, []);
     await this.handleConfigureReminderHours(ctx);
   }

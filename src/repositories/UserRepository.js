@@ -96,7 +96,7 @@ class UserRepository extends BaseRepository {
 
   async getUserLanguage(userId) {
     const result = await this.query('SELECT language FROM users WHERE id = $1', [userId]);
-    return result.rows[0]?.language || 'ru';
+    return result.rows[0]?.language || 'en';
   }
 
   async setUserLanguage(userId, language) {

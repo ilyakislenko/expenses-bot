@@ -78,7 +78,7 @@ module.exports = function setupBotCron(cron, currencyUtils, donationRepository, 
         }
 
         // Выбираем случайный текст напоминалки
-        const lang = user.language || 'ru';
+        const lang = user.language || 'en';
         const variants = notificationService.localizationService.getText(lang, 'reminder_sample_variants');
         const title = notificationService.localizationService.getText(lang, 'reminder_message_title');
         const message = Array.isArray(variants) && variants.length ? variants[Math.floor(Math.random() * variants.length)] : 'Пора записать расходы!';

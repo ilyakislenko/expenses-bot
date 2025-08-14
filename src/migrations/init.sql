@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     timezone VARCHAR(50) DEFAULT 'UTC',
     currency VARCHAR(3) DEFAULT 'RUB',
-    language VARCHAR(5) DEFAULT 'ru',
+    language VARCHAR(5) DEFAULT 'en',
     premium BOOLEAN DEFAULT FALSE,
     premium_expires_at TIMESTAMP NULL,
     premium_activated_at TIMESTAMP NULL,

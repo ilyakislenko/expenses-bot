@@ -13,11 +13,14 @@ DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                    WHERE table_name = 'users' AND column_name = 'language') THEN
-        ALTER TABLE users ADD COLUMN language VARCHAR(5) DEFAULT 'ru';
-        UPDATE users SET language = 'ru' WHERE language IS NULL;
+        ALTER TABLE users ADD COLUMN language VARCHAR(5) DEFAULT 'en';
+        UPDATE users SET language = 'en' WHERE language IS NULL;
         COMMENT ON COLUMN users.language IS 'User language preference (ru, en, etc.)';
     END IF;
 END $$;
+
+-- Ensure default language is EN for new users
+ALTER TABLE users ALTER COLUMN language SET DEFAULT 'en';
 
 -- Add premium field to users table if it doesn't exist
 -- This migration adds premium support to existing databases
