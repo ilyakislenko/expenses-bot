@@ -10,7 +10,13 @@ module.exports = {
       'Bot koyimaydi, faqat eslatadi: xarajat yozish vaqti keldi 😌'
     ],
     reminder_message_title: 'Eslatma',
-    reminder_turn_on_off: (enabled) => enabled ? 'Eslatmalarni o‘chir' : 'Eslatmalarni yoq',
+    reminder_turn_on_off: (enabled) => enabled ? 'Eslatmalarni o\'chirish' : 'Eslatmalarni yoqish',
+    button_configure_reminder_hours: '⏰ Eslatma vaqtlarini sozlash',
+    reminder_hours_info: 'Eslatmalar uchun 3 tagacha soat tanlang (sizning mahalliy vaqt mintaqangiz). Joriy:',
+    reminder_hours_limit: 'Siz maksimal 3 soat tanlashingiz mumkin',
+    reminder_hours_saved: '✅ Eslatma vaqtlari saqlandi',
+    button_save: 'Saqlash',
+    button_clear: 'Tozalash',
     
     // Xatolik haqida xabar
     button_bug_report: '🐛 Xato haqida xabar / Taklif',

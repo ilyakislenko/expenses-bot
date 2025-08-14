@@ -11,6 +11,12 @@ module.exports = {
     ],
     reminder_message_title: 'リマインダー',
     reminder_turn_on_off: (enabled) => enabled ? 'リマインダーをオフにする' : 'リマインダーをオンにする',
+    button_configure_reminder_hours: '⏰ リマインダー時間を設定',
+    reminder_hours_info: 'リマインダーの時間を最大3時間まで選択してください（あなたの現地時間帯）。現在:',
+    reminder_hours_limit: '最大3時間まで選択できます',
+    reminder_hours_saved: '✅ リマインダー時間が保存されました',
+    button_save: '保存',
+    button_clear: 'クリア',
     
     // バグ報告
     button_bug_report: '🐛 バグ報告 / 改善提案',

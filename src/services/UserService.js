@@ -109,6 +109,21 @@ class UserService {
     return this.userRepository.updateLastReminderLocalDate(userId, dateStr);
   }
 
+  async setReminderHours(userId, hoursArray) {
+    // Валидация: массив до 3 чисел в диапазоне 0..23
+    if (!Array.isArray(hoursArray)) throw new Error('Invalid reminder hours');
+    const clean = [...new Set(hoursArray.map(h => parseInt(h, 10)))]
+      .filter(h => Number.isInteger(h) && h >= 0 && h <= 23)
+      .slice(0, 3)
+      .sort((a, b) => a - b);
+    return this.userRepository.setReminderHours(userId, clean);
+  }
+
+  async setReminderSentTodayHours(userId, hoursArray) {
+    const clean = Array.isArray(hoursArray) ? [...new Set(hoursArray.map(h => parseInt(h, 10)))].filter(h => Number.isInteger(h)) : null;
+    return this.userRepository.setReminderSentTodayHours(userId, clean);
+  }
+
   async setUserPeriodStartDay(userId, day) {
     if (typeof day !== 'number' || day < 1 || day > 31) {
       throw new Error('Invalid period start day');

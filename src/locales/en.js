@@ -2,6 +2,12 @@ module.exports = {
   button_reminders: '🔔 Remind me',
   reminders_enabled: 'Reminders are ON. If you haven’t recorded anything by 18:00 — I’ll poke you with some humor 😉',
   reminders_disabled: 'Reminders are OFF. I’ll be quiet 🤐',
+  button_configure_reminder_hours: '⏰ Configure reminder hours',
+  reminder_hours_info: 'Select up to 3 hours for reminders (your local timezone). Current:',
+  reminder_hours_limit: 'You can select up to 3 hours',
+  reminder_hours_saved: '✅ Reminder hours saved',
+  button_save: 'Save',
+  button_clear: 'Clear',
   reminder_sample_variants: [
     "Hey! If your wallet is silent, it doesn't mean it’s happy. Log your expenses 😉",
     'Spent anything today? Write it down before your memory goes shopping 🧠🥖',

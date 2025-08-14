@@ -126,6 +126,10 @@ module.exports = function registerBotRoutes(bot, handlers) {
   }); // выбор языка интерфейса
   bot.action('change_period_start', errorHandler((ctx) => callbackHandlers.handleChangePeriodStart(ctx))); // настройка начала периода
   bot.action('toggle_reminders', errorHandler((ctx) => callbackHandlers.handleToggleReminders(ctx))); // вкл/выкл напоминаний
+  bot.action('configure_reminder_hours', errorHandler((ctx) => callbackHandlers.handleConfigureReminderHours(ctx))); // меню настройки часов напоминаний
+  bot.action(/^toggle_reminder_hour\|(\d{1,2})$/, errorHandler((ctx) => callbackHandlers.handleToggleReminderHour(ctx))); // переключение конкретного часа
+  bot.action('save_reminder_hours', errorHandler((ctx) => callbackHandlers.handleSaveReminderHours(ctx))); // сохранить выбор
+  bot.action('clear_reminder_hours', errorHandler((ctx) => callbackHandlers.handleClearReminderHours(ctx))); // сбросить выбор
   bot.action('bug_report', errorHandler((ctx) => callbackHandlers.handleBugReport(ctx))); // баг-репорт
   bot.action(/^tz\|/, errorHandler((ctx) => callbackHandlers.handleTimezoneSelection(ctx))); // установка часового пояса
   bot.action(/^time\|/, errorHandler((ctx) => callbackHandlers.handleTimezoneSelection(ctx))); // установка часового пояса (альтернативный формат)

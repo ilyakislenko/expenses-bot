@@ -11,6 +11,12 @@ module.exports = {
     ],
     reminder_message_title: 'შეხსენება',
     reminder_turn_on_off: (enabled) => enabled ? 'შეხსენებების გამორთვა' : 'შეხსენებების ჩართვა',
+    button_configure_reminder_hours: '⏰ შეხსენების საათების დაყენება',
+    reminder_hours_info: 'აირჩიეთ 3-მდე საათი შეხსენებებისთვის (თქვენი ადგილობრივი დროის ზონა). მიმდინარე:',
+    reminder_hours_limit: 'შეგიძლიათ აირჩიოთ მაქსიმუმ 3 საათი',
+    reminder_hours_saved: '✅ შეხსენების საათები შენახულია',
+    button_save: 'შენახვა',
+    button_clear: 'გასუფთავება',
   
     // შეცდომის ანგარიში
     button_bug_report: '🐛 შეცდომის ანგარიში / წინადადება',

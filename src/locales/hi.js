@@ -11,6 +11,12 @@ module.exports = {
     ],
     reminder_message_title: 'रिमाइंडर',
     reminder_turn_on_off: (enabled) => enabled ? 'रिमाइंडर बंद करें' : 'रिमाइंडर चालू करें',
+    button_configure_reminder_hours: '⏰ रिमाइंडर के घंटे सेट करें',
+    reminder_hours_info: 'रिमाइंडर के लिए 3 घंटे तक चुनें (आपका स्थानीय समय क्षेत्र)। वर्तमान:',
+    reminder_hours_limit: 'आप अधिकतम 3 घंटे चुन सकते हैं',
+    reminder_hours_saved: '✅ रिमाइंडर के घंटे सहेजे गए',
+    button_save: 'सहेजें',
+    button_clear: 'साफ़ करें',
     
     // बग रिपोर्ट
     button_bug_report: '🐛 बग रिपोर्ट करें / सुधार सुझाएँ',

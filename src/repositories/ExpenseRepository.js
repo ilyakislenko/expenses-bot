@@ -352,6 +352,29 @@ class ExpenseRepository extends BaseRepository {
     return result.rows.length > 0;
   }
 
+  async hasAnyExpenseBetweenLocal(userId, userTimezone = 'UTC', startHour = 0, endHour = 24) {
+    const query = `
+      WITH local_now AS (
+        SELECT (NOW() AT TIME ZONE $2) AS ln
+      ), day_start AS (
+        SELECT DATE_TRUNC('day', ln) AS ds FROM local_now
+      ), bounds AS (
+        SELECT 
+          (ds + make_interval(hours => $3)) AS start_date,
+          (ds + make_interval(hours => $4)) AS end_date
+        FROM day_start
+      )
+      SELECT 1
+      FROM expenses
+      WHERE user_id = $1
+        AND (created_at_utc AT TIME ZONE $2) >= (SELECT start_date FROM bounds)
+        AND (created_at_utc AT TIME ZONE $2) < (SELECT end_date FROM bounds)
+      LIMIT 1
+    `;
+    const result = await this.query(query, [userId, userTimezone, startHour, endHour]);
+    return result.rows.length > 0;
+  }
+
   async deleteLastExpense(userId) {
     const query = `
       DELETE FROM expenses 

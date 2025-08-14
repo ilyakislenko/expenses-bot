@@ -10,7 +10,13 @@ module.exports = {
       'Бот ұрыспайды, бот ескертеді: шығындарыңды жазатын уақыт болды 😌'
     ],
     reminder_message_title: 'Еске салғыш',
-    reminder_turn_on_off: (enabled) => enabled ? 'Еске салуды өшіру' : 'Еске салуды қосу',
+    reminder_turn_on_off: (enabled) => enabled ? 'Еске салғыштарды өшіру' : 'Еске салғыштарды қосу',
+    button_configure_reminder_hours: '⏰ Еске салғыш сағаттарын баптау',
+    reminder_hours_info: 'Еске салғыштар үшін 3-ке дейінгі сағатты таңдаңыз (сіздің жергілікті уақыт белдеуіңіз). Ағымдағы:',
+    reminder_hours_limit: 'Сіз максимум 3 сағатты таңдай аласыз',
+    reminder_hours_saved: '✅ Еске салғыш сағаттары сақталды',
+    button_save: 'Сақтау',
+    button_clear: 'Тазалау',
     
     // Қате туралы хабарламалар
     button_bug_report: '🐛 Қате туралы хабарлау / Ұсыныс білдіру',

@@ -11,6 +11,12 @@ module.exports = {
     ],
     reminder_message_title: 'Rappel',
     reminder_turn_on_off: (enabled) => enabled ? 'Désactiver les rappels' : 'Activer les rappels',
+    button_configure_reminder_hours: '⏰ Configurer les heures de rappel',
+    reminder_hours_info: 'Sélectionnez jusqu\'à 3 heures pour les rappels (votre fuseau horaire local). Actuelles :',
+    reminder_hours_limit: 'Vous pouvez sélectionner jusqu\'à 3 heures',
+    reminder_hours_saved: '✅ Heures de rappel enregistrées',
+    button_save: 'Enregistrer',
+    button_clear: 'Effacer',
     
     // Rapports de bugs
     button_bug_report: '🐛 Signaler un bug / Proposer une amélioration',

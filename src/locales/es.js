@@ -11,6 +11,12 @@ module.exports = {
     ],
     reminder_message_title: 'Recordatorio',
     reminder_turn_on_off: (enabled) => enabled ? 'Desactivar recordatorios' : 'Activar recordatorios',
+    button_configure_reminder_hours: '⏰ Configurar horas de recordatorio',
+    reminder_hours_info: 'Selecciona hasta 3 horas para recordatorios (tu zona horaria local). Actuales:',
+    reminder_hours_limit: 'Puedes seleccionar hasta 3 horas',
+    reminder_hours_saved: '✅ Horas de recordatorio guardadas',
+    button_save: 'Guardar',
+    button_clear: 'Limpiar',
     
     // Reporte de errores
     button_bug_report: '🐛 Informar de un bug / Sugerir mejora',

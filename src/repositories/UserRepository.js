@@ -59,7 +59,7 @@ class UserRepository extends BaseRepository {
   }
 
   async getReminderSettings(userId) {
-    const query = 'SELECT reminder_enabled, last_reminder_local_date, timezone FROM users WHERE id = $1';
+    const query = 'SELECT reminder_enabled, last_reminder_local_date, timezone, reminder_hours, reminder_sent_today_hours FROM users WHERE id = $1';
     const result = await this.query(query, [userId]);
     return result.rows[0] || { reminder_enabled: false, last_reminder_local_date: null, timezone: 'UTC' };
   }
@@ -72,6 +72,16 @@ class UserRepository extends BaseRepository {
   async updateLastReminderLocalDate(userId, dateStr) {
     const query = 'UPDATE users SET last_reminder_local_date = $2 WHERE id = $1';
     await this.query(query, [userId, dateStr]);
+  }
+
+  async setReminderHours(userId, hoursArray) {
+    const query = 'UPDATE users SET reminder_hours = $2 WHERE id = $1';
+    await this.query(query, [userId, hoursArray && hoursArray.length ? hoursArray : null]);
+  }
+
+  async setReminderSentTodayHours(userId, hoursArray) {
+    const query = 'UPDATE users SET reminder_sent_today_hours = $2 WHERE id = $1';
+    await this.query(query, [userId, hoursArray && hoursArray.length ? hoursArray : null]);
   }
 
   async updateUser(userId, updates) {

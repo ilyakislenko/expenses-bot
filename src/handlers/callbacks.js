@@ -34,6 +34,83 @@ class CallbackHandlers {
     await ctx.answerCbQuery();
   }
 
+  async handleConfigureReminderHours(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const settings = await this.userService.getReminderSettings(userId);
+    const current = Array.isArray(settings.reminder_hours) && settings.reminder_hours.length
+      ? settings.reminder_hours.sort((a,b)=>a-b)
+      : [10,14,18];
+    const infoText = this.localizationService.getText(userLanguage, 'reminder_hours_info')
+      || 'Выберите до 3 часов (локальное время вашего часового пояса). Текущие:';
+    const backText = this.localizationService.getText(userLanguage, 'button_back');
+    const saveText = this.localizationService.getText(userLanguage, 'button_save') || 'Сохранить';
+    const clearText = this.localizationService.getText(userLanguage, 'button_clear') || 'Сбросить';
+
+    // Генерируем сетку времени по часам 0..23, отметим выбранные галочкой
+    const keyboard = [];
+    for (let row = 0; row < 6; row++) {
+      const rowButtons = [];
+      for (let col = 0; col < 4; col++) {
+        const hour = row * 4 + col;
+        if (hour <= 23) {
+          const selected = current.includes(hour);
+          const label = `${selected ? '✅' : '☐'} ${hour.toString().padStart(2, '0')}:00`;
+          rowButtons.push({ text: label, callback_data: `toggle_reminder_hour|${hour}` });
+        }
+      }
+      if (rowButtons.length) keyboard.push(rowButtons);
+    }
+    keyboard.push([
+      { text: saveText, callback_data: 'save_reminder_hours' },
+      { text: clearText, callback_data: 'clear_reminder_hours' }
+    ]);
+    keyboard.push([{ text: backText, callback_data: 'back_to_settings' }]);
+
+    const list = current.map(h => `${h.toString().padStart(2,'0')}:00`).join(', ');
+    await ctx.editMessageText(`${infoText} ${list || '-'}`, {
+      reply_markup: { inline_keyboard: keyboard },
+      parse_mode: 'Markdown'
+    });
+    await ctx.answerCbQuery();
+  }
+
+  async handleToggleReminderHour(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const settings = await this.userService.getReminderSettings(userId);
+    const hours = Array.isArray(settings.reminder_hours) ? [...settings.reminder_hours] : [];
+    const hour = parseInt(ctx.callbackQuery.data.split('|')[1], 10);
+    const idx = hours.indexOf(hour);
+    if (idx >= 0) {
+      hours.splice(idx, 1);
+    } else {
+      if (hours.length >= 3) {
+        const limitText = this.localizationService.getText(userLanguage, 'reminder_hours_limit') || 'Можно выбрать не более 3 часов';
+        await ctx.answerCbQuery(limitText, { show_alert: true });
+        return;
+      }
+      hours.push(hour);
+    }
+    await this.userService.setReminderHours(userId, hours);
+    // Обновим интерфейс
+    await this.handleConfigureReminderHours(ctx);
+  }
+
+  async handleSaveReminderHours(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const confirm = this.localizationService.getText(userLanguage, 'reminder_hours_saved') || 'Часы напоминаний сохранены';
+    await ctx.answerCbQuery(confirm, { show_alert: false });
+    await this.commandHandlers.settings(ctx);
+  }
+
+  async handleClearReminderHours(ctx) {
+    const userId = ctx.from.id;
+    await this.userService.setReminderHours(userId, []);
+    await this.handleConfigureReminderHours(ctx);
+  }
+
   async handleBugReport(ctx) {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);

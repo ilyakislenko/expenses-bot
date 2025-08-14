@@ -11,6 +11,12 @@ module.exports = {
     ],
     reminder_message_title: 'Erinnerung',
     reminder_turn_on_off: (enabled) => enabled ? 'Erinnerungen ausschalten' : 'Erinnerungen einschalten',
+    button_configure_reminder_hours: '⏰ Erinnerungszeiten konfigurieren',
+    reminder_hours_info: 'Wähle bis zu 3 Stunden für Erinnerungen (deine lokale Zeitzone). Aktuell:',
+    reminder_hours_limit: 'Du kannst maximal 3 Stunden auswählen',
+    reminder_hours_saved: '✅ Erinnerungszeiten gespeichert',
+    button_save: 'Speichern',
+    button_clear: 'Zurücksetzen',
     
     // Fehlerbericht
     button_bug_report: '🐛 Fehler melden / Verbesserung vorschlagen',

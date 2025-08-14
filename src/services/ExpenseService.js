@@ -14,6 +14,10 @@ class ExpenseService {
     return this.expenseRepository.hasAnyExpenseToday(userId, userTimezone);
   }
 
+  async hasAnyExpenseBetweenLocal(userId, userTimezone, startHour, endHour) {
+    return this.expenseRepository.hasAnyExpenseBetweenLocal(userId, userTimezone, startHour, endHour);
+  }
+
   async getMonthlyStats(userId) {
     const userCurrency = await this.userRepository.getUserCurrency(userId);
     const userTimezone = await this.userRepository.getUserTimezone(userId);

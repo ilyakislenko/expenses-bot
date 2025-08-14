@@ -11,6 +11,12 @@ module.exports = {
     ],
     reminder_message_title: '提醒',
     reminder_turn_on_off: (enabled) => enabled ? '关闭提醒' : '开启提醒',
+    button_configure_reminder_hours: '⏰ 配置提醒时间',
+    reminder_hours_info: '选择最多3个小时作为提醒时间（您的本地时区）。当前:',
+    reminder_hours_limit: '您最多可以选择3个小时',
+    reminder_hours_saved: '✅ 提醒时间已保存',
+    button_save: '保存',
+    button_clear: '清除',
     
     // 错误报告
     button_bug_report: '🐛 报告错误 / 提出建议',

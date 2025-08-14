@@ -11,6 +11,12 @@ module.exports = {
     ],
     reminder_message_title: 'Lembrete',
     reminder_turn_on_off: (enabled) => enabled ? 'Desativar lembretes' : 'Ativar lembretes',
+    button_configure_reminder_hours: '⏰ Configurar horários de lembretes',
+    reminder_hours_info: 'Selecione até 3 horas para lembretes (seu fuso horário local). Atuais:',
+    reminder_hours_limit: 'Você pode selecionar até 3 horas',
+    reminder_hours_saved: '✅ Horários de lembretes salvos',
+    button_save: 'Salvar',
+    button_clear: 'Limpar',
     
     // Relatórios de bugs
     button_bug_report: '🐛 Reportar um bug / Sugerir melhoria',

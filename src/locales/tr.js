@@ -11,6 +11,12 @@ module.exports = {
     ],
     reminder_message_title: 'Hatırlatma',
     reminder_turn_on_off: (enabled) => enabled ? 'Hatırlatıcıları kapat' : 'Hatırlatıcıları aç',
+    button_configure_reminder_hours: '⏰ Hatırlatıcı saatlerini yapılandır',
+    reminder_hours_info: 'Hatırlatıcılar için 3 saate kadar seçin (yerel saat diliminiz). Mevcut:',
+    reminder_hours_limit: 'Maksimum 3 saat seçebilirsiniz',
+    reminder_hours_saved: '✅ Hatırlatıcı saatleri kaydedildi',
+    button_save: 'Kaydet',
+    button_clear: 'Temizle',
   
     // Hata bildirimi
     button_bug_report: '🐛 Hata bildir / İyileştirme öner',
