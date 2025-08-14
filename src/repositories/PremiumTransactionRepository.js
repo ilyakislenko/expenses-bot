@@ -152,6 +152,46 @@ class PremiumTransactionRepository extends BaseRepository {
   }
 
   /**
+   * Возвращает все завершенные премиум-транзакции пользователя (для пересчета премиума)
+   */
+  async getCompletedTransactionsForUser(userId) {
+    const query = `
+      SELECT id, transaction_type, tariff_duration, created_at, previous_expiry_date
+      FROM premium_transactions
+      WHERE user_id = $1
+        AND status = 'completed'
+        AND telegram_payment_id IS NOT NULL
+      ORDER BY created_at ASC
+    `;
+    const result = await this.query(query, [userId]);
+    return result.rows;
+  }
+
+  async getLatestCompletedTransaction(userId) {
+    const query = `
+      SELECT id, transaction_type, tariff_duration, created_at, previous_expiry_date
+      FROM premium_transactions
+      WHERE user_id = $1
+        AND status = 'completed'
+        AND telegram_payment_id IS NOT NULL
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    const result = await this.query(query, [userId]);
+    return result.rows[0] || null;
+  }
+
+  async getLatestRefundedAt(userId) {
+    const query = `
+      SELECT MAX(updated_at) as ts
+      FROM premium_transactions
+      WHERE user_id = $1 AND status = 'refunded'
+    `;
+    const result = await this.query(query, [userId]);
+    return result.rows[0]?.ts || null;
+  }
+
+  /**
    * Получает транзакции по типу
    */
   async getTransactionsByType(transactionType, limit = 100, offset = 0) {

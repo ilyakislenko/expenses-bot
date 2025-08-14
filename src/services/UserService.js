@@ -313,6 +313,49 @@ class UserService {
     await this.userRepository.query(query, [userId]);
   }
 
+  async setPremiumExpiry(userId, expiryDate) {
+    // Если даты нет или она в прошлом — выключаем премиум
+    if (!expiryDate) {
+      await this.userRepository.updateUser(userId, { premium: false, premium_expires_at: null });
+      return;
+    }
+    const expiry = new Date(expiryDate);
+    if (!(expiry instanceof Date) || isNaN(expiry.getTime())) {
+      // Неверная дата — безопасно выключим премиум
+      await this.userRepository.updateUser(userId, { premium: false, premium_expires_at: null });
+      return;
+    }
+    if (expiry <= new Date()) {
+      await this.userRepository.updateUser(userId, { premium: false, premium_expires_at: null });
+      return;
+    }
+    await this.userRepository.updateUser(userId, { premium: true, premium_expires_at: expiry });
+  }
+
+  /**
+   * Пересчитать премиум после серии рефандов: проигрываем все завершенные покупки в порядке времени
+   */
+  async recomputePremiumAfterRefunds(userId) {
+    const txs = await this.premiumTransactionRepository.getCompletedTransactionsForUser(userId);
+    const lastRefundTs = await this.premiumTransactionRepository.getLatestRefundedAt(userId);
+    const lastRefund = lastRefundTs ? new Date(lastRefundTs) : null;
+    let expiry = null;
+    for (const tx of txs) {
+      const days = parseInt(tx.tariff_duration, 10) || 0;
+      if (days <= 0) continue;
+      const txCreatedAt = tx.created_at ? new Date(tx.created_at) : new Date();
+      // Если до транзакции были возвраты, базой будет максимум из previous_expiry_date и момента последнего возврата,
+      // чтобы исключить «хвосты» при ручных манипуляциях
+      const prevExpiry = tx.previous_expiry_date ? new Date(tx.previous_expiry_date) : null;
+      const minBase = lastRefund && (!prevExpiry || lastRefund > prevExpiry) ? lastRefund : prevExpiry;
+      const baseCandidate = (expiry ? expiry : (minBase || txCreatedAt));
+      const base = (expiry && expiry > baseCandidate) ? expiry : baseCandidate;
+      expiry = new Date(base.getTime() + days * 24 * 60 * 60 * 1000);
+    }
+    await this.setPremiumExpiry(userId, expiry);
+    return expiry;
+  }
+
   async disableAllExpiredPremium() {
     const query = `
       UPDATE users 

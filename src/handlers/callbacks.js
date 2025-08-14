@@ -1,6 +1,6 @@
 
 class CallbackHandlers {
-  constructor({ expenseService, premiumService, paymentService, familyService, categoryService, localizationService, formatter, stateService, userService, commandHandlers, keyboardGenerators }) {
+  constructor({ expenseService, premiumService, paymentService, familyService, categoryService, localizationService, formatter, stateService, userService, commandHandlers, keyboardGenerators, donationRepository }) {
     this.expenseService = expenseService;
     this.premiumService = premiumService;
     this.paymentService = paymentService;
@@ -12,6 +12,7 @@ class CallbackHandlers {
     this.userService = userService;
     this.commandHandlers = commandHandlers;
     this.keyboardGenerators = keyboardGenerators;
+    this.donationRepository = donationRepository;
   }
 
   async handleToggleReminders(ctx) {
@@ -117,6 +118,52 @@ class CallbackHandlers {
     await this.commandHandlers.settings(ctx);
   }
 
+  async handlePremiumPurchases(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    try {
+      // Ограничим до 10 элементов на раздел, чтобы не упереться в лимит 4096 символов Telegram
+      const pageSize = 10;
+      const transactions = await this.userService.getUserTransactions(userId, pageSize, 0);
+      const donations = this.donationRepository ? await this.donationRepository.getUserDonations(userId, pageSize, 0) : [];
+
+      const header = this.localizationService.getText(userLanguage, 'purchases_header') || '🧾 Purchase history';
+      let text = `${header}\n\n`;
+      if (transactions && transactions.length) {
+        const premiumTitle = this.localizationService.getText(userLanguage, 'purchases_premium_title') || 'Premium';
+        text += `⭐ ${premiumTitle}:\n`;
+        const shorten = (s) => {
+          if (!s) return '-';
+          const str = String(s);
+          return str.length > 36 ? `${str.slice(0, 14)}…${str.slice(-12)}` : str;
+        };
+        for (const t of transactions) {
+          const date = new Date(t.created_at).toLocaleString();
+          const stars = t.stars_amount || 0;
+          const status = t.status || 'completed';
+          const hash = shorten(t.telegram_payment_id || '-');
+          text += `• ${date} — ${stars}⭐ — ${status} — ${hash}\n`;
+        }
+        text += `\n`;
+      }
+      if (donations && donations.length) {
+        const donateTitle = this.localizationService.getText(userLanguage, 'purchases_donations_title') || 'Donations';
+        text += `💎 ${donateTitle}:\n`;
+        for (const d of donations) {
+          const date = new Date(d.created_at).toLocaleString();
+          const stars = d.stars || 0;
+          const status = d.status || 'completed';
+          const hash = (d.telegram_payment_id ? (d.telegram_payment_id.length > 36 ? `${d.telegram_payment_id.slice(0,14)}…${d.telegram_payment_id.slice(-12)}` : d.telegram_payment_id) : '-');
+          text += `• ${date} — ${stars}⭐ — ${status} — ${hash}\n`;
+        }
+      }
+      const backText = this.localizationService.getText(userLanguage, 'premium_back_button');
+      await ctx.reply(text.trim() || (this.localizationService.getText(userLanguage, 'no_purchases') || 'Нет покупок'), { reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'premium_subscription' }]] } });
+    } catch (e) {
+      const errText = this.localizationService.getText(userLanguage, 'error');
+      await ctx.reply(errText);
+    }
+  }
   async handleClearReminderHours(ctx) {
     const userId = ctx.from.id;
     const settings = await this.userService.getReminderSettings(userId);

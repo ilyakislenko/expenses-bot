@@ -243,7 +243,8 @@ class Container {
           stateService: this.get('stateService'),
           userService: this.get('userService'),
           commandHandlers: this.get('commandHandlers'),
-          keyboardGenerators: this.get('keyboardGenerators')
+          keyboardGenerators: this.get('keyboardGenerators'),
+          donationRepository: this.get('donationRepository')
         });
 
       case 'adminHandlers':

@@ -340,6 +340,86 @@ class AdminHandlers {
     });
   }
 
+  // Поиск транзакции по хэшу для возврата
+  async initiateRefundSearch(ctx, targetUserId) {
+    if (!(await this.checkAdminAccess(ctx))) return;
+    const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
+    this.stateService.setUserState(ctx.from.id, `admin_refund_search:${targetUserId}`);
+    const prompt = '🔎 Введите хэш (telegram_payment_id) транзакции для возврата:';
+    await ctx.reply(prompt, { reply_markup: { inline_keyboard: [[{ text: '🔙 Назад', callback_data: `panel_user_${targetUserId}` }]] } });
+  }
+
+  async handleRefundSearchInput(ctx, text) {
+    if (!(await this.checkAdminAccess(ctx))) return;
+    const adminId = ctx.from.id;
+    const state = this.stateService.getUserState(adminId);
+    if (!state || !state.startsWith('admin_refund_search:')) return;
+    const targetUserId = parseInt(state.split(':')[1], 10);
+    this.stateService.deleteUserState(adminId);
+    const userLanguage = await this.userService.getUserLanguage(adminId);
+    // Ищем транзакцию по хэшу
+    const repo = this.userService.premiumTransactionRepository || require('../repositories/PremiumTransactionRepository');
+    const premiumRepo = this.userService.premiumTransactionRepository || new repo();
+    const tx = await premiumRepo.getTransactionByTelegramPaymentId(text.trim());
+    if (!tx || Number(tx.user_id) !== targetUserId) {
+      await ctx.reply('❌ Транзакция не найдена у выбранного пользователя.');
+      return;
+    }
+    // Ограничим callback_data до безопасной длины: передаем только индекс найденной транзакции во временном состоянии
+    this.stateService.setUserState(adminId, { type: 'admin_refund_confirm', data: { userId: targetUserId, paymentId: tx.telegram_payment_id } });
+    const kb = [[{ text: '↩️ Вернуть', callback_data: 'panel_refund_exec' }], [{ text: '🔙 Назад', callback_data: `panel_user_${targetUserId}` }]];
+    await ctx.reply(`Найдена транзакция:\nID: ${tx.id}\nHash: ${tx.telegram_payment_id}\nStars: ${tx.stars_amount}\nStatus: ${tx.status}`, { reply_markup: { inline_keyboard: kb } });
+  }
+
+  async executeRefund(ctx, userId, paymentHash) {
+    if (!(await this.checkAdminAccess(ctx))) return;
+    const adminLang = await this.userService.getUserLanguage(ctx.from.id);
+    const paymentService = this.adminService.paymentService || null;
+    const premiumRepo = this.adminService.premiumTransactionRepository;
+    try {
+      const state = this.stateService.getUserState(ctx.from.id);
+      if (!state || state.type !== 'admin_refund_confirm') {
+        await ctx.answerCbQuery('Нет данных для возврата');
+        return;
+      }
+      const { userId: targetUserId, paymentId } = state.data;
+      this.stateService.deleteUserState(ctx.from.id);
+      await this.adminService.bot.telegram.callApi('refundStarPayment', {
+        user_id: Number(targetUserId),
+        telegram_payment_charge_id: paymentId
+      });
+      // Обновим статус транзакции
+      const tx = await premiumRepo.getTransactionByTelegramPaymentId(paymentId);
+      if (tx) await premiumRepo.updateTransactionStatus(tx.id, 'refunded', null);
+      // Простой и надежный вариант: вычитаем длительность рефанднутой покупки из текущей даты истечения
+      try {
+        const user = await this.userService.getUserById(tx.user_id);
+        const now = new Date();
+        const currentExpiry = user.premium_expires_at ? new Date(user.premium_expires_at) : null;
+        const days = parseInt(tx.tariff_duration, 10) || 0;
+        const msToSubtract = days * 24 * 60 * 60 * 1000;
+        let newExpiry;
+        if (!currentExpiry || currentExpiry <= now) {
+          // Премиума фактически нет — зафиксируем прошедшую дату и выключим флаг
+          newExpiry = now;
+          await this.userService.userRepository.updateUser(tx.user_id, { premium: false, premium_expires_at: newExpiry });
+        } else {
+          newExpiry = new Date(currentExpiry.getTime() - msToSubtract);
+          if (newExpiry <= now) {
+            // Подписка полностью снята
+            newExpiry = now;
+            await this.userService.userRepository.updateUser(tx.user_id, { premium: false, premium_expires_at: newExpiry });
+          } else {
+            await this.userService.userRepository.updateUser(tx.user_id, { premium: true, premium_expires_at: newExpiry });
+          }
+        }
+      } catch (_) {}
+      await ctx.answerCbQuery('✅ Возврат выполнен');
+    } catch (e) {
+      await ctx.answerCbQuery('❌ Ошибка возврата');
+    }
+  }
+
   // Обработка поискового запроса
   async handleSearch(ctx, searchQuery) {
     if (!(await this.checkAdminAccess(ctx))) return;
@@ -443,6 +523,9 @@ class AdminHandlers {
       if (actionsRow.length > 0) {
         keyboard.push(actionsRow);
       }
+
+      // Кнопки возвратов по хэшу платежа
+      keyboard.push([{ text: '🔎 Найти транзакцию по хэшу', callback_data: `panel_refund_search_${targetUserId}` }]);
 
       keyboard.push([{ text: '🔙 Назад', callback_data: 'panel_main' }]);
 

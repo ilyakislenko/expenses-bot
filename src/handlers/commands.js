@@ -731,11 +731,13 @@ class CommandHandlers {
     const backButton = this.localizationService.getText(userLanguage, 'premium_back_button');
     
     const donateButton = this.localizationService.getText(userLanguage, 'premium_donate_button');
+    const purchasesButton = this.localizationService.getText(userLanguage, 'premium_purchases_button') || '🧾 Purchase history';
     const inlineKeyboard = [
       [
         { text: tariffButton, callback_data: 'premium_tariffs' },
         { text: donateButton, callback_data: 'premium_donate' }
       ],
+      [{ text: purchasesButton, callback_data: 'premium_purchases' }],
       [{ text: whyPaidButton, callback_data: 'premium_why_paid' }],
       [{ text: backButton, callback_data: 'back_to_menu' }]
     ];

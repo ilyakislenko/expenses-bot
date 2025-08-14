@@ -250,6 +250,27 @@ class PaymentService {
     // Формат: https://t.me/your_bot?start=stars_payment_<duration>_<stars>
     return `https://t.me/${this.bot.options.username}?start=stars_payment_${duration}_${stars}`;
   }
+
+  /**
+   * Возврат платежа Telegram Stars
+   * @param {number} userId
+   * @param {string} telegramPaymentId - telegram_payment_charge_id
+   */
+  async refundStarsPayment(userId, telegramPaymentId) {
+    if (!this.bot) {
+      throw new Error('Bot instance is not set');
+    }
+    try {
+      const res = await this.bot.telegram.callApi('refundStarPayment', {
+        user_id: userId,
+        telegram_payment_charge_id: telegramPaymentId
+      });
+      return res;
+    } catch (error) {
+      logger.error('Error refunding Stars payment', { userId, telegramPaymentId, error: error.message });
+      throw error;
+    }
+  }
 }
 
 module.exports = PaymentService; 

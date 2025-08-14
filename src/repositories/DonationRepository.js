@@ -55,6 +55,17 @@ class DonationRepository extends BaseRepository {
     const result = await this.query(query, [userId]);
     return result.rows.length;
   }
+
+  async getUserDonations(userId, limit = 50, offset = 0) {
+    const query = `
+      SELECT * FROM donations
+      WHERE user_id = $1
+      ORDER BY created_at DESC
+      LIMIT $2 OFFSET $3
+    `;
+    const result = await this.query(query, [userId, limit, offset]);
+    return result.rows;
+  }
 }
 
 module.exports = DonationRepository;

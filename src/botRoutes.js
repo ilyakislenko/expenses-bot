@@ -512,6 +512,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('premium_tariffs', errorHandler((ctx) => callbackHandlers.handlePremiumTariffs(ctx)));
   bot.action('premium_why_paid', errorHandler((ctx) => callbackHandlers.handlePremiumWhyPaid(ctx)));
   bot.action('premium_donate', errorHandler((ctx) => callbackHandlers.handlePremiumDonate(ctx)));
+  bot.action(/^premium_purchases(?:\|(\d+))?$/, errorHandler((ctx) => callbackHandlers.handlePremiumPurchases(ctx)));
   bot.action('premium_subscription', errorHandler((ctx) => callbackHandlers.handlePremiumSubscription(ctx)));
   
   
@@ -581,6 +582,13 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/panel_user_(\d+)/, errorHandler((ctx) => {
     const targetUserId = parseInt(ctx.match[1], 10);
     return adminHandlers.showUserDetails(ctx, targetUserId);
+  }));
+  bot.action(/panel_refund_search_(\d+)/, errorHandler((ctx) => {
+    const targetUserId = parseInt(ctx.match[1], 10);
+    return adminHandlers.initiateRefundSearch(ctx, targetUserId);
+  }));
+  bot.action('panel_refund_exec', errorHandler((ctx) => {
+    return adminHandlers.executeRefund(ctx);
   }));
   
   bot.action(/panel_promote_(\d+)/, errorHandler((ctx) => {
