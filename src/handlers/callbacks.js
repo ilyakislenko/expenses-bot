@@ -122,10 +122,24 @@ class CallbackHandlers {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
     try {
-      // Ограничим до 10 элементов на раздел, чтобы не упереться в лимит 4096 символов Telegram
+      // Пагинация: извлекаем страницу из callback_data вида 'premium_purchases|<page>'
+      let page = 1;
+      if (ctx.callbackQuery && typeof ctx.callbackQuery.data === 'string') {
+        const match = ctx.callbackQuery.data.match(/^premium_purchases\|(\d+)$/);
+        if (match) {
+          page = Math.max(1, parseInt(match[1], 10) || 1);
+        }
+      }
+
       const pageSize = 10;
-      const transactions = await this.userService.getUserTransactions(userId, pageSize, 0);
-      const donations = this.donationRepository ? await this.donationRepository.getUserDonations(userId, pageSize, 0) : [];
+      const offset = (page - 1) * pageSize;
+      // Берём на один больше, чтобы понять, есть ли следующая страница
+      const fetchLimit = pageSize + 1;
+      const transactionsAll = await this.userService.getUserTransactions(userId, fetchLimit, offset);
+      const donationsAll = this.donationRepository ? await this.donationRepository.getUserDonations(userId, fetchLimit, offset) : [];
+      const transactions = (transactionsAll || []).slice(0, pageSize);
+      const donations = (donationsAll || []).slice(0, pageSize);
+      const hasMore = (transactionsAll && transactionsAll.length > pageSize) || (donationsAll && donationsAll.length > pageSize);
 
       const header = this.localizationService.getText(userLanguage, 'purchases_header') || '🧾 Purchase history';
       let text = `${header}\n\n`;
@@ -157,8 +171,28 @@ class CallbackHandlers {
           text += `• ${date} — ${stars}⭐ — ${status} — ${hash}\n`;
         }
       }
+
       const backText = this.localizationService.getText(userLanguage, 'premium_back_button');
-      await ctx.reply(text.trim() || (this.localizationService.getText(userLanguage, 'no_purchases') || 'Нет покупок'), { reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'premium_subscription' }]] } });
+      const prevText = this.localizationService.getText(userLanguage, 'purchases_prev_button') || '◀ Prev';
+      const nextText = this.localizationService.getText(userLanguage, 'purchases_next_button') || 'Next ▶';
+      const keyboard = [];
+      const navRow = [];
+      if (page > 1) {
+        navRow.push({ text: prevText, callback_data: `premium_purchases|${page - 1}` });
+      }
+      if (hasMore) {
+        navRow.push({ text: nextText, callback_data: `premium_purchases|${page + 1}` });
+      }
+      if (navRow.length) keyboard.push(navRow);
+      keyboard.push([{ text: backText, callback_data: 'premium_subscription' }]);
+
+      const body = text.trim() || (this.localizationService.getText(userLanguage, 'no_purchases') || 'Нет покупок');
+      if (ctx.updateType === 'callback_query') {
+        await ctx.editMessageText(body, { reply_markup: { inline_keyboard: keyboard } });
+        await ctx.answerCbQuery();
+      } else {
+        await ctx.reply(body, { reply_markup: { inline_keyboard: keyboard } });
+      }
     } catch (e) {
       const errText = this.localizationService.getText(userLanguage, 'error');
       await ctx.reply(errText);
