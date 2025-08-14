@@ -20,6 +20,11 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.command('timezone', errorHandler((ctx) => commandHandlers.timezone(ctx))); // настройка часового пояса
   bot.command('settings', errorHandler((ctx) => commandHandlers.settings(ctx))); // настройки пользователя
   bot.command('limits', errorHandler((ctx) => commandHandlers.limits(ctx))); // лимиты и премиум функции
+  // Требования Telegram Payments: обязательные команды поддержки и политики
+  bot.command('paysupport', errorHandler((ctx) => commandHandlers.paysupport(ctx))); // поддержка платежей
+  bot.command('terms', errorHandler((ctx) => commandHandlers.terms(ctx))); // условия использования
+  bot.command('privacy', errorHandler((ctx) => commandHandlers.privacy(ctx))); // политика конфиденциальности
+  bot.command('refund', errorHandler((ctx) => commandHandlers.refund(ctx))); // политика возвратов
   bot.command('family', errorHandler((ctx) => commandHandlers.family(ctx))); // управление семейными группами
   bot.command('menu', errorHandler((ctx) => commandHandlers.mainMenu(ctx))); // главное меню
   bot.command('cancel', async (ctx) => {

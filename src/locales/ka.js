@@ -17,6 +17,12 @@ module.exports = {
     reminder_hours_saved: '✅ შეხსენების საათები შენახულია',
     button_save: 'შენახვა',
     button_clear: 'გასუფთავება',
+    
+    // გადახდის მხარდაჭერა და პოლიტიკები
+    paysupport_message: '*გადახდის მხარდაჭერა*\n\nკომპანია: {businessName}\nმხარდაჭერა: @{supportUsername} / {supportEmail}\n\nწესები: {termsUrl}\nკონფიდენციალურობა: {privacyUrl}\nდაბრუნების नीति: {refundPolicyUrl}\n\nStars გადახდებთან/დაბრუნებებთან დაკავშირებით ჯერ მოგვწერეთ მხარდაჭერაში. Telegram Stars პოლიტიკებს ვასრულებთ.',
+    terms_message: '📄 მომსახურების პირობები: {termsUrl}',
+    privacy_message: '🔐 კონფიდენციალურობის პოლიტიკა: {privacyUrl}',
+    refund_message: '↩️ დაბრუნების პოლიტიკა: {refundPolicyUrl}\n\nკითხვები: @{supportUsername} / {supportEmail}',
   
     // შეცდომის ანგარიში
     button_bug_report: '🐛 შეცდომის ანგარიში / წინადადება',

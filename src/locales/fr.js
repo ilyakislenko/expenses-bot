@@ -18,6 +18,12 @@ module.exports = {
     button_save: 'Enregistrer',
     button_clear: 'Effacer',
     
+    // Support de paiement et politiques
+    paysupport_message: 'Support de paiement\n\nEntreprise : {businessName}\nSupport : @{supportUsername} / {supportEmail}\n\nConditions : {termsUrl}\nConfidentialité : {privacyUrl}\nRemboursements : {refundPolicyUrl}\n\nPour les paiements Stars et remboursements, contactez d’abord le support. Nous respectons les politiques Telegram Stars.',
+    terms_message: '📄 Conditions d\'utilisation : {termsUrl}',
+    privacy_message: '🔐 Politique de confidentialité : {privacyUrl}',
+    refund_message: '↩️ Politique de remboursement : {refundPolicyUrl}\n\nQuestions : @{supportUsername} / {supportEmail}',
+    
     // Rapports de bugs
     button_bug_report: '🐛 Signaler un bug / Proposer une amélioration',
     bug_report_prompt: '🐛 *Signaler un bug ou proposer une amélioration*\n\nDécris le problème ou la suggestion (max. 1000 caractères) :',

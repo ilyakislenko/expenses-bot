@@ -8,6 +8,12 @@ module.exports = {
   reminder_hours_saved: '✅ Часы напоминаний сохранены',
   button_save: 'Сохранить',
   button_clear: 'Сбросить',
+  
+  // Поддержка платежей и политики
+  paysupport_message: 'Поддержка платежей\n\nБизнес: {businessName}\nПоддержка: @{supportUsername} / {supportEmail}\n\nУсловия: {termsUrl}\nПолитика конфиденциальности: {privacyUrl}\nВозвраты: {refundPolicyUrl}\n\nПо вопросам платежей Stars и возвратов сначала свяжитесь с поддержкой. Мы соблюдаем правила Telegram Stars.',
+  terms_message: '📄 Условия использования: {termsUrl}',
+  privacy_message: '🔐 Политика конфиденциальности: {privacyUrl}',
+  refund_message: '↩️ Политика возвратов: {refundPolicyUrl}\n\nВопросы: @{supportUsername} / {supportEmail}',
   reminder_sample_variants: [
     'Эй! Если твой кошелёк молчит, это ещё не значит, что он счастлив. Запиши траты 😉',
     'Сегодня уже что-то потратил? Запиши, пока память не ушла за хлебом 🧠🥖',

@@ -18,6 +18,12 @@ module.exports = {
     button_save: 'Saqlash',
     button_clear: 'Tozalash',
     
+    // To'lov yordami va siyosatlar
+    paysupport_message: '*To\'lov yordami*\n\nKompaniya: {businessName}\nYordam: @{supportUsername} / {supportEmail}\n\nShartlar: {termsUrl}\nMaxfiylik: {privacyUrl}\nQaytarish siyosati: {refundPolicyUrl}\n\nStars to\'lovlari va qaytarishlar uchun avval yordamga murojaat qiling. Telegram Stars qoidalariga rioya qilamiz.',
+    terms_message: '📄 Foydalanish shartlari: {termsUrl}',
+    privacy_message: '🔐 Maxfiylik siyosati: {privacyUrl}',
+    refund_message: '↩️ Qaytarish siyosati: {refundPolicyUrl}\n\nSavollar: @{supportUsername} / {supportEmail}',
+    
     // Xatolik haqida xabar
     button_bug_report: '🐛 Xato haqida xabar / Taklif',
     bug_report_prompt: '🐛 *Xato haqida xabar bering yoki taklif yozing*\n\nMuammo yoki taklifni tasvirlab bering (maks. 1000 belgi):',

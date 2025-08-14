@@ -541,7 +541,13 @@ Now all your expenses will be correctly displayed in your local time.`,
   payment_success: '🎉 *Payment successful!*\n\nYour premium subscription has been activated. You now have access to all advanced bot features!',
   donation_success: '🙏 *Thank you for supporting the project!*\n\nYour donation will help develop the bot and add new features.',
   general_payment_success: '✅ *Payment successful!*\n\nThank you for using our bot.',
-  premium_expires: '📅 Premium subscription valid until: <b>{date}</b>\n⏰ Days remaining: <b>{days}</b>'
+  premium_expires: '📅 Premium subscription valid until: <b>{date}</b>\n⏰ Days remaining: <b>{days}</b>',
+
+  // Payment support & policies
+  paysupport_message: 'Payment support\n\nBusiness: {businessName}\nSupport: @{supportUsername} / {supportEmail}\n\nTerms: {termsUrl}\nPrivacy: {privacyUrl}\nRefunds: {refundPolicyUrl}\n\nFor Stars payments, issues or refunds, contact support first. We comply with Telegram Stars policies.',
+  terms_message: '📄 Terms of Service: {termsUrl}',
+  privacy_message: '🔐 Privacy Policy: {privacyUrl}',
+  refund_message: '↩️ Refund Policy: {refundPolicyUrl}\n\nIf you have any questions: @{supportUsername} / {supportEmail}'
   ,
   // Donations
   donate_prompt_title: '🤝 Support the project',

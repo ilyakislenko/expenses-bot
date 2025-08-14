@@ -18,6 +18,12 @@ module.exports = {
     button_save: 'सहेजें',
     button_clear: 'साफ़ करें',
     
+    // भुगतान समर्थन और नीतियां
+    paysupport_message: '*भुगतान सहायता*\n\nव्यवसाय: {businessName}\nसपोर्ट: @{supportUsername} / {supportEmail}\n\nशर्तें: {termsUrl}\nगोपनीयता: {privacyUrl}\nरिफंड: {refundPolicyUrl}\n\nStars भुगतान/रिफंड से जुड़ी समस्याओं के लिए पहले सपोर्ट से संपर्क करें। हम Telegram Stars नीतियों का पालन करते हैं।',
+    terms_message: '📄 सेवा की शर्तें: {termsUrl}',
+    privacy_message: '🔐 गोपनीयता नीति: {privacyUrl}',
+    refund_message: '↩️ रिफंड नीति: {refundPolicyUrl}\n\nप्रश्न: @{supportUsername} / {supportEmail}',
+    
     // बग रिपोर्ट
     button_bug_report: '🐛 बग रिपोर्ट करें / सुधार सुझाएँ',
     bug_report_prompt: '🐛 *बग रिपोर्ट करें या सुधार सुझाव दें*\n\nसमस्या या सुझाव लिखें (अधिकतम 1000 अक्षर):',

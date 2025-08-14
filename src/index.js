@@ -40,6 +40,23 @@ async function startApplication() {
     registerBotRoutes(bot, handlers);
     logger.startup('Bot routes registered');
 
+    // 4.1 Зарегистрируем список команд Telegram (в том числе платежные /paysupport, /terms, /privacy, /refund)
+    await bot.telegram.setMyCommands([
+      { command: 'start', description: 'Start bot / Main menu' },
+      { command: 'help', description: 'Help and usage' },
+      { command: 'settings', description: 'User settings' },
+      { command: 'total', description: 'Monthly total' },
+      { command: 'history', description: 'Today history' },
+      { command: 'stats', description: 'Monthly by categories' },
+      { command: 'export', description: 'Export CSV' },
+      { command: 'limits', description: 'Limits & premium' },
+      { command: 'paysupport', description: 'Payment support (Telegram Stars)' },
+      { command: 'terms', description: 'Terms of Service' },
+      { command: 'privacy', description: 'Privacy Policy' },
+      { command: 'refund', description: 'Refund Policy' }
+    ]);
+    logger.startup('Telegram commands registered');
+
     // 5. Запуск бота
     await launchBot(bot);
     logger.startup('Bot launched successfully');

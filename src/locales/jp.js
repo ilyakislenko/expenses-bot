@@ -18,6 +18,12 @@ module.exports = {
     button_save: '保存',
     button_clear: 'クリア',
     
+    // 支払いサポートとポリシー
+    paysupport_message: '*支払いサポート*\n\n事業者: {businessName}\nサポート: @{supportUsername} / {supportEmail}\n\n利用規約: {termsUrl}\nプライバシー: {privacyUrl}\n返金ポリシー: {refundPolicyUrl}\n\nStarsの支払い・返金に関する問題は、まずサポートにご連絡ください。Telegram Starsのポリシーに準拠しています。',
+    terms_message: '📄 利用規約: {termsUrl}',
+    privacy_message: '🔐 プライバシーポリシー: {privacyUrl}',
+    refund_message: '↩️ 返金ポリシー: {refundPolicyUrl}\n\nお問い合わせ: @{supportUsername} / {supportEmail}',
+    
     // バグ報告
     button_bug_report: '🐛 バグ報告 / 改善提案',
     bug_report_prompt: '🐛 *バグ報告または改善提案*\n\n問題または提案を記述してください（最大1000文字）：',

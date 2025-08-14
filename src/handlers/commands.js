@@ -13,6 +13,54 @@ class CommandHandlers {
     this.paymentService = paymentService;
   }
 
+  async paysupport(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const { PAY_SUPPORT } = require('../config/bot');
+    const text = this.localizationService.getText(userLanguage, 'paysupport_message', {
+      businessName: PAY_SUPPORT.businessName,
+      supportUsername: PAY_SUPPORT.supportUsername,
+      supportEmail: PAY_SUPPORT.supportEmail,
+      termsUrl: PAY_SUPPORT.termsUrl,
+      privacyUrl: PAY_SUPPORT.privacyUrl,
+      refundPolicyUrl: PAY_SUPPORT.refundPolicyUrl
+    });
+    // Не используем Markdown/HTML, чтобы избежать проблем с подчёркиваниями в юзернеймах/ссылках
+    await ctx.reply(text, { disable_web_page_preview: true });
+  }
+
+  async terms(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const { PAY_SUPPORT } = require('../config/bot');
+    const text = this.localizationService.getText(userLanguage, 'terms_message', {
+      termsUrl: PAY_SUPPORT.termsUrl
+    });
+    await ctx.reply(text, { disable_web_page_preview: true });
+  }
+
+  async privacy(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const { PAY_SUPPORT } = require('../config/bot');
+    const text = this.localizationService.getText(userLanguage, 'privacy_message', {
+      privacyUrl: PAY_SUPPORT.privacyUrl
+    });
+    await ctx.reply(text, { disable_web_page_preview: true });
+  }
+
+  async refund(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const { PAY_SUPPORT } = require('../config/bot');
+    const text = this.localizationService.getText(userLanguage, 'refund_message', {
+      refundPolicyUrl: PAY_SUPPORT.refundPolicyUrl,
+      supportUsername: PAY_SUPPORT.supportUsername,
+      supportEmail: PAY_SUPPORT.supportEmail
+    });
+    await ctx.reply(text, { disable_web_page_preview: true });
+  }
+
   async start(ctx) {
     const user = ctx.from;
     // Проверяем, существовал ли пользователь ранее (до регистрации)
