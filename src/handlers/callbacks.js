@@ -38,8 +38,8 @@ class CallbackHandlers {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
     const settings = await this.userService.getReminderSettings(userId);
-    const current = Array.isArray(settings.reminder_hours) && settings.reminder_hours.length
-      ? settings.reminder_hours.sort((a,b)=>a-b)
+    const current = Array.isArray(settings.reminder_hours)
+      ? [...settings.reminder_hours].sort((a,b)=>a-b)
       : [10,14,18];
     const infoText = this.localizationService.getText(userLanguage, 'reminder_hours_info')
       || 'Выберите до 3 часов (локальное время вашего часового пояса). Текущие:';
@@ -89,7 +89,7 @@ class CallbackHandlers {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
     const settings = await this.userService.getReminderSettings(userId);
-    const hours = (Array.isArray(settings.reminder_hours) && settings.reminder_hours.length)
+    const hours = Array.isArray(settings.reminder_hours)
       ? [...settings.reminder_hours]
       : [10, 14, 18];
     const hour = parseInt(ctx.callbackQuery.data.split('|')[1], 10);
@@ -120,13 +120,13 @@ class CallbackHandlers {
   async handleClearReminderHours(ctx) {
     const userId = ctx.from.id;
     const settings = await this.userService.getReminderSettings(userId);
-    const alreadyEmpty = !Array.isArray(settings.reminder_hours) || settings.reminder_hours.length === 0;
-    if (alreadyEmpty) {
-      // Ничего не меняем, просто подтверждаем callback, чтобы избежать ошибки Telegram
+    // Если уже null (дефолты) — просто ответим
+    if (!('reminder_hours' in settings) || settings.reminder_hours === null) {
       await ctx.answerCbQuery();
       return;
     }
-    await this.userService.setReminderHours(userId, []);
+    // Сбрасываем к дефолтной логике (NULL в БД => показываются 10,14,18)
+    await this.userService.setReminderHours(userId, null);
     await this.handleConfigureReminderHours(ctx);
   }
 

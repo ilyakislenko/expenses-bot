@@ -48,8 +48,12 @@ module.exports = function setupBotCron(cron, currencyUtils, donationRepository, 
 
         const localDateStr = `${parts.year}-${parts.month}-${parts.day}`;
 
-        // Часы по умолчанию, если пользователь не задал свои
-        const targetHours = Array.isArray(user.reminder_hours) && user.reminder_hours.length ? user.reminder_hours : [10, 14, 18];
+        // Часы по умолчанию, если пользователь не задал свои (NULL)
+        // Пустой массив [] трактуем как отключенные все напоминания
+        if (user.reminder_hours !== null && Array.isArray(user.reminder_hours) && user.reminder_hours.length === 0) {
+          continue; // все отключены
+        }
+        const targetHours = Array.isArray(user.reminder_hours) ? user.reminder_hours : [10, 14, 18];
         if (!targetHours.includes(localHour)) continue;
 
         // Маркер локального дня и часов, по которым уже отправляли

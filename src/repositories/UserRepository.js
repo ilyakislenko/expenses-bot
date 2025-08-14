@@ -76,7 +76,8 @@ class UserRepository extends BaseRepository {
 
   async setReminderHours(userId, hoursArray) {
     const query = 'UPDATE users SET reminder_hours = $2 WHERE id = $1';
-    await this.query(query, [userId, hoursArray && hoursArray.length ? hoursArray : null]);
+    // hoursArray может быть null (вернуть к дефолтам) или массивом (включая пустой [] => отключено всё)
+    await this.query(query, [userId, hoursArray === null ? null : (Array.isArray(hoursArray) ? hoursArray : null)]);
   }
 
   async setReminderSentTodayHours(userId, hoursArray) {

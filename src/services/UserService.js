@@ -110,7 +110,10 @@ class UserService {
   }
 
   async setReminderHours(userId, hoursArray) {
-    // Валидация: массив до 3 чисел в диапазоне 0..23
+    // NULL — означает дефолтные часы; [] — означает, что пользователь отключил все (не рекомендуем, но позволим)
+    if (hoursArray === null) {
+      return this.userRepository.setReminderHours(userId, null);
+    }
     if (!Array.isArray(hoursArray)) throw new Error('Invalid reminder hours');
     const clean = [...new Set(hoursArray.map(h => parseInt(h, 10)))]
       .filter(h => Number.isInteger(h) && h >= 0 && h <= 23)
