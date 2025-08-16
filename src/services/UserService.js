@@ -288,6 +288,11 @@ class UserService {
 
   async isPremiumActive(userId) {
     const user = await this.getUserById(userId);
+    // Если пользователь не найден, считаем, что премиума нет
+    if (!user) {
+      logger.info('isPremiumActive: user not found, treating as non-premium', { userId });
+      return false;
+    }
     if (!user.premium || !user.premium_expires_at) {
       return false;
     }
@@ -397,6 +402,14 @@ class UserService {
 
   async getPremiumStatus(userId) {
     const user = await this.getUserById(userId);
+    if (!user) {
+      return {
+        isPremium: false,
+        expiresAt: null,
+        activatedAt: null,
+        daysRemaining: 0
+      };
+    }
     const now = new Date();
     
     const isPremium = user.premium && user.premium_expires_at && user.premium_expires_at > now;

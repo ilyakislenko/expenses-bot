@@ -15,7 +15,7 @@ class PremiumService {
     try {
       return await this.userService.isPremiumActive(userId);
     } catch (error) {
-      logger.error('Error checking premium status:', error);
+      logger.error('Error checking premium status:', { userId, error: error.message });
       return false;
     }
   }

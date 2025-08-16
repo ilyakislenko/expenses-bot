@@ -1,3 +1,5 @@
+SET client_encoding = 'UTF8';
+
 -- Create database tables
 CREATE TABLE IF NOT EXISTS users (
     id BIGINT PRIMARY KEY,
@@ -36,9 +38,17 @@ COMMENT ON COLUMN users.last_reminder_local_date IS 'Дата последней
 COMMENT ON COLUMN users.reminder_hours IS 'Часы отправки напоминалок в локальном времени пользователя (0-23), максимум 3';
 COMMENT ON COLUMN users.reminder_sent_today_hours IS 'Часы, по которым напоминалки уже отправлены в текущий локальный день пользователя';
 
--- Ensure correct constraints
-ALTER TABLE users 
-  ADD CONSTRAINT IF NOT EXISTS users_period_start_day_check CHECK (period_start_day >= 1 AND period_start_day <= 31);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint c
+    JOIN pg_namespace n ON n.oid = c.connamespace
+    WHERE c.conname = 'users_period_start_day_check'
+  ) THEN
+    ALTER TABLE users ADD CONSTRAINT users_period_start_day_check CHECK (period_start_day >= 1 AND period_start_day <= 31);
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS categories (
     id SERIAL PRIMARY KEY,
@@ -94,6 +104,63 @@ CREATE TABLE IF NOT EXISTS bug_reports (
 CREATE INDEX IF NOT EXISTS idx_bug_reports_user_id ON bug_reports(user_id);
 CREATE INDEX IF NOT EXISTS idx_bug_reports_status ON bug_reports(status);
 CREATE INDEX IF NOT EXISTS idx_bug_reports_created_at ON bug_reports(created_at);
+
+-- ========================================
+-- FAMILY SYSTEM (base schema on fresh init)
+-- ========================================
+
+-- Families
+CREATE TABLE IF NOT EXISTS families (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    owner_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at_utc TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at_utc TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Family members
+CREATE TABLE IF NOT EXISTS family_user (
+    id SERIAL PRIMARY KEY,
+    family_id INTEGER NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    joined_at_utc TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(family_id, user_id)
+);
+
+-- Family invitations
+CREATE TABLE IF NOT EXISTS family_invitations (
+    id SERIAL PRIMARY KEY,
+    family_id INTEGER NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+    inviter_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    invitee_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    invite_code VARCHAR(10) NOT NULL UNIQUE,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected', 'expired')),
+    created_at_utc TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    expires_at_utc TIMESTAMP WITH TIME ZONE NOT NULL,
+    accepted_at_utc TIMESTAMP WITH TIME ZONE,
+    rejected_at_utc TIMESTAMP WITH TIME ZONE
+);
+
+-- expenses.family_id
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'expenses' AND column_name = 'family_id'
+    ) THEN
+        ALTER TABLE expenses ADD COLUMN family_id INTEGER REFERENCES families(id) ON DELETE SET NULL;
+    END IF;
+END $$;
+
+-- Indexes for family system
+CREATE INDEX IF NOT EXISTS idx_families_owner_id ON families(owner_id);
+CREATE INDEX IF NOT EXISTS idx_family_user_user_id ON family_user(user_id);
+CREATE INDEX IF NOT EXISTS idx_family_user_family_id ON family_user(family_id);
+CREATE INDEX IF NOT EXISTS idx_family_invitations_invitee_id ON family_invitations(invitee_id);
+CREATE INDEX IF NOT EXISTS idx_family_invitations_family_id ON family_invitations(family_id);
+CREATE INDEX IF NOT EXISTS idx_family_invitations_invite_code ON family_invitations(invite_code);
+CREATE INDEX IF NOT EXISTS idx_expenses_family_id ON expenses(family_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_family_invitations_pending_unique ON family_invitations(invitee_id) WHERE status = 'pending';
 
 -- Create premium transactions table
 CREATE TABLE IF NOT EXISTS premium_transactions (
