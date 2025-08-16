@@ -27,7 +27,7 @@ const TRIAL_PERIOD = {
 const PREMIUM_TARIFFS = {
   MONTH_1: {
     duration: 30,
-    stars: 87,
+    stars: 8,
     usd: 1.99,
     rub: 156,
     originalStars: null,
@@ -37,7 +37,7 @@ const PREMIUM_TARIFFS = {
   },
   MONTH_3: {
     duration: 90,
-    stars: 222,
+    stars: 8,
     usd: 4.99,
     rub: 399,
     originalStars: 261,
@@ -47,7 +47,7 @@ const PREMIUM_TARIFFS = {
   },
   MONTH_6: {
     duration: 180,
-    stars: 392,
+    stars: 8,
     usd: 8.99,
     rub: 719,
     originalStars: 522,
@@ -57,7 +57,7 @@ const PREMIUM_TARIFFS = {
   },
   MONTH_12: {
     duration: 365,
-    stars: 679,
+    stars: 8,
     usd: 14.99,
     rub: 1199,
     originalStars: 1044,

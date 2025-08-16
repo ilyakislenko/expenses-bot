@@ -763,6 +763,26 @@ class CommandHandlers {
     
     const inlineMainMenu = this.keyboardGenerators.generateInlineMainMenu(userLanguage, isAdmin);
     
+    // Условная кнопка: "Добавить семейную трату"
+    // Показываем только если пользователь премиум и состоит в семье
+    try {
+      const isPremium = await this.premiumService.isPremiumUser(userId);
+      const userFamily = await this.familyService.getUserFamily(userId);
+      if (isPremium && userFamily) {
+        const addExpenseText = this.localizationService.getText(userLanguage, 'family_add_expense');
+        const addExpenseButtonRow = [{ text: addExpenseText, callback_data: 'family_add_expense' }];
+        // Вставляем рядом с пунктом семейного меню, если он есть; иначе добавляем в конец
+        const familyRowIndex = inlineMainMenu.findIndex(row => Array.isArray(row) && row.some(btn => btn && btn.callback_data === 'family'));
+        if (familyRowIndex >= 0) {
+          inlineMainMenu.splice(familyRowIndex + 1, 0, addExpenseButtonRow);
+        } else {
+          inlineMainMenu.push(addExpenseButtonRow);
+        }
+      }
+    } catch (e) {
+      // В случае ошибки условий просто показываем базовое меню
+    }
+    
     await ctx.reply(message, {
       parse_mode: 'Markdown',
       reply_markup: {
