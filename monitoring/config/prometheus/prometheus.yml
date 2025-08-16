@@ -48,10 +48,10 @@ scrape_configs:
         - 'machine'
         - 'subcontainer'
 
-  # Expenses Bot Application
+  # Expenses Bot Application (external host)
   - job_name: 'expenses-bot'
     static_configs:
-      - targets: ['host.docker.internal:3001']
+      - targets: ['${EXTERNAL_BOT_HOST:-host.docker.internal}:3001']
     metrics_path: /metrics
     scrape_interval: 15s
     scrape_timeout: 10s
