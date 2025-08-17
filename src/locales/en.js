@@ -9,11 +9,50 @@ module.exports = {
   button_save: 'Save',
   button_clear: 'Clear',
   reminder_sample_variants: [
-    "Hey! If your wallet is silent, it doesn't mean it’s happy. Log your expenses 😉",
-    'Spent anything today? Write it down before your memory goes shopping 🧠🥖',
-    'If you didn’t track it — you basically threw it away. Let’s fix that 💸',
-    'Drop by drop — the budget becomes a river. Log today’s expenses 🌊',
-    'Not nagging, just reminding: time to record your spending 😌'
+   '👋 Hey! If your wallet is silent, it doesn’t mean it’s happy. Record your expenses 😉',
+'🤔 Spent anything today? Write it down before your memory goes out for bread 🧠🥖',
+'💭 If you didn’t record it — consider it spent into the void. Let’s log it 💸',
+'🌊 Drop by drop — and the budget slips away unnoticed. Better record today’s expenses 🌊',
+'🤖 The bot doesn’t nag, it just reminds: time to record expenses 😌',
+'💡 Take care of a penny — and a ruble will be saved. Time to make a note!',
+
+'💰 Money loves counting and quiet. Record your expenses.',
+
+'💡 Don’t waste in vain — save for what matters. Time to make an entry.',
+
+'🏗️ Small savings — big results. Add a purchase now.',
+
+'🌱 Save today — breathe easier tomorrow. Record your expenses.',
+
+'🔄 A guarded ruble brings two. Log an expense in a minute.',
+
+'⏰ Save first — spend later. Time to make a note!',
+
+'🧱 Every penny is a brick of freedom. Record an expense.',
+
+'🛡️ Save for a rainy day in advance. Add an entry now.',
+
+'📈 Smart spending is the best investment. Log the purchase.',
+
+'🎯 Expense control = fewer worries. Record your expenses.',
+
+'🚀 Fewer impulses — more opportunities. Time to make an entry.',
+
+'💎 Pay yourself first. Add an expense in the bot.',
+
+'✂️ A cut unnecessary expense is a gained income. Log the purchase.',
+
+'🎪 A budget is freedom of choice. Record today’s expenses.',
+
+'🌟 Savings are a “yes” to your future. Time to make a note!',
+
+'⚡ Discipline beats chaos. Log the expense.',
+
+'⏳ Money slips away quietly — record in time. Add an expense now.',
+
+'🧘 Frugality is the path to peace. Record the purchase.',
+
+'📋 Money loves order. Time to make an entry.'
   ],
   reminder_message_title: 'Reminder',
   reminder_turn_on_off: (enabled) => enabled ? 'Turn reminders OFF' : 'Turn reminders ON',

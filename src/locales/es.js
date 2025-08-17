@@ -3,11 +3,50 @@ module.exports = {
     reminders_enabled: 'Recordatorios activados. Si no registras nada antes de las 18:00, te lo recordaré con humor 😉',
     reminders_disabled: 'Recordatorios desactivados. Silencio total 🤐',
     reminder_sample_variants: [
-      '¡Eh! Que tu cartera esté callada no significa que esté feliz. Registra tus gastos 😉',
-      '¿Ya gastaste algo hoy? Anótalo antes de que la memoria se vaya a por pan 🧠🥖',
-      'Si no lo registras, es como si lo hubieras gastado en el vacío. Vamos a anotarlo 💸',
-      'Gota a gota el presupuesto se va al mar. Registra los gastos de hoy 🌊',
-      'El bot no regaña, el bot recuerda: es hora de registrar gastos 😌'
+      '👋 ¡Hey! Si tu cartera está en silencio, no significa que sea feliz. Registra tus gastos 😉',
+'🤔 ¿Ya gastaste algo hoy? Escríbelo antes de que la memoria se vaya a por pan 🧠🥖',
+'💭 Si no lo anotaste, considéralo gastado en el vacío. Vamos a registrarlo 💸',
+'🌊 Gota a gota, el presupuesto se escapa sin que te des cuenta. Mejor anota los gastos de hoy 🌊',
+'🤖 El bot no regaña, solo recuerda: es hora de registrar los gastos 😌',
+'💡 Cuida el céntimo y ahorrarás el euro. ¡Hora de hacer una nota!',
+
+'💰 El dinero ama el conteo y el silencio. Registra tus gastos.',
+
+'💡 No gastes en vano: ahorra para lo importante. Hora de hacer un registro.',
+
+'🏗️ Pequeños ahorros, grandes logros. Añade una compra ahora.',
+
+'🌱 Ahorra hoy y respira más tranquilo mañana. Registra tus gastos.',
+
+'🔄 Un rublo bien cuidado trae dos. Registra un gasto en un minuto.',
+
+'⏰ Primero ahorra, luego gasta. ¡Hora de hacer una nota!',
+
+'🧱 Cada céntimo es un ladrillo de libertad. Registra un gasto.',
+
+'🛡️ Ahorra con antelación para los días lluviosos. Añade un registro ahora.',
+
+'📈 El gasto inteligente es la mejor inversión. Registra la compra.',
+
+'🎯 Controlar los gastos = menos preocupaciones. Registra tus gastos.',
+
+'🚀 Menos impulsos, más oportunidades. Hora de hacer un registro.',
+
+'💎 Pága­te a ti primero. Añade un gasto en el bot.',
+
+'✂️ Un gasto innecesario recortado es un ingreso ganado. Registra la compra.',
+
+'🎪 Un presupuesto es libertad de elección. Registra los gastos de hoy.',
+
+'🌟 Ahorrar es un “sí” a tu futuro. ¡Hora de hacer una nota!',
+
+'⚡ La disciplina vence al caos. Registra el gasto.',
+
+'⏳ El dinero se va en silencio: registra a tiempo. Añade un gasto ahora.',
+
+'🧘 La frugalidad es el camino a la calma. Registra la compra.',
+
+'📋 El dinero ama el orden. Hora de hacer un registro.'
     ],
     reminder_message_title: 'Recordatorio',
     reminder_turn_on_off: (enabled) => enabled ? 'Desactivar recordatorios' : 'Activar recordatorios',

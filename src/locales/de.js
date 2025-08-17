@@ -3,11 +3,50 @@ module.exports = {
     reminders_enabled: 'Erinnerungen sind aktiviert. Wenn du bis 18:00 Uhr nichts einträgst, erinnere ich dich mit einem kleinen Scherz 😉',
     reminders_disabled: 'Erinnerungen sind deaktiviert. Absolute Stille 🤐',
     reminder_sample_variants: [
-      'Hey! Nur weil dein Geldbeutel still ist, heißt das nicht, dass er glücklich ist. Trag deine Ausgaben ein 😉',
-      'Heute schon etwas ausgegeben? Schreib es auf, bevor dein Gedächtnis zum Bäcker läuft 🧠🥖',
-      'Nicht notiert? Dann ist es wie ins Nichts ausgegeben. Lass uns das eintragen 💸',
-      'Tropfen für Tropfen läuft das Budget ins Meer. Trag heute deine Ausgaben ein 🌊',
-      'Der Bot schimpft nicht, er erinnert dich: Zeit, deine Ausgaben einzutragen 😌'
+     '👋 Hey! Wenn dein Geldbeutel schweigt, heißt das noch nicht, dass er glücklich ist. Notiere deine Ausgaben 😉',
+'🤔 Heute schon etwas ausgegeben? Schreib’s auf, bevor das Gedächtnis fürs Brot rausgeht 🧠🥖',
+'💭 Wenn du es nicht notiert hast – gilt es als ins Leere ausgegeben. Lass es uns festhalten 💸',
+'🌊 Tropfen für Tropfen – und das Budget läuft unbemerkt davon. Besser, du notierst die heutigen Ausgaben 🌊',
+'🤖 Der Bot meckert nicht, er erinnert nur: Zeit, die Ausgaben zu notieren 😌',
+'💡 Schone den Pfennig – dann bleibt die Mark erhalten. Zeit, eine Notiz zu machen!',
+
+'💰 Geld liebt Zählung und Ruhe. Notiere deine Ausgaben.',
+
+'💡 Gib nicht unnötig aus – spare für das Wichtige. Zeit für einen Eintrag.',
+
+'🏗️ Kleine Ersparnisse – große Taten. Füge jetzt einen Kauf hinzu.',
+
+'🌱 Heute sparen – morgen leichter atmen. Notiere deine Ausgaben.',
+
+'🔄 Der gehütete Rubel bringt zwei. Trage eine Ausgabe in einer Minute ein.',
+
+'⏰ Zuerst zurücklegen – dann ausgeben. Zeit, eine Notiz zu machen!',
+
+'🧱 Jeder Cent ist ein Baustein der Freiheit. Notiere eine Ausgabe.',
+
+'🛡️ Spare im Voraus für schlechte Zeiten. Füge jetzt einen Eintrag hinzu.',
+
+'📈 Kluges Ausgeben ist die beste Investition. Protokolliere den Kauf.',
+
+'🎯 Ausgabenkontrolle = weniger Sorgen. Notiere deine Ausgaben.',
+
+'🚀 Weniger Impulse – mehr Möglichkeiten. Zeit für einen Eintrag.',
+
+'💎 Bezahle zuerst dich selbst. Füge eine Ausgabe im Bot hinzu.',
+
+'✂️ Gestrichene unnötige Ausgabe = gewonnener Einnahmenanteil. Protokolliere den Kauf.',
+
+'🎪 Ein Budget ist Freiheit der Wahl. Notiere die heutigen Ausgaben.',
+
+'🌟 Ersparnisse sind ein „Ja“ an deine Zukunft. Zeit, eine Notiz zu machen!',
+
+'⚡ Disziplin schlägt Chaos. Protokolliere die Ausgabe.',
+
+'⏳ Geld verschwindet leise – rechtzeitig notieren. Füge jetzt eine Ausgabe hinzu.',
+
+'🧘 Sparsamkeit ist der Weg zur Gelassenheit. Notiere den Kauf.',
+
+'📋 Geld liebt Ordnung. Zeit für einen Eintrag.'
     ],
     reminder_message_title: 'Erinnerung',
     reminder_turn_on_off: (enabled) => enabled ? 'Erinnerungen ausschalten' : 'Erinnerungen einschalten',

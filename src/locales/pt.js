@@ -3,11 +3,50 @@ module.exports = {
     reminders_enabled: 'Lembretes ativados. Se não registrar nada até às 18:00, vou lembrar com um toque de humor 😉',
     reminders_disabled: 'Lembretes desativados. Silêncio total 🤐',
     reminder_sample_variants: [
-      'Ei! O fato da sua carteira estar calada não significa que ela esteja feliz. Registre suas despesas 😉',
-      'Já gastou algo hoje? Anote antes que a memória vá comprar pão 🧠🥖',
-      'Se não registrar, é como se tivesse gastado no vazio. Vamos registrar 💸',
-      'Gota a gota, o orçamento vai para o mar. Registre as despesas de hoje 🌊',
-      'O bot não reclama, o bot lembra: hora de registrar despesas 😌'
+      '👋 Ei! Se a sua carteira está silenciosa, não quer dizer que esteja feliz. Registre seus gastos 😉',
+'🤔 Já gastou algo hoje? Anote antes que a memória saia para comprar pão 🧠🥖',
+'💭 Se você não registrou — considere gasto no vazio. Vamos lançar isso 💸',
+'🌊 Gota a gota, o orçamento vai embora sem perceber. Melhor anotar as despesas de hoje 🌊',
+'🤖 O bot não reclama, só lembra: é hora de registrar as despesas 😌',
+'💡 Cuide dos centavos — o real se preserva. Hora de fazer uma nota!',
+
+'💰 O dinheiro ama contagem e silêncio. Registre seus gastos.',
+
+'💡 Não gaste à toa — poupe para o que importa. Hora de fazer um registro.',
+
+'🏗️ Pequenas economias — grandes resultados. Adicione uma compra agora.',
+
+'🌱 Economize hoje — respire mais leve amanhã. Registre seus gastos.',
+
+'🔄 Real bem guardado traz dois. Lance uma despesa em um minuto.',
+
+'⏰ Primeiro poupe — depois gaste. Hora de fazer uma nota!',
+
+'🧱 Cada centavo é um tijolo de liberdade. Registre uma despesa.',
+
+'🛡️ Poupe com antecedência para dias de chuva. Adicione um registro agora.',
+
+'📈 Gastar com inteligência é o melhor investimento. Registre a compra.',
+
+'🎯 Controle de gastos = menos preocupações. Registre seus gastos.',
+
+'🚀 Menos impulsos — mais oportunidades. Hora de fazer um registro.',
+
+'💎 Pague a si mesmo primeiro. Adicione uma despesa no bot.',
+
+'✂️ Despesa desnecessária cortada = renda conquistada. Registre a compra.',
+
+'🎪 Orçamento é liberdade de escolha. Registre as despesas de hoje.',
+
+'🌟 Poupança é um “sim” ao seu futuro. Hora de fazer uma nota!',
+
+'⚡ Disciplina vence o caos. Registre a despesa.',
+
+'⏳ O dinheiro vai embora em silêncio — registre a tempo. Adicione uma despesa agora.',
+
+'🧘 Frugalidade é o caminho para a tranquilidade. Registre a compra.',
+
+'📋 O dinheiro gosta de ordem. Hora de fazer um registro.'
     ],
     reminder_message_title: 'Lembrete',
     reminder_turn_on_off: (enabled) => enabled ? 'Desativar lembretes' : 'Ativar lembretes',

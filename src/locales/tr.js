@@ -3,11 +3,50 @@ module.exports = {
     reminders_enabled: 'Hatırlatıcılar açık. 18:00’e kadar hiçbir şey kaydetmezsen seni küçük bir espriyle hatırlatırım 😉',
     reminders_disabled: 'Hatırlatıcılar kapalı. Tam sessizlik 🤐',
     reminder_sample_variants: [
-      'Hey! Cüzdanının sessiz olması mutlu olduğu anlamına gelmez. Harcamalarını yaz 😉',
-      'Bugün bir şey harcadın mı? Hafızan ekmek almaya gitmeden önce yaz 🧠🥖',
-      'Kaydetmezsen sanki parayı havaya uçurmuşsun gibi olur. Hadi not alalım 💸',
-      'Damlaya damlaya bütçe denize akar. Bugünün harcamasını kaydet 🌊',
-      'Bot azarlamaz, hatırlatır: Harcama yazma zamanı 😌'
+      '👋 Hey! Cüzdanın sessizse bu, onun mutlu olduğu anlamına gelmez. Harcamalarını kaydet 😉',
+'🤔 Bugün bir şey harcadın mı? Hafızan ekmek almaya gitmeden önce yaz 🧠🥖',
+'💭 Eğer kaydetmediysen — boşa gitmiş say. Hadi bunu kaydedelim 💸',
+'🌊 Damla damla, bütçe fark etmeden akıp gider. Bugünün harcamalarını yazmak daha iyi 🌊',
+'🤖 Bot azarlamaz, sadece hatırlatır: harcamaları kaydetme zamanı 😌',
+'💡 Kuruşu korursan — liran da korunur. Not alma zamanı!',
+
+'💰 Para sayımı ve sessizliği sever. Harcamalarını kaydet.',
+
+'💡 Boş yere harcama — önemli olana biriktir. Kayıt zamanı.',
+
+'🏗️ Küçük tasarruflar — büyük işler. Şimdi bir alışveriş ekle.',
+
+'🌱 Bugün tasarruf et — yarın daha rahat nefes al. Harcamalarını kaydet.',
+
+'🔄 Korumalı lira iki kat gelir getirir. Bir dakikada bir harcama kaydet.',
+
+'⏰ Önce biriktir — sonra harca. Not alma zamanı!',
+
+'🧱 Her kuruş özgürlüğün bir tuğlasıdır. Bir harcama kaydet.',
+
+'🛡️ Kötü günler için önceden biriktir. Şimdi bir kayıt ekle.',
+
+'📈 Akıllı harcama en iyi yatırımdır. Satın alımı kaydet.',
+
+'🎯 Harcama kontrolü = daha az endişe. Harcamalarını kaydet.',
+
+'🚀 Daha az dürtü — daha çok fırsat. Kayıt zamanı.',
+
+'💎 Önce kendine ödeme yap. Bota bir harcama ekle.',
+
+'✂️ Kesilen gereksiz harcama = kazanılan gelir. Satın alımı kaydet.',
+
+'🎪 Bütçe, seçim özgürlüğüdür. Bugünün harcamalarını kaydet.',
+
+'🌟 Birikim, geleceğine “evet” demektir. Not alma zamanı!',
+
+'⚡ Disiplin kaosu yener. Harcamayı kaydet.',
+
+'⏳ Para sessizce gider — zamanında kaydet. Şimdi bir harcama ekle.',
+
+'🧘 Tutumluluk huzura giden yoldur. Satın alımı kaydet.',
+
+'📋 Para düzeni sever. Kayıt zamanı.'
     ],
     reminder_message_title: 'Hatırlatma',
     reminder_turn_on_off: (enabled) => enabled ? 'Hatırlatıcıları kapat' : 'Hatırlatıcıları aç',
