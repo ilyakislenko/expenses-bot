@@ -284,7 +284,7 @@ class Container {
 
       case 'keyboardGenerators':
         return {
-          generateMainMenuKeyboard: (userLanguage, isAdmin = false) => generateMainMenuKeyboard(this.get('localizationService'), userLanguage, isAdmin),
+          generateMainMenuKeyboard: (userLanguage, isAdmin = false, hasFamily = false, isPremium = false) => generateMainMenuKeyboard(this.get('localizationService'), userLanguage, isAdmin, hasFamily, isPremium),
           generateInlineMainMenu: (userLanguage, isAdmin = false) => generateInlineMainMenu(this.get('localizationService'), userLanguage, isAdmin),
           generateCurrencyKeyboard: (userLanguage) => generateCurrencyKeyboard(this.get('localizationService'), userLanguage),
           generateSettingsKeyboard: (userLanguage, reminderEnabled) => generateSettingsKeyboard(this.get('localizationService'), userLanguage, reminderEnabled),

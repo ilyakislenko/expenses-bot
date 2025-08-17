@@ -517,7 +517,20 @@ class CallbackHandlers {
         const isAdmin = await this.userService.isUserAdmin(userId);
         
         // Обновляем reply-клавиатуру на новом языке
-        const newMainMenuKeyboard = this.keyboardGenerators.generateMainMenuKeyboard(languageCode, isAdmin);
+        // Проверяем, есть ли у пользователя семья и премиум для показа кнопки "добавить семейную трату"
+        let hasFamily = false;
+        let isPremium = false;
+        try {
+          isPremium = await this.premiumService.isPremiumUser(userId);
+          if (isPremium) {
+            hasFamily = await this.familyService.getUserFamily(userId);
+            hasFamily = !!hasFamily; // преобразуем в boolean
+          }
+        } catch (error) {
+          // В случае ошибки просто показываем базовое меню
+        }
+        
+        const newMainMenuKeyboard = this.keyboardGenerators.generateMainMenuKeyboard(languageCode, isAdmin, hasFamily, isPremium);
         
         await ctx.telegram.sendMessage(ctx.chat.id, 
           this.localizationService.getText(languageCode, 'keyboard_updated'), 

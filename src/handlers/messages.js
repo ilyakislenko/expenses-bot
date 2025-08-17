@@ -70,6 +70,47 @@ constructor({ expenseService, userService, premiumService, familyService, catego
         return;
       }
       
+      // Обработка кнопки "добавить семейную трату"
+      const familyAddExpenseText = this.localizationService.getText(userLanguage, 'family_add_expense');
+      if (text === familyAddExpenseText) {
+        // Проверяем, есть ли у пользователя семья и премиум
+        try {
+          const isPremium = await this.premiumService.isPremiumUser(userId);
+          if (!isPremium) {
+            const premiumRequiredText = this.localizationService.getText(userLanguage, 'premium_required');
+            await ctx.reply(premiumRequiredText);
+            return;
+          }
+          
+          const userFamily = await this.familyService.getUserFamily(userId);
+          if (!userFamily) {
+            const notFamilyMemberText = this.localizationService.getText(userLanguage, 'not_family_member');
+            await ctx.reply(notFamilyMemberText);
+            return;
+          }
+          
+          // Устанавливаем состояние добавления семейной траты
+          this.stateService.setUserState(userId, 'adding_family_expense');
+          
+          const enterExpenseText = this.localizationService.getText(userLanguage, 'enter_expense_amount');
+          const cancelText = this.localizationService.getText(userLanguage, 'family_cancel');
+          
+          await ctx.reply(enterExpenseText, {
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: cancelText, callback_data: 'family_cancel' }]
+              ]
+            }
+          });
+          return;
+        } catch (error) {
+          console.error('Error handling family add expense button:', error);
+          const errorText = this.localizationService.getText(userLanguage, 'error');
+          await ctx.reply(errorText);
+          return;
+        }
+      }
+      
       // Обработка премиум подписки
       const premiumSubscriptionText = this.localizationService.getText(userLanguage, 'premium_subscription_title');
       if (text === premiumSubscriptionText) {
