@@ -9,11 +9,50 @@ module.exports = {
   button_save: 'Save',
   button_clear: 'Clear',
   reminder_sample_variants: [
-    "Hey! If your wallet is silent, it doesn't mean it’s happy. Log your expenses 😉",
-    'Spent anything today? Write it down before your memory goes shopping 🧠🥖',
-    'If you didn’t track it — you basically threw it away. Let’s fix that 💸',
-    'Drop by drop — the budget becomes a river. Log today’s expenses 🌊',
-    'Not nagging, just reminding: time to record your spending 😌'
+   '👋 Hey! If your wallet is silent, it doesn’t mean it’s happy. Record your expenses 😉',
+'🤔 Spent anything today? Write it down before your memory goes out for bread 🧠🥖',
+'💭 If you didn’t record it — consider it spent into the void. Let’s log it 💸',
+'🌊 Drop by drop — and the budget slips away unnoticed. Better record today’s expenses 🌊',
+'🤖 The bot doesn’t nag, it just reminds: time to record expenses 😌',
+'💡 Take care of a penny — and a ruble will be saved. Time to make a note!',
+
+'💰 Money loves counting and quiet. Record your expenses.',
+
+'💡 Don’t waste in vain — save for what matters. Time to make an entry.',
+
+'🏗️ Small savings — big results. Add a purchase now.',
+
+'🌱 Save today — breathe easier tomorrow. Record your expenses.',
+
+'🔄 A guarded ruble brings two. Log an expense in a minute.',
+
+'⏰ Save first — spend later. Time to make a note!',
+
+'🧱 Every penny is a brick of freedom. Record an expense.',
+
+'🛡️ Save for a rainy day in advance. Add an entry now.',
+
+'📈 Smart spending is the best investment. Log the purchase.',
+
+'🎯 Expense control = fewer worries. Record your expenses.',
+
+'🚀 Fewer impulses — more opportunities. Time to make an entry.',
+
+'💎 Pay yourself first. Add an expense in the bot.',
+
+'✂️ A cut unnecessary expense is a gained income. Log the purchase.',
+
+'🎪 A budget is freedom of choice. Record today’s expenses.',
+
+'🌟 Savings are a “yes” to your future. Time to make a note!',
+
+'⚡ Discipline beats chaos. Log the expense.',
+
+'⏳ Money slips away quietly — record in time. Add an expense now.',
+
+'🧘 Frugality is the path to peace. Record the purchase.',
+
+'📋 Money loves order. Time to make an entry.'
   ],
   reminder_message_title: 'Reminder',
   reminder_turn_on_off: (enabled) => enabled ? 'Turn reminders OFF' : 'Turn reminders ON',
@@ -410,7 +449,9 @@ Now all your expenses will be correctly displayed in your local time.`,
   category_other: 'Other',
   
   // Family Budget
-  family_info: '👨‍👩‍👧‍👦 *Family Budget*\n\nHere you can manage family expenses together with your loved ones.',
+  family_label: '🏠 *Family:*',
+  family_owner_label: '👑 *Owner:*',
+  family_info: '👨‍👩‍👧‍👦 *Family Budget*\n\nHere you can manage expenses together with family, colleagues, friends, etc.\n\n- \uD83D\uDC6A A shared group is created to track joint expenses.\n- \u2795 Each member can add expenses.\n- \uD83D\uDDD1\uFE0F You can delete your own expenses if needed.\n- \uD83D\uDCCA Shared statistics are available for all members.\n- \uD83D\uDCE4 Export the entire group’s data into a single file.\n\nShared control means less chaos and more transparency.',
   family_created: '✅ Family "{name}" created! Now you can invite members.',
   family_joined: '✅ You joined family "{name}"!',
   family_left: '✅ You left family "{name}".',
@@ -566,6 +607,7 @@ Now all your expenses will be correctly displayed in your local time.`,
   // Custom categories (premium)
   custom_categories_title: '🏷️ Custom Categories',
   custom_categories_info: 'Here you can create your own expense categories (premium only).',
+  custom_categories_example: '💡 Example: "🌍 Travel" or "🎮 Games"',
   custom_categories_add: '➕ Add Category',
   custom_categories_manage: '🗂️ Manage Categories',
   custom_categories_enter_name: 'Enter the new category name (1-30 characters):',

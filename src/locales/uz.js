@@ -3,11 +3,32 @@ module.exports = {
     reminders_enabled: 'Eslatmalar yoqilgan. Agar soat 18:00 gacha hech narsa yozmasangiz — biroz hazil bilan eslatib qo‘yaman 😉',
     reminders_disabled: 'Eslatmalar o‘chirilgan. To‘liq jimlik 🤐',
     reminder_sample_variants: [
-      'Salom! Hamyoningiz jim turishi uning baxtli ekanini anglatmaydi. Xarajatlaringizni yozib boring 😉',
-      'Bugun nimagadir pul sarfladingizmi? Xotirangiz non olishga chiqib ketmasidan oldin yozib qo‘ying 🧠🥖',
-      'Yozib qo‘ymasangiz, go‘yo pulingiz havoga ketadi. Keling, qayd qilamiz 💸',
-      'Tomchi-tomchi byudjet dengizga oqib ketadi. Bugungi xarajatni yozib qo‘ying 🌊',
-      'Bot koyimaydi, faqat eslatadi: xarajat yozish vaqti keldi 😌'
+      '👋 Hey! Hamyoning jim bo‘lsa ham, bu uning baxtli ekanini anglatmaydi. Xarajatlaringni yozib qo‘y 😉',
+'🤔 Bugun nimagadir pul sarfladingmi? Xotira non olishga chiqib ketmasidan oldin yozib qo‘y 🧠🥖',
+'💭 Agar yozmagan bo‘lsang — bo‘shliqqa sarflangandek hisobla. Keling, buni qayd etamiz 💸',
+'🌊 Tomchi‑tomchi qilib byudjet sezilmay oqib ketadi. Bugungi xarajatlarni yozib qo‘ygan afzal 🌊',
+'🤖 Bot koyimaydi, shunchaki eslatadi: xarajatlarni yozib borish vaqti 😌',
+'💡 Tiyinni asrasang — so‘ming saqlanadi. Eslatma yozish vaqti!',
+
+'💰 Pul hisob va sukunatni yaxshi ko‘radi. Xarajatlaringni yoz.',
+'💡 Bekorga sarflama — muhim narsalar uchun tejab qo‘y. Qayd qilish vaqti.',
+'🏗️ Kichik tejab‑tergilar — katta natijalar. Hozir xarid qo‘sh.',
+'🌱 Bugun tejab qo‘y — ertaga yengil nafas olasan. Xarajatlaringni yoz.',
+'🔄 Asralgan so‘m ikkitasini olib keladi. Bir daqiqada xarajatni qayd et.',
+'⏰ Avval tejab qo‘y — keyin sarfla. Eslatma yozish vaqti!',
+'🧱 Har bir tiyin — erkinlik g‘ishtidan biridir. Bir xarajatni yoz.',
+'🛡️ “Qora kun” uchun oldindan tejab qo‘y. Hozir qayd qo‘sh.',
+'📈 Aql bilan sarflash — eng yaxshi sarmoya. Xaridni qayd et.',
+'🎯 Xarajatlarni nazorat qilish = kamroq tashvish. Xarajatlaringni yoz.',
+'🚀 Kamroq impuls — ko‘proq imkoniyat. Qayd qilish vaqti.',
+'💎 Avval o‘zingga to‘la. Botga bir xarajat qo‘sh.',
+'✂️ Ortiqcha xarajatni qisqartirish — topilgan daromad. Xaridni qayd et.',
+'🎪 Byudjet — tanlash erkinligi. Bugungi xarajatlarni yoz.',
+'🌟 Jamg‘arma — kelajagingga “ha” deyishdir. Eslatma yozish vaqti!',
+'⚡ Intizom — tartibsizlikni yengadi. Xarajatni qayd et.',
+'⏳ Pul sekin‑asta chiqib ketadi — o‘z vaqtida yoz. Hozir bir xarajat qo‘sh.',
+'🧘 Tejamkorlik — xotirjamlikka eltuvchi yo‘l. Xaridni qayd et.',
+'📋 Pul tartibni yaxshi ko‘radi. Qayd qilish vaqti.'
     ],
     reminder_message_title: 'Eslatma',
     reminder_turn_on_off: (enabled) => enabled ? 'Eslatmalarni o\'chirish' : 'Eslatmalarni yoqish',
@@ -290,7 +311,10 @@ module.exports = {
     timezone_set: '✅ Vaqt zonasi o‘rnatildi: {timezone}',
     // Oilaviy byudjet
     button_family: '👨‍👩‍👧‍👦 Oila',
-    family_info: '👨‍👩‍👧‍👦 *Oilaviy byudjet*\n\nBu yerda oilangiz bilan umumiy xarajatlarni birgalikda boshqarishingiz mumkin.',
+    // Family labels
+    family_label: '🏠 *Oila:*',
+    family_owner_label: '👑 *Egas:*',
+    family_info: '👨‍👩‍👧‍👦 *Oila byudjeti*\n\nBu yerda siz oila a’zolari, hamkasblar, do‘stlar va h.k. bilan birga xarajatlarni birgalikda boshqarishingiz mumkin.\n\n- \uD83D\uDC6A Qo‘shma xarajatlarni hisobga olish uchun umumiy guruh yaratiladi.\n- \u2795 Har bir a’zo xarajat qo‘shishi mumkin.\n- \uD83D\uDDD1\uFE0F Zarur bo‘lsa, o‘z xarajatlaringizni o‘chirishingiz mumkin.\n- \uD83D\uDCCA Barcha a’zolar uchun umumiy statistika mavjud.\n- \uD83D\uDCE4 Butun guruh ma’lumotlarini yagona faylga eksport qilish mumkin.\n\nBirgalikda nazorat — kamroq tartibsizlik va ko‘proq oshkoralik demakdir.',
     family_created: '✅ "{name}" nomli oila yaratildi! Endi a’zolarni taklif qilishingiz mumkin.',
     family_joined: '✅ "{name}" oilasiga qo‘shildingiz!',
     family_left: '✅ "{name}" oilasidan chiqdingiz.',
@@ -560,5 +584,8 @@ module.exports = {
     custom_categories_list_title: 'Sizning maxsus kategoriyalaringiz:',
     custom_categories_delete: '🗑️ O‘chirish',
     custom_categories_deleted: '✅ Kategoriya o‘chirildi.',
-    custom_categories_premium_required: '💎 Ushbu funksiya faqat Premium foydalanuvchilar uchun.'
+    custom_categories_premium_required: '💎 Ushbu funksiya faqat Premium foydalanuvchilar uchun.',
+    
+    // Maxsus kategoriya misollari
+    custom_categories_example: '💡 Misol: "🌍 Sayohat" yoki "🎮 O\'yinlar"'
 };

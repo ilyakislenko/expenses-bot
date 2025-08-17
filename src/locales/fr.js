@@ -3,11 +3,50 @@ module.exports = {
     reminders_enabled: 'Rappels activés. Si tu n’as rien enregistré avant 18h00, je te le rappellerai avec humour 😉',
     reminders_disabled: 'Rappels désactivés. Silence total 🤐',
     reminder_sample_variants: [
-      'Hé ! Ce n’est pas parce que ton portefeuille se tait qu’il est heureux. Note tes dépenses 😉',
-      'Tu as déjà dépensé aujourd’hui ? Note-le avant que ta mémoire ne parte acheter du pain 🧠🥖',
-      'Si tu ne l’enregistres pas, considère que c’est dépensé dans le vide. Allons noter ça 💸',
-      'Goutte après goutte, le budget file à la mer. Note tes dépenses du jour 🌊',
-      'Le bot ne râle pas, il te rappelle : c’est l’heure de noter tes dépenses 😌'
+      '👋 Hé ! Si ton portefeuille se tait, ça ne veut pas dire qu’il est heureux. Enregistre tes dépenses 😉',
+'🤔 Tu as déjà dépensé quelque chose aujourd’hui ? Note-le avant que la mémoire ne parte chercher du pain 🧠🥖',
+'💭 Si tu ne l’as pas noté, considère que c’est dépensé dans le vide. Allons l’enregistrer 💸',
+'🌊 Goutte après goutte, le budget s’échappe sans qu’on s’en rende compte. Mieux vaut noter les dépenses d’aujourd’hui 🌊',
+'🤖 Le bot ne râle pas, il rappelle : il est temps d’enregistrer les dépenses 😌',
+'💡 Épargne le centime — le franc suivra. Il est temps de prendre une note !',
+
+'💰 L’argent aime le comptage et le silence. Enregistre tes dépenses.',
+
+'💡 Ne dépense pas en vain — épargne pour l’essentiel. Il est temps de faire une entrée.',
+
+'🏗️ Petites économies — grands résultats. Ajoute un achat maintenant.',
+
+'🌱 Économise aujourd’hui — respire plus librement demain. Enregistre tes dépenses.',
+
+'🔄 Un rouble bien gardé en rapporte deux. Enregistre une dépense en une minute.',
+
+'⏰ Mets de côté d’abord — dépense ensuite. Il est temps de prendre une note !',
+
+'🧱 Chaque centime est une brique de liberté. Enregistre une dépense.',
+
+'🛡️ Épargne à l’avance pour les jours de pluie. Ajoute une entrée maintenant.',
+
+'📈 Dépenser intelligemment est le meilleur investissement. Enregistre l’achat.',
+
+'🎯 Contrôler ses dépenses = moins de soucis. Enregistre tes dépenses.',
+
+'🚀 Moins d’impulsions — plus d’opportunités. Il est temps de faire une entrée.',
+
+'💎 Paie-toi d’abord. Ajoute une dépense dans le bot.',
+
+'✂️ Une dépense inutile supprimée = un revenu gagné. Enregistre l’achat.',
+
+'🎪 Un budget, c’est la liberté de choix. Enregistre les dépenses d’aujourd’hui.',
+
+'🌟 L’épargne est un “oui” à ton futur. Il est temps de prendre une note !',
+
+'⚡ La discipline bat le chaos. Enregistre la dépense.',
+
+'⏳ L’argent s’en va en silence — enregistre à temps. Ajoute une dépense maintenant.',
+
+'🧘 La frugalité est le chemin vers la sérénité. Enregistre l’achat.',
+
+'📋 L’argent aime l’ordre. Il est temps de faire une entrée.'
     ],
     reminder_message_title: 'Rappel',
     reminder_turn_on_off: (enabled) => enabled ? 'Désactiver les rappels' : 'Activer les rappels',
@@ -290,7 +329,9 @@ module.exports = {
     timezone_set: '✅ Fuseau horaire défini : {timezone}',
     // Budget familial
     button_family: '👨‍👩‍👧‍👦 Famille',
-    family_info: '👨‍👩‍👧‍👦 *Budget familial*\n\nIci, vous pouvez gérer les dépenses familiales avec vos proches.',
+    family_label: '🏠 *Famille:*',
+    family_owner_label: '👑 *Propriétaire:*',
+    family_info: '👨‍👩‍👧‍👦 Budget familial\n\nIci, vous pouvez gérer les dépenses avec votre famille, vos collègues, vos amis, etc.\n\n- \uD83D\uDC6A Un groupe partagé est créé pour suivre les dépenses communes.\n- \u2795 Chaque membre peut ajouter des dépenses.\n- \uD83D\uDDD1\uFE0F Vous pouvez supprimer vos propres dépenses si nécessaire.\n- \uD83D\uDCCA Des statistiques partagées sont disponibles pour tous les membres.\n- \uD83D\uDCE4 Exportez les données de tout le groupe dans un seul fichier.\n\nUn contrôle partagé signifie moins de chaos et plus de transparence.',
     family_created: '✅ Famille "{name}" créée ! Vous pouvez maintenant inviter des membres.',
     family_joined: '✅ Vous avez rejoint la famille "{name}" !',
     family_left: '✅ Vous avez quitté la famille "{name}".',
@@ -550,6 +591,7 @@ module.exports = {
     // Catégories personnalisées (premium)
     custom_categories_title: '🏷️ Catégories personnalisées',
     custom_categories_info: 'Vous pouvez créer vos propres catégories de dépenses (premium uniquement).',
+    custom_categories_example: '💡 Exemple: "🌍 Voyages" ou "🎮 Jeux"',
     custom_categories_add: '➕ Ajouter catégorie',
     custom_categories_manage: '🗂️ Gérer les catégories',
     custom_categories_enter_name: 'Entrez le nom de la nouvelle catégorie (1-30 caractères) :',

@@ -3,11 +3,50 @@ module.exports = {
     reminders_enabled: 'Erinnerungen sind aktiviert. Wenn du bis 18:00 Uhr nichts einträgst, erinnere ich dich mit einem kleinen Scherz 😉',
     reminders_disabled: 'Erinnerungen sind deaktiviert. Absolute Stille 🤐',
     reminder_sample_variants: [
-      'Hey! Nur weil dein Geldbeutel still ist, heißt das nicht, dass er glücklich ist. Trag deine Ausgaben ein 😉',
-      'Heute schon etwas ausgegeben? Schreib es auf, bevor dein Gedächtnis zum Bäcker läuft 🧠🥖',
-      'Nicht notiert? Dann ist es wie ins Nichts ausgegeben. Lass uns das eintragen 💸',
-      'Tropfen für Tropfen läuft das Budget ins Meer. Trag heute deine Ausgaben ein 🌊',
-      'Der Bot schimpft nicht, er erinnert dich: Zeit, deine Ausgaben einzutragen 😌'
+     '👋 Hey! Wenn dein Geldbeutel schweigt, heißt das noch nicht, dass er glücklich ist. Notiere deine Ausgaben 😉',
+'🤔 Heute schon etwas ausgegeben? Schreib’s auf, bevor das Gedächtnis fürs Brot rausgeht 🧠🥖',
+'💭 Wenn du es nicht notiert hast – gilt es als ins Leere ausgegeben. Lass es uns festhalten 💸',
+'🌊 Tropfen für Tropfen – und das Budget läuft unbemerkt davon. Besser, du notierst die heutigen Ausgaben 🌊',
+'🤖 Der Bot meckert nicht, er erinnert nur: Zeit, die Ausgaben zu notieren 😌',
+'💡 Schone den Pfennig – dann bleibt die Mark erhalten. Zeit, eine Notiz zu machen!',
+
+'💰 Geld liebt Zählung und Ruhe. Notiere deine Ausgaben.',
+
+'💡 Gib nicht unnötig aus – spare für das Wichtige. Zeit für einen Eintrag.',
+
+'🏗️ Kleine Ersparnisse – große Taten. Füge jetzt einen Kauf hinzu.',
+
+'🌱 Heute sparen – morgen leichter atmen. Notiere deine Ausgaben.',
+
+'🔄 Der gehütete Rubel bringt zwei. Trage eine Ausgabe in einer Minute ein.',
+
+'⏰ Zuerst zurücklegen – dann ausgeben. Zeit, eine Notiz zu machen!',
+
+'🧱 Jeder Cent ist ein Baustein der Freiheit. Notiere eine Ausgabe.',
+
+'🛡️ Spare im Voraus für schlechte Zeiten. Füge jetzt einen Eintrag hinzu.',
+
+'📈 Kluges Ausgeben ist die beste Investition. Protokolliere den Kauf.',
+
+'🎯 Ausgabenkontrolle = weniger Sorgen. Notiere deine Ausgaben.',
+
+'🚀 Weniger Impulse – mehr Möglichkeiten. Zeit für einen Eintrag.',
+
+'💎 Bezahle zuerst dich selbst. Füge eine Ausgabe im Bot hinzu.',
+
+'✂️ Gestrichene unnötige Ausgabe = gewonnener Einnahmenanteil. Protokolliere den Kauf.',
+
+'🎪 Ein Budget ist Freiheit der Wahl. Notiere die heutigen Ausgaben.',
+
+'🌟 Ersparnisse sind ein „Ja“ an deine Zukunft. Zeit, eine Notiz zu machen!',
+
+'⚡ Disziplin schlägt Chaos. Protokolliere die Ausgabe.',
+
+'⏳ Geld verschwindet leise – rechtzeitig notieren. Füge jetzt eine Ausgabe hinzu.',
+
+'🧘 Sparsamkeit ist der Weg zur Gelassenheit. Notiere den Kauf.',
+
+'📋 Geld liebt Ordnung. Zeit für einen Eintrag.'
     ],
     reminder_message_title: 'Erinnerung',
     reminder_turn_on_off: (enabled) => enabled ? 'Erinnerungen ausschalten' : 'Erinnerungen einschalten',
@@ -292,7 +331,10 @@ module.exports = {
     timezone_set: '✅ Zeitzone gesetzt: {timezone}',
     // Familienbudget
     button_family: '👨‍👩‍👧‍👦 Familie',
-    family_info: '👨‍👩‍👧‍👦 *Familienbudget*\n\nHier kannst du gemeinsam mit deiner Familie eure Ausgaben verwalten.',
+    // Family labels
+    family_label: '🏠 *Familie:*',
+    family_owner_label: '👑 *Eigentümer:*',
+    family_info: '👨‍👩‍👧‍👦 *Familienbudget*\n\nHier könnt ihr Ausgaben gemeinsam mit Familie, Kolleg:innen, Freund:innen usw. verwalten.\n\n- \uD83D\uDC6A Es wird eine gemeinsame Gruppe zur Erfassung gemeinsamer Ausgaben erstellt.\n- \u2795 Jedes Mitglied kann Ausgaben hinzufügen.\n- \uD83D\uDDD1\uFE0F Eigene Ausgaben können bei Bedarf gelöscht werden.\n- \uD83D\uDCCA Gemeinsame Statistiken sind für alle Mitglieder verfügbar.\n- \uD83D\uDCE4 Der gesamte Datensatz der Gruppe kann in eine Datei exportiert werden.\n\nGemeinsame Kontrolle bedeutet weniger Chaos und mehr Transparenz.',
     family_created: '✅ Familie "{name}" wurde erstellt! Du kannst nun Mitglieder einladen.',
     family_joined: '✅ Du bist der Familie "{name}" beigetreten!',
     family_left: '✅ Du hast die Familie "{name}" verlassen.',
@@ -552,6 +594,7 @@ module.exports = {
     // Eigene Kategorien (Premium)
     custom_categories_title: '🏷️ Eigene Kategorien',
     custom_categories_info: 'Hier kannst du eigene Ausgabenkategorien erstellen (nur Premium).',
+    custom_categories_example: '💡 Beispiel: "🌍 Reisen" oder "🎮 Spiele"',
     custom_categories_add: '➕ Kategorie hinzufügen',
     custom_categories_manage: '🗂️ Kategorien verwalten',
     custom_categories_enter_name: 'Namen der neuen Kategorie eingeben (1–30 Zeichen):',

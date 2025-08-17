@@ -517,7 +517,20 @@ class CallbackHandlers {
         const isAdmin = await this.userService.isUserAdmin(userId);
         
         // Обновляем reply-клавиатуру на новом языке
-        const newMainMenuKeyboard = this.keyboardGenerators.generateMainMenuKeyboard(languageCode, isAdmin);
+        // Проверяем, есть ли у пользователя семья и премиум для показа кнопки "добавить семейную трату"
+        let hasFamily = false;
+        let isPremium = false;
+        try {
+          isPremium = await this.premiumService.isPremiumUser(userId);
+          if (isPremium) {
+            hasFamily = await this.familyService.getUserFamily(userId);
+            hasFamily = !!hasFamily; // преобразуем в boolean
+          }
+        } catch (error) {
+          // В случае ошибки просто показываем базовое меню
+        }
+        
+        const newMainMenuKeyboard = this.keyboardGenerators.generateMainMenuKeyboard(languageCode, isAdmin, hasFamily, isPremium);
         
         await ctx.telegram.sendMessage(ctx.chat.id, 
           this.localizationService.getText(languageCode, 'keyboard_updated'), 
@@ -1473,6 +1486,7 @@ class CallbackHandlers {
 
       const title = this.localizationService.getText(userLanguage, 'custom_categories_title');
       const info = this.localizationService.getText(userLanguage, 'custom_categories_info');
+      const example = this.localizationService.getText(userLanguage, 'custom_categories_example');
       const addText = this.localizationService.getText(userLanguage, 'custom_categories_add');
       const manageText = this.localizationService.getText(userLanguage, 'custom_categories_manage');
       const backText = this.localizationService.getText(userLanguage, 'button_back');
@@ -1484,7 +1498,7 @@ class CallbackHandlers {
       ];
 
       await ctx.answerCbQuery();
-      await ctx.editMessageText(`${title}\n\n${info}`, {
+      await ctx.editMessageText(`${title}\n\n${info}\n\n${example}`, {
         reply_markup: { inline_keyboard: keyboard }
       });
     } catch (error) {
@@ -1507,10 +1521,11 @@ class CallbackHandlers {
       // Ставим состояние ожидания имени категории
       this.stateService.setUserState(userId, 'adding_custom_category');
       const enterName = this.localizationService.getText(userLanguage, 'custom_categories_enter_name');
+      const example = this.localizationService.getText(userLanguage, 'custom_categories_example');
       const backText = this.localizationService.getText(userLanguage, 'button_back');
 
       await ctx.answerCbQuery();
-      await ctx.editMessageText(enterName, {
+      await ctx.editMessageText(`${enterName}\n\n${example}`, {
         reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'custom_categories' }]] }
       });
     } catch (error) {
@@ -1589,9 +1604,10 @@ class CallbackHandlers {
       // Ставим состояние ожидания нового имени категории
       this.stateService.setUserState(userId, `renaming_custom_category:${idStr}`);
       const enterName = this.localizationService.getText(userLanguage, 'custom_categories_enter_name');
+      const example = this.localizationService.getText(userLanguage, 'custom_categories_example');
       const backText = this.localizationService.getText(userLanguage, 'button_back');
       await ctx.answerCbQuery();
-      await ctx.editMessageText(enterName, { reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'custom_categories_manage' }]] } });
+      await ctx.editMessageText(`${enterName}\n\n${example}`, { reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'custom_categories_manage' }]] } });
     } catch (error) {
       console.error('Error opening rename custom category:', error);
       await ctx.answerCbQuery(this.localizationService.getText(userLanguage, 'error'));

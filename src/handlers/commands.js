@@ -96,7 +96,20 @@ class CommandHandlers {
 
     const message = `${welcomeMessage}\n\n${startMessage}`;
 
-    const mainMenuKeyboard = this.keyboardGenerators.generateMainMenuKeyboard(userLanguage, isAdmin);
+    // Проверяем, есть ли у пользователя семья и премиум для показа кнопки "добавить семейную трату"
+    let hasFamily = false;
+    let isPremium = false;
+    try {
+      isPremium = await this.premiumService.isPremiumUser(user.id);
+      if (isPremium) {
+        hasFamily = await this.familyService.getUserFamily(user.id);
+        hasFamily = !!hasFamily; // преобразуем в boolean
+      }
+    } catch (error) {
+      // В случае ошибки просто показываем базовое меню
+    }
+
+    const mainMenuKeyboard = this.keyboardGenerators.generateMainMenuKeyboard(userLanguage, isAdmin, hasFamily, isPremium);
     await ctx.reply(message, {
       parse_mode: 'Markdown',
       reply_markup: {
@@ -453,7 +466,9 @@ class CommandHandlers {
         const familyName = userFamily.name;
         const ownerName = userFamily.owner_username || userFamily.owner_first_name || 'Unknown';
         
-        message = `${familyInfoText}\n\n🏠 *Семья:* ${familyName}\n👑 *Владелец:* ${ownerName}`;
+        const familyLabelText = this.localizationService.getText(userLanguage, 'family_label');
+        const ownerLabelText = this.localizationService.getText(userLanguage, 'family_owner_label');
+        message = `${familyInfoText}\n\n${familyLabelText} ${familyName}\n${ownerLabelText} ${ownerName}`;
         
         if (isOwner) {
           // Владелец семьи

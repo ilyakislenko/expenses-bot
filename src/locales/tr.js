@@ -3,11 +3,50 @@ module.exports = {
     reminders_enabled: 'Hatırlatıcılar açık. 18:00’e kadar hiçbir şey kaydetmezsen seni küçük bir espriyle hatırlatırım 😉',
     reminders_disabled: 'Hatırlatıcılar kapalı. Tam sessizlik 🤐',
     reminder_sample_variants: [
-      'Hey! Cüzdanının sessiz olması mutlu olduğu anlamına gelmez. Harcamalarını yaz 😉',
-      'Bugün bir şey harcadın mı? Hafızan ekmek almaya gitmeden önce yaz 🧠🥖',
-      'Kaydetmezsen sanki parayı havaya uçurmuşsun gibi olur. Hadi not alalım 💸',
-      'Damlaya damlaya bütçe denize akar. Bugünün harcamasını kaydet 🌊',
-      'Bot azarlamaz, hatırlatır: Harcama yazma zamanı 😌'
+      '👋 Hey! Cüzdanın sessizse bu, onun mutlu olduğu anlamına gelmez. Harcamalarını kaydet 😉',
+'🤔 Bugün bir şey harcadın mı? Hafızan ekmek almaya gitmeden önce yaz 🧠🥖',
+'💭 Eğer kaydetmediysen — boşa gitmiş say. Hadi bunu kaydedelim 💸',
+'🌊 Damla damla, bütçe fark etmeden akıp gider. Bugünün harcamalarını yazmak daha iyi 🌊',
+'🤖 Bot azarlamaz, sadece hatırlatır: harcamaları kaydetme zamanı 😌',
+'💡 Kuruşu korursan — liran da korunur. Not alma zamanı!',
+
+'💰 Para sayımı ve sessizliği sever. Harcamalarını kaydet.',
+
+'💡 Boş yere harcama — önemli olana biriktir. Kayıt zamanı.',
+
+'🏗️ Küçük tasarruflar — büyük işler. Şimdi bir alışveriş ekle.',
+
+'🌱 Bugün tasarruf et — yarın daha rahat nefes al. Harcamalarını kaydet.',
+
+'🔄 Korumalı lira iki kat gelir getirir. Bir dakikada bir harcama kaydet.',
+
+'⏰ Önce biriktir — sonra harca. Not alma zamanı!',
+
+'🧱 Her kuruş özgürlüğün bir tuğlasıdır. Bir harcama kaydet.',
+
+'🛡️ Kötü günler için önceden biriktir. Şimdi bir kayıt ekle.',
+
+'📈 Akıllı harcama en iyi yatırımdır. Satın alımı kaydet.',
+
+'🎯 Harcama kontrolü = daha az endişe. Harcamalarını kaydet.',
+
+'🚀 Daha az dürtü — daha çok fırsat. Kayıt zamanı.',
+
+'💎 Önce kendine ödeme yap. Bota bir harcama ekle.',
+
+'✂️ Kesilen gereksiz harcama = kazanılan gelir. Satın alımı kaydet.',
+
+'🎪 Bütçe, seçim özgürlüğüdür. Bugünün harcamalarını kaydet.',
+
+'🌟 Birikim, geleceğine “evet” demektir. Not alma zamanı!',
+
+'⚡ Disiplin kaosu yener. Harcamayı kaydet.',
+
+'⏳ Para sessizce gider — zamanında kaydet. Şimdi bir harcama ekle.',
+
+'🧘 Tutumluluk huzura giden yoldur. Satın alımı kaydet.',
+
+'📋 Para düzeni sever. Kayıt zamanı.'
     ],
     reminder_message_title: 'Hatırlatma',
     reminder_turn_on_off: (enabled) => enabled ? 'Hatırlatıcıları kapat' : 'Hatırlatıcıları aç',
@@ -291,7 +330,10 @@ module.exports = {
         timezone_set: '✅ Zaman dilimi ayarlandı: {timezone}',
     // Aile bütçesi
     button_family: '👨‍👩‍👧‍👦 Aile',
-    family_info: '👨‍👩‍👧‍👦 *Aile Bütçesi*\n\nBurada ailenizle birlikte ortak harcamaları yönetebilirsiniz.',
+    // Family labels
+    family_label: '🏠 *Aile:*',
+    family_owner_label: '👑 *Sahip:*',
+    family_info: '👨‍👩‍👧‍👦 *Aile Bütçesi*\n\nBurada aile, meslektaşlar, arkadaşlar vb. ile birlikte giderleri ortak şekilde yönetebilirsiniz.\n\n- \uD83D\uDC6A Ortak harcamaları kaydetmek için paylaşılan bir grup oluşturulur.\n- \u2795 Her üye gider ekleyebilir.\n- \uD83D\uDDD1\uFE0F Gerekirse kendi giderlerinizi silebilirsiniz.\n- \uD83D\uDCCA Tüm üyeler için ortak istatistikler mevcuttur.\n- \uD83D\uDCE4 Tüm grup verilerini tek bir dosyaya aktarabilirsiniz.\n\nOrtak kontrol, daha az kaos ve daha fazla şeffaflık demektir.',
     family_created: '✅ "{name}" adlı aile oluşturuldu! Şimdi üye davet edebilirsiniz.',
     family_joined: '✅ "{name}" ailesine katıldınız!',
     family_left: '✅ "{name}" ailesinden ayrıldınız.',
@@ -551,6 +593,7 @@ module.exports = {
     // Özel kategoriler (Premium)
     custom_categories_title: '🏷️ Özel kategoriler',
     custom_categories_info: 'Özel harcama kategorileri oluşturabilirsiniz (yalnızca Premium).',
+    custom_categories_example: '💡 Örnek: "🌍 Seyahat" veya "🎮 Oyunlar"',
     custom_categories_add: '➕ Kategori ekle',
     custom_categories_manage: '🗂️ Kategorileri yönet',
     custom_categories_enter_name: 'Yeni kategori adını girin (1-30 karakter):',

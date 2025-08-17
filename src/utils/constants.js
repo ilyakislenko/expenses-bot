@@ -69,7 +69,7 @@ const PREMIUM_TARIFFS = {
 
 
 // Функция для генерации главного меню (reply-клавиатура)
-function generateMainMenuKeyboard(localizationService, userLanguage, isAdmin = false) {
+function generateMainMenuKeyboard(localizationService, userLanguage, isAdmin = false, hasFamily = false, isPremium = false) {
   const keyboard = [
     [{ text: localizationService.getText(userLanguage, 'button_help') }],
     [
@@ -77,11 +77,19 @@ function generateMainMenuKeyboard(localizationService, userLanguage, isAdmin = f
       { text: localizationService.getText(userLanguage, 'button_expenses_day') }
     ],
     [{ text: localizationService.getText(userLanguage, 'button_expenses_categories') }],
-    [{ text: localizationService.getText(userLanguage, 'button_family') }],
+    [{ text: localizationService.getText(userLanguage, 'button_family') }]
+  ];
+
+  // Добавляем кнопку "добавить семейную трату" только если у пользователя есть семья и премиум
+  if (hasFamily && isPremium) {
+    keyboard.push([{ text: localizationService.getText(userLanguage, 'family_add_expense') }]);
+  }
+
+  keyboard.push(
     [{ text: localizationService.getText(userLanguage, 'button_settings') }],
     [{ text: localizationService.getText(userLanguage, 'button_delete_last') }],
     [{ text: localizationService.getText(userLanguage, 'premium_subscription_title') }]
-  ];
+  );
 
   // Добавляем кнопку админки только для администраторов
   if (isAdmin) {
