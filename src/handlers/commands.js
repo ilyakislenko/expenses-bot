@@ -466,7 +466,9 @@ class CommandHandlers {
         const familyName = userFamily.name;
         const ownerName = userFamily.owner_username || userFamily.owner_first_name || 'Unknown';
         
-        message = `${familyInfoText}\n\n🏠 *Семья:* ${familyName}\n👑 *Владелец:* ${ownerName}`;
+        const familyLabelText = this.localizationService.getText(userLanguage, 'family_label');
+        const ownerLabelText = this.localizationService.getText(userLanguage, 'family_owner_label');
+        message = `${familyInfoText}\n\n${familyLabelText} ${familyName}\n${ownerLabelText} ${ownerName}`;
         
         if (isOwner) {
           // Владелец семьи

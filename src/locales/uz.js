@@ -311,7 +311,10 @@ module.exports = {
     timezone_set: '✅ Vaqt zonasi o‘rnatildi: {timezone}',
     // Oilaviy byudjet
     button_family: '👨‍👩‍👧‍👦 Oila',
-    family_info: '👨‍👩‍👧‍👦 *Oilaviy byudjet*\n\nBu yerda oilangiz bilan umumiy xarajatlarni birgalikda boshqarishingiz mumkin.',
+    // Family labels
+    family_label: '🏠 *Oila:*',
+    family_owner_label: '👑 *Egas:*',
+    family_info: '👨‍👩‍👧‍👦 *Oila byudjeti*\n\nBu yerda siz oila a’zolari, hamkasblar, do‘stlar va h.k. bilan birga xarajatlarni birgalikda boshqarishingiz mumkin.\n\n- \uD83D\uDC6A Qo‘shma xarajatlarni hisobga olish uchun umumiy guruh yaratiladi.\n- \u2795 Har bir a’zo xarajat qo‘shishi mumkin.\n- \uD83D\uDDD1\uFE0F Zarur bo‘lsa, o‘z xarajatlaringizni o‘chirishingiz mumkin.\n- \uD83D\uDCCA Barcha a’zolar uchun umumiy statistika mavjud.\n- \uD83D\uDCE4 Butun guruh ma’lumotlarini yagona faylga eksport qilish mumkin.\n\nBirgalikda nazorat — kamroq tartibsizlik va ko‘proq oshkoralik demakdir.',
     family_created: '✅ "{name}" nomli oila yaratildi! Endi a’zolarni taklif qilishingiz mumkin.',
     family_joined: '✅ "{name}" oilasiga qo‘shildingiz!',
     family_left: '✅ "{name}" oilasidan chiqdingiz.',
@@ -581,5 +584,8 @@ module.exports = {
     custom_categories_list_title: 'Sizning maxsus kategoriyalaringiz:',
     custom_categories_delete: '🗑️ O‘chirish',
     custom_categories_deleted: '✅ Kategoriya o‘chirildi.',
-    custom_categories_premium_required: '💎 Ushbu funksiya faqat Premium foydalanuvchilar uchun.'
+    custom_categories_premium_required: '💎 Ushbu funksiya faqat Premium foydalanuvchilar uchun.',
+    
+    // Maxsus kategoriya misollari
+    custom_categories_example: '💡 Misol: "🌍 Sayohat" yoki "🎮 O\'yinlar"'
 };

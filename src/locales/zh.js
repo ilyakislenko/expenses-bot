@@ -329,7 +329,10 @@ module.exports = {
     timezone_set: '✅ 已设置时区: {timezone}',
     // 家庭预算
     button_family: '👨‍👩‍👧‍👦 家庭',
-    family_info: '👨‍👩‍👧‍👦 *家庭预算*\n\n在这里你可以和家人一起管理共享的支出。',
+    // Family labels
+    family_label: '🏠 *家庭:*',
+    family_owner_label: '👑 *拥有者:*',
+    family_info: '👨‍👩‍👧‍👦 *家庭预算*\n\n在这里，可以与家人、同事、朋友等一起管理支出。\n\n- \uD83D\uDC6A 会创建一个共享群组，用于记录共同开销。\n- \u2795 每位成员都可以添加支出。\n- \uD83D\uDDD1\uFE0F 如有需要，可删除自己的支出。\n- \uD83D\uDCCA 提供所有成员可查看的共享统计。\n- \uD83D\uDCE4 可将整个群组的数据导出为单个文件。\n\n共享管理意味着更少的混乱与更高的透明度.',
     family_created: '✅ 家庭 "{name}" 已创建！现在可以邀请成员了。',
     family_joined: '✅ 你已加入家庭 "{name}"！',
     family_left: '✅ 你已退出家庭 "{name}"。',
@@ -589,6 +592,7 @@ module.exports = {
     // 自定义类别（高级）
     custom_categories_title: '🏷️ 自定义类别',
     custom_categories_info: '你可以创建自己的支出类别（仅限高级用户）。',
+    custom_categories_example: '💡 示例: "🌍 旅行" 或 "🎮 游戏"',
     custom_categories_add: '➕ 添加类别',
     custom_categories_manage: '🗂️ 管理类别',
     custom_categories_enter_name: '请输入新类别名称（1-30 个字符）：',

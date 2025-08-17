@@ -330,7 +330,10 @@ module.exports = {
         timezone_set: '✅ Zaman dilimi ayarlandı: {timezone}',
     // Aile bütçesi
     button_family: '👨‍👩‍👧‍👦 Aile',
-    family_info: '👨‍👩‍👧‍👦 *Aile Bütçesi*\n\nBurada ailenizle birlikte ortak harcamaları yönetebilirsiniz.',
+    // Family labels
+    family_label: '🏠 *Aile:*',
+    family_owner_label: '👑 *Sahip:*',
+    family_info: '👨‍👩‍👧‍👦 *Aile Bütçesi*\n\nBurada aile, meslektaşlar, arkadaşlar vb. ile birlikte giderleri ortak şekilde yönetebilirsiniz.\n\n- \uD83D\uDC6A Ortak harcamaları kaydetmek için paylaşılan bir grup oluşturulur.\n- \u2795 Her üye gider ekleyebilir.\n- \uD83D\uDDD1\uFE0F Gerekirse kendi giderlerinizi silebilirsiniz.\n- \uD83D\uDCCA Tüm üyeler için ortak istatistikler mevcuttur.\n- \uD83D\uDCE4 Tüm grup verilerini tek bir dosyaya aktarabilirsiniz.\n\nOrtak kontrol, daha az kaos ve daha fazla şeffaflık demektir.',
     family_created: '✅ "{name}" adlı aile oluşturuldu! Şimdi üye davet edebilirsiniz.',
     family_joined: '✅ "{name}" ailesine katıldınız!',
     family_left: '✅ "{name}" ailesinden ayrıldınız.',
@@ -590,6 +593,7 @@ module.exports = {
     // Özel kategoriler (Premium)
     custom_categories_title: '🏷️ Özel kategoriler',
     custom_categories_info: 'Özel harcama kategorileri oluşturabilirsiniz (yalnızca Premium).',
+    custom_categories_example: '💡 Örnek: "🌍 Seyahat" veya "🎮 Oyunlar"',
     custom_categories_add: '➕ Kategori ekle',
     custom_categories_manage: '🗂️ Kategorileri yönet',
     custom_categories_enter_name: 'Yeni kategori adını girin (1-30 karakter):',

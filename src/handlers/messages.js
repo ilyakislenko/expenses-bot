@@ -645,7 +645,8 @@ constructor({ expenseService, userService, premiumService, familyService, catego
 
       if (name.length < 1 || name.length > 30) {
         const enterName = this.localizationService.getText(userLanguage, 'custom_categories_enter_name');
-        return await ctx.reply(enterName);
+        const example = this.localizationService.getText(userLanguage, 'custom_categories_example');
+        return await ctx.reply(`${enterName}\n\n${example}`);
       }
 
       // Требуется премиум: сервис проверит и бросит ошибку при отсутствии
@@ -683,7 +684,8 @@ constructor({ expenseService, userService, premiumService, familyService, catego
 
       if (name.length < 1 || name.length > 30) {
         const enterName = this.localizationService.getText(userLanguage, 'custom_categories_enter_name');
-        return await ctx.reply(enterName);
+        const example = this.localizationService.getText(userLanguage, 'custom_categories_example');
+        return await ctx.reply(`${enterName}\n\n${example}`);
       }
 
       await this.categoryService.updateUserCategory(userId, Number(categoryId), name, icon);

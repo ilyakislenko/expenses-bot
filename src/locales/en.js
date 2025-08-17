@@ -449,7 +449,9 @@ Now all your expenses will be correctly displayed in your local time.`,
   category_other: 'Other',
   
   // Family Budget
-  family_info: '👨‍👩‍👧‍👦 *Family Budget*\n\nHere you can manage family expenses together with your loved ones.',
+  family_label: '🏠 *Family:*',
+  family_owner_label: '👑 *Owner:*',
+  family_info: '👨‍👩‍👧‍👦 *Family Budget*\n\nHere you can manage expenses together with family, colleagues, friends, etc.\n\n- \uD83D\uDC6A A shared group is created to track joint expenses.\n- \u2795 Each member can add expenses.\n- \uD83D\uDDD1\uFE0F You can delete your own expenses if needed.\n- \uD83D\uDCCA Shared statistics are available for all members.\n- \uD83D\uDCE4 Export the entire group’s data into a single file.\n\nShared control means less chaos and more transparency.',
   family_created: '✅ Family "{name}" created! Now you can invite members.',
   family_joined: '✅ You joined family "{name}"!',
   family_left: '✅ You left family "{name}".',
@@ -605,6 +607,7 @@ Now all your expenses will be correctly displayed in your local time.`,
   // Custom categories (premium)
   custom_categories_title: '🏷️ Custom Categories',
   custom_categories_info: 'Here you can create your own expense categories (premium only).',
+  custom_categories_example: '💡 Example: "🌍 Travel" or "🎮 Games"',
   custom_categories_add: '➕ Add Category',
   custom_categories_manage: '🗂️ Manage Categories',
   custom_categories_enter_name: 'Enter the new category name (1-30 characters):',

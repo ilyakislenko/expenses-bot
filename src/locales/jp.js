@@ -329,7 +329,9 @@ module.exports = {
     timezone_set: '✅ タイムゾーンを {timezone} に設定しました',
     // 家族予算
     button_family: '👨‍👩‍👧‍👦 家族',
-    family_info: '👨‍👩‍👧‍👦 *家族予算*\n\nここでは家族と一緒に共有支出を管理できます。',
+    family_label: '🏠 *家族:*',
+    family_owner_label: '👑 *所有者:*',
+    family_info: '👨‍👩‍👧‍👦 *ファミリーバジェット*\n\nここでは家族や同僚、友人などと一緒に支出を管理できます。\n\n- \uD83D\uDC6A 共同の支出を記録するための共有グループが作成されます。\n- \u2795 各メンバーが支出を追加できます。\n- \uD83D\uDDD1\uFE0F 必要に応じて自分の支出を削除できます。\n- \uD83D\uDCCA すべてのメンバーが利用できる共有統計があります。\n- \uD83D\uDCE4 グループ全体のデータを1つのファイルにエクスポートできます。\n\n共同管理は、混乱を減らし、透明性を高めます。',
     family_created: '✅ 家族「{name}」を作成しました！メンバーを招待できます。',
     family_joined: '✅ 家族「{name}」に参加しました！',
     family_left: '✅ 家族「{name}」から退出しました。',
@@ -587,9 +589,10 @@ module.exports = {
     total_in_currency: '{currency}での合計',
     
     // カスタムカテゴリー（プレミアム）
-    custom_categories_title: '🏷️ カスタムカテゴリー',
-    custom_categories_info: 'ここで独自の支出カテゴリーを作成できます（プレミアムのみ）。',
-    custom_categories_add: '➕ カテゴリーを追加',
+      custom_categories_title: '🏷️ カスタムカテゴリー',
+  custom_categories_info: 'ここで独自の支出カテゴリーを作成できます（プレミアムのみ）。',
+  custom_categories_example: '💡 例: "🌍 旅行" または "🎮 ゲーム"',
+  custom_categories_add: '➕ カテゴリーを追加',
     custom_categories_manage: '🗂️ カテゴリーを管理',
     custom_categories_enter_name: '新しいカテゴリー名を入力してください（1〜30文字）：',
     custom_categories_created: '✅ カテゴリーを作成しました: {name}',

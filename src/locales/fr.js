@@ -329,7 +329,9 @@ module.exports = {
     timezone_set: '✅ Fuseau horaire défini : {timezone}',
     // Budget familial
     button_family: '👨‍👩‍👧‍👦 Famille',
-    family_info: '👨‍👩‍👧‍👦 *Budget familial*\n\nIci, vous pouvez gérer les dépenses familiales avec vos proches.',
+    family_label: '🏠 *Famille:*',
+    family_owner_label: '👑 *Propriétaire:*',
+    family_info: '👨‍👩‍👧‍👦 Budget familial\n\nIci, vous pouvez gérer les dépenses avec votre famille, vos collègues, vos amis, etc.\n\n- \uD83D\uDC6A Un groupe partagé est créé pour suivre les dépenses communes.\n- \u2795 Chaque membre peut ajouter des dépenses.\n- \uD83D\uDDD1\uFE0F Vous pouvez supprimer vos propres dépenses si nécessaire.\n- \uD83D\uDCCA Des statistiques partagées sont disponibles pour tous les membres.\n- \uD83D\uDCE4 Exportez les données de tout le groupe dans un seul fichier.\n\nUn contrôle partagé signifie moins de chaos et plus de transparence.',
     family_created: '✅ Famille "{name}" créée ! Vous pouvez maintenant inviter des membres.',
     family_joined: '✅ Vous avez rejoint la famille "{name}" !',
     family_left: '✅ Vous avez quitté la famille "{name}".',
@@ -589,6 +591,7 @@ module.exports = {
     // Catégories personnalisées (premium)
     custom_categories_title: '🏷️ Catégories personnalisées',
     custom_categories_info: 'Vous pouvez créer vos propres catégories de dépenses (premium uniquement).',
+    custom_categories_example: '💡 Exemple: "🌍 Voyages" ou "🎮 Jeux"',
     custom_categories_add: '➕ Ajouter catégorie',
     custom_categories_manage: '🗂️ Gérer les catégories',
     custom_categories_enter_name: 'Entrez le nom de la nouvelle catégorie (1-30 caractères) :',
