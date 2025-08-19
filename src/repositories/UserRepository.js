@@ -15,6 +15,11 @@ class UserRepository extends BaseRepository {
     return result.rows[0];
   }
 
+  async markTrialConsumed(userId) {
+    const query = 'UPDATE users SET has_trial = FALSE WHERE id = $1';
+    await this.query(query, [userId]);
+  }
+
   async getUserCurrency(userId) {
     const result = await this.query('SELECT currency FROM users WHERE id = $1', [userId]);
     return result.rows[0]?.currency || currencyConfig.BASE_CURRENCY;

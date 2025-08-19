@@ -13,9 +13,8 @@ class UserService {
     try {
       const user = await this.userRepository.createUser(userId, username, firstName);
       
-      // Проверяем, был ли у пользователя уже премиум когда-либо
-      // Если premium_activated_at не NULL, значит премиум уже был активирован
-      if (!user.premium_activated_at) {
+      // Выдаём триал, если он доступен (has_trial = TRUE) и премиум ещё никогда не активировался
+      if (!user.premium_activated_at && user.has_trial === true) {
         // Даем пробный премиум на 14 дней только новым пользователям
         const trialTransactionData = {
           stars: 0,
@@ -31,6 +30,8 @@ class UserService {
         };
         
         await this.activatePremium(userId, TRIAL_PERIOD.DAYS, trialTransactionData);
+        // После выдачи — отключаем возможность триала навсегда
+        await this.userRepository.markTrialConsumed(userId);
         
         // Обновляем метрики
         newUsersTotal.inc({ source: 'telegram' });
