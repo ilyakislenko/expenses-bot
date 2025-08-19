@@ -1,3 +1,17 @@
+-- Add has_trial flag to users if missing
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'users' AND column_name = 'has_trial'
+  ) THEN
+    ALTER TABLE users ADD COLUMN has_trial BOOLEAN NOT NULL DEFAULT TRUE;
+    COMMENT ON COLUMN users.has_trial IS 'Флаг доступности триального премиума (TRUE = можно выдать, после выдачи ставим FALSE)';
+    -- Для существующих пользователей запрещаем триал по умолчанию
+    UPDATE users SET has_trial = FALSE;
+  END IF;
+END $$;
+
 -- Remove local_date field from expenses table
 -- This field is no longer needed since we filter by created_at_utc with timezone
 
