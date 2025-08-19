@@ -27,43 +27,43 @@ const TRIAL_PERIOD = {
 const PREMIUM_TARIFFS = {
   MONTH_1: {
     duration: 30,
-    stars: 87,
-    usd: 1.99,
-    rub: 156,
+    stars: 149,
+    usd: 2.99,
+    rub: 259,
     originalStars: null,
     discount: null,
-    monthlyUsd: 1.99,
-    monthlyRub: 156
+    monthlyUsd: 2.99,
+    monthlyRub: 299
   },
   MONTH_3: {
     duration: 90,
-    stars: 222,
-    usd: 4.99,
-    rub: 399,
-    originalStars: 261,
-    discount: 15,
-    monthlyUsd: 1.69,
-    monthlyRub: 132
+    stars: 349,
+    usd: 6.99,
+    rub: 589,
+    originalStars: 447,
+    discount: 25,
+    monthlyUsd: 2.33,
+    monthlyRub: 196
   },
   MONTH_6: {
     duration: 180,
-    stars: 392,
-    usd: 8.99,
-    rub: 719,
-    originalStars: 522,
-    discount: 25,
-    monthlyUsd: 1.49,
-    monthlyRub: 117
+    stars: 599,
+    usd: 11.98,
+    rub: 999,
+    originalStars: 894,
+    discount: 36,
+    monthlyUsd: 1.99,
+    monthlyRub: 167
   },
   MONTH_12: {
     duration: 365,
-    stars: 679,
-    usd: 14.99,
-    rub: 1199,
-    originalStars: 1044,
-    discount: 35,
-    monthlyUsd: 1.29,
-    monthlyRub: 103
+    stars: 999,
+    usd: 19.99,
+    rub: 1649,
+    originalStars: 1788,
+    discount: 48,
+    monthlyUsd: 1.67,
+    monthlyRub: 137
   }
 };
 
