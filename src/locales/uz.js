@@ -494,6 +494,7 @@ module.exports = {
     error_no_description: '❌ Summadan keyin izoh kiritilish kerak.',
     error_amount: '❌ Noto‘g‘ri summa. 0,01 va 999999 oralig‘ida bo‘lishi kerak.',
     error_format: '❌ Noto‘g‘ri format. Summani va izohni kiriting.\nMisol: `200 bozor` yoki `1500 kofe`',
+    error_forbidden_content: '❌ Ruxsat etilmagan kontent.',
     error_limit_reached: '❌ Limit tugadi!\nOddiy: 100 yozuv\nPremium: 300 yozuv\n\n💎 Premiumga o‘ting va limitni oshiring!',
     error_premium_required: '💎 Bu funksiya faqat Premium foydalanuvchilar uchun!\n\nAfzalliklar:\n• 160 belgi izoh\n• 300 yozuv\n• Maxsus kategoriyalar\n• Kengaytirilgan statistika',
     error_generic: '❌ Xatolik yuz berdi. Keyinroq urinib ko‘ring yoki administratorga murojaat qiling.',

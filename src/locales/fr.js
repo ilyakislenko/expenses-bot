@@ -511,6 +511,7 @@ module.exports = {
     error_no_description: '❌ Vous devez saisir une description après le montant.',
     error_amount: '❌ Montant invalide. Entrez un nombre entre 0.01 et 999999.',
     error_format: '❌ Format invalide. Écrivez montant et description.\nEx : `200 courses` ou `1500 déjeuner au café`',
+    error_forbidden_content: '❌ Contenu interdit.',
     error_limit_reached: '❌ Limite atteinte !\nStandard : 100 entrées\nPremium : 300 entrées\n\n💎 Passez en premium pour plus de limites !',
     error_premium_required: '💎 Cette fonction est réservée aux premium !\n\nAvantages :\n• 160 caractères description\n• 300 entrées\n• Catégories personnalisées\n• Statistiques avancées',
     error_generic: '❌ Erreur. Réessayez plus tard ou contactez un admin.',

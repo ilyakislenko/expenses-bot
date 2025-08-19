@@ -516,6 +516,7 @@ module.exports = {
     error_no_description: '❌ É necessário informar uma descrição após o valor.',
     error_amount: '❌ Valor inválido. Digite um número entre 0.01 e 999999.',
     error_format: '❌ Formato não reconhecido. Escreva valor e descrição.\nEx.: `200 compras` ou `1500 almoço no café`',
+    error_forbidden_content: '❌ Conteúdo não permitido.',
     error_limit_reached: '❌ Limite atingido!\nUsuários padrão: 100 registros\nPremium: 300 registros\n\n💎 Atualize para premium para aumentar o limite!',
     error_premium_required: '💎 Este recurso é apenas para usuários premium!\n\nVantagens:\n• 160 caracteres na descrição\n• 300 registros\n• Categorias personalizadas\n• Estatísticas avançadas',
     error_generic: '❌ Ocorreu um erro. Tente mais tarde ou contate o administrador.',

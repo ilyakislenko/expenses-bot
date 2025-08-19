@@ -512,6 +512,7 @@ module.exports = {
     error_no_description: '❌ Debes poner una descripción tras la cantidad.',
     error_amount: '❌ Cantidad inválida. Introduce entre 0.01 y 999999.',
     error_format: '❌ Formato no válido. Escribe cantidad y descripción.\nEj: `200 compras` o `1500 comida en café`',
+    error_forbidden_content: '❌ Contenido no permitido.',
     error_limit_reached: '❌ Límite alcanzado!\nNormales: 100 registros\nPremium: 300 registros\n\n💎 Pásate a premium para aumentarlo.',
     error_premium_required: '💎 Solo con premium!\n\nVentajas:\n• 160 caracteres descripción\n• 300 registros\n• Categorías personalizadas\n• Estadísticas avanzadas',
     error_generic: '❌ Error. Intenta más tarde o contacta con admin.',

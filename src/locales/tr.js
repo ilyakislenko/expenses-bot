@@ -513,6 +513,7 @@ module.exports = {
     error_no_description: '❌ Tutarın ardından açıklama yazmalısınız.',
     error_amount: '❌ Geçersiz tutar. 0,01 ile 999999 arasında girin.',
     error_format: '❌ Geçersiz format. Tutar ve açıklama yazın.\nÖrnek: `200 market` veya `1500 kahve`',
+    error_forbidden_content: '❌ Yasaklı içerik.',
     error_limit_reached: '❌ Limit doldu!\nStandart: 100 kayıt\nPremium: 300 kayıt\n\n💎 Limiti artırmak için Premium alın!',
     error_premium_required: '💎 Bu özellik yalnızca Premium içindir!\n\nAvantajlar:\n• 160 karakter açıklama\n• 300 kayıt\n• Özel kategoriler\n• Detaylı istatistikler',
     error_generic: '❌ Bir hata oluştu. Daha sonra tekrar deneyin veya yöneticiyle iletişime geçin.',
