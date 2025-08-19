@@ -733,13 +733,14 @@ constructor({ expenseService, userService, premiumService, familyService, catego
         return await ctx.reply(errorText);
       }
 
-      // Проверка на подозрительные паттерны
+      // Проверка на подозрительные паттерны (более мягкая, не блокируем обычные скобки и кавычки)
       const suspiciousPatterns = [
-        /\b(union|select|insert|update|delete|drop|truncate|exec|script)\s+/gi,
-        /[<>'"=;(){}\[\]]/g,  // HTML/JS символы
-        /(http|https|ftp):\/\/[^\s]+/gi,  // Ссылки
-        /(@everyone|@here|@channel)/gi,   // Спам-упоминания
-        /(.)\1{20,}/g  // Повторяющиеся символы (больше 20 подряд)
+        /<\s*script\b[^>]*>/i,        // <script ...>
+        /<\s*\/\s*script\s*>/i,     // </script>
+        /on\w+\s*=/i,                 // inline-обработчики событий в HTML
+        /(javascript:|vbscript:)/i,    // опасные протоколы
+        /(@everyone|@here|@channel)/gi,     // Спам-упоминания
+        /(.)\1{20,}/g                  // Повтор более 20 одинаковых символов подряд
       ];
 
       for (const pattern of suspiciousPatterns) {
