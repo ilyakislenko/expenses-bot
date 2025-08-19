@@ -449,6 +449,7 @@ module.exports = {
     premium_donate_button: '🤝 Донат жасау',
     premium_back_button: '⬅️ Артқа',
     premium_tariffs_title: '⭐️ Тарифтер (Telegram Stars)',
+    per_month: 'айына',
     premium_payment_info: '💳 Төлем Telegram Stars арқылы жүргізіледі. <b>Автоматты жаңарту жоқ.</b>',
     premium_renewal_info: '📅 Кез келген уақытта ұзартуға болады. Уақыты қосылады.',
     premium_stars_info: '💡 Жұлдыздарды комиссиясыз [@PremiumBot] арқылы сатып алуға болады.',

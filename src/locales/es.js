@@ -467,6 +467,7 @@ module.exports = {
     premium_donate_button: '🤝 Donar',
     premium_back_button: '⬅️ Atrás',
     premium_tariffs_title: '⭐️ Tarifas (Telegram Stars)',
+    per_month: 'al mes',
     premium_payment_info: '💳 El pago se hace con Telegram Stars, la moneda interna de Telegram. <b>Sin renovación automática.</b>',
     premium_renewal_info: '📅 Puedes renovar en cualquier momento. Se añadirá a tu tiempo restante.',
     premium_stars_info: '💡 Compra estrellas sin comisión en el bot oficial [@PremiumBot].',

@@ -449,6 +449,7 @@ module.exports = {
     premium_donate_button: '🤝 Xayriya',
     premium_back_button: '⬅️ Orqaga',
     premium_tariffs_title: '⭐️ Tariflar (Telegram Stars)',
+    per_month: 'oyiga',
     premium_payment_info: '💳 To‘lov Telegram Stars orqali amalga oshiriladi. <b>Avtomatik uzaytirilmaydi.</b>',
     premium_renewal_info: '📅 Istalgan vaqtda yangilash mumkin. Vaqt ustiga qo‘shiladi.',
     premium_stars_info: '💡 Yulduzlarni komissiyasiz [@PremiumBot] orqali sotib olish mumkin.',

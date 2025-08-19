@@ -469,6 +469,7 @@ module.exports = {
     premium_donate_button: '🤝 दान करें',
     premium_back_button: '⬅️ वापस',
     premium_tariffs_title: '⭐️ टैरिफ (Telegram Stars)',
+    per_month: 'प्रति माह',
     premium_payment_info: '💳 भुगतान Telegram Stars के माध्यम से होता है। <b>स्वचालित नवीनीकरण नहीं।</b>',
     premium_renewal_info: '📅 कभी भी नवीनीकृत कर सकते हैं। समय बाकी में जुड़ जाएगा।',
     premium_stars_info: '💡 सितारों को बिना शुल्क के [@PremiumBot] से खरीदें।',

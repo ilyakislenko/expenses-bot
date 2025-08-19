@@ -466,6 +466,7 @@ module.exports = {
     premium_donate_button: '🤝 寄付',
     premium_back_button: '⬅️ 戻る',
     premium_tariffs_title: '⭐️ 料金プラン（Telegram Stars）',
+    per_month: '月あたり',
     premium_payment_info: '💳 支払いはTelegram Starsで行います。<b>自動更新はありません。</b>',
     premium_renewal_info: '📅 いつでも延長可能です。残り時間に加算されます。',
     premium_stars_info: '💡 公認 [@PremiumBot] から手数料なしでスターを購入できます。',

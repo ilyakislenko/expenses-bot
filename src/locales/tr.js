@@ -468,6 +468,7 @@ module.exports = {
     premium_donate_button: '🤝 Bağış',
     premium_back_button: '⬅️ Geri',
     premium_tariffs_title: '⭐️ Tarifeler (Telegram Stars)',
+    per_month: 'aylık',
     premium_payment_info: '💳 Ödeme Telegram Stars ile yapılır. <bOtomatik yenileme yok.</b>',
     premium_renewal_info: '📅 İstediğiniz zaman yenileyebilirsiniz. Süre kalan zamana eklenir.',
     premium_stars_info: '💡 Yıldızları komisyonsuz olarak [@PremiumBot] üzerinden satın alabilirsiniz.',

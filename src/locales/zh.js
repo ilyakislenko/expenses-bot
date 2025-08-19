@@ -467,6 +467,7 @@ module.exports = {
     premium_donate_button: '🤝 捐赠',
     premium_back_button: '⬅️ 返回',
     premium_tariffs_title: '⭐️ 套餐 (Telegram Stars)',
+    per_month: '每月',
     premium_payment_info: '💳 通过 Telegram Stars 支付。<b>不自动续费。</b>',
     premium_renewal_info: '📅 可随时续费，时长将累加。',
     premium_stars_info: '💡 可通过官方 [@PremiumBot] 无手续费购买星星。',
