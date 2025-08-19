@@ -512,6 +512,7 @@ module.exports = {
     error_no_description: '❌ 金额后必须提供描述。',
     error_amount: '❌ 金额无效。请输入0.01到999999之间的数字。',
     error_format: '❌ 格式无效。请输入金额和描述。\n示例: `200 购物` 或 `1500 在咖啡馆午餐`',
+    error_forbidden_content: '❌ 含有不允许的内容。',
     error_limit_reached: '❌ 已达到上限！\n普通: 100 条记录\n高级: 300 条记录\n\n💎 升级为高级用户以提高上限！',
     error_premium_required: '💎 此功能仅限高级用户！\n\n优势:\n• 描述160字符\n• 300条记录\n• 自定义类别\n• 高级统计',
     error_generic: '❌ 出错了，请稍后再试或联系管理员。',

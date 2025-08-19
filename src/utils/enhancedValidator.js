@@ -1,4 +1,5 @@
 const logger = require('./logger');
+const currencyConfig = require('../config/currencies');
 
 class EnhancedValidator {
   constructor() {
@@ -8,7 +9,7 @@ class EnhancedValidator {
       minAmount: 0.01,
       maxDescriptionLength: 100,
       minDescriptionLength: 1,
-      maxCategoryNameLength: 50,
+      maxCategoryNameLength: 30,
       maxUsernameLength: 32,
       maxFirstNameLength: 64,
       maxLastNameLength: 64
@@ -191,8 +192,8 @@ class EnhancedValidator {
       return { isValid: false, error: 'invalid_currency_format' };
     }
 
-    const allowedCurrencies = ['RUB', 'USD', 'EUR', 'GBP', 'CNY', 'JPY'];
-    if (!allowedCurrencies.includes(currency)) {
+    const allowed = new Set([currencyConfig.BASE_CURRENCY, ...currencyConfig.SUPPORTED_CURRENCIES]);
+    if (!allowed.has(currency)) {
       return { isValid: false, error: 'unsupported_currency' };
     }
 
@@ -217,7 +218,7 @@ class EnhancedValidator {
     return { isValid: true };
   }
 
-  validateDescription(description) {
+  validateDescription(description, maxLen = this.limits.maxDescriptionLength) {
     if (!description || typeof description !== 'string') {
       return { isValid: false, error: 'invalid_description' };
     }
@@ -226,7 +227,7 @@ class EnhancedValidator {
       return { isValid: false, error: 'description_too_short', message: 'Описание слишком короткое' };
     }
 
-    if (description.length > this.limits.maxDescriptionLength) {
+    if (description.length > maxLen) {
       return { isValid: false, error: 'description_too_long', message: 'Описание слишком длинное' };
     }
 
@@ -361,7 +362,7 @@ class EnhancedValidator {
     }
 
     // Валидация описания
-    const descriptionValidation = this.validateDescription(description);
+    const descriptionValidation = this.validateDescription(description, maxDescriptionLength);
     if (!descriptionValidation.isValid) {
       return descriptionValidation;
     }
@@ -369,7 +370,7 @@ class EnhancedValidator {
     return {
       isValid: true,
       amount,
-      description: this.sanitizeText(description)
+      description: this.sanitizeText(description, maxDescriptionLength)
     };
   }
 
@@ -413,7 +414,7 @@ class EnhancedValidator {
 
     // Валидация описания если оно есть
     if (description) {
-      const descriptionValidation = this.validateDescription(description);
+      const descriptionValidation = this.validateDescription(description, maxDescriptionLength);
       if (!descriptionValidation.isValid) {
         return descriptionValidation;
       }
@@ -422,7 +423,7 @@ class EnhancedValidator {
     return {
       isValid: true,
       amount: amount ? Number(amount) : undefined,
-      description: description ? this.sanitizeText(description) : undefined
+      description: description ? this.sanitizeText(description, maxDescriptionLength) : undefined
     };
   }
 
@@ -448,7 +449,7 @@ class EnhancedValidator {
   }
 
   // Санитизация текста
-  sanitizeText(text) {
+  sanitizeText(text, maxLen = this.limits.maxDescriptionLength) {
     if (!text || typeof text !== 'string') {
       return '';
     }
@@ -457,7 +458,7 @@ class EnhancedValidator {
       .trim()
       .replace(/[<>]/g, '') // Удаляем потенциально опасные символы
       .replace(/\s+/g, ' ') // Нормализуем пробелы
-      .substring(0, this.limits.maxDescriptionLength);
+      .substring(0, maxLen);
   }
 
   // Получение информации о лимитах

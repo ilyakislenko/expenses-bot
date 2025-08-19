@@ -198,7 +198,8 @@ constructor({ expenseService, userService, premiumService, familyService, catego
           return ctx.reply(editCanceledText);
         }
         const expenseId = this.stateService.getUserEditState(ctx.from.id);
-        const parsed = this.validator.parseEditExpense(ctx.message.text);
+        const userLimits = await this.premiumService.getUserLimits(userId);
+        const parsed = this.validator.parseEditExpense(ctx.message.text, userLimits.MAX_DESCRIPTION_LENGTH);
         if (!parsed.isValid) {
           if (parsed.error === 'empty') {
             const editEmptyText = this.localizationService.getText(userLanguage, 'edit_empty');
@@ -209,7 +210,7 @@ constructor({ expenseService, userService, premiumService, familyService, catego
             return ctx.reply(editAmountErrorText);
           }
           if (parsed.error === 'too_long') {
-            const editTooLongText = this.localizationService.getText(userLanguage, 'edit_too_long', { max: limits.MAX_DESCRIPTION_LENGTH });
+            const editTooLongText = this.localizationService.getText(userLanguage, 'edit_too_long', { max: userLimits.MAX_DESCRIPTION_LENGTH });
             return ctx.reply(editTooLongText);
           }
           const editFormatErrorText = this.localizationService.getText(userLanguage, 'edit_format_error');

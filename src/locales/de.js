@@ -514,6 +514,7 @@ module.exports = {
     error_no_description: '❌ Nach dem Betrag muss eine Beschreibung folgen.',
     error_amount: '❌ Ungültiger Betrag. Bitte zwischen 0,01 und 999999 eingeben.',
     error_format: '❌ Unklarer Aufbau. Betrag und Beschreibung angeben.\nBeispiel: `200 Lebensmittel` oder `1500 Mittagessen`',
+    error_forbidden_content: '❌ Unzulässiger Inhalt.',
     error_limit_reached: '❌ Limit erreicht!\nStandard: 100 Einträge\nPremium: 300 Einträge\n\n💎 Hol dir Premium für mehr Platz.',
     error_premium_required: '💎 Diese Funktion ist nur für Premium!\n\nVorteile:\n• Beschreibung bis 160 Zeichen\n• 300 Einträge\n• Eigene Kategorien\n• Erweiterte Statistik',
     error_generic: '❌ Fehler. Versuche es später erneut oder kontaktiere den Admin.',
