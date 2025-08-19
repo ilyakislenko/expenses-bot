@@ -465,6 +465,7 @@ module.exports = {
     premium_donate_button: '🤝 დონაცია',
     premium_back_button: '⬅️ უკან',
     premium_tariffs_title: '⭐️ ტარიფები (Telegram Stars)',
+    per_month: 'თვეში',
     premium_payment_info: '💳 გადახდა ხდება Telegram Stars-ის მეშვეობით. <b>ავტომატური განახლება არ ხდება.</b>',
     premium_renewal_info: '📅 ყოველთვის შეგიძლია გაახანგრძლივო, დრო დაემატება მოქმედ ვადას.',
     premium_stars_info: '💡 ვარსკვლავების ყიდვა შეგიძლია საკომისიოს გარეშე [@PremiumBot]-ით.',

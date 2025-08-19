@@ -1362,8 +1362,21 @@ class CallbackHandlers {
           line += ` / ${priceFormatted}`;
         }
         linesArr.push(line);
+        // Добавляем строку с эффективной ценой в месяц (звезды и валюта)
+        try {
+          const months = t.duration === 365 ? 12 : (t.duration === 180 ? 6 : (t.duration === 90 ? 3 : 1));
+          const priceInCurrency = await this.formatter.currencyUtils.convert(Number(t.usd), 'USD', userCurrency);
+          const monthlyCurrency = priceInCurrency / months;
+          const monthlyCurrencyFormatted = this.formatter.formatAmount(monthlyCurrency, userCurrency);
+          const monthlyStarsRaw = Number(t.stars) / months;
+          const monthlyStars = Number.isInteger(monthlyStarsRaw) ? `${monthlyStarsRaw}` : monthlyStarsRaw.toFixed(1);
+          const perMonth = this.localizationService.getText(userLanguage, 'per_month') || '/ month';
+          linesArr.push(`  <i>≈ ${monthlyStars} ⭐ ${perMonth} • ${monthlyCurrencyFormatted} ${perMonth}</i>\n`);
+        } catch (_) {
+          // ignore
+        }
       }
-      const lines = linesArr.join('\n');
+      const lines = linesArr.join('\n').slice(0, -1);
 
       const message = `${tariffsTitle}\n\n${lines}\n\n${paymentInfo}\n\n${renewalInfo}\n\n${starsInfo}`;
       

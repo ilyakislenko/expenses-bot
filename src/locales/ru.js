@@ -470,6 +470,7 @@ module.exports = {
   premium_donate_button: '🤝 Пожертвовать',
   premium_back_button: '⬅️ Назад',
   premium_tariffs_title: '⭐️ Тарифы (Telegram Stars)',
+  per_month: 'в месяц',
   premium_payment_info: '💳 Оплата происходит с помощью Telegram Stars — внутренней валюты Telegram для удобной и безопасной оплаты внутри мессенджера. <b>Автоматического продления нет.</b>',
   premium_renewal_info: '📅 Продлить подписку можно в любой момент. К оставшемуся сроку прибавится соответствующее количество дней.',
   premium_stars_info: '💡 Приобрести звёзды без комиссии Apple / Google можно в официальном боте [@PremiumBot].',
