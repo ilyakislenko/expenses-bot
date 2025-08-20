@@ -1,9 +1,10 @@
 const logger = require('../utils/logger');
 
 class NotificationService {
-  constructor(localizationService) {
+  constructor(localizationService, userService) {
     this.bot = null;
     this.localizationService = localizationService;
+    this.userService = userService;
   }
 
   setBot(bot) {
@@ -31,7 +32,7 @@ class NotificationService {
       }
 
       // Получаем язык пользователя (по умолчанию русский)
-      let userLanguage = 'ru';
+      let userLanguage = await this.userService.getUserLanguage(inviteeId) || 'ru';
       
       const message = this.localizationService.getText(userLanguage, 'family_invitation_received', {
         familyName,
@@ -74,7 +75,7 @@ class NotificationService {
 
   async sendFamilyMemberRemoved(userId, familyName, removedBy) {
     try {
-      let userLanguage = 'ru';
+      let userLanguage = await this.userService.getUserLanguage(userId) || 'ru';
       
       const message = this.localizationService.getText(userLanguage, 'family_member_removed_notification', {
         familyName,
@@ -102,7 +103,7 @@ class NotificationService {
 
   async sendInvitationCancelled(inviteeId, familyName, cancelledBy) {
     try {
-      let userLanguage = 'ru';
+      let userLanguage = await this.userService.getUserLanguage(inviteeId) || 'ru';
       
       const message = this.localizationService.getText(userLanguage, 'invitation_cancelled_notification', {
         familyName,
