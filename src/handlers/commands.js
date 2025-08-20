@@ -91,10 +91,10 @@ class CommandHandlers {
     const isAdmin = await this.userService.isUserAdmin(user.id);
     
     // Получаем локализованное приветствие
-    const welcomeMessage = this.localizationService.getText(userLanguage, 'welcome', { name: user.first_name });
+    // const welcomeMessage = this.localizationService.getText(userLanguage, 'welcome', { name: user.first_name });
     const startMessage = this.localizationService.getText(userLanguage, 'start_message');
 
-    const message = `${welcomeMessage}\n\n${startMessage}`;
+    const message = `${startMessage}`;
 
     // Проверяем, есть ли у пользователя семья и премиум для показа кнопки "добавить семейную трату"
     let hasFamily = false;
