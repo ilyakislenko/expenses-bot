@@ -384,48 +384,7 @@ class CommandHandlers {
   }
 
   async limits(ctx) {
-    try {
-      const userId = ctx.from.id;
-      const userLanguage = await this.userService.getUserLanguage(userId);
-      
-      
-      
-      const usageStats = await this.premiumService.getUsageStats(userId);
-      
-      const status = usageStats.isPremium ? 
-        this.localizationService.getText(userLanguage, 'status_premium') : 
-        this.localizationService.getText(userLanguage, 'status_regular');
-      
-      const limitsTitle = this.localizationService.getText(userLanguage, 'limits_title');
-      const statusLabel = this.localizationService.getText(userLanguage, 'status_label', { status });
-      const recordsUsage = this.localizationService.getText(userLanguage, 'records_usage', { 
-        current: usageStats.currentCount, 
-        max: usageStats.maxCount, 
-        percentage: usageStats.usagePercentage 
-      });
-      const recordsRemaining = this.localizationService.getText(userLanguage, 'records_remaining', { remaining: usageStats.remaining });
-      const maxDescriptionLength = this.localizationService.getText(userLanguage, 'max_description_length', { length: usageStats.maxDescriptionLength });
-      
-      let message = `${limitsTitle}\n\n${statusLabel}\n${recordsUsage}\n${recordsRemaining}\n${maxDescriptionLength}\n\n`;
-      
-      if (usageStats.isNearLimit && !usageStats.isAtLimit) {
-        message += this.localizationService.getText(userLanguage, 'near_limit_warning') + '\n';
-      }
-      
-      if (usageStats.isAtLimit) {
-        message += this.localizationService.getText(userLanguage, 'limit_reached') + '\n';
-      }
-      
-      if (!usageStats.isPremium) {
-        message += '\n' + this.localizationService.getText(userLanguage, 'premium_benefits');
-      }
-      
-      await ctx.reply(message, { parse_mode: 'HTML' });
-    } catch (error) {
-      console.error('Error in limits command:', error);
-      const errorText = this.localizationService.getText(userLanguage, 'error');
-      await ctx.reply(errorText);
-    }
+    return this.premiumSubscription(ctx);
   }
 
   async family(ctx) {

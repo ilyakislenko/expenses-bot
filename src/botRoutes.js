@@ -19,7 +19,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.command('currency', errorHandler((ctx) => commandHandlers.currency(ctx))); // настройка валюты пользователя
   bot.command('timezone', errorHandler((ctx) => commandHandlers.timezone(ctx))); // настройка часового пояса
   bot.command('settings', errorHandler((ctx) => commandHandlers.settings(ctx))); // настройки пользователя
-  bot.command('limits', errorHandler((ctx) => commandHandlers.limits(ctx))); // лимиты и премиум функции
+  bot.command('limits', errorHandler((ctx) => commandHandlers.premiumSubscription(ctx))); // лимиты и премиум функции (новое меню премиума)
   // Требования Telegram Payments: обязательные команды поддержки и политики
   bot.command('paysupport', errorHandler((ctx) => commandHandlers.paysupport(ctx))); // поддержка платежей
   bot.command('terms', errorHandler((ctx) => commandHandlers.terms(ctx))); // условия использования
@@ -84,8 +84,8 @@ module.exports = function registerBotRoutes(bot, handlers) {
   })); // справка и команды
   bot.action('limits', errorHandler(async (ctx) => {
     await ctx.answerCbQuery();
-    await commandHandlers.limits(ctx);
-  })); // лимиты и премиум функции
+    await commandHandlers.premiumSubscription(ctx);
+  })); // лимиты и премиум функции (новое меню премиума)
   bot.action('family', errorHandler(async (ctx) => {
     await ctx.answerCbQuery();
     await commandHandlers.family(ctx);
