@@ -64,9 +64,20 @@ class UserRepository extends BaseRepository {
   }
 
   async getReminderSettings(userId) {
-    const query = 'SELECT reminder_enabled, last_reminder_local_date, timezone, reminder_hours, reminder_sent_today_hours FROM users WHERE id = $1';
+    const query = `
+      SELECT 
+        reminder_enabled, 
+        last_reminder_local_date, 
+        timezone, 
+        reminder_hours, 
+        reminder_sent_today_hours,
+        daily_summary_enabled,
+        daily_summary_hour,
+        last_daily_summary_local_date,
+        category_limits_enabled
+      FROM users WHERE id = $1`;
     const result = await this.query(query, [userId]);
-    return result.rows[0] || { reminder_enabled: false, last_reminder_local_date: null, timezone: 'UTC' };
+    return result.rows[0] || { reminder_enabled: false, last_reminder_local_date: null, timezone: 'UTC', daily_summary_enabled: false, daily_summary_hour: null, last_daily_summary_local_date: null, category_limits_enabled: false };
   }
 
   async setReminderEnabled(userId, enabled) {
@@ -88,6 +99,27 @@ class UserRepository extends BaseRepository {
   async setReminderSentTodayHours(userId, hoursArray) {
     const query = 'UPDATE users SET reminder_sent_today_hours = $2 WHERE id = $1';
     await this.query(query, [userId, hoursArray && hoursArray.length ? hoursArray : null]);
+  }
+
+  async setDailySummaryEnabled(userId, enabled) {
+    const query = 'UPDATE users SET daily_summary_enabled = $2 WHERE id = $1';
+    await this.query(query, [userId, !!enabled]);
+  }
+
+  async setDailySummaryHour(userId, hour) {
+    const h = (hour === null || hour === undefined) ? null : parseInt(hour, 10);
+    const query = 'UPDATE users SET daily_summary_hour = $2 WHERE id = $1';
+    await this.query(query, [userId, Number.isInteger(h) ? h : null]);
+  }
+
+  async updateLastDailySummaryLocalDate(userId, dateStr) {
+    const query = 'UPDATE users SET last_daily_summary_local_date = $2 WHERE id = $1';
+    await this.query(query, [userId, dateStr]);
+  }
+
+  async setCategoryLimitsEnabled(userId, enabled) {
+    const query = 'UPDATE users SET category_limits_enabled = $2 WHERE id = $1';
+    await this.query(query, [userId, !!enabled]);
   }
 
   async updateUser(userId, updates) {

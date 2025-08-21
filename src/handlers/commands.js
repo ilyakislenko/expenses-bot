@@ -322,7 +322,12 @@ class CommandHandlers {
     const reminderSettings = await this.userService.getReminderSettings(userId);
     
     const settingsTitle = this.localizationService.getText(userLanguage, 'settings_title');
-    const settingsKeyboard = require('../utils/constants').generateSettingsKeyboard(this.localizationService, userLanguage, reminderSettings.reminder_enabled);
+    const settingsKeyboard = require('../utils/constants').generateSettingsKeyboard(
+      this.localizationService,
+      userLanguage,
+      reminderSettings.reminder_enabled,
+      { dailySummaryEnabled: !!reminderSettings.daily_summary_enabled, categoryLimitsEnabled: !!reminderSettings.category_limits_enabled }
+    );
     
     await ctx.reply(settingsTitle, {
       reply_markup: {

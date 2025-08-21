@@ -393,3 +393,49 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FAL
 
 -- Добавляем индекс для администраторов
 CREATE INDEX IF NOT EXISTS idx_users_is_admin ON users(id) WHERE is_admin = true;
+
+-- Daily summary settings fields
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'users' AND column_name = 'daily_summary_enabled'
+    ) THEN
+        ALTER TABLE users ADD COLUMN daily_summary_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+        COMMENT ON COLUMN users.daily_summary_enabled IS 'Флаг включения ежедневного сводного уведомления по тратам за день';
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'users' AND column_name = 'daily_summary_hour'
+    ) THEN
+        ALTER TABLE users ADD COLUMN daily_summary_hour INTEGER NULL;
+        COMMENT ON COLUMN users.daily_summary_hour IS 'Час (0-23) отправки ежедневного сводного уведомления в локальном времени пользователя';
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'users' AND column_name = 'last_daily_summary_local_date'
+    ) THEN
+        ALTER TABLE users ADD COLUMN last_daily_summary_local_date DATE NULL;
+        COMMENT ON COLUMN users.last_daily_summary_local_date IS 'Дата последней отправленной дневной сводки в локальном дне пользователя';
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'users' AND column_name = 'category_limits_enabled'
+    ) THEN
+        ALTER TABLE users ADD COLUMN category_limits_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+        COMMENT ON COLUMN users.category_limits_enabled IS 'Глобальный флаг проверки лимитов по категориям';
+    END IF;
+END $$;
+
+-- User category limits table
+CREATE TABLE IF NOT EXISTS user_category_limits (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+    limit_amount DECIMAL(12,2) NOT NULL CHECK (limit_amount >= 0),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, category_id)
+);
+ALTER TABLE user_category_limits ADD COLUMN IF NOT EXISTS limit_currency VARCHAR(3) NOT NULL DEFAULT 'RUB';
+CREATE INDEX IF NOT EXISTS idx_user_category_limits_user ON user_category_limits(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_category_limits_category ON user_category_limits(category_id);

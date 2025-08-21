@@ -18,7 +18,13 @@ CREATE TABLE IF NOT EXISTS users (
     last_reminder_local_date DATE NULL,
     reminder_hours INTEGER[] DEFAULT NULL,
     reminder_sent_today_hours INTEGER[] DEFAULT NULL,
-    is_admin BOOLEAN NOT NULL DEFAULT FALSE
+    is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+    -- Daily summary settings
+    daily_summary_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    daily_summary_hour INTEGER NULL,
+    last_daily_summary_local_date DATE NULL,
+    -- Category limits global toggle
+    category_limits_enabled BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 -- Create indexes for premium subscription fields
@@ -39,6 +45,10 @@ COMMENT ON COLUMN users.reminder_enabled IS 'Флаг включения еже�
 COMMENT ON COLUMN users.last_reminder_local_date IS 'Дата последней отправленной напоминалки в локальном дне пользователя';
 COMMENT ON COLUMN users.reminder_hours IS 'Часы отправки напоминалок в локальном времени пользователя (0-23), максимум 3';
 COMMENT ON COLUMN users.reminder_sent_today_hours IS 'Часы, по которым напоминалки уже отправлены в текущий локальный день пользователя';
+COMMENT ON COLUMN users.daily_summary_enabled IS 'Флаг включения ежедневного сводного уведомления по тратам за день';
+COMMENT ON COLUMN users.daily_summary_hour IS 'Час (0-23) отправки ежедневного сводного уведомления в локальном времени пользователя';
+COMMENT ON COLUMN users.last_daily_summary_local_date IS 'Дата последней отправленной дневной сводки в локальном дне пользователя';
+COMMENT ON COLUMN users.category_limits_enabled IS 'Глобальный флаг проверки лимитов по категориям';
 
 DO $$
 BEGIN
@@ -70,6 +80,19 @@ CREATE TABLE IF NOT EXISTS expenses (
     description TEXT,
     created_at_utc TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Per-category spending limits (per user per category, monthly period by convention)
+CREATE TABLE IF NOT EXISTS user_category_limits (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+    limit_amount DECIMAL(12,2) NOT NULL CHECK (limit_amount >= 0),
+    limit_currency VARCHAR(3) NOT NULL DEFAULT 'RUB',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, category_id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_category_limits_user ON user_category_limits(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_category_limits_category ON user_category_limits(category_id);
 
 CREATE TABLE IF NOT EXISTS currency_rates (
     currency TEXT PRIMARY KEY,

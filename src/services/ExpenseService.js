@@ -35,6 +35,13 @@ class ExpenseService {
     return { total, expenses, userCurrency };
   }
 
+  async getDailyTotalsForSummary(userId) {
+    const userCurrency = await this.userRepository.getUserCurrency(userId);
+    const userTimezone = await this.userRepository.getUserTimezone(userId);
+    const total = await this.expenseRepository.getTotalExpenses(userId, 'day', userTimezone);
+    return { total, userCurrency };
+  }
+
   async addExpense(userId, amount, description, categoryName, familyId = null) {
     try {
       const userCurrency = await this.userRepository.getUserCurrency(userId);

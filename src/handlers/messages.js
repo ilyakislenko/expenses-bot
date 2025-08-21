@@ -177,6 +177,12 @@ constructor({ expenseService, userService, premiumService, familyService, catego
           return await this.adminHandlers.handleRefundSearchInput(ctx, text);
         }
 
+        // Установка лимита по категории (premium)
+        if (typeof userState === 'string' && userState.startsWith('setting_category_limit:')) {
+          const categoryId = userState.split(':')[1];
+          return await this.handleSetCategoryLimit(ctx, text, userLanguage, Number(categoryId));
+        }
+
         if (userState === 'admin_broadcast') {
           return await this.handleAdminBroadcastInput(ctx, text, userLanguage);
         }
@@ -276,6 +282,25 @@ constructor({ expenseService, userService, premiumService, familyService, catego
         return;
       }
       this.stateService.setPendingExpense(userId, { amount: parsed.amount, description: parsed.description });
+
+      // Если включены лимиты по категориям — заранее предупредим, если текущая сумма уже превысила лимит для некоторых категорий
+      try {
+        const settings = await this.userService.getReminderSettings(userId);
+        if (settings && settings.category_limits_enabled) {
+          const warnings = [];
+          for (const category of categories) {
+            const info = await this.categoryService.isCategoryLimitExceeded(userId, category.id);
+            if (info.enabled && info.exceeded) {
+              const localizedName = this.formatter.translateCategoryName(category.name, this.localizationService, userLanguage);
+              warnings.push(`${category.icon} ${localizedName}`);
+            }
+          }
+          if (warnings.length) {
+            const warnTitle = this.localizationService.getText(userLanguage, 'category_limits_exceeded_info') || 'Уже превышены лимиты по:';
+            await ctx.reply(`⚠️ ${warnTitle} ${warnings.join(', ')}`);
+          }
+        }
+      } catch (_) {}
       const keyboard = [];
       const row = [];
       categories.forEach((category, index) => {
@@ -562,6 +587,37 @@ constructor({ expenseService, userService, premiumService, familyService, catego
       console.error('Error handling family expense:', error);
       const errorText = this.localizationService.getText(userLanguage, 'error');
       await ctx.reply(errorText);
+    }
+  }
+
+  async handleSetCategoryLimit(ctx, text, userLanguage, categoryId) {
+    try {
+      const userId = ctx.from.id;
+      const raw = (text || '').trim().replace(',', '.');
+      const amount = Number(raw);
+      if (!Number.isFinite(amount) || amount < 0) {
+        const invalid = this.localizationService.getText(userLanguage, 'invalid_limit_amount') || 'Введите корректную сумму (например, 2000 или 1500.50)';
+        return await ctx.reply(invalid);
+      }
+
+      // Сохраняем лимит (только премиум; сервис проверит)
+      await this.categoryService.setCategoryLimit(userId, Number(categoryId), amount);
+      this.stateService.deleteUserState(userId);
+
+      const userCurrency = await this.userService.getUserCurrency(userId);
+      const formatted = this.formatter.formatAmount(amount, userCurrency);
+      const cat = await this.categoryService.getCategoryById(Number(categoryId));
+      const name = cat ? (this.formatter.translateCategoryName(cat.name, this.localizationService, userLanguage)) : '#';
+      const ok = this.localizationService.getText(userLanguage, 'category_limit_saved') || 'Лимит сохранён';
+      const backText = this.localizationService.getText(userLanguage, 'button_back');
+      await ctx.reply(`${ok}: ${name} — ${formatted}`, {
+        reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'category_limits_menu' }]] }
+      });
+    } catch (error) {
+      let msgKey = 'error';
+      if (error && error.code === 'PREMIUM_REQUIRED') msgKey = 'premium_required';
+      const message = this.localizationService.getText(userLanguage, msgKey);
+      await ctx.reply(message);
     }
   }
 

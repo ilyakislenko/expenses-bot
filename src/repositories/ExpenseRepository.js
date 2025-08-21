@@ -240,6 +240,120 @@ class ExpenseRepository extends BaseRepository {
     return result.rows;
   }
 
+  async getCategoryTotalForCustomMonth(userId, categoryId, userTimezone = 'UTC', startDay = 1, baseCurrency = 'RUB') {
+    // Resolve category name first (system vs user categories share names)
+    const categoryQuery = `SELECT name FROM categories WHERE id = $1`;
+    const categoryResult = await this.query(categoryQuery, [categoryId]);
+    if (!categoryResult.rows.length) {
+      return 0;
+    }
+    const categoryName = categoryResult.rows[0].name;
+
+    const query = `
+      WITH
+      local_now AS (
+        SELECT (NOW() AT TIME ZONE $4) AS ln
+      ),
+      current_month AS (
+        SELECT ln,
+               EXTRACT(YEAR FROM ln)::int AS y,
+               EXTRACT(MONTH FROM ln)::int AS m,
+               EXTRACT(DAY FROM ln)::int AS d
+        FROM local_now
+      ),
+      prev_month_calc AS (
+        SELECT (ln - INTERVAL '1 month') AS pm
+        FROM local_now
+      ),
+      period_start_local AS (
+        SELECT CASE 
+          WHEN c.d >= $5 THEN 
+            make_date(c.y, c.m, LEAST($5, EXTRACT(DAY FROM (date_trunc('month', c.ln) + INTERVAL '1 month - 1 day'))::int))
+          ELSE 
+            make_date(EXTRACT(YEAR FROM p.pm)::int,
+                      EXTRACT(MONTH FROM p.pm)::int,
+                      LEAST($5, EXTRACT(DAY FROM (date_trunc('month', p.pm) + INTERVAL '1 month - 1 day'))::int))
+        END AS start_local
+        FROM current_month c CROSS JOIN prev_month_calc p
+      ),
+      period_end_local AS (
+        SELECT make_date(EXTRACT(YEAR FROM (start_local + INTERVAL '1 month'))::int,
+                         EXTRACT(MONTH FROM (start_local + INTERVAL '1 month'))::int,
+                         LEAST($5, EXTRACT(DAY FROM (date_trunc('month', (start_local + INTERVAL '1 month')) + INTERVAL '1 month - 1 day'))::int)) AS end_local
+        FROM period_start_local
+      )
+      SELECT e.currency, COALESCE(SUM(e.amount),0)::float AS total
+      FROM expenses e
+      LEFT JOIN categories c ON e.category_id = c.id
+      WHERE e.user_id = $1 AND c.name = $2
+        AND (e.created_at_utc AT TIME ZONE $4) >= (SELECT start_local FROM period_start_local)
+        AND (e.created_at_utc AT TIME ZONE $4) < (SELECT end_local FROM period_end_local)
+      GROUP BY e.currency
+    `;
+    const result = await this.query(query, [userId, categoryName, categoryId, userTimezone, startDay]);
+    // Sum totals, converting to baseCurrency is handled by service layer if needed; here return sum across currencies only when single currency
+    // If multiple currencies, we can't convert here without rates; return sum for matching baseCurrency if present, else 0
+    if (!result.rows.length) return 0;
+    const row = result.rows.find(r => r.currency === baseCurrency);
+    if (row) return parseFloat(row.total);
+    // If no base currency match and multiple currencies present, return 0 for now; the service can convert if needed
+    return 0;
+  }
+
+  async getCategoryTotalsByCurrencyForCustomMonth(userId, categoryId, userTimezone = 'UTC', startDay = 1) {
+    // Resolve category name (system vs user categories share names)
+    const categoryQuery = `SELECT name FROM categories WHERE id = $1`;
+    const categoryResult = await this.query(categoryQuery, [categoryId]);
+    if (!categoryResult.rows.length) {
+      return [];
+    }
+    const categoryName = categoryResult.rows[0].name;
+
+    const query = `
+      WITH
+      local_now AS (
+        SELECT (NOW() AT TIME ZONE $3) AS ln
+      ),
+      current_month AS (
+        SELECT ln,
+               EXTRACT(YEAR FROM ln)::int AS y,
+               EXTRACT(MONTH FROM ln)::int AS m,
+               EXTRACT(DAY FROM ln)::int AS d
+        FROM local_now
+      ),
+      prev_month_calc AS (
+        SELECT (ln - INTERVAL '1 month') AS pm
+        FROM local_now
+      ),
+      period_start_local AS (
+        SELECT CASE 
+          WHEN c.d >= $4 THEN 
+            make_date(c.y, c.m, LEAST($4, EXTRACT(DAY FROM (date_trunc('month', c.ln) + INTERVAL '1 month - 1 day'))::int))
+          ELSE 
+            make_date(EXTRACT(YEAR FROM p.pm)::int,
+                      EXTRACT(MONTH FROM p.pm)::int,
+                      LEAST($4, EXTRACT(DAY FROM (date_trunc('month', p.pm) + INTERVAL '1 month - 1 day'))::int))
+        END AS start_local
+        FROM current_month c CROSS JOIN prev_month_calc p
+      ),
+      period_end_local AS (
+        SELECT make_date(EXTRACT(YEAR FROM (start_local + INTERVAL '1 month'))::int,
+                         EXTRACT(MONTH FROM (start_local + INTERVAL '1 month'))::int,
+                         LEAST($4, EXTRACT(DAY FROM (date_trunc('month', (start_local + INTERVAL '1 month')) + INTERVAL '1 month - 1 day'))::int)) AS end_local
+        FROM period_start_local
+      )
+      SELECT e.currency, COALESCE(SUM(e.amount),0)::float AS total
+      FROM expenses e
+      LEFT JOIN categories c ON e.category_id = c.id
+      WHERE e.user_id = $1 AND c.name = $2
+        AND (e.created_at_utc AT TIME ZONE $3) >= (SELECT start_local FROM period_start_local)
+        AND (e.created_at_utc AT TIME ZONE $3) < (SELECT end_local FROM period_end_local)
+      GROUP BY e.currency
+    `;
+    const result = await this.query(query, [userId, categoryName, userTimezone, startDay]);
+    return result.rows.map(r => ({ currency: r.currency, total: parseFloat(r.total) }));
+  }
+
   async getExpensesByCategoryId(userId, categoryId, period = periodsConfig.MONTH, userTimezone = 'UTC') {
     let dateFilter;
     switch (period) {

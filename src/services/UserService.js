@@ -128,6 +128,26 @@ class UserService {
     return this.userRepository.setReminderSentTodayHours(userId, clean);
   }
 
+  async setDailySummaryEnabled(userId, enabled) {
+    return this.userRepository.setDailySummaryEnabled(userId, !!enabled);
+  }
+
+  async setDailySummaryHour(userId, hour) {
+    const h = (hour === null || hour === undefined) ? null : parseInt(hour, 10);
+    if (h !== null && (!Number.isInteger(h) || h < 0 || h > 23)) {
+      throw new Error('Invalid daily summary hour');
+    }
+    return this.userRepository.setDailySummaryHour(userId, h);
+  }
+
+  async updateLastDailySummaryLocalDate(userId, dateStr) {
+    return this.userRepository.updateLastDailySummaryLocalDate(userId, dateStr);
+  }
+
+  async setCategoryLimitsEnabled(userId, enabled) {
+    return this.userRepository.setCategoryLimitsEnabled(userId, !!enabled);
+  }
+
   async setUserPeriodStartDay(userId, day) {
     if (typeof day !== 'number' || day < 1 || day > 31) {
       throw new Error('Invalid period start day');

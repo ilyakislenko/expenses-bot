@@ -33,6 +33,7 @@ const FamilyInvitationRepository = require('./repositories/FamilyInvitationRepos
 const PremiumTransactionRepository = require('./repositories/PremiumTransactionRepository');
 const DonationRepository = require('./repositories/DonationRepository');
 const BugReportRepository = require('./repositories/BugReportRepository');
+const CategoryLimitRepository = require('./repositories/CategoryLimitRepository');
 
 // Services
 const ExpenseService = require('./services/ExpenseService');
@@ -104,6 +105,9 @@ class Container {
 
       case 'bugReportRepository':
         return new BugReportRepository();
+
+      case 'categoryLimitRepository':
+        return new CategoryLimitRepository();
 
       case 'currencyUtils':
         return createCurrencyUtils(this.get('currencyRepository'));
@@ -187,7 +191,10 @@ class Container {
         return new CategoryService(
           this.get('categoryRepository'),
           this.get('premiumService'),
-          this.get('expenseRepository')
+          this.get('expenseRepository'),
+          this.get('userRepository'),
+          this.get('categoryLimitRepository'),
+          this.get('formatter')
         );
 
       case 'adminService':
@@ -288,7 +295,7 @@ class Container {
           generateMainMenuKeyboard: (userLanguage, isAdmin = false, hasFamily = false, isPremium = false) => generateMainMenuKeyboard(this.get('localizationService'), userLanguage, isAdmin, hasFamily, isPremium),
           generateInlineMainMenu: (userLanguage, isAdmin = false) => generateInlineMainMenu(this.get('localizationService'), userLanguage, isAdmin),
           generateCurrencyKeyboard: (userLanguage) => generateCurrencyKeyboard(this.get('localizationService'), userLanguage),
-          generateSettingsKeyboard: (userLanguage, reminderEnabled) => generateSettingsKeyboard(this.get('localizationService'), userLanguage, reminderEnabled),
+          generateSettingsKeyboard: (userLanguage, reminderEnabled, options = {}) => generateSettingsKeyboard(this.get('localizationService'), userLanguage, reminderEnabled, options),
           generateTimeKeyboard: (userLanguage) => generateTimeKeyboard(this.get('localizationService'), userLanguage)
         };
 

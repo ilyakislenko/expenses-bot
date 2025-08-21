@@ -1,10 +1,13 @@
 const logger = require('../utils/logger');
 
 class CategoryService {
-  constructor(categoryRepository, premiumService, expenseRepository) {
+  constructor(categoryRepository, premiumService, expenseRepository, userRepository, categoryLimitRepository, formatter) {
     this.categoryRepository = categoryRepository;
     this.premiumService = premiumService;
     this.expenseRepository = expenseRepository;
+    this.userRepository = userRepository;
+    this.categoryLimitRepository = categoryLimitRepository;
+    this.formatter = formatter;
   }
 
   async getUserCategories(userId) {
@@ -105,6 +108,59 @@ class CategoryService {
     const updated = await this.categoryRepository.updateUserCategory(userId, categoryId, { name: name.trim(), icon });
     logger.info('User category renamed', { userId, categoryId, name });
     return updated;
+  }
+
+  // ===== Category limits (premium) =====
+  async setCategoryLimit(userId, categoryId, limitAmount) {
+    const isPremium = await this.premiumService.isPremiumUser(userId);
+    if (!isPremium) {
+      const error = new Error('premium_required');
+      error.code = 'PREMIUM_REQUIRED';
+      throw error;
+    }
+    const amount = Number(limitAmount);
+    if (!Number.isFinite(amount) || amount < 0) {
+      const error = new Error('invalid_limit_amount');
+      error.code = 'INVALID_AMOUNT';
+      throw error;
+    }
+    const currency = await this.userRepository.getUserCurrency(userId);
+    return this.categoryLimitRepository.upsertLimit(userId, categoryId, amount, currency);
+  }
+
+  async getCategoryLimit(userId, categoryId) {
+    return this.categoryLimitRepository.getLimit(userId, categoryId);
+  }
+
+  async getCategoryLimits(userId) {
+    return this.categoryLimitRepository.getLimitsForUser(userId);
+  }
+
+  async isCategoryLimitExceeded(userId, categoryId) {
+    const settings = await this.userRepository.getReminderSettings(userId);
+    if (!settings.category_limits_enabled) return { enabled: false, exceeded: false };
+    const isPremium = await this.premiumService.isPremiumUser(userId);
+    if (!isPremium) return { enabled: false, exceeded: false };
+    const limit = await this.categoryLimitRepository.getLimit(userId, categoryId);
+    if (!limit) return { enabled: true, exceeded: false };
+    const userCurrency = await this.userRepository.getUserCurrency(userId);
+    const userTimezone = await this.userRepository.getUserTimezone(userId);
+    const startDay = await this.userRepository.getUserPeriodStartDay(userId);
+    // Получаем суммы по валютам и конвертируем в валюту пользователя
+    const totals = await this.expenseRepository.getCategoryTotalsByCurrencyForCustomMonth(userId, categoryId, userTimezone, startDay);
+    let total = 0;
+    for (const row of totals) {
+      const converted = await this.formatter.currencyUtils.convert(Number(row.total), row.currency || 'RUB', userCurrency);
+      total += converted;
+    }
+    return {
+      enabled: true,
+      exceeded: total >= (await this.formatter.currencyUtils.convert(Number(limit.limit_amount), limit.limit_currency || userCurrency, userCurrency)),
+      limitAmount: Number(limit.limit_amount),
+      limitCurrency: limit.limit_currency || userCurrency,
+      currentAmount: total,
+      currency: userCurrency
+    };
   }
 }
 

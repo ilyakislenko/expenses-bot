@@ -86,6 +86,92 @@ class CallbackHandlers {
     await ctx.answerCbQuery();
   }
 
+  async handleToggleDailySummary(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const settings = await this.userService.getReminderSettings(userId);
+    const newValue = !settings.daily_summary_enabled;
+    await this.userService.setDailySummaryEnabled(userId, newValue);
+    const text = this.localizationService.getText(userLanguage, newValue ? 'daily_summary_enabled' : 'daily_summary_disabled');
+    await ctx.reply(text);
+    const keyboard = this.keyboardGenerators.generateSettingsKeyboard(userLanguage, settings.reminder_enabled, { dailySummaryEnabled: newValue, categoryLimitsEnabled: !!settings.category_limits_enabled });
+    await ctx.editMessageReplyMarkup({ inline_keyboard: keyboard });
+    await ctx.answerCbQuery();
+  }
+
+  async handleConfigureDailySummaryHour(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const settings = await this.userService.getReminderSettings(userId);
+    const infoText = this.localizationService.getText(userLanguage, 'daily_summary_hour_info') || 'Выберите час локального времени для ежедневной сводки:';
+    const backText = this.localizationService.getText(userLanguage, 'button_back');
+    // Сетка 0..23
+    const keyboard = [];
+    for (let row = 0; row < 6; row++) {
+      const rowButtons = [];
+      for (let col = 0; col < 4; col++) {
+        const hour = row * 4 + col;
+        if (hour <= 23) {
+          const selected = settings.daily_summary_hour === hour;
+          const label = `${selected ? '✅' : '☐'} ${hour.toString().padStart(2, '0')}:00`;
+          rowButtons.push({ text: label, callback_data: `set_daily_summary_hour|${hour}` });
+        }
+      }
+      if (rowButtons.length) keyboard.push(rowButtons);
+    }
+    keyboard.push([{ text: backText, callback_data: 'back_to_settings' }]);
+    await ctx.editMessageText(infoText, { reply_markup: { inline_keyboard: keyboard } });
+    await ctx.answerCbQuery();
+  }
+
+  async handleSetDailySummaryHour(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const [, hourStr] = ctx.callbackQuery.data.split('|');
+    const hour = parseInt(hourStr, 10);
+    await this.userService.setDailySummaryHour(userId, hour);
+    const confirm = this.localizationService.getText(userLanguage, 'daily_summary_hour_set') || 'Час сводки сохранён';
+    await ctx.answerCbQuery(confirm);
+    await this.handleConfigureDailySummaryHour(ctx);
+  }
+
+  async handleToggleCategoryLimits(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const settings = await this.userService.getReminderSettings(userId);
+    const newValue = !settings.category_limits_enabled;
+    await this.userService.setCategoryLimitsEnabled(userId, newValue);
+    const text = this.localizationService.getText(userLanguage, newValue ? 'category_limits_enabled' : 'category_limits_disabled');
+    await ctx.reply(text);
+    const keyboard = this.keyboardGenerators.generateSettingsKeyboard(userLanguage, settings.reminder_enabled, { dailySummaryEnabled: !!settings.daily_summary_enabled, categoryLimitsEnabled: newValue });
+    await ctx.editMessageReplyMarkup({ inline_keyboard: keyboard });
+    await ctx.answerCbQuery();
+  }
+
+  async handleCategoryLimitsMenu(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const isPremium = await this.premiumService.isPremiumUser(userId);
+    if (!isPremium) {
+      const text = this.localizationService.getText(userLanguage, 'premium_required');
+      await ctx.answerCbQuery(text, { show_alert: true });
+      return;
+    }
+    // Список категорий с текущими лимитами
+    const list = await this.categoryService.getAllAvailableCategories(userId);
+    const backText = this.localizationService.getText(userLanguage, 'button_back');
+    const title = this.localizationService.getText(userLanguage, 'category_limits_title') || 'Лимиты на категории';
+    // Покажем меню выбора категории
+    const keyboard = [];
+    for (const c of list) {
+      keyboard.push([{ text: `${c.icon || '📦'} ${c.name}`, callback_data: `category_limit_set|${c.id}` }]);
+    }
+    keyboard.push([{ text: backText, callback_data: 'back_to_settings' }]);
+    await ctx.editMessageText(title, { reply_markup: { inline_keyboard: keyboard } });
+    await ctx.answerCbQuery();
+  }
+
+
   async handleToggleReminderHour(ctx) {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
@@ -326,6 +412,17 @@ class CallbackHandlers {
         `🏷️ ${categoryLabelText}: ${localizedCategoryName}`,
         { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } }
       );
+      // Проверка лимита по категории (если включено)
+      try {
+        const limitInfo = await this.categoryService.isCategoryLimitExceeded(userId, expense.category_id);
+        if (limitInfo.enabled && limitInfo.exceeded) {
+          const warn = this.localizationService.getText(userLanguage, 'category_limit_exceeded') || '⚠️ Превышен лимит по категории';
+          const limitDisplay = this.formatter.formatAmount(limitInfo.limitAmount, limitInfo.limitCurrency || limitInfo.currency);
+          const currentDisplay = this.formatter.formatAmount(limitInfo.currentAmount, limitInfo.currency);
+          const details = `${localizedCategoryName}: ${currentDisplay} / ${limitDisplay}`;
+          await ctx.reply(`${warn}\n${details}`);
+        }
+      } catch (_) {}
     } catch (error) {
       console.error('Error handling category selection:', error);
       const expenseSavedErrorText = this.localizationService.getText(userLanguage, 'callback_expense_saved');
@@ -1584,6 +1681,25 @@ class CallbackHandlers {
       console.error('Error opening manage custom categories:', error);
       await ctx.answerCbQuery(this.localizationService.getText(userLanguage, 'error'));
     }
+  }
+
+  async handleCategoryLimitSet(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const [, idStr] = ctx.callbackQuery.data.split('|');
+    const categoryId = parseInt(idStr, 10);
+    const isPremium = await this.premiumService.isPremiumUser(userId);
+    if (!isPremium) {
+      const text = this.localizationService.getText(userLanguage, 'premium_required');
+      await ctx.answerCbQuery(text, { show_alert: true });
+      return;
+    }
+    // Ставим состояние ожидания суммы лимита
+    this.stateService.setUserState(userId, `setting_category_limit:${categoryId}`);
+    const prompt = this.localizationService.getText(userLanguage, 'category_limit_enter_amount') || 'Введите сумму лимита (в вашей валюте)';
+    const backText = this.localizationService.getText(userLanguage, 'button_back');
+    await ctx.editMessageText(prompt, { reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'category_limits_menu' }]] } });
+    await ctx.answerCbQuery();
   }
 
   async handleCustomCategoriesDelete(ctx) {

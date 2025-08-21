@@ -131,6 +131,14 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('change_period_start', errorHandler((ctx) => callbackHandlers.handleChangePeriodStart(ctx))); // настройка начала периода
   bot.action('toggle_reminders', errorHandler((ctx) => callbackHandlers.handleToggleReminders(ctx))); // вкл/выкл напоминаний
   bot.action('configure_reminder_hours', errorHandler((ctx) => callbackHandlers.handleConfigureReminderHours(ctx))); // меню настройки часов напоминаний
+  // Daily summary
+  bot.action('toggle_daily_summary', errorHandler((ctx) => callbackHandlers.handleToggleDailySummary(ctx)));
+  bot.action('configure_daily_summary_hour', errorHandler((ctx) => callbackHandlers.handleConfigureDailySummaryHour(ctx)));
+  bot.action(/^set_daily_summary_hour\|(\d{1,2})$/, errorHandler((ctx) => callbackHandlers.handleSetDailySummaryHour(ctx)));
+  // Category limits
+  bot.action('toggle_category_limits', errorHandler((ctx) => callbackHandlers.handleToggleCategoryLimits(ctx)));
+  bot.action('category_limits_menu', errorHandler((ctx) => callbackHandlers.handleCategoryLimitsMenu(ctx)));
+  bot.action(/^category_limit_set\|(\d+)$/, errorHandler((ctx) => callbackHandlers.handleCategoryLimitSet(ctx)));
   bot.action(/^toggle_reminder_hour\|(\d{1,2})$/, errorHandler((ctx) => callbackHandlers.handleToggleReminderHour(ctx))); // переключение конкретного часа
   bot.action('save_reminder_hours', errorHandler((ctx) => callbackHandlers.handleSaveReminderHours(ctx))); // сохранить выбор
   bot.action('clear_reminder_hours', errorHandler((ctx) => callbackHandlers.handleClearReminderHours(ctx))); // сбросить выбор

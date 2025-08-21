@@ -99,4 +99,55 @@ module.exports = function setupBotCron(cron, currencyUtils, donationRepository, 
       console.error('Ошибка при отправке напоминалок:', err);
     }
   });
+
+  // Ежедневная сводка по расходам за день (по настроенному часу)
+  cron.schedule('0 * * * *', async () => {
+    try {
+      const { rows } = await userService.userRepository.query('SELECT id, timezone, language, daily_summary_hour, last_daily_summary_local_date FROM users WHERE daily_summary_enabled = true');
+      const nowUtc = new Date();
+      const Formatter = require('./utils/formatter');
+      const fmt = new Formatter(currencyUtils);
+      for (const user of rows) {
+        const tz = user.timezone || 'UTC';
+        const formatter = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false, year: 'numeric', month: '2-digit', day: '2-digit' });
+        const parts = formatter.formatToParts(nowUtc).reduce((acc, p) => (acc[p.type] = p.value, acc), {});
+        const localHour = parseInt(parts.hour, 10);
+        const localDateStr = `${parts.year}-${parts.month}-${parts.day}`;
+
+        const targetHour = Number.isInteger(user.daily_summary_hour) ? user.daily_summary_hour : 21; // дефолт 21:00
+        if (localHour !== targetHour) continue;
+
+        const lastSummaryDateStr = user.last_daily_summary_local_date
+          ? (typeof user.last_daily_summary_local_date === 'string'
+              ? user.last_daily_summary_local_date
+              : user.last_daily_summary_local_date.toISOString().slice(0, 10))
+          : null;
+        if (lastSummaryDateStr === localDateStr) continue; // уже отправляли сегодня
+
+        const lang = user.language || 'en';
+        const { total } = await expenseService.getDailyTotalsForSummary(user.id);
+        const title = notificationService.localizationService.getText(lang, 'daily_summary_title') || 'Сводка за день';
+        let text = `📊 *${title}*\n`;
+        if (Array.isArray(total.byCurrency) && total.byCurrency.length > 1) {
+          for (const row of total.byCurrency) {
+            text += `${fmt.formatAmount(row.total, row.currency)}\n`;
+          }
+        } else if (Array.isArray(total.byCurrency) && total.byCurrency.length === 1) {
+          const row = total.byCurrency[0];
+          const header = notificationService.localizationService.getText(lang, 'daily_total_spent') || 'Потрачено за день';
+          text += `${header}: ${fmt.formatAmount(row.total, row.currency)}\n`;
+        }
+        text += `${notificationService.localizationService.getText(lang, 'records_count', { count: total.count || 0 })}`;
+
+        try {
+          await notificationService.bot.telegram.sendMessage(user.id, text, { parse_mode: 'Markdown' });
+          await userService.updateLastDailySummaryLocalDate(user.id, localDateStr);
+        } catch (e) {
+          console.error('Failed to send daily summary', { userId: user.id, e });
+        }
+      }
+    } catch (err) {
+      console.error('Ошибка при отправке ежедневной сводки:', err);
+    }
+  });
 }; 
