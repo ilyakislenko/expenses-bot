@@ -439,3 +439,10 @@ CREATE TABLE IF NOT EXISTS user_category_limits (
 ALTER TABLE user_category_limits ADD COLUMN IF NOT EXISTS limit_currency VARCHAR(3) NOT NULL DEFAULT 'RUB';
 CREATE INDEX IF NOT EXISTS idx_user_category_limits_user ON user_category_limits(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_category_limits_category ON user_category_limits(category_id);
+
+-- Global daily/monthly limits per user
+ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_limit_amount DECIMAL(12,2) NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_limit_currency VARCHAR(3) NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS monthly_limit_amount DECIMAL(12,2) NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS monthly_limit_currency VARCHAR(3) NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS global_limits_enabled BOOLEAN NOT NULL DEFAULT FALSE;

@@ -1,11 +1,12 @@
 const { MAIN_MENU_KEYBOARD, CURRENCY_KEYBOARD, SETTINGS_KEYBOARD } = require('../utils/constants');
 
 class CommandHandlers {
-  constructor({ expenseService, userService, premiumService, familyService, localizationService, formatter, stateService, keyboardGenerators, paymentService }) {
+  constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, stateService, keyboardGenerators, paymentService }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
     this.familyService = familyService;
+    this.categoryService = categoryService;
     this.localizationService = localizationService;
     this.formatter = formatter;
     this.stateService = stateService;
@@ -326,7 +327,7 @@ class CommandHandlers {
       this.localizationService,
       userLanguage,
       reminderSettings.reminder_enabled,
-      { dailySummaryEnabled: !!reminderSettings.daily_summary_enabled, categoryLimitsEnabled: !!reminderSettings.category_limits_enabled }
+      { dailySummaryEnabled: !!reminderSettings.daily_summary_enabled, categoryLimitsEnabled: !!reminderSettings.category_limits_enabled, globalLimitsEnabled: !!reminderSettings.global_limits_enabled }
     );
     
     await ctx.reply(settingsTitle, {
@@ -390,6 +391,58 @@ class CommandHandlers {
 
   async limits(ctx) {
     return this.premiumSubscription(ctx);
+  }
+
+  async limitsOverview(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const userCurrency = await this.userService.getUserCurrency(userId);
+    const settings = await this.userService.getReminderSettings(userId);
+    const categories = await this.expenseService.getCategories(userId, this.localizationService, userLanguage);
+
+    // Категории: соберём строки с текущим расходом/лимитом
+    const lines = [];
+    for (const cat of categories) {
+      const info = await this.categoryService.isCategoryLimitExceeded(userId, cat.id);
+      if (!info.enabled) continue;
+      const name = `${cat.icon} ${cat.name}`;
+      const currentStr = this.formatter.formatAmount(info.currentAmount, info.currency);
+      const limitStr = info.limitAmount != null ? this.formatter.formatAmount(info.limitAmount, info.limitCurrency || info.currency) : '-';
+      lines.push(`${name}: ${currentStr} / ${limitStr}`);
+    }
+
+    // Общие лимиты
+    let globalLines = [];
+    // day
+    if (settings.daily_limit_amount) {
+      const { total } = await this.expenseService.getDailyTotalsForSummary(userId);
+      let spent = 0;
+      if (Array.isArray(total.byCurrency)) {
+        for (const row of total.byCurrency) {
+          spent += await this.formatter.currencyUtils.convert(Number(row.total), row.currency || 'RUB', userCurrency);
+        }
+      }
+      const limitDisplay = this.formatter.formatAmount(settings.daily_limit_amount, settings.daily_limit_currency || userCurrency);
+      const spentDisplay = this.formatter.formatAmount(spent, userCurrency);
+      globalLines.push(`${this.localizationService.getText(userLanguage, 'daily_limit') || 'Дневной лимит'}: ${spentDisplay} / ${limitDisplay}`);
+    }
+    // month
+    if (settings.monthly_limit_amount) {
+      const { total } = await this.expenseService.getMonthlyStats(userId);
+      let spent = 0;
+      if (Array.isArray(total.byCurrency)) {
+        for (const row of total.byCurrency) {
+          spent += await this.formatter.currencyUtils.convert(Number(row.total), row.currency || 'RUB', userCurrency);
+        }
+      }
+      const limitDisplay = this.formatter.formatAmount(settings.monthly_limit_amount, settings.monthly_limit_currency || userCurrency);
+      const spentDisplay = this.formatter.formatAmount(spent, userCurrency);
+      globalLines.push(`${this.localizationService.getText(userLanguage, 'monthly_limit') || 'Месячный лимит'}: ${spentDisplay} / ${limitDisplay}`);
+    }
+
+    const title = this.localizationService.getText(userLanguage, 'limits_overview_title') || 'Лимиты';
+    const body = [globalLines.join('\n'), lines.join('\n')].filter(Boolean).join('\n\n') || (this.localizationService.getText(userLanguage, 'no_limits_set') || 'Лимиты не заданы');
+    await ctx.reply(`📊 *${title}*\n\n${body}`, { parse_mode: 'Markdown' });
   }
 
   async family(ctx) {

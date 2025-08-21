@@ -50,6 +50,17 @@ COMMENT ON COLUMN users.daily_summary_hour IS 'Час (0-23) отправки е
 COMMENT ON COLUMN users.last_daily_summary_local_date IS 'Дата последней отправленной дневной сводки в локальном дне пользователя';
 COMMENT ON COLUMN users.category_limits_enabled IS 'Глобальный флаг проверки лимитов по категориям';
 
+-- Общие лимиты пользователя (дневной/месячный)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_limit_amount DECIMAL(12,2) NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_limit_currency VARCHAR(3) NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS monthly_limit_amount DECIMAL(12,2) NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS monthly_limit_currency VARCHAR(3) NULL;
+COMMENT ON COLUMN users.daily_limit_amount IS 'Дневной лимит трат';
+COMMENT ON COLUMN users.daily_limit_currency IS 'Валюта дневного лимита';
+COMMENT ON COLUMN users.monthly_limit_amount IS 'Месячный лимит трат';
+COMMENT ON COLUMN users.monthly_limit_currency IS 'Валюта месячного лимита';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS global_limits_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+
 DO $$
 BEGIN
   IF NOT EXISTS (

@@ -148,6 +148,28 @@ class UserService {
     return this.userRepository.setCategoryLimitsEnabled(userId, !!enabled);
   }
 
+  async setDailyLimit(userId, amount) {
+    const currency = await this.userRepository.getUserCurrency(userId);
+    const value = amount === null ? null : Number(amount);
+    if (value !== null && (!Number.isFinite(value) || value < 0)) {
+      throw new Error('Invalid daily limit');
+    }
+    return this.userRepository.setDailyLimit(userId, value, value === null ? null : currency);
+  }
+
+  async setMonthlyLimit(userId, amount) {
+    const currency = await this.userRepository.getUserCurrency(userId);
+    const value = amount === null ? null : Number(amount);
+    if (value !== null && (!Number.isFinite(value) || value < 0)) {
+      throw new Error('Invalid monthly limit');
+    }
+    return this.userRepository.setMonthlyLimit(userId, value, value === null ? null : currency);
+  }
+
+  async setGlobalLimitsEnabled(userId, enabled) {
+    return this.userRepository.setGlobalLimitsEnabled(userId, !!enabled);
+  }
+
   async setUserPeriodStartDay(userId, day) {
     if (typeof day !== 'number' || day < 1 || day > 31) {
       throw new Error('Invalid period start day');

@@ -152,13 +152,15 @@ function generateCurrencyKeyboard(localizationService, userLanguage) {
 
 // Функция для генерации клавиатуры настроек
 function generateSettingsKeyboard(localizationService, userLanguage, reminderEnabled = false, options = {}) {
-  const { dailySummaryEnabled = false, categoryLimitsEnabled = false } = options || {};
+  const { dailySummaryEnabled = false, categoryLimitsEnabled = false, globalLimitsEnabled = false } = options || {};
   const reminderIcon = reminderEnabled ? '🟢' : '⚫';
   const reminderText = `${reminderIcon} ${localizationService.getText(userLanguage, 'button_reminders')}`;
   const summaryIcon = dailySummaryEnabled ? '🟢' : '⚫';
   const summaryText = `${summaryIcon} ${localizationService.getText(userLanguage, 'button_daily_summary') || 'Ежедневная сводка'}`;
   const limitsIcon = categoryLimitsEnabled ? '🟢' : '⚫';
   const limitsToggleText = `${limitsIcon} ${localizationService.getText(userLanguage, 'button_toggle_category_limits') || 'Лимиты по категориям'}`;
+  const globalLimitsIcon = globalLimitsEnabled ? '🟢' : '⚫';
+  const globalLimitsToggleText = `${globalLimitsIcon} ${localizationService.getText(userLanguage, 'button_toggle_global_limits') || 'Глобальные лимиты (д/м)'}`;
   
   return [
     [{ text: localizationService.getText(userLanguage, 'button_change_currency'), callback_data: 'change_currency' }],
@@ -171,6 +173,9 @@ function generateSettingsKeyboard(localizationService, userLanguage, reminderEna
     [{ text: localizationService.getText(userLanguage, 'button_configure_daily_summary') || 'Настроить час сводки', callback_data: 'configure_daily_summary_hour' }],
     [{ text: limitsToggleText, callback_data: 'toggle_category_limits' }],
     [{ text: localizationService.getText(userLanguage, 'button_category_limits') || 'Лимиты на категории', callback_data: 'category_limits_menu' }],
+    [{ text: globalLimitsToggleText, callback_data: 'toggle_global_limits' }],
+    [{ text: localizationService.getText(userLanguage, 'button_set_daily_limit') || 'Установить дневной лимит', callback_data: 'set_daily_limit' }],
+    [{ text: localizationService.getText(userLanguage, 'button_set_monthly_limit') || 'Установить месячный лимит', callback_data: 'set_monthly_limit' }],
     [{ text: localizationService.getText(userLanguage, 'button_custom_categories'), callback_data: 'custom_categories' }],
     [{ text: localizationService.getText(userLanguage, 'button_bug_report'), callback_data: 'bug_report' }],
     [{ text: localizationService.getText(userLanguage, 'button_back'), callback_data: 'back_to_menu' }]

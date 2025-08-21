@@ -20,6 +20,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.command('timezone', errorHandler((ctx) => commandHandlers.timezone(ctx))); // настройка часового пояса
   bot.command('settings', errorHandler((ctx) => commandHandlers.settings(ctx))); // настройки пользователя
   bot.command('limits', errorHandler((ctx) => commandHandlers.premiumSubscription(ctx))); // лимиты и премиум функции (новое меню премиума)
+  bot.command('limits_overview', errorHandler((ctx) => commandHandlers.limitsOverview(ctx))); // обзор лимитов
   // Требования Telegram Payments: обязательные команды поддержки и политики
   bot.command('paysupport', errorHandler((ctx) => commandHandlers.paysupport(ctx))); // поддержка платежей
   bot.command('terms', errorHandler((ctx) => commandHandlers.terms(ctx))); // условия использования
@@ -139,6 +140,9 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('toggle_category_limits', errorHandler((ctx) => callbackHandlers.handleToggleCategoryLimits(ctx)));
   bot.action('category_limits_menu', errorHandler((ctx) => callbackHandlers.handleCategoryLimitsMenu(ctx)));
   bot.action(/^category_limit_set\|(\d+)$/, errorHandler((ctx) => callbackHandlers.handleCategoryLimitSet(ctx)));
+  bot.action('set_daily_limit', errorHandler((ctx) => callbackHandlers.handleSetDailyLimit(ctx)));
+  bot.action('set_monthly_limit', errorHandler((ctx) => callbackHandlers.handleSetMonthlyLimit(ctx)));
+  bot.action('toggle_global_limits', errorHandler((ctx) => callbackHandlers.handleToggleGlobalLimits(ctx)));
   bot.action(/^toggle_reminder_hour\|(\d{1,2})$/, errorHandler((ctx) => callbackHandlers.handleToggleReminderHour(ctx))); // переключение конкретного часа
   bot.action('save_reminder_hours', errorHandler((ctx) => callbackHandlers.handleSaveReminderHours(ctx))); // сохранить выбор
   bot.action('clear_reminder_hours', errorHandler((ctx) => callbackHandlers.handleClearReminderHours(ctx))); // сбросить выбор

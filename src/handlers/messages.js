@@ -183,6 +183,14 @@ constructor({ expenseService, userService, premiumService, familyService, catego
           return await this.handleSetCategoryLimit(ctx, text, userLanguage, Number(categoryId));
         }
 
+        if (userState === 'setting_daily_limit') {
+          return await this.handleSetDailyLimit(ctx, text, userLanguage);
+        }
+
+        if (userState === 'setting_monthly_limit') {
+          return await this.handleSetMonthlyLimit(ctx, text, userLanguage);
+        }
+
         if (userState === 'admin_broadcast') {
           return await this.handleAdminBroadcastInput(ctx, text, userLanguage);
         }
@@ -618,6 +626,42 @@ constructor({ expenseService, userService, premiumService, familyService, catego
       if (error && error.code === 'PREMIUM_REQUIRED') msgKey = 'premium_required';
       const message = this.localizationService.getText(userLanguage, msgKey);
       await ctx.reply(message);
+    }
+  }
+
+  async handleSetDailyLimit(ctx, text, userLanguage) {
+    const userId = ctx.from.id;
+    const raw = (text || '').trim().replace(',', '.');
+    const val = raw === '' ? null : Number(raw);
+    try {
+      await this.userService.setDailyLimit(userId, val);
+      this.stateService.deleteUserState(userId);
+      const cur = await this.userService.getUserCurrency(userId);
+      const ok = this.localizationService.getText(userLanguage, 'daily_limit_saved') || 'Дневной лимит сохранён';
+      const backText = this.localizationService.getText(userLanguage, 'button_back');
+      const display = val === null || val === 0 ? (this.localizationService.getText(userLanguage, 'limit_cleared') || 'Снят') : this.formatter.formatAmount(val, cur);
+      await ctx.reply(`${ok}: ${display}`, { reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'back_to_settings' }]] } });
+    } catch (e) {
+      const err = this.localizationService.getText(userLanguage, 'invalid_limit_amount') || 'Введите корректную сумму';
+      await ctx.reply(err);
+    }
+  }
+
+  async handleSetMonthlyLimit(ctx, text, userLanguage) {
+    const userId = ctx.from.id;
+    const raw = (text || '').trim().replace(',', '.');
+    const val = raw === '' ? null : Number(raw);
+    try {
+      await this.userService.setMonthlyLimit(userId, val);
+      this.stateService.deleteUserState(userId);
+      const cur = await this.userService.getUserCurrency(userId);
+      const ok = this.localizationService.getText(userLanguage, 'monthly_limit_saved') || 'Месячный лимит сохранён';
+      const backText = this.localizationService.getText(userLanguage, 'button_back');
+      const display = val === null || val === 0 ? (this.localizationService.getText(userLanguage, 'limit_cleared') || 'Снят') : this.formatter.formatAmount(val, cur);
+      await ctx.reply(`${ok}: ${display}`, { reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'back_to_settings' }]] } });
+    } catch (e) {
+      const err = this.localizationService.getText(userLanguage, 'invalid_limit_amount') || 'Введите корректную сумму';
+      await ctx.reply(err);
     }
   }
 

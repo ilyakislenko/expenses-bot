@@ -214,6 +214,7 @@ class Container {
           userService: this.get('userService'),
           premiumService: this.get('premiumService'),
           familyService: this.get('familyService'),
+          categoryService: this.get('categoryService'),
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
           stateService: this.get('stateService'),

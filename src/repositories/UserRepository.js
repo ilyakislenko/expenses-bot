@@ -74,10 +74,15 @@ class UserRepository extends BaseRepository {
         daily_summary_enabled,
         daily_summary_hour,
         last_daily_summary_local_date,
-        category_limits_enabled
+        category_limits_enabled,
+        daily_limit_amount,
+        daily_limit_currency,
+        monthly_limit_amount,
+        monthly_limit_currency,
+        global_limits_enabled
       FROM users WHERE id = $1`;
     const result = await this.query(query, [userId]);
-    return result.rows[0] || { reminder_enabled: false, last_reminder_local_date: null, timezone: 'UTC', daily_summary_enabled: false, daily_summary_hour: null, last_daily_summary_local_date: null, category_limits_enabled: false };
+    return result.rows[0] || { reminder_enabled: false, last_reminder_local_date: null, timezone: 'UTC', daily_summary_enabled: false, daily_summary_hour: null, last_daily_summary_local_date: null, category_limits_enabled: false, daily_limit_amount: null, daily_limit_currency: null, monthly_limit_amount: null, monthly_limit_currency: null, global_limits_enabled: false };
   }
 
   async setReminderEnabled(userId, enabled) {
@@ -119,6 +124,21 @@ class UserRepository extends BaseRepository {
 
   async setCategoryLimitsEnabled(userId, enabled) {
     const query = 'UPDATE users SET category_limits_enabled = $2 WHERE id = $1';
+    await this.query(query, [userId, !!enabled]);
+  }
+
+  async setDailyLimit(userId, amount, currency) {
+    const query = 'UPDATE users SET daily_limit_amount = $2, daily_limit_currency = $3 WHERE id = $1';
+    await this.query(query, [userId, amount, currency]);
+  }
+
+  async setMonthlyLimit(userId, amount, currency) {
+    const query = 'UPDATE users SET monthly_limit_amount = $2, monthly_limit_currency = $3 WHERE id = $1';
+    await this.query(query, [userId, amount, currency]);
+  }
+
+  async setGlobalLimitsEnabled(userId, enabled) {
+    const query = 'UPDATE users SET global_limits_enabled = $2 WHERE id = $1';
     await this.query(query, [userId, !!enabled]);
   }
 

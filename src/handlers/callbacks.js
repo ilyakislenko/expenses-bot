@@ -35,6 +35,19 @@ class CallbackHandlers {
     await ctx.answerCbQuery();
   }
 
+  async handleToggleGlobalLimits(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const settings = await this.userService.getReminderSettings(userId);
+    const newValue = !settings.global_limits_enabled;
+    await this.userService.setGlobalLimitsEnabled(userId, newValue);
+    const text = newValue ? (this.localizationService.getText(userLanguage, 'global_limits_enabled') || 'Глобальные лимиты включены') : (this.localizationService.getText(userLanguage, 'global_limits_disabled') || 'Глобальные лимиты отключены');
+    await ctx.reply(text);
+    const keyboard = this.keyboardGenerators.generateSettingsKeyboard(userLanguage, settings.reminder_enabled, { dailySummaryEnabled: !!settings.daily_summary_enabled, categoryLimitsEnabled: !!settings.category_limits_enabled, globalLimitsEnabled: newValue });
+    await ctx.editMessageReplyMarkup({ inline_keyboard: keyboard });
+    await ctx.answerCbQuery();
+  }
+
   async handleConfigureReminderHours(ctx) {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
@@ -83,6 +96,26 @@ class CallbackHandlers {
       }
       throw e;
     }
+    await ctx.answerCbQuery();
+  }
+
+  async handleSetDailyLimit(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const prompt = this.localizationService.getText(userLanguage, 'enter_daily_limit') || 'Введите сумму дневного лимита (пусто/0 — снять лимит)';
+    const backText = this.localizationService.getText(userLanguage, 'button_back');
+    this.stateService.setUserState(userId, 'setting_daily_limit');
+    await ctx.editMessageText(prompt, { reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'back_to_settings' }]] } });
+    await ctx.answerCbQuery();
+  }
+
+  async handleSetMonthlyLimit(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const prompt = this.localizationService.getText(userLanguage, 'enter_monthly_limit') || 'Введите сумму месячного лимита (пусто/0 — снять лимит)';
+    const backText = this.localizationService.getText(userLanguage, 'button_back');
+    this.stateService.setUserState(userId, 'setting_monthly_limit');
+    await ctx.editMessageText(prompt, { reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'back_to_settings' }]] } });
     await ctx.answerCbQuery();
   }
 
@@ -421,6 +454,40 @@ class CallbackHandlers {
           const currentDisplay = this.formatter.formatAmount(limitInfo.currentAmount, limitInfo.currency);
           const details = `${localizedCategoryName}: ${currentDisplay} / ${limitDisplay}`;
           await ctx.reply(`${warn}\n${details}`);
+        }
+      } catch (_) {}
+
+      // Проверка глобальных лимитов (день/месяц)
+      try {
+        const settings = await this.userService.getReminderSettings(userId);
+        const userCurrency = await this.userService.getUserCurrency(userId);
+        if (settings.daily_limit_amount) {
+          const { total } = await this.expenseService.getDailyTotalsForSummary(userId);
+          let spent = 0;
+          if (Array.isArray(total.byCurrency)) {
+            for (const row of total.byCurrency) {
+              spent += await this.formatter.currencyUtils.convert(Number(row.total), row.currency || 'RUB', userCurrency);
+            }
+          }
+          const limitValue = await this.formatter.currencyUtils.convert(Number(settings.daily_limit_amount), settings.daily_limit_currency || userCurrency, userCurrency);
+          if (spent >= limitValue) {
+            const title = this.localizationService.getText(userLanguage, 'daily_limit_exceeded') || 'Превышен дневной лимит';
+            await ctx.reply(`⚠️ ${title}: ${this.formatter.formatAmount(spent, userCurrency)} / ${this.formatter.formatAmount(limitValue, userCurrency)}`);
+          }
+        }
+        if (settings.monthly_limit_amount) {
+          const { total } = await this.expenseService.getMonthlyStats(userId);
+          let spent = 0;
+          if (Array.isArray(total.byCurrency)) {
+            for (const row of total.byCurrency) {
+              spent += await this.formatter.currencyUtils.convert(Number(row.total), row.currency || 'RUB', userCurrency);
+            }
+          }
+          const limitValue = await this.formatter.currencyUtils.convert(Number(settings.monthly_limit_amount), settings.monthly_limit_currency || userCurrency, userCurrency);
+          if (spent >= limitValue) {
+            const title = this.localizationService.getText(userLanguage, 'monthly_limit_exceeded') || 'Превышен месячный лимит';
+            await ctx.reply(`⚠️ ${title}: ${this.formatter.formatAmount(spent, userCurrency)} / ${this.formatter.formatAmount(limitValue, userCurrency)}`);
+          }
         }
       } catch (_) {}
     } catch (error) {
