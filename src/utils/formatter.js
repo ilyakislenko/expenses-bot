@@ -168,6 +168,7 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationServic
 
   let csv = `${dateHeader},${amountHeader},${currencyHeader},${categoryHeader},${descriptionHeader}\n`;
   const totalsByCurrency = {};
+  const totalsByCategory = {};
   
   for (const expense of expenses) {
     // Используем created_at_utc как основной источник даты
@@ -191,6 +192,24 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationServic
     ].join(',') + '\n';
 
     totalsByCurrency[currency] = (totalsByCurrency[currency] || 0) + Number(amount);
+    // Группируем суммы по категориям и валютам
+    if (!totalsByCategory[category]) {
+      totalsByCategory[category] = {};
+    }
+    totalsByCategory[category][currency] = (totalsByCategory[category][currency] || 0) + Number(amount);
+  }
+  csv += '\n';
+
+  const totalByCategoriesText = localizationService ? 
+  localizationService.getText(userLanguage, 'total_by_categories') : 'Total by categories:';
+  csv += escapeCSV(totalByCategoriesText) + ',,,,' + '\n';
+  // Выводим сумму по каждой категории в валюте пользователя
+  for (const [category, currencies] of Object.entries(totalsByCategory)) {
+    let categoryTotalInUserCurrency = 0;
+    for (const [currency, total] of Object.entries(currencies)) {
+      categoryTotalInUserCurrency += await this.currencyUtils.convert(Number(total), currency, userCurrency);
+    }
+    csv += escapeCSV(`${category}: ${this.formatAmount(categoryTotalInUserCurrency, userCurrency)}`) + ',,,,' + '\n';
   }
   csv += '\n';
   // Итоги по валютам: добавляем заголовок отдельной строкой
