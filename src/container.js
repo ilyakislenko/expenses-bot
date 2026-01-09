@@ -297,6 +297,8 @@ class Container {
           generateInlineMainMenu: (userLanguage, isAdmin = false) => generateInlineMainMenu(this.get('localizationService'), userLanguage, isAdmin),
           generateCurrencyKeyboard: (userLanguage) => generateCurrencyKeyboard(this.get('localizationService'), userLanguage),
           generateSettingsKeyboard: (userLanguage, reminderEnabled, options = {}) => generateSettingsKeyboard(this.get('localizationService'), userLanguage, reminderEnabled, options),
+          generateLimitsManagementKeyboard: (userLanguage) => require('./utils/constants').generateLimitsManagementKeyboard(this.get('localizationService'), userLanguage),
+          generateNotificationsManagementKeyboard: (userLanguage, options = {}) => require('./utils/constants').generateNotificationsManagementKeyboard(this.get('localizationService'), userLanguage, options),
           generateTimeKeyboard: (userLanguage) => generateTimeKeyboard(this.get('localizationService'), userLanguage)
         };
 
@@ -321,6 +323,7 @@ class Container {
       paymentService: this.get('paymentService'),
       donationRepository: this.get('donationRepository'),
       expenseRepository: this.get('expenseRepository'),
+      categoryService: this.get('categoryService'),
       familyService: this.get('familyService'),
       localizationService: this.get('localizationService'),
       currencyUtils: this.get('currencyUtils'),

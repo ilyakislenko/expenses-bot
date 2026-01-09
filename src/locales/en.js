@@ -335,6 +335,16 @@ Now all your expenses will be correctly displayed in your local time.`,
   
   // Limits
   limits_title: '📊 *Limits Information*',
+  button_notifications_management: '🔔 Notifications management',
+  notifications_management_title: '🔔 Notifications management',
+  // Category limits
+  button_category_limits: '🏷️ Category limits',
+  category_limits_title: '🏷️ Category limits',
+  category_limits_enabled: '✅ Category limits enabled',
+  category_limits_disabled: '✅ Category limits disabled',
+  // Global limits and management
+  button_limits_management: '⚙️ Manage limits',
+  limits_management_title: '⚙️ Manage limits',
   status_regular: '👤 Standard',
   status_premium: '💎 Premium',
   status_label: '*Status:* {status}',

@@ -150,12 +150,17 @@ class CategoryService {
     const totals = await this.expenseRepository.getCategoryTotalsByCurrencyForCustomMonth(userId, categoryId, userTimezone, startDay);
     let total = 0;
     for (const row of totals) {
-      const converted = await this.formatter.currencyUtils.convert(Number(row.total), row.currency || 'RUB', userCurrency);
-      total += converted;
+      try {
+        const converted = await this.formatter.currencyUtils.convert(Number(row.total), row.currency || 'RUB', userCurrency);
+        if (Number.isFinite(converted)) total += converted;
+        else if ((row.currency || 'RUB') === userCurrency) total += Number(row.total) || 0;
+      } catch (_) {
+        if ((row.currency || 'RUB') === userCurrency) total += Number(row.total) || 0;
+      }
     }
     return {
       enabled: true,
-      exceeded: total >= (await this.formatter.currencyUtils.convert(Number(limit.limit_amount), limit.limit_currency || userCurrency, userCurrency)),
+      exceeded: total >= (await (async()=>{ try { const v = await this.formatter.currencyUtils.convert(Number(limit.limit_amount), limit.limit_currency || userCurrency, userCurrency); return Number.isFinite(v) ? v : Number(limit.limit_amount)||0; } catch(_){ return Number(limit.limit_amount)||0; } })()),
       limitAmount: Number(limit.limit_amount),
       limitCurrency: limit.limit_currency || userCurrency,
       currentAmount: total,

@@ -442,6 +442,7 @@ module.exports = {
 Теперь все ваши расходы будут корректно отображаться в вашем местном времени.`,
   
   // Лимиты
+  limits_overview_title: '📊 Обзор лимитов',
   limits_title: '📊 *Информация о лимитах*',
   status_regular: '👤 Стандарт',
   status_premium: '💎 Премиум',
@@ -623,4 +624,44 @@ module.exports = {
   custom_categories_delete: '🗑️ Удалить',
   custom_categories_deleted: '✅ Категория удалена.',
   custom_categories_premium_required: '💎 Эта функция доступна только премиум пользователям.'
+  ,
+  // Новые ключи для суточной сводки и лимитов
+  button_daily_summary: '🗓️ Ежедневная сводка',
+  button_notifications_management: '🔔 Управление оповещениями',
+  notifications_management_title: '🔔 Управление оповещениями',
+  button_configure_daily_summary: '🕒 Настроить час сводки',
+  daily_summary_title: 'Сводка за день',
+  daily_summary_enabled: '✅ Ежедневная сводка включена',
+  daily_summary_disabled: '✅ Ежедневная сводка выключена',
+  daily_total_spent: 'Потрачено за день',
+
+  // Лимиты по категориям
+  button_toggle_category_limits: '📦 Лимиты по категориям',
+  button_category_limits: '🏷️ Лимиты на категории',
+  category_limits_title: '🏷️ Лимиты на категории',
+  category_limits_enabled: '✅ Лимиты по категориям включены',
+  category_limits_disabled: '✅ Лимиты по категориям выключены',
+  category_limit_enter_amount: 'Введите сумму лимита для выбранной категории (в вашей валюте):',
+  category_limit_saved: '✅ Лимит по категории сохранён',
+  category_limit_exceeded: '⚠️ Превышен лимит по категории',
+  category_limits_exceeded_info: 'Превышены лимиты по категориям',
+  invalid_limit_amount: '❌ Некорректная сумма. Введите положительное число.',
+
+  // Глобальные лимиты
+  button_toggle_global_limits: '🧩 Глобальные лимиты (день/месяц)',
+  button_limits_management: '⚙️ Управление лимитами',
+  limits_management_title: '⚙️ Управление лимитами',
+  global_limits_enabled: '✅ Глобальные лимиты включены',
+  global_limits_disabled: '✅ Глобальные лимиты выключены',
+  button_set_daily_limit: '📅 Дневной лимит',
+  button_set_monthly_limit: '📆 Месячный лимит',
+  enter_daily_limit: 'Введите сумму дневного лимита (пусто или 0 — снять лимит):',
+  enter_monthly_limit: 'Введите сумму месячного лимита (пусто или 0 — снять лимит):',
+  daily_limit_saved: '✅ Дневной лимит сохранён',
+  monthly_limit_saved: '✅ Месячный лимит сохранён',
+  limit_cleared: 'Снят',
+  daily_limit: 'Дневной лимит',
+  monthly_limit: 'Месячный лимит',
+  daily_limit_exceeded: 'Превышен дневной лимит',
+  monthly_limit_exceeded: 'Превышен месячный лимит'
 }; 

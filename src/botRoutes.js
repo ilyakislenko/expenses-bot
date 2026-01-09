@@ -75,6 +75,14 @@ module.exports = function registerBotRoutes(bot, handlers) {
     await ctx.answerCbQuery();
     await commandHandlers.settings(ctx);
   })); // настройки пользователя
+  bot.action('limits_management_menu', errorHandler(async (ctx) => {
+    await ctx.answerCbQuery();
+    await commandHandlers.limitsManagement(ctx);
+  })); // управление лимитами
+  bot.action('notifications_management_menu', errorHandler(async (ctx) => {
+    await ctx.answerCbQuery();
+    await commandHandlers.notificationsManagement(ctx);
+  })); // управление оповещениями
   bot.action('undo', errorHandler(async (ctx) => {
     await ctx.answerCbQuery();
     await commandHandlers.undo(ctx);
@@ -87,6 +95,10 @@ module.exports = function registerBotRoutes(bot, handlers) {
     await ctx.answerCbQuery();
     await commandHandlers.premiumSubscription(ctx);
   })); // лимиты и премиум функции (новое меню премиума)
+  bot.action('limits_overview', errorHandler(async (ctx) => {
+    await ctx.answerCbQuery();
+    await commandHandlers.limitsOverview(ctx);
+  }));
   bot.action('family', errorHandler(async (ctx) => {
     await ctx.answerCbQuery();
     await commandHandlers.family(ctx);

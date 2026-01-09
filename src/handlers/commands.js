@@ -337,6 +337,38 @@ class CommandHandlers {
     });
   }
 
+  async limitsManagement(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const title = this.localizationService.getText(userLanguage, 'limits_management_title') || 'Управление лимитами';
+    const settings = await this.userService.getReminderSettings(userId);
+    const keyboard = require('../utils/constants').generateLimitsManagementKeyboard(
+      this.localizationService,
+      userLanguage,
+      { categoryLimitsEnabled: !!settings.category_limits_enabled, globalLimitsEnabled: !!settings.global_limits_enabled }
+    );
+    await ctx.reply(title, {
+      reply_markup: {
+        inline_keyboard: keyboard
+      }
+    });
+  }
+
+  async notificationsManagement(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const settings = await this.userService.getReminderSettings(userId);
+    const title = this.localizationService.getText(userLanguage, 'notifications_management_title') || 'Управление оповещениями';
+    const keyboard = require('../utils/constants').generateNotificationsManagementKeyboard(
+      this.localizationService,
+      userLanguage,
+      { reminderEnabled: !!settings.reminder_enabled, dailySummaryEnabled: !!settings.daily_summary_enabled }
+    );
+    await ctx.reply(title, {
+      reply_markup: { inline_keyboard: keyboard }
+    });
+  }
+
   async periodStart(ctx) {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
@@ -406,8 +438,16 @@ class CommandHandlers {
       const info = await this.categoryService.isCategoryLimitExceeded(userId, cat.id);
       if (!info.enabled) continue;
       const name = `${cat.icon} ${cat.name}`;
-      const currentStr = this.formatter.formatAmount(info.currentAmount, info.currency);
-      const limitStr = info.limitAmount != null ? this.formatter.formatAmount(info.limitAmount, info.limitCurrency || info.currency) : '-';
+      const currentStr = this.formatter.formatAmount(info.currentAmount || 0, userCurrency);
+      let limitStr = '-';
+      if (info.limitAmount != null) {
+        let limitInUser = Number(info.limitAmount) || 0;
+        try {
+          const converted = await this.formatter.currencyUtils.convert(Number(info.limitAmount), (info.limitCurrency || userCurrency), userCurrency);
+          if (Number.isFinite(converted)) limitInUser = converted;
+        } catch (_) {}
+        limitStr = this.formatter.formatAmount(limitInUser, userCurrency);
+      }
       lines.push(`${name}: ${currentStr} / ${limitStr}`);
     }
 
@@ -422,7 +462,12 @@ class CommandHandlers {
           spent += await this.formatter.currencyUtils.convert(Number(row.total), row.currency || 'RUB', userCurrency);
         }
       }
-      const limitDisplay = this.formatter.formatAmount(settings.daily_limit_amount, settings.daily_limit_currency || userCurrency);
+      let limitInUser = Number(settings.daily_limit_amount) || 0;
+      try {
+        const converted = await this.formatter.currencyUtils.convert(Number(settings.daily_limit_amount), settings.daily_limit_currency || userCurrency, userCurrency);
+        if (Number.isFinite(converted)) limitInUser = converted;
+      } catch (_) {}
+      const limitDisplay = this.formatter.formatAmount(limitInUser, userCurrency);
       const spentDisplay = this.formatter.formatAmount(spent, userCurrency);
       globalLines.push(`${this.localizationService.getText(userLanguage, 'daily_limit') || 'Дневной лимит'}: ${spentDisplay} / ${limitDisplay}`);
     }
@@ -435,14 +480,19 @@ class CommandHandlers {
           spent += await this.formatter.currencyUtils.convert(Number(row.total), row.currency || 'RUB', userCurrency);
         }
       }
-      const limitDisplay = this.formatter.formatAmount(settings.monthly_limit_amount, settings.monthly_limit_currency || userCurrency);
+      let limitInUser = Number(settings.monthly_limit_amount) || 0;
+      try {
+        const converted = await this.formatter.currencyUtils.convert(Number(settings.monthly_limit_amount), settings.monthly_limit_currency || userCurrency, userCurrency);
+        if (Number.isFinite(converted)) limitInUser = converted;
+      } catch (_) {}
+      const limitDisplay = this.formatter.formatAmount(limitInUser, userCurrency);
       const spentDisplay = this.formatter.formatAmount(spent, userCurrency);
       globalLines.push(`${this.localizationService.getText(userLanguage, 'monthly_limit') || 'Месячный лимит'}: ${spentDisplay} / ${limitDisplay}`);
     }
 
     const title = this.localizationService.getText(userLanguage, 'limits_overview_title') || 'Лимиты';
     const body = [globalLines.join('\n'), lines.join('\n')].filter(Boolean).join('\n\n') || (this.localizationService.getText(userLanguage, 'no_limits_set') || 'Лимиты не заданы');
-    await ctx.reply(`📊 *${title}*\n\n${body}`, { parse_mode: 'Markdown' });
+    await ctx.reply(`*${title}*\n\n${body}`, { parse_mode: 'Markdown' });
   }
 
   async family(ctx) {
@@ -815,6 +865,17 @@ class CommandHandlers {
       // В случае ошибки условий просто показываем базовое меню
     }
     
+    // Если включены лимиты (глобальные или категорий) и у пользователя есть премиум — добавим кнопку обзора лимитов
+    try {
+      const settings = await this.userService.getReminderSettings(userId);
+      const hasAnyLimits = !!settings.global_limits_enabled || !!settings.category_limits_enabled;
+      const isPremium = await this.premiumService.isPremiumUser(userId);
+      if (hasAnyLimits && isPremium) {
+        const text = this.localizationService.getText(userLanguage, 'limits_overview_title') || 'Лимиты';
+        inlineMainMenu.splice(1, 0, [{ text, callback_data: 'limits_overview' }]);
+      }
+    } catch (_) {}
+
     await ctx.reply(message, {
       parse_mode: 'Markdown',
       reply_markup: {

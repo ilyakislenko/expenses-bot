@@ -154,28 +154,18 @@ function generateCurrencyKeyboard(localizationService, userLanguage) {
 function generateSettingsKeyboard(localizationService, userLanguage, reminderEnabled = false, options = {}) {
   const { dailySummaryEnabled = false, categoryLimitsEnabled = false, globalLimitsEnabled = false } = options || {};
   const reminderIcon = reminderEnabled ? '🟢' : '⚫';
-  const reminderText = `${reminderIcon} ${localizationService.getText(userLanguage, 'button_reminders')}`;
   const summaryIcon = dailySummaryEnabled ? '🟢' : '⚫';
-  const summaryText = `${summaryIcon} ${localizationService.getText(userLanguage, 'button_daily_summary') || 'Ежедневная сводка'}`;
-  const limitsIcon = categoryLimitsEnabled ? '🟢' : '⚫';
-  const limitsToggleText = `${limitsIcon} ${localizationService.getText(userLanguage, 'button_toggle_category_limits') || 'Лимиты по категориям'}`;
-  const globalLimitsIcon = globalLimitsEnabled ? '🟢' : '⚫';
-  const globalLimitsToggleText = `${globalLimitsIcon} ${localizationService.getText(userLanguage, 'button_toggle_global_limits') || 'Глобальные лимиты (д/м)'}`;
+  const notificationsText = `${reminderIcon} ${localizationService.getText(userLanguage, 'button_notifications_management') || 'Управление оповещениями'}`;
+  const limitsIcon = (categoryLimitsEnabled || globalLimitsEnabled) ? '🟢' : '⚫';
+  const limitsManagementText = `${limitsIcon} ${localizationService.getText(userLanguage, 'button_limits_management') || 'Управление лимитами'}`;
   
   return [
     [{ text: localizationService.getText(userLanguage, 'button_change_currency'), callback_data: 'change_currency' }],
     [{ text: localizationService.getText(userLanguage, 'button_change_timezone'), callback_data: 'change_timezone' }],
     [{ text: localizationService.getText(userLanguage, 'button_change_language'), callback_data: 'change_language' }],
     [{ text: localizationService.getText(userLanguage, 'button_change_period_start'), callback_data: 'change_period_start' }],
-    [{ text: reminderText, callback_data: 'toggle_reminders' }],
-    [{ text: localizationService.getText(userLanguage, 'button_configure_reminder_hours'), callback_data: 'configure_reminder_hours' }],
-    [{ text: summaryText, callback_data: 'toggle_daily_summary' }],
-    [{ text: localizationService.getText(userLanguage, 'button_configure_daily_summary') || 'Настроить час сводки', callback_data: 'configure_daily_summary_hour' }],
-    [{ text: limitsToggleText, callback_data: 'toggle_category_limits' }],
-    [{ text: localizationService.getText(userLanguage, 'button_category_limits') || 'Лимиты на категории', callback_data: 'category_limits_menu' }],
-    [{ text: globalLimitsToggleText, callback_data: 'toggle_global_limits' }],
-    [{ text: localizationService.getText(userLanguage, 'button_set_daily_limit') || 'Установить дневной лимит', callback_data: 'set_daily_limit' }],
-    [{ text: localizationService.getText(userLanguage, 'button_set_monthly_limit') || 'Установить месячный лимит', callback_data: 'set_monthly_limit' }],
+    [{ text: notificationsText, callback_data: 'notifications_management_menu' }],
+    [{ text: limitsManagementText, callback_data: 'limits_management_menu' }],
     [{ text: localizationService.getText(userLanguage, 'button_custom_categories'), callback_data: 'custom_categories' }],
     [{ text: localizationService.getText(userLanguage, 'button_bug_report'), callback_data: 'bug_report' }],
     [{ text: localizationService.getText(userLanguage, 'button_back'), callback_data: 'back_to_menu' }]
@@ -256,6 +246,34 @@ function generatePremiumPaymentButtons(tariffs, localizationService, userLanguag
   return groupedButtons;
 }
 
+// Меню "Управление лимитами"
+function generateLimitsManagementKeyboard(localizationService, userLanguage, options = {}) {
+  const { categoryLimitsEnabled = false, globalLimitsEnabled = false } = options || {};
+  const catIcon = categoryLimitsEnabled ? '🟢' : '⚫';
+  const globIcon = globalLimitsEnabled ? '🟢' : '⚫';
+  return [
+    [{ text: `${catIcon} ${localizationService.getText(userLanguage, 'button_toggle_category_limits') || 'Лимиты по категориям'}`, callback_data: 'toggle_category_limits' }],
+    [{ text: `${globIcon} ${localizationService.getText(userLanguage, 'button_toggle_global_limits') || 'Глобальные лимиты (д/м)'}`, callback_data: 'toggle_global_limits' }],
+    [{ text: localizationService.getText(userLanguage, 'button_category_limits') || 'Лимиты на категории', callback_data: 'category_limits_menu' }],
+    [{ text: localizationService.getText(userLanguage, 'button_set_daily_limit') || 'Установить дневной лимит', callback_data: 'set_daily_limit' }],
+    [{ text: localizationService.getText(userLanguage, 'button_set_monthly_limit') || 'Установить месячный лимит', callback_data: 'set_monthly_limit' }],
+    [{ text: localizationService.getText(userLanguage, 'button_back'), callback_data: 'back_to_settings' }]
+  ];
+}
+
+function generateNotificationsManagementKeyboard(localizationService, userLanguage, options = {}) {
+  const { reminderEnabled = false, dailySummaryEnabled = false } = options || {};
+  const reminderIcon = reminderEnabled ? '🟢' : '⚫';
+  const summaryIcon = dailySummaryEnabled ? '🟢' : '⚫';
+  return [
+    [{ text: `${reminderIcon} ${localizationService.getText(userLanguage, 'button_reminders')}`, callback_data: 'toggle_reminders' }],
+    [{ text: localizationService.getText(userLanguage, 'button_configure_reminder_hours'), callback_data: 'configure_reminder_hours' }],
+    [{ text: `${summaryIcon} ${localizationService.getText(userLanguage, 'button_daily_summary') || 'Ежедневная сводка'}`, callback_data: 'toggle_daily_summary' }],
+    [{ text: localizationService.getText(userLanguage, 'button_configure_daily_summary') || 'Настроить час сводки', callback_data: 'configure_daily_summary_hour' }],
+    [{ text: localizationService.getText(userLanguage, 'button_back'), callback_data: 'back_to_settings' }]
+  ];
+}
+
 module.exports = {
   USER_LIMITS,
   PREMIUM_TARIFFS,
@@ -264,6 +282,8 @@ module.exports = {
   generateInlineMainMenu,
   generateCurrencyKeyboard,
   generateSettingsKeyboard,
+  generateNotificationsManagementKeyboard,
   generateTimeKeyboard,
-  generatePremiumPaymentButtons
+  generatePremiumPaymentButtons,
+  generateLimitsManagementKeyboard
 }; 

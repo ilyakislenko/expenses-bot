@@ -50,6 +50,7 @@ async function startApplication() {
       { command: 'stats', description: 'Monthly by categories' },
       { command: 'export', description: 'Export CSV' },
       { command: 'limits', description: 'Limits & premium' },
+      { command: 'limits_overview', description: 'Limits overview' },
       { command: 'paysupport', description: 'Payment support (Telegram Stars)' },
       { command: 'terms', description: 'Terms of Service' },
       { command: 'privacy', description: 'Privacy Policy' },
