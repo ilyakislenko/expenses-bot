@@ -1,8 +1,7 @@
 const currencyConfig = require('./config/currencies');
 
 module.exports = function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, supportedCurrencies = currencyConfig.SUPPORTED_CURRENCIES) {
-  // Проверяем, нужно ли обновлять курсы при запуске
-  (async () => {
+  setTimeout(async () => {
     try {
       if (await currencyUtils.needUpdateRates()) {
         await currencyUtils.updateRates(supportedCurrencies);
@@ -11,7 +10,7 @@ module.exports = function setupBotCron(cron, currencyUtils, donationRepository, 
     } catch (err) {
       console.error('Ошибка при обновлении курсов валют:', err);
     }
-  })();
+  }, 5000);
 
   // Запускаем автообновление курсов каждый день в 10:00 утра
   cron.schedule('0 10 * * *', () => {

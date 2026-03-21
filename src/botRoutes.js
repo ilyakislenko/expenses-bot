@@ -538,9 +538,19 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('premium_donate', errorHandler((ctx) => callbackHandlers.handlePremiumDonate(ctx)));
   bot.action(/^premium_purchases(?:\|(\d+))?$/, errorHandler((ctx) => callbackHandlers.handlePremiumPurchases(ctx)));
   bot.action('premium_subscription', errorHandler((ctx) => callbackHandlers.handlePremiumSubscription(ctx)));
-  
-  
-  
+
+  // ========================================
+  // EXPORT CALLBACK HANDLERS
+  // ========================================
+
+  bot.action('export_menu', errorHandler((ctx) => callbackHandlers.handleExportMenu(ctx)));
+  bot.action(/^export_period\|(day|week|month|all)$/, errorHandler((ctx) => callbackHandlers.handleExportPeriod(ctx)));
+  bot.action('export_date_range', errorHandler((ctx) => callbackHandlers.handleExportDateRange(ctx)));
+  bot.action('export_category_filter', errorHandler((ctx) => callbackHandlers.handleExportCategoryFilter(ctx)));
+  bot.action(/^export_toggle_cat\|(\d+)$/, errorHandler((ctx) => callbackHandlers.handleExportToggleCategory(ctx)));
+  bot.action('export_select_all', errorHandler((ctx) => callbackHandlers.handleExportSelectAll(ctx)));
+  bot.action('export_category_done', errorHandler((ctx) => callbackHandlers.handleExportCategoryDone(ctx)));
+
   // Обработчик успешных платежей
   bot.on('pre_checkout_query', errorHandler(async (ctx) => {
     await ctx.answerPreCheckoutQuery(true);

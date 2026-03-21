@@ -77,6 +77,7 @@ function generateMainMenuKeyboard(localizationService, userLanguage, isAdmin = f
       { text: localizationService.getText(userLanguage, 'button_expenses_day') }
     ],
     [{ text: localizationService.getText(userLanguage, 'button_expenses_categories') }],
+    [{ text: localizationService.getText(userLanguage, 'button_export') }],
     [{ text: localizationService.getText(userLanguage, 'button_family') }]
   ];
 
@@ -108,6 +109,7 @@ function generateInlineMainMenu(localizationService, userLanguage, isAdmin = fal
       { text: localizationService.getText(userLanguage, 'button_expenses_day'), callback_data: 'history' }
     ],
     [{ text: localizationService.getText(userLanguage, 'button_expenses_categories'), callback_data: 'categories' }],
+    [{ text: localizationService.getText(userLanguage, 'button_export'), callback_data: 'export_menu' }],
     [{ text: localizationService.getText(userLanguage, 'button_family'), callback_data: 'family' }],
     [{ text: localizationService.getText(userLanguage, 'button_settings'), callback_data: 'settings' }],
     [{ text: localizationService.getText(userLanguage, 'button_delete_last'), callback_data: 'undo' }],

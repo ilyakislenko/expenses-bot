@@ -1813,6 +1813,314 @@ class CallbackHandlers {
 
 
 
+  // ========================================
+  // EXPORT CALLBACK HANDLERS
+  // ========================================
+
+  // Точка входа: показ меню выбора периода
+  async handleExportMenu(ctx) {
+    try {
+      await ctx.answerCbQuery();
+      const userId = ctx.from.id;
+      const userLanguage = await this.userService.getUserLanguage(userId);
+
+      // Сбрасываем предыдущее состояние экспорта
+      this.stateService.deleteExportState(userId);
+
+      const title = this.localizationService.getText(userLanguage, 'export_title');
+      const keyboard = this._buildExportPeriodKeyboard(userLanguage);
+
+      await ctx.editMessageText(title, { reply_markup: { inline_keyboard: keyboard } });
+    } catch (error) {
+      console.error('Error in handleExportMenu:', error);
+    }
+  }
+
+  // Выбор периода → сразу экспорт (все категории)
+  async handleExportPeriod(ctx) {
+    try {
+      await ctx.answerCbQuery();
+      const userId = ctx.from.id;
+      const period = ctx.match[1]; // day, week, month, all
+
+      const exportState = this.stateService.getExportState(userId) || {};
+      const categoryIds = exportState.categoryIds || null; // null = все
+
+      const userLanguage = await this.userService.getUserLanguage(userId);
+      const userTimezone = await this.userService.getUserTimezone(userId);
+
+      const { dateFrom, dateTo } = this._calculateExportDates(period, userTimezone);
+
+      await this._executeExport(ctx, userId, { categoryIds, dateFrom, dateTo, userLanguage });
+      this.stateService.deleteExportState(userId);
+    } catch (error) {
+      console.error('Error in handleExportPeriod:', error);
+      const userId = ctx.from.id;
+      const userLanguage = await this.userService.getUserLanguage(userId);
+      await ctx.reply(this.localizationService.getText(userLanguage, 'export_error'));
+    }
+  }
+
+  // Кнопка "Выбрать даты" → переход в состояние ввода дат
+  async handleExportDateRange(ctx) {
+    try {
+      await ctx.answerCbQuery();
+      const userId = ctx.from.id;
+      const userLanguage = await this.userService.getUserLanguage(userId);
+
+      this.stateService.setUserState(userId, 'export_date_range');
+
+      const text = this.localizationService.getText(userLanguage, 'export_enter_dates');
+      const cancelText = this.localizationService.getText(userLanguage, 'button_cancel');
+
+      await ctx.editMessageText(text, {
+        reply_markup: {
+          inline_keyboard: [[{ text: cancelText, callback_data: 'export_menu' }]]
+        }
+      });
+    } catch (error) {
+      console.error('Error in handleExportDateRange:', error);
+    }
+  }
+
+  // Кнопка "Фильтр по категориям" → показ чекбоксов
+  async handleExportCategoryFilter(ctx) {
+    try {
+      await ctx.answerCbQuery();
+      const userId = ctx.from.id;
+      const userLanguage = await this.userService.getUserLanguage(userId);
+
+      // Получаем все категории пользователя
+      const categories = await this.categoryService.getAllAvailableCategories(userId);
+
+      // Инициализируем export state — по умолчанию все выбраны
+      const allIds = categories.map(c => c.id);
+      const exportState = this.stateService.getExportState(userId) || {};
+      if (!exportState.categoryIds) {
+        exportState.categoryIds = allIds;
+      }
+      this.stateService.setExportState(userId, exportState);
+
+      await this._showCategoryCheckboxes(ctx, userId, userLanguage, categories, exportState.categoryIds);
+    } catch (error) {
+      console.error('Error in handleExportCategoryFilter:', error);
+    }
+  }
+
+  // Toggle одной категории в чекбоксах
+  async handleExportToggleCategory(ctx) {
+    try {
+      await ctx.answerCbQuery();
+      const userId = ctx.from.id;
+      const categoryId = parseInt(ctx.match[1], 10);
+      const userLanguage = await this.userService.getUserLanguage(userId);
+
+      const exportState = this.stateService.getExportState(userId) || {};
+      let selected = exportState.categoryIds || [];
+
+      if (selected.includes(categoryId)) {
+        selected = selected.filter(id => id !== categoryId);
+      } else {
+        selected.push(categoryId);
+      }
+      exportState.categoryIds = selected;
+      this.stateService.setExportState(userId, exportState);
+
+      const categories = await this.categoryService.getAllAvailableCategories(userId);
+      await this._showCategoryCheckboxes(ctx, userId, userLanguage, categories, selected);
+    } catch (error) {
+      console.error('Error in handleExportToggleCategory:', error);
+    }
+  }
+
+  // Кнопка "Выбрать все / Снять все"
+  async handleExportSelectAll(ctx) {
+    try {
+      await ctx.answerCbQuery();
+      const userId = ctx.from.id;
+      const userLanguage = await this.userService.getUserLanguage(userId);
+
+      const categories = await this.categoryService.getAllAvailableCategories(userId);
+      const exportState = this.stateService.getExportState(userId) || {};
+      const allIds = categories.map(c => c.id);
+
+      // Если все выбраны — снимаем все, иначе выбираем все
+      const allSelected = allIds.every(id => (exportState.categoryIds || []).includes(id));
+      exportState.categoryIds = allSelected ? [] : allIds;
+      this.stateService.setExportState(userId, exportState);
+
+      await this._showCategoryCheckboxes(ctx, userId, userLanguage, categories, exportState.categoryIds);
+    } catch (error) {
+      console.error('Error in handleExportSelectAll:', error);
+    }
+  }
+
+  // Кнопка "Готово" после выбора категорий → показ периодов
+  async handleExportCategoryDone(ctx) {
+    try {
+      const userId = ctx.from.id;
+      const userLanguage = await this.userService.getUserLanguage(userId);
+
+      const exportState = this.stateService.getExportState(userId) || {};
+      if (!exportState.categoryIds || exportState.categoryIds.length === 0) {
+        const noCategories = this.localizationService.getText(userLanguage, 'export_no_categories');
+        return await ctx.answerCbQuery(noCategories, { show_alert: true });
+      }
+
+      await ctx.answerCbQuery();
+      const title = this.localizationService.getText(userLanguage, 'export_title');
+      const keyboard = this._buildExportPeriodKeyboard(userLanguage, false); // без кнопки фильтра
+
+      await ctx.editMessageText(title, { reply_markup: { inline_keyboard: keyboard } });
+    } catch (error) {
+      console.error('Error in handleExportCategoryDone:', error);
+    }
+  }
+
+  // === Приватные хелперы ===
+
+  _buildExportPeriodKeyboard(userLanguage, showFilter = true) {
+    const dayText = this.localizationService.getText(userLanguage, 'export_period_day');
+    const weekText = this.localizationService.getText(userLanguage, 'export_period_week');
+    const monthText = this.localizationService.getText(userLanguage, 'export_period_month');
+    const allText = this.localizationService.getText(userLanguage, 'export_period_all');
+    const dateRangeText = this.localizationService.getText(userLanguage, 'export_period_range');
+    const backText = this.localizationService.getText(userLanguage, 'button_back');
+
+    const keyboard = [
+      [
+        { text: dayText, callback_data: 'export_period|day' },
+        { text: weekText, callback_data: 'export_period|week' }
+      ],
+      [
+        { text: monthText, callback_data: 'export_period|month' },
+        { text: allText, callback_data: 'export_period|all' }
+      ],
+      [{ text: dateRangeText, callback_data: 'export_date_range' }]
+    ];
+
+    if (showFilter) {
+      const filterText = this.localizationService.getText(userLanguage, 'export_filter_categories');
+      keyboard.push([{ text: filterText, callback_data: 'export_category_filter' }]);
+    }
+
+    keyboard.push([{ text: backText, callback_data: 'back_to_menu' }]);
+    return keyboard;
+  }
+
+  async _showCategoryCheckboxes(ctx, userId, userLanguage, categories, selectedIds) {
+    const title = this.localizationService.getText(userLanguage, 'export_select_categories');
+    const keyboard = [];
+
+    // Категории по 2 в ряд
+    for (let i = 0; i < categories.length; i += 2) {
+      const row = [];
+      for (let j = i; j < i + 2 && j < categories.length; j++) {
+        const cat = categories[j];
+        const isSelected = selectedIds.includes(cat.id);
+        const icon = isSelected ? '☑️' : '◻️';
+        const catName = this.expenseService
+          ? this.expenseService.translateCategoryName(cat.name, this.localizationService, userLanguage)
+          : cat.name;
+        row.push({
+          text: `${icon} ${catName}`,
+          callback_data: `export_toggle_cat|${cat.id}`
+        });
+      }
+      keyboard.push(row);
+    }
+
+    // Кнопки управления
+    const allSelected = categories.every(c => selectedIds.includes(c.id));
+    const selectAllText = allSelected
+      ? this.localizationService.getText(userLanguage, 'export_deselect_all')
+      : this.localizationService.getText(userLanguage, 'export_select_all');
+    const doneText = this.localizationService.getText(userLanguage, 'export_done');
+    const backText = this.localizationService.getText(userLanguage, 'button_back');
+
+    keyboard.push([{ text: selectAllText, callback_data: 'export_select_all' }]);
+    keyboard.push([
+      { text: doneText, callback_data: 'export_category_done' },
+      { text: backText, callback_data: 'export_menu' }
+    ]);
+
+    await ctx.editMessageText(title, { reply_markup: { inline_keyboard: keyboard } });
+  }
+
+  _calculateExportDates(period, timezone) {
+    const now = new Date();
+    let dateFrom = null;
+    let dateTo = null;
+
+    if (period === 'all') {
+      return { dateFrom: null, dateTo: null };
+    }
+
+    // Вычисляем локальную дату для пользователя
+    const localNow = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
+    const year = localNow.getFullYear();
+    const month = localNow.getMonth();
+    const day = localNow.getDate();
+
+    // Начало сегодняшнего дня в локальном времени
+    const todayStart = new Date(year, month, day);
+
+    if (period === 'day') {
+      dateFrom = this._formatDateForQuery(todayStart);
+      const tomorrow = new Date(todayStart);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      dateTo = this._formatDateForQuery(tomorrow);
+    } else if (period === 'week') {
+      const weekAgo = new Date(todayStart);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      dateFrom = this._formatDateForQuery(weekAgo);
+      const tomorrow = new Date(todayStart);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      dateTo = this._formatDateForQuery(tomorrow);
+    } else if (period === 'month') {
+      const monthStart = new Date(year, month, 1);
+      dateFrom = this._formatDateForQuery(monthStart);
+      const tomorrow = new Date(todayStart);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      dateTo = this._formatDateForQuery(tomorrow);
+    }
+
+    return { dateFrom, dateTo };
+  }
+
+  _formatDateForQuery(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d} 00:00:00`;
+  }
+
+  async _executeExport(ctx, userId, { categoryIds, dateFrom, dateTo, userLanguage }) {
+    const { expenses, userCurrency, userTimezone } = await this.expenseService.exportExpensesFiltered(userId, {
+      categoryIds,
+      dateFrom,
+      dateTo
+    });
+
+    if (expenses.length === 0) {
+      const noDataText = this.localizationService.getText(userLanguage, 'no_expenses_period');
+      return await ctx.reply(noDataText);
+    }
+
+    const csv = await this.formatter.formatCSV(expenses, userCurrency, userTimezone, this.localizationService, userLanguage);
+    const filename = `expenses_${new Date().toISOString().split('T')[0]}.csv`;
+
+    const exportSuccessText = this.localizationService.getText(userLanguage, 'export_success');
+    const recordsCountText = this.localizationService.getText(userLanguage, 'records_count', { count: expenses.length });
+    const caption = `${exportSuccessText}\n${recordsCountText}`;
+
+    await ctx.replyWithDocument({
+      source: Buffer.from(csv, 'utf-8'),
+      filename
+    }, {
+      caption: caption
+    });
+  }
 }
 
 module.exports = CallbackHandlers; 

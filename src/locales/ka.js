@@ -521,6 +521,7 @@ module.exports = {
     button_expenses_month: '💰 თვის ხარჯები',
     button_expenses_day: '💰 დღევანდელი ხარჯები',
     button_expenses_categories: '💰 კატეგორიების მიხედვით',
+    button_export: '📊 ექსპორტი',
     button_family: '👨‍👩‍👧‍👦 ოჯახი',
     button_settings: '⚙️ პარამეტრები',
     button_delete_last: '🗑️ ბოლო ჩანაწერის წაშლა',
@@ -551,6 +552,20 @@ module.exports = {
     // ექსპორტი
     export_success: '📊 მონაცემები წარმატებით გაეგზავნა!',
     export_error: 'მონაცემების ექსპორტის შეცდომა 😞',
+    export_title: '📊 ხარჯების ექსპორტი',
+    export_period_day: '📅 დღეს',
+    export_period_week: '📅 ამ კვირაში',
+    export_period_month: '📅 ამ თვეში',
+    export_period_all: '📅 მთელი პერიოდი',
+    export_period_range: '📅 თარიღების არჩევა...',
+    export_filter_categories: '🔽 კატეგორიების ფილტრი',
+    export_select_categories: 'აირჩიეთ კატეგორიები ექსპორტისთვის:',
+    export_select_all: '✅ ყველას არჩევა',
+    export_deselect_all: '❌ ყველას მოხსნა',
+    export_done: '✅ მზადაა',
+    export_no_categories: 'აირჩიეთ მინიმუმ ერთი კატეგორია',
+    export_enter_dates: '📅 შეიყვანეთ თარიღების დიაპაზონი:\n\n`01.03-15.03` ან `01.03.2025-15.03.2025`',
+    export_invalid_date_format: '❌ არასწორი თარიღის ფორმატი. გამოიყენეთ: `01.03-15.03` ან `01.03.2025-15.03.2025`',
     keyboard_updated: '✅ კლავიატურა განახლდა შენი ენის მიხედვით!',
     
     // რედაქტირება

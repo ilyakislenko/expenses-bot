@@ -557,7 +557,7 @@ class ExpenseRepository extends BaseRepository {
 
   async exportExpenses(userId, format = 'csv') {
     const query = `
-      SELECT 
+      SELECT
         e.amount,
         e.currency,
         e.description,
@@ -569,6 +569,46 @@ class ExpenseRepository extends BaseRepository {
       ORDER BY e.created_at_utc DESC
     `;
     const result = await this.query(query, [userId]);
+    return result.rows;
+  }
+
+  // Экспорт с фильтрацией по категориям и/или дате
+  async exportExpensesFiltered(userId, { categoryIds, dateFrom, dateTo, timezone } = {}) {
+    const conditions = ['e.user_id = $1'];
+    const params = [userId];
+    let paramIndex = 2;
+
+    if (categoryIds && categoryIds.length > 0) {
+      conditions.push(`e.category_id = ANY($${paramIndex})`);
+      params.push(categoryIds);
+      paramIndex++;
+    }
+
+    if (dateFrom && timezone) {
+      conditions.push(`(e.created_at_utc AT TIME ZONE $${paramIndex}) >= $${paramIndex + 1}::timestamp`);
+      params.push(timezone, dateFrom);
+      paramIndex += 2;
+    }
+
+    if (dateTo && timezone) {
+      conditions.push(`(e.created_at_utc AT TIME ZONE $${paramIndex}) < $${paramIndex + 1}::timestamp`);
+      params.push(timezone, dateTo);
+      paramIndex += 2;
+    }
+
+    const query = `
+      SELECT
+        e.amount,
+        e.currency,
+        e.description,
+        c.name as category,
+        e.created_at_utc
+      FROM expenses e
+      LEFT JOIN categories c ON e.category_id = c.id
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY e.created_at_utc DESC
+    `;
+    const result = await this.query(query, params);
     return result.rows;
   }
 

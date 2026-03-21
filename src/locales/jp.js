@@ -522,6 +522,7 @@ module.exports = {
     button_expenses_month: '💰 今月の支出',
     button_expenses_day: '💰 今日の支出',
     button_expenses_categories: '💰 カテゴリー別支出',
+    button_export: '📊 エクスポート',
     button_family: '👨‍👩‍👧‍👦 家族',
     button_settings: '⚙️ 設定',
     button_delete_last: '🗑️ 最後の記録を削除',
@@ -552,6 +553,20 @@ module.exports = {
     // エクスポート
     export_success: '📊 データを正常にエクスポートしました！',
     export_error: 'データのエクスポート中にエラーが発生しました 😞',
+    export_title: '📊 支出をエクスポート',
+    export_period_day: '📅 今日',
+    export_period_week: '📅 今週',
+    export_period_month: '📅 今月',
+    export_period_all: '📅 全期間',
+    export_period_range: '📅 日付を選択...',
+    export_filter_categories: '🔽 カテゴリでフィルター',
+    export_select_categories: 'エクスポートするカテゴリを選択:',
+    export_select_all: '✅ すべて選択',
+    export_deselect_all: '❌ すべて解除',
+    export_done: '✅ 完了',
+    export_no_categories: '少なくとも1つのカテゴリを選択してください',
+    export_enter_dates: '📅 日付範囲を入力:\n\n`01.03-15.03` または `01.03.2025-15.03.2025`',
+    export_invalid_date_format: '❌ 無効な日付形式です。使用: `01.03-15.03` または `01.03.2025-15.03.2025`',
     keyboard_updated: '✅ キーボードを言語に合わせて更新しました！',
     
     // 編集

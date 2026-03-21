@@ -521,6 +521,7 @@ module.exports = {
     button_expenses_month: '💰 Dépenses du mois',
     button_expenses_day: '💰 Dépenses du jour',
     button_expenses_categories: '💰 Dépenses par catégorie',
+    button_export: '📊 Exporter',
     button_family: '👨‍👩‍👧‍👦 Famille',
     button_settings: '⚙️ Paramètres',
     button_delete_last: '🗑️ Supprimer la dernière entrée',
@@ -550,7 +551,21 @@ module.exports = {
     
     // Exportation
     export_success: '📊 Données exportées avec succès !',
-    export_error: 'Erreur lors de l’exportation 😞',
+    export_error: 'Erreur lors de l\'exportation 😞',
+    export_title: '📊 Exporter les dépenses',
+    export_period_day: '📅 Aujourd\'hui',
+    export_period_week: '📅 Cette semaine',
+    export_period_month: '📅 Ce mois',
+    export_period_all: '📅 Tout le temps',
+    export_period_range: '📅 Choisir les dates...',
+    export_filter_categories: '🔽 Filtrer par catégories',
+    export_select_categories: 'Sélectionnez les catégories à exporter :',
+    export_select_all: '✅ Tout sélectionner',
+    export_deselect_all: '❌ Tout désélectionner',
+    export_done: '✅ Terminé',
+    export_no_categories: 'Sélectionnez au moins une catégorie',
+    export_enter_dates: '📅 Entrez la plage de dates :\n\n`01.03-15.03` ou `01.03.2025-15.03.2025`',
+    export_invalid_date_format: '❌ Format de date invalide. Utilisez : `01.03-15.03` ou `01.03.2025-15.03.2025`',
     keyboard_updated: '✅ Clavier mis à jour dans votre langue !',
     
     // Édition

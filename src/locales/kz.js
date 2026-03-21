@@ -505,6 +505,7 @@ module.exports = {
     button_expenses_month: '💰 Айлық шығындар',
     button_expenses_day: '💰 Күндік шығындар',
     button_expenses_categories: '💰 Санаттар бойынша шығындар',
+    button_export: '📊 Экспорт',
     button_family: '👨‍👩‍👧‍👦 Отбасы',
     button_settings: '⚙️ Баптаулар',
     button_delete_last: '🗑️ Соңғы жазбаны жою',
@@ -535,6 +536,20 @@ module.exports = {
     // Экспорт
     export_success: '📊 Деректер сәтті экспортталды!',
     export_error: 'Деректерді экспорттау сәтсіз 😞',
+    export_title: '📊 Шығыстарды экспорттау',
+    export_period_day: '📅 Бүгін',
+    export_period_week: '📅 Осы аптада',
+    export_period_month: '📅 Осы айда',
+    export_period_all: '📅 Барлық уақыт',
+    export_period_range: '📅 Күндерді таңдау...',
+    export_filter_categories: '🔽 Санаттар бойынша сүзу',
+    export_select_categories: 'Экспорт үшін санаттарды таңдаңыз:',
+    export_select_all: '✅ Барлығын таңдау',
+    export_deselect_all: '❌ Барлығын алу',
+    export_done: '✅ Дайын',
+    export_no_categories: 'Кем дегенде бір санатты таңдаңыз',
+    export_enter_dates: '📅 Күндер аралығын енгізіңіз:\n\n`01.03-15.03` немесе `01.03.2025-15.03.2025`',
+    export_invalid_date_format: '❌ Күн форматы қате. Қолданыңыз: `01.03-15.03` немесе `01.03.2025-15.03.2025`',
     keyboard_updated: '✅ Пернетақта тілі жаңартылды!',
     
     // Өңдеу

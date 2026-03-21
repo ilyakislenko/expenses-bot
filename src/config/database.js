@@ -2,7 +2,8 @@ module.exports = {
   // Настройки подключения к БД
   CONNECTION: {
     connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    // ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    ssl: false
   },
   
   // Настройки пула соединений

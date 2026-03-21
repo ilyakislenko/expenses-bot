@@ -523,6 +523,7 @@ module.exports = {
     button_expenses_month: '💰 本月支出',
     button_expenses_day: '💰 今日支出',
     button_expenses_categories: '💰 按类别支出',
+    button_export: '📊 导出',
     button_family: '👨‍👩‍👧‍👦 家庭',
     button_settings: '⚙️ 设置',
     button_delete_last: '🗑️ 删除最后一条记录',
@@ -553,6 +554,20 @@ module.exports = {
     // 导出
     export_success: '📊 数据已成功导出！',
     export_error: '导出数据时出错 😞',
+    export_title: '📊 导出支出',
+    export_period_day: '📅 今天',
+    export_period_week: '📅 本周',
+    export_period_month: '📅 本月',
+    export_period_all: '📅 所有时间',
+    export_period_range: '📅 选择日期...',
+    export_filter_categories: '🔽 按类别筛选',
+    export_select_categories: '选择要导出的类别:',
+    export_select_all: '✅ 全选',
+    export_deselect_all: '❌ 取消全选',
+    export_done: '✅ 完成',
+    export_no_categories: '请至少选择一个类别',
+    export_enter_dates: '📅 输入日期范围:\n\n`01.03-15.03` 或 `01.03.2025-15.03.2025`',
+    export_invalid_date_format: '❌ 日期格式无效。请使用: `01.03-15.03` 或 `01.03.2025-15.03.2025`',
     keyboard_updated: '✅ 已更新你的键盘语言！',
     
     // 编辑

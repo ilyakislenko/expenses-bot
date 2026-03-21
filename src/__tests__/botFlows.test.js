@@ -7,7 +7,15 @@ jest.mock('../repositories/UserRepository', () => {
     setUserCurrency: jest.fn().mockResolvedValue(undefined),
     getUserCurrency: jest.fn().mockResolvedValue('RUB'),
     setUserPremium: jest.fn().mockResolvedValue(undefined),
-    getUserPremium: jest.fn().mockResolvedValue(false)
+    getUserPremium: jest.fn().mockResolvedValue(false),
+    getUserById: jest.fn().mockResolvedValue({ id: 1, username: 'testuser', first_name: 'Test' }),
+    getUserLanguage: jest.fn().mockResolvedValue('ru'),
+    setUserLanguage: jest.fn().mockResolvedValue(undefined),
+    getUserTimezone: jest.fn().mockResolvedValue('UTC'),
+    setUserTimezone: jest.fn().mockResolvedValue(undefined),
+    updateUser: jest.fn().mockResolvedValue({ id: 1, username: 'testuser', first_name: 'Test' }),
+    getUserByUsername: jest.fn().mockResolvedValue({ id: 1, username: 'testuser', first_name: 'Test' }),
+    query: jest.fn().mockResolvedValue({ rowCount: 1 })
   }));
 });
 
@@ -40,7 +48,32 @@ jest.mock('../repositories/CategoryRepository', () => {
       { id: 1, name: 'Еда', icon: '🍕' },
       { id: 2, name: 'Транспорт', icon: '🚗' }
     ]),
-    getCategoryByName: jest.fn().mockResolvedValue({ id: 1, name: 'Еда' })
+    getCategoryByName: jest.fn().mockResolvedValue({ id: 1, name: 'Еда' }),
+    getCategoriesWithPremium: jest.fn().mockResolvedValue([
+      { id: 1, name: 'Еда', icon: '🍕' },
+      { id: 2, name: 'Транспорт', icon: '🚗' }
+    ]),
+    getAllCategories: jest.fn().mockResolvedValue([
+      { id: 1, name: 'Еда', icon: '🍕' },
+      { id: 2, name: 'Транспорт', icon: '🚗' }
+    ]),
+    createUserCategory: jest.fn().mockResolvedValue({ id: 3, name: 'Custom', icon: '📦' }),
+    getUserCategories: jest.fn().mockResolvedValue([]),
+    deleteUserCategory: jest.fn().mockResolvedValue({ id: 3, name: 'Custom' }),
+    updateUserCategory: jest.fn().mockResolvedValue({ id: 3, name: 'Updated', icon: '📦' }),
+    getOrCreateCategory: jest.fn().mockResolvedValue({ id: 1, name: 'Еда' }),
+    getCategoryById: jest.fn().mockResolvedValue({ id: 1, name: 'Еда', icon: '🍕' })
+  }));
+});
+
+jest.mock('../repositories/PremiumTransactionRepository', () => {
+  return jest.fn().mockImplementation(() => ({
+    createTransaction: jest.fn().mockResolvedValue({ id: 1 }),
+    getTransactionsByUserId: jest.fn().mockResolvedValue([]),
+    getTransactionByTelegramPaymentId: jest.fn().mockResolvedValue(null),
+    updateTransactionStatus: jest.fn().mockResolvedValue({ id: 1 }),
+    getTransactionStats: jest.fn().mockResolvedValue({ total: 0, count: 0 }),
+    getGlobalTransactionStats: jest.fn().mockResolvedValue({ total: 0, count: 0 })
   }));
 });
 
@@ -85,7 +118,7 @@ describe('CommandHandlers', () => {
 
   it('settings: sends settings message', async () => {
     await commandHandlers.settings(ctx);
-    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Настройки'), expect.objectContaining({ parse_mode: 'Markdown' }));
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Настройки'), expect.objectContaining({ reply_markup: expect.any(Object) }));
   });
 });
 

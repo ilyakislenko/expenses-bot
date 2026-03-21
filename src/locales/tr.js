@@ -524,6 +524,7 @@ module.exports = {
     button_expenses_month: '💰 Aylık harcamalar',
     button_expenses_day: '💰 Günlük harcamalar',
     button_expenses_categories: '💰 Kategoriye göre harcamalar',
+    button_export: '📊 Dışa Aktar',
     button_family: '👨‍👩‍👧‍👦 Aile',
     button_settings: '⚙️ Ayarlar',
     button_delete_last: '🗑️ Son kaydı sil',
@@ -554,6 +555,20 @@ module.exports = {
     // Dışa aktar
     export_success: '📊 Veri başarıyla dışa aktarıldı!',
     export_error: 'Veri dışa aktarılırken hata 😞',
+    export_title: '📊 Harcamaları dışa aktar',
+    export_period_day: '📅 Bugün',
+    export_period_week: '📅 Bu hafta',
+    export_period_month: '📅 Bu ay',
+    export_period_all: '📅 Tüm zamanlar',
+    export_period_range: '📅 Tarih seç...',
+    export_filter_categories: '🔽 Kategorilere göre filtrele',
+    export_select_categories: 'Dışa aktarılacak kategorileri seçin:',
+    export_select_all: '✅ Tümünü seç',
+    export_deselect_all: '❌ Tümünü kaldır',
+    export_done: '✅ Tamam',
+    export_no_categories: 'En az bir kategori seçin',
+    export_enter_dates: '📅 Tarih aralığını girin:\n\n`01.03-15.03` veya `01.03.2025-15.03.2025`',
+    export_invalid_date_format: '❌ Geçersiz tarih formatı. Kullanın: `01.03-15.03` veya `01.03.2025-15.03.2025`',
     keyboard_updated: '✅ Klavye dili güncellendi!',
     
     // Düzenleme

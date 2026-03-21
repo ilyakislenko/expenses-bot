@@ -216,24 +216,35 @@ class CommandHandlers {
     try {
       const userId = ctx.from.id;
       userLanguage = await this.userService.getUserLanguage(userId);
-      const { expenses, userCurrency, userTimezone } = await this.expenseService.exportExpenses(userId);
-      if (expenses.length === 0) {
-        const noDataText = this.localizationService.getText(userLanguage, 'no_expenses_period');
-        return await ctx.reply(noDataText);
-      }
-      const csv = await this.formatter.formatCSV(expenses, userCurrency, userTimezone, this.localizationService, userLanguage);
-      const filename = `expenses_${new Date().toISOString().split('T')[0]}.csv`;
-      
-      const exportSuccessText = this.localizationService.getText(userLanguage, 'export_success');
-      const recordsCountText = this.localizationService.getText(userLanguage, 'records_count', { count: expenses.length });
-      const caption = `${exportSuccessText}\n${recordsCountText}`;
-      
-      await ctx.replyWithDocument({
-        source: Buffer.from(csv, 'utf-8'),
-        filename
-      }, {
-        caption: caption
-      });
+
+      // Сбрасываем предыдущее состояние экспорта
+      this.stateService.deleteExportState(userId);
+
+      // Показываем меню выбора периода экспорта
+      const title = this.localizationService.getText(userLanguage, 'export_title');
+      const dayText = this.localizationService.getText(userLanguage, 'export_period_day');
+      const weekText = this.localizationService.getText(userLanguage, 'export_period_week');
+      const monthText = this.localizationService.getText(userLanguage, 'export_period_month');
+      const allText = this.localizationService.getText(userLanguage, 'export_period_all');
+      const dateRangeText = this.localizationService.getText(userLanguage, 'export_period_range');
+      const filterText = this.localizationService.getText(userLanguage, 'export_filter_categories');
+      const backText = this.localizationService.getText(userLanguage, 'button_back');
+
+      const keyboard = [
+        [
+          { text: dayText, callback_data: 'export_period|day' },
+          { text: weekText, callback_data: 'export_period|week' }
+        ],
+        [
+          { text: monthText, callback_data: 'export_period|month' },
+          { text: allText, callback_data: 'export_period|all' }
+        ],
+        [{ text: dateRangeText, callback_data: 'export_date_range' }],
+        [{ text: filterText, callback_data: 'export_category_filter' }],
+        [{ text: backText, callback_data: 'back_to_menu' }]
+      ];
+
+      await ctx.reply(title, { reply_markup: { inline_keyboard: keyboard } });
     } catch (error) {
       console.error('Error in export command:', error);
       const exportErrorText = this.localizationService.getText(userLanguage, 'export_error');

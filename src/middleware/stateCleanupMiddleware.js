@@ -12,7 +12,7 @@ function stateCleanupMiddleware(handlers) {
       // Список состояний, которые нужно сбрасывать автоматически
       const autoResetStates = [
         'setting_period_start',
-        'adding_custom_category', 
+        'adding_custom_category',
         'entering_donation',
         'bug_report',
         'admin_search',
@@ -20,7 +20,8 @@ function stateCleanupMiddleware(handlers) {
         'creating_family',
         'joining_family',
         'adding_family_expense',
-        'inviting_member'
+        'inviting_member',
+        'export_date_range'
       ];
       
       // Сбрасываем состояния при любых действиях пользователя (кроме текстовых сообщений)

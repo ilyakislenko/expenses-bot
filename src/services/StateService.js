@@ -3,6 +3,7 @@ class StateService {
     this.userEditState = new Map();
     this.pendingExpenses = new Map();
     this.userStates = new Map(); // Для семейных состояний
+    this.exportState = new Map(); // Состояние экспорта (выбранные категории)
   }
 
   // User Edit State methods
@@ -56,11 +57,29 @@ class StateService {
     return this.userStates.delete(userId);
   }
 
+  // Export State methods (выбранные категории для экспорта)
+  setExportState(userId, data) {
+    this.exportState.set(userId, data);
+  }
+
+  getExportState(userId) {
+    return this.exportState.get(userId);
+  }
+
+  hasExportState(userId) {
+    return this.exportState.has(userId);
+  }
+
+  deleteExportState(userId) {
+    return this.exportState.delete(userId);
+  }
+
   // Utility methods
   clearUserState(userId) {
     this.deleteUserEditState(userId);
     this.deletePendingExpense(userId);
     this.deleteUserState(userId);
+    this.deleteExportState(userId);
   }
 
   // For testing purposes
@@ -68,6 +87,7 @@ class StateService {
     this.userEditState.clear();
     this.pendingExpenses.clear();
     this.userStates.clear();
+    this.exportState.clear();
   }
 }
 

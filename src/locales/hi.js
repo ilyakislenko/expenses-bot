@@ -525,6 +525,7 @@ module.exports = {
     button_expenses_month: '💰 महीने के खर्च',
     button_expenses_day: '💰 दिन के खर्च',
     button_expenses_categories: '💰 श्रेणी अनुसार खर्च',
+    button_export: '📊 निर्यात',
     button_family: '👨‍👩‍👧‍👦 परिवार',
     button_settings: '⚙️ सेटिंग्स',
     button_delete_last: '🗑️ अंतिम प्रविष्टि हटाएँ',
@@ -555,6 +556,20 @@ module.exports = {
     // एक्सपोर्ट
     export_success: '📊 डेटा सफलतापूर्वक एक्सपोर्ट हुआ!',
     export_error: 'डेटा एक्सपोर्ट में त्रुटि 😞',
+    export_title: '📊 खर्चे निर्यात करें',
+    export_period_day: '📅 आज',
+    export_period_week: '📅 इस सप्ताह',
+    export_period_month: '📅 इस महीने',
+    export_period_all: '📅 सभी समय',
+    export_period_range: '📅 तारीखें चुनें...',
+    export_filter_categories: '🔽 श्रेणियों के अनुसार फ़िल्टर',
+    export_select_categories: 'निर्यात के लिए श्रेणियां चुनें:',
+    export_select_all: '✅ सभी चुनें',
+    export_deselect_all: '❌ सभी हटाएं',
+    export_done: '✅ पूर्ण',
+    export_no_categories: 'कम से कम एक श्रेणी चुनें',
+    export_enter_dates: '📅 तारीख सीमा दर्ज करें:\n\n`01.03-15.03` या `01.03.2025-15.03.2025`',
+    export_invalid_date_format: '❌ अमान्य तारीख प्रारूप। उपयोग करें: `01.03-15.03` या `01.03.2025-15.03.2025`',
     keyboard_updated: '✅ आपका कीबोर्ड भाषा अपडेट हो गया!',
     
     // संपादन

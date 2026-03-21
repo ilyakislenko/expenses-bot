@@ -69,7 +69,12 @@ constructor({ expenseService, userService, premiumService, familyService, catego
         await this.commandHandlers.family(ctx);
         return;
       }
-      
+      const exportText = this.localizationService.getText(userLanguage, 'button_export');
+      if (text === exportText) {
+        await this.commandHandlers.exportData(ctx);
+        return;
+      }
+
       // Обработка кнопки "добавить семейную трату"
       const familyAddExpenseText = this.localizationService.getText(userLanguage, 'family_add_expense');
       if (text === familyAddExpenseText) {
@@ -163,6 +168,10 @@ constructor({ expenseService, userService, premiumService, familyService, catego
 
         if (userState === 'entering_donation') {
           return await this.handleDonationInput(ctx, text, userLanguage);
+        }
+
+        if (userState === 'export_date_range') {
+          return await this.handleExportDateRangeInput(ctx, text, userLanguage);
         }
 
         if (userState === 'bug_report') {
@@ -912,6 +921,95 @@ constructor({ expenseService, userService, premiumService, familyService, catego
     } catch (error) {
       console.error('Error handling admin broadcast input:', error);
       const errorText = this.localizationService.getText(userLanguage, 'error');
+      await ctx.reply(errorText);
+    }
+  }
+
+  // Обработка ввода диапазона дат для экспорта (формат: DD.MM-DD.MM или DD.MM.YYYY-DD.MM.YYYY)
+  async handleExportDateRangeInput(ctx, text, userLanguage) {
+    try {
+      const userId = ctx.from.id;
+      this.stateService.deleteUserState(userId);
+
+      // Парсим формат: DD.MM-DD.MM или DD.MM.YYYY-DD.MM.YYYY
+      const trimmed = text.trim();
+      const match = trimmed.match(/^(\d{1,2})\.(\d{1,2})(?:\.(\d{4}))?[\s]*[-–][\s]*(\d{1,2})\.(\d{1,2})(?:\.(\d{4}))?$/);
+
+      if (!match) {
+        const invalidFormat = this.localizationService.getText(userLanguage, 'export_invalid_date_format');
+        return await ctx.reply(invalidFormat);
+      }
+
+      const currentYear = new Date().getFullYear();
+      const dayFrom = parseInt(match[1], 10);
+      const monthFrom = parseInt(match[2], 10) - 1;
+      const dayTo = parseInt(match[4], 10);
+      const monthTo = parseInt(match[5], 10) - 1;
+      const hasYearFrom = !!match[3];
+      const hasYearTo = !!match[6];
+      let yearFrom = hasYearFrom ? parseInt(match[3], 10) : currentYear;
+      let yearTo = hasYearTo ? parseInt(match[6], 10) : currentYear;
+
+      // Валидация дня/месяца
+      if (monthFrom < 0 || monthFrom > 11 || monthTo < 0 || monthTo > 11 ||
+          dayFrom < 1 || dayFrom > 31 || dayTo < 1 || dayTo > 31) {
+        const invalidFormat = this.localizationService.getText(userLanguage, 'export_invalid_date_format');
+        return await ctx.reply(invalidFormat);
+      }
+
+      let dateFrom = new Date(yearFrom, monthFrom, dayFrom);
+      let dateTo = new Date(yearTo, monthTo, dayTo);
+
+      // Если годы не указаны и dateFrom > dateTo — значит dateFrom в прошлом году
+      // Пример: 06.08-15.03 → 6 августа прошлого года — 15 марта этого года
+      if (!hasYearFrom && !hasYearTo && dateFrom > dateTo) {
+        yearFrom = currentYear - 1;
+        dateFrom = new Date(yearFrom, monthFrom, dayFrom);
+      }
+
+      dateTo.setDate(dateTo.getDate() + 1); // Включаем последний день
+
+      if (isNaN(dateFrom.getTime()) || isNaN(dateTo.getTime()) || dateFrom >= dateTo) {
+        const invalidFormat = this.localizationService.getText(userLanguage, 'export_invalid_date_format');
+        return await ctx.reply(invalidFormat);
+      }
+
+      const formatDate = (d) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${dd} 00:00:00`;
+      };
+
+      const exportState = this.stateService.getExportState(userId) || {};
+      const categoryIds = exportState.categoryIds || null;
+
+      const { expenses, userCurrency, userTimezone } = await this.expenseService.exportExpensesFiltered(userId, {
+        categoryIds,
+        dateFrom: formatDate(dateFrom),
+        dateTo: formatDate(dateTo)
+      });
+
+      if (expenses.length === 0) {
+        const noDataText = this.localizationService.getText(userLanguage, 'no_expenses_period');
+        return await ctx.reply(noDataText);
+      }
+
+      const csv = await this.formatter.formatCSV(expenses, userCurrency, userTimezone, this.localizationService, userLanguage);
+      const filename = `expenses_${new Date().toISOString().split('T')[0]}.csv`;
+      const exportSuccessText = this.localizationService.getText(userLanguage, 'export_success');
+      const recordsCountText = this.localizationService.getText(userLanguage, 'records_count', { count: expenses.length });
+      const caption = `${exportSuccessText}\n${recordsCountText}`;
+
+      await ctx.replyWithDocument({
+        source: Buffer.from(csv, 'utf-8'),
+        filename
+      }, { caption });
+
+      this.stateService.deleteExportState(userId);
+    } catch (error) {
+      console.error('Error handling export date range input:', error);
+      const errorText = this.localizationService.getText(userLanguage, 'export_error');
       await ctx.reply(errorText);
     }
   }

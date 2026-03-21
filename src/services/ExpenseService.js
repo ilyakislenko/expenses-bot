@@ -135,6 +135,18 @@ class ExpenseService {
     return { expenses, userCurrency, userTimezone };
   }
 
+  async exportExpensesFiltered(userId, { categoryIds, dateFrom, dateTo } = {}) {
+    const userTimezone = (await this.userRepository.getUserTimezone(userId)) || 'UTC';
+    const userCurrency = await this.userRepository.getUserCurrency(userId);
+    const expenses = await this.expenseRepository.exportExpensesFiltered(userId, {
+      categoryIds,
+      dateFrom,
+      dateTo,
+      timezone: userTimezone
+    });
+    return { expenses, userCurrency, userTimezone };
+  }
+
   async getCategories(userId, localizationService = null, userLanguage = 'ru') {
     // Показываем пользовательские категории только для премиум
     const isPremium = await this.premiumService.isPremiumUser(userId);
