@@ -1,10 +1,5 @@
 const logger = require('../utils/logger');
-
-// Функция для экранирования символов Markdown
-function escapeMarkdown(text) {
-  if (!text) return text;
-  return text.toString().replace(/[*_`[\]()~>#+-=|{}.!]/g, '\\$&');
-}
+const { escapeMarkdown } = require('../utils/formatter');
 
 class AdminHandlers {
   constructor(adminService, userService, localizationService, formatter, stateService) {

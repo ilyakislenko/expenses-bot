@@ -1,4 +1,5 @@
 const { MAIN_MENU_KEYBOARD, CURRENCY_KEYBOARD, SETTINGS_KEYBOARD } = require('../utils/constants');
+const { escapeMarkdown } = require('../utils/formatter');
 
 class CommandHandlers {
   constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, stateService, keyboardGenerators, paymentService }) {
@@ -541,8 +542,8 @@ class CommandHandlers {
         // Пользователь уже в семье
         const isOwner = userFamily.owner_id === userId;
         const familyInfoText = this.localizationService.getText(userLanguage, 'family_info');
-        const familyName = userFamily.name;
-        const ownerName = userFamily.owner_username || userFamily.owner_first_name || 'Unknown';
+        const familyName = escapeMarkdown(userFamily.name);
+        const ownerName = escapeMarkdown(userFamily.owner_username || userFamily.owner_first_name || 'Unknown');
         
         const familyLabelText = this.localizationService.getText(userLanguage, 'family_label');
         const ownerLabelText = this.localizationService.getText(userLanguage, 'family_owner_label');

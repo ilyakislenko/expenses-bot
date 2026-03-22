@@ -345,5 +345,11 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationServic
   }
 }
 
+function escapeMarkdown(text) {
+  if (!text) return text;
+  return text.toString().replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
+}
+
 module.exports = Formatter;
+module.exports.escapeMarkdown = escapeMarkdown;
   

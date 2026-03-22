@@ -1,4 +1,6 @@
 
+const { escapeMarkdown } = require('../utils/formatter');
+
 class CallbackHandlers {
   constructor({ expenseService, premiumService, paymentService, familyService, categoryService, localizationService, formatter, stateService, userService, commandHandlers, keyboardGenerators, donationRepository }) {
     this.expenseService = expenseService;
@@ -1077,8 +1079,8 @@ class CallbackHandlers {
       
       // Получаем информацию об удаляемом участнике
       const memberInfo = await this.userService.getUserById(memberId);
-      const memberName = memberInfo.username || memberInfo.first_name || 'Unknown';
-      
+      const memberName = escapeMarkdown(memberInfo.username || memberInfo.first_name || 'Unknown');
+
       // Показываем подтверждение
       const confirmText = this.localizationService.getText(userLanguage, 'confirm_remove_member', { name: memberName });
       const confirmButtonText = this.localizationService.getText(userLanguage, 'confirm');
@@ -1138,8 +1140,8 @@ class CallbackHandlers {
       
       // Получаем информацию об удаленном участнике для сообщения
       const memberInfo = await this.userService.getUserById(memberId);
-      const memberName = memberInfo.username || memberInfo.first_name || 'Unknown';
-      
+      const memberName = escapeMarkdown(memberInfo.username || memberInfo.first_name || 'Unknown');
+
       // Показываем сообщение об успехе
       const successText = this.localizationService.getText(userLanguage, 'member_removed', { name: memberName });
       const backText = this.localizationService.getText(userLanguage, 'button_back');
