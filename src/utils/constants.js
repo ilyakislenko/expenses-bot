@@ -157,9 +157,9 @@ function generateSettingsKeyboard(localizationService, userLanguage, reminderEna
   const { dailySummaryEnabled = false, categoryLimitsEnabled = false, globalLimitsEnabled = false } = options || {};
   const reminderIcon = reminderEnabled ? '🟢' : '⚫';
   const summaryIcon = dailySummaryEnabled ? '🟢' : '⚫';
-  const notificationsText = `${reminderIcon} ${localizationService.getText(userLanguage, 'button_notifications_management') || 'Управление оповещениями'}`;
+  const notificationsText = `${reminderIcon} ${localizationService.getText(userLanguage, 'button_notifications_management')}`;
   const limitsIcon = (categoryLimitsEnabled || globalLimitsEnabled) ? '🟢' : '⚫';
-  const limitsManagementText = `${limitsIcon} ${localizationService.getText(userLanguage, 'button_limits_management') || 'Управление лимитами'}`;
+  const limitsManagementText = `${limitsIcon} ${localizationService.getText(userLanguage, 'button_limits_management')}`;
   
   return [
     [{ text: localizationService.getText(userLanguage, 'button_change_currency'), callback_data: 'change_currency' }],
@@ -254,11 +254,11 @@ function generateLimitsManagementKeyboard(localizationService, userLanguage, opt
   const catIcon = categoryLimitsEnabled ? '🟢' : '⚫';
   const globIcon = globalLimitsEnabled ? '🟢' : '⚫';
   return [
-    [{ text: `${catIcon} ${localizationService.getText(userLanguage, 'button_toggle_category_limits') || 'Лимиты по категориям'}`, callback_data: 'toggle_category_limits' }],
-    [{ text: `${globIcon} ${localizationService.getText(userLanguage, 'button_toggle_global_limits') || 'Глобальные лимиты (д/м)'}`, callback_data: 'toggle_global_limits' }],
-    [{ text: localizationService.getText(userLanguage, 'button_category_limits') || 'Лимиты на категории', callback_data: 'category_limits_menu' }],
-    [{ text: localizationService.getText(userLanguage, 'button_set_daily_limit') || 'Установить дневной лимит', callback_data: 'set_daily_limit' }],
-    [{ text: localizationService.getText(userLanguage, 'button_set_monthly_limit') || 'Установить месячный лимит', callback_data: 'set_monthly_limit' }],
+    [{ text: `${catIcon} ${localizationService.getText(userLanguage, 'button_toggle_category_limits')}`, callback_data: 'toggle_category_limits' }],
+    [{ text: `${globIcon} ${localizationService.getText(userLanguage, 'button_toggle_global_limits')}`, callback_data: 'toggle_global_limits' }],
+    [{ text: localizationService.getText(userLanguage, 'button_category_limits'), callback_data: 'category_limits_menu' }],
+    [{ text: localizationService.getText(userLanguage, 'button_set_daily_limit'), callback_data: 'set_daily_limit' }],
+    [{ text: localizationService.getText(userLanguage, 'button_set_monthly_limit'), callback_data: 'set_monthly_limit' }],
     [{ text: localizationService.getText(userLanguage, 'button_back'), callback_data: 'back_to_settings' }]
   ];
 }
@@ -270,8 +270,8 @@ function generateNotificationsManagementKeyboard(localizationService, userLangua
   return [
     [{ text: `${reminderIcon} ${localizationService.getText(userLanguage, 'button_reminders')}`, callback_data: 'toggle_reminders' }],
     [{ text: localizationService.getText(userLanguage, 'button_configure_reminder_hours'), callback_data: 'configure_reminder_hours' }],
-    [{ text: `${summaryIcon} ${localizationService.getText(userLanguage, 'button_daily_summary') || 'Ежедневная сводка'}`, callback_data: 'toggle_daily_summary' }],
-    [{ text: localizationService.getText(userLanguage, 'button_configure_daily_summary') || 'Настроить час сводки', callback_data: 'configure_daily_summary_hour' }],
+    [{ text: `${summaryIcon} ${localizationService.getText(userLanguage, 'button_daily_summary')}`, callback_data: 'toggle_daily_summary' }],
+    [{ text: localizationService.getText(userLanguage, 'button_configure_daily_summary'), callback_data: 'configure_daily_summary_hour' }],
     [{ text: localizationService.getText(userLanguage, 'button_back'), callback_data: 'back_to_settings' }]
   ];
 }

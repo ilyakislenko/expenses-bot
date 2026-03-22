@@ -678,5 +678,8 @@ module.exports = {
   daily_limit: 'Дневной лимит',
   monthly_limit: 'Месячный лимит',
   daily_limit_exceeded: 'Превышен дневной лимит',
-  monthly_limit_exceeded: 'Превышен месячный лимит'
+  monthly_limit_exceeded: 'Превышен месячный лимит',
+  daily_summary_hour_info: 'Выберите час локального времени для ежедневной сводки:',
+  daily_summary_hour_set: 'Час сводки сохранён',
+  no_limits_set: 'Лимиты не заданы'
 }; 
