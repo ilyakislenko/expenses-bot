@@ -232,3 +232,11 @@ Reply-клавиатура
 - Локализация: 13 языков, ключ без перевода показывается как есть — новые ключи нужно добавлять во все `src/locales/*.js`.
   Обращение: ru, de, es, fr, pt — на «ты»; tr, ka, kz, uz, hi, jp — вежливое; zh — 你
 - Тесты (`npm test`) не ходят в БД: `src/__tests__/setup.js` подменяет `DATABASE_URL` до загрузки модулей
+- Эксплуатация (вне репозитория, на сервере):
+  - `expenses-bot-backup.timer` (04:30) → `/usr/local/sbin/expenses-bot-backup.sh`: `pg_dump` и `.env` на второй диск
+    `/mnt/storage/backups/expenses-bot/`, проверка целостности, хранение 30 дней; при ошибке — сообщение админам в Telegram
+  - `expenses-bot-watchdog.timer` (каждые 2 мин) → `/usr/local/sbin/expenses-bot-watchdog.sh`: если у Telegram две проверки
+    подряд копятся необработанные обновления (`getWebhookInfo.pending_update_count`), бот перезапускается (не чаще раза
+    в 15 минут) и админам приходит сообщение
+  - `.github/workflows/bot-watchdog.yml` (GitHub Actions, каждые 10 мин): та же проверка снаружи — на случай, если лежит
+    весь сервер или интернет; нужны секреты `BOT_TOKEN` и `ADMIN_CHAT_ID`

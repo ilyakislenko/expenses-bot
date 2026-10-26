@@ -1,0 +1,42 @@
+# Внешняя проверка бота: ловит то, что не видно с сервера (выключен сервер, нет интернета, упал Docker).
+# Если у Telegram копятся необработанные обновления 3 минуты подряд — бот их не забирает, пишем админу.
+# Без сообщений пользователей сигнала нет, но и ждать ответа некому.
+# Нужны секреты репозитория: BOT_TOKEN и ADMIN_CHAT_ID (Settings → Secrets and variables → Actions).
+# GitHub отключает расписание в публичном репозитории после 60 дней без коммитов — включается обратно в Actions.
+name: Bot watchdog
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Check that the bot processes updates
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          ADMIN_CHAT_ID: ${{ secrets.ADMIN_CHAT_ID }}
+        run: |
+          if [ -z "$BOT_TOKEN" ] || [ -z "$ADMIN_CHAT_ID" ]; then
+            echo "::notice::Secrets BOT_TOKEN / ADMIN_CHAT_ID are not set, skipping"
+            exit 0
+          fi
+          pending() {
+            curl -fsS -m 20 "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo" | jq -r '.result.pending_update_count'
+          }
+          first=$(pending)
+          if [ "$first" -eq 0 ]; then echo "OK: no pending updates"; exit 0; fi
+          echo "Pending: $first, checking again in 3 minutes"
+          sleep 180
+          second=$(pending)
+          if [ "$second" -eq 0 ]; then echo "OK: updates were processed"; exit 0; fi
+          curl -fsS -o /dev/null -m 20 "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${ADMIN_CHAT_ID}" \
+            --data-urlencode "text=🚨 Бот не отвечает больше 3 минут: ждут ответа ${second} сообщ. Проверь сервер и интернет дома (проверка из GitHub Actions)."
+          echo "::error::Bot does not process updates ($second pending)"
+          exit 1
