@@ -84,24 +84,24 @@ module.exports = {
       // Yönetici istatistikleri
       admin_stats_text: `📊 *Bot istatistikleri*
 
-👥 **Kullanıcılar:**
+👥 *Kullanıcılar:*
 • Toplam: {totalUsers}
 • Premium: {activePremium}
 • Bu hafta yeni: {newUsersWeek}
 • Bu ay yeni: {newUsersMonth}
 
-💰 **Harcamalar:**
+💰 *Harcamalar:*
 • Toplam kayıt: {totalExpenses}
 • Bu hafta: {expensesWeek}
 • Aktif kullanıcılar: {activeUsers}
 
-🐛 **Hata bildirimleri:** {totalBugReports}
+🐛 *Hata bildirimleri:* {totalBugReports}
 
-💎 **Bağışlar:**
+💎 *Bağışlar:*
 • Toplam: {totalDonations}
 • Toplanan yıldız: {totalStars}
 
-⭐ **Premium işlemleri:** {premiumTransactions}`,
+⭐ *Premium işlemleri:* {premiumTransactions}`,
       
         // Kullanıcı listesi
         admin_users_title: '👥 *Kullanıcılar* (Sayfa {page}/{totalPages})\n\nToplam: {totalUsers}\n',
@@ -116,23 +116,23 @@ module.exports = {
         // Bağış istatistikleri
         admin_donations_text: `💰 *Bağış istatistikleri*
 
-📊 **Özet:**
+📊 *Özet:*
 • Toplam bağış: {totalDonations}
 • Tamamlanan: {completedDonations}
 • Bekleyen: {pendingDonations}
 
-⭐ **Yıldızlar:**
+⭐ *Yıldızlar:*
 • Toplam toplanan: {totalStars}
 • Ortalama bağış: {avgStars} yıldız`,
       
         // Premium istatistikleri
         admin_premium_stats: `⭐ *Premium istatistikleri*
 
-📊 **Kullanıcılar:**
+📊 *Kullanıcılar:*
 • Toplam premium: {totalPremiumUsers}
 • Şu an aktif: {activePremiumUsers}
 
-💳 **İşlemler:**
+💳 *İşlemler:*
 • Toplam işlem: {totalTransactions}
 • Toplam gelir: {totalRevenue} yıldız`,
       
@@ -155,7 +155,7 @@ module.exports = {
 🕐 Zaman dilimi: {timezone}
 📅 Kayıt tarihi: {createdAt}
 
-📊 **İstatistikler:**
+📊 *İstatistikler:*
 • Harcama kaydı: {totalExpenses}
 • Toplam tutar: {totalAmount}
 • Hata bildirimi: {bugReportsCount}
@@ -172,9 +172,9 @@ module.exports = {
         // Toplu duyuru
         admin_broadcast_prompt: '📢 *Toplu mesaj*\n\nTüm kullanıcılara gidecek mesajı yazın (en fazla 3600 karakter):',
         admin_broadcast_too_long: '❌ Mesaj çok uzun!\n\n📏 Mevcut uzunluk: {current}\n📏 Maksimum: {max}\n📏 Kısaltın: {excess} karakter',
-        admin_broadcast_confirm: '📢 *Toplu mesajı onayla*\n\n📝 **Mesaj:**\n{message}\n\n📏 **Uzunluk:** {length} karakter\n\n⚠️ Bu mesaj botun **tüm** kullanıcılarına gönderilecek!',
+        admin_broadcast_confirm: '📢 *Toplu mesajı onayla*\n\n📝 *Mesaj:*\n{message}\n\n📏 *Uzunluk:* {length} karakter\n\n⚠️ Bu mesaj botun *tüm* kullanıcılarına gönderilecek!',
         admin_broadcast_started: '📢 Gönderim başladı...',
-        admin_broadcast_result: '📢 *Gönderim bitti!*\n\n📊 **İstatistik:**\n• Toplam: {total}\n• Başarılı: {sent}\n• Başarısız: {failed}',
+        admin_broadcast_result: '📢 *Gönderim bitti!*\n\n📊 *İstatistik:*\n• Toplam: {total}\n• Başarılı: {sent}\n• Başarısız: {failed}',
         admin_broadcast_header: '🔴🔴🔴 *Duyuru!* 🔴🔴🔴',
         
         // Genel mesajlar

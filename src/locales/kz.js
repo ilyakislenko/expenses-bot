@@ -68,24 +68,24 @@ module.exports = {
     // Әкімші статистикасы
     admin_stats_text: `📊 *Бот статистикасы*
 
-👥 **Пайдаланушылар:**
+👥 *Пайдаланушылар:*
 • Барлығы: {totalUsers}
 • Premium: {activePremium}
 • Апта ішінде жаңалары: {newUsersWeek}
 • Ай ішінде жаңалары: {newUsersMonth}
 
-💰 **Шығындар:**
+💰 *Шығындар:*
 • Барлық жазбалар: {totalExpenses}
 • Апта ішінде: {expensesWeek}
 • Белсенді пайдаланушылар: {activeUsers}
 
-🐛 **Қате хабарламалары:** {totalBugReports}
+🐛 *Қате хабарламалары:* {totalBugReports}
 
-💎 **Донаттар:**
+💎 *Донаттар:*
 • Барлығы: {totalDonations}
 • Жиналған жұлдыздар: {totalStars}
 
-⭐ **Premium транзакциялар:** {premiumTransactions}`,
+⭐ *Premium транзакциялар:* {premiumTransactions}`,
   
     // Әкімші пайдаланушылар тізімі
     admin_users_title: '👥 *Пайдаланушылар* (бет {page}/{totalPages})\n\nБарлығы: {totalUsers}\n',
@@ -100,23 +100,23 @@ module.exports = {
     // Донаттар статистикасы
     admin_donations_text: `💰 *Донат статистикасы*
 
-📊 **Жалпы:**
+📊 *Жалпы:*
 • Донаттар саны: {totalDonations}
 • Аяқталған: {completedDonations}
 • Күтуде: {pendingDonations}
 
-⭐ **Жұлдыздар:**
+⭐ *Жұлдыздар:*
 • Барлығы жиналған: {totalStars}
 • Орташа донат: {avgStars} жұлдыз`,
   
     // Premium статистикасы
     admin_premium_stats: `⭐ *Premium статистикасы*
 
-📊 **Пайдаланушылар:**
+📊 *Пайдаланушылар:*
 • Барлығы premium: {totalPremiumUsers}
 • Қазір белсенді: {activePremiumUsers}
 
-💳 **Транзакциялар:**
+💳 *Транзакциялар:*
 • Барлығы: {totalTransactions}
 • Жалпы табыс: {totalRevenue} жұлдыз`,
   
@@ -138,7 +138,7 @@ module.exports = {
 🕐 Уақыт белдеуі: {timezone}
 📅 Тіркелген күні: {createdAt}
 
-📊 **Статистика:**
+📊 *Статистика:*
 • Шығын жазбалары: {totalExpenses}
 • Жалпы сома: {totalAmount}
 • Қате хабарламалары: {bugReportsCount}
@@ -155,9 +155,9 @@ module.exports = {
     // Әкімші хабар тарату
     admin_broadcast_prompt: '📢 *Жаппай хабарлама*\n\nБарлық пайдаланушыларға арналған мәтінді енгізіңіз (ең көбі 3600 таңба):',
     admin_broadcast_too_long: '❌ Хабарлама тым ұзын!\n\n📏 Ағымдағы ұзындығы: {current} таңба\n📏 Ең көбі: {max}\n📏 Қысқарту керек: {excess} таңба',
-    admin_broadcast_confirm: '📢 *Жаппай хабарлама жіберуді растаңыз*\n\n📝 **Хабарлама мәтіні:**\n{message}\n\n📏 **Ұзындығы:** {length} таңба\n\n⚠️ Бұл хабарлама боттың **БАРЛЫҚ** пайдаланушыларына жіберіледі!',
+    admin_broadcast_confirm: '📢 *Жаппай хабарлама жіберуді растаңыз*\n\n📝 *Хабарлама мәтіні:*\n{message}\n\n📏 *Ұзындығы:* {length} таңба\n\n⚠️ Бұл хабарлама боттың *БАРЛЫҚ* пайдаланушыларына жіберіледі!',
     admin_broadcast_started: '📢 Хабарлама жіберу басталды...',
-    admin_broadcast_result: '📢 *Жіберу аяқталды!*\n\n📊 **Статистика:**\n• Барлығы: {total}\n• Жеткізілді: {sent}\n• Қате: {failed}',
+    admin_broadcast_result: '📢 *Жіберу аяқталды!*\n\n📊 *Статистика:*\n• Барлығы: {total}\n• Жеткізілді: {sent}\n• Қате: {failed}',
     admin_broadcast_header: '🔴🔴🔴 *Хабарландыру!* 🔴🔴🔴',
     
     // Жалпы хабарламалар

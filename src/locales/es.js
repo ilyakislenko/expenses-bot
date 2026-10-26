@@ -86,24 +86,24 @@ module.exports = {
     // Estadísticas admin
     admin_stats_text: `📊 *Estadísticas del bot*
 
-👥 **Usuarios:**
+👥 *Usuarios:*
 • Total: {totalUsers}
 • Premium: {activePremium}
 • Nuevos esta semana: {newUsersWeek}
 • Nuevos este mes: {newUsersMonth}
 
-💰 **Gastos:**
+💰 *Gastos:*
 • Registros totales: {totalExpenses}
 • Esta semana: {expensesWeek}
 • Usuarios activos: {activeUsers}
 
-🐛 **Reportes de errores:** {totalBugReports}
+🐛 *Reportes de errores:* {totalBugReports}
 
-💎 **Donaciones:**
+💎 *Donaciones:*
 • Total: {totalDonations}
 • Estrellas reunidas: {totalStars}
 
-⭐ **Transacciones premium:** {premiumTransactions}`,
+⭐ *Transacciones premium:* {premiumTransactions}`,
   
     // Lista usuarios admin
     admin_users_title: '👥 *Usuarios* (pág. {page}/{totalPages})\n\nTotal: {totalUsers}\n',
@@ -118,23 +118,23 @@ module.exports = {
     // Donaciones admin
     admin_donations_text: `💰 *Estadísticas de donaciones*
 
-📊 **Resumen:**
+📊 *Resumen:*
 • Donaciones totales: {totalDonations}
 • Completadas: {completedDonations}
 • Pendientes: {pendingDonations}
 
-⭐ **Estrellas:**
+⭐ *Estrellas:*
 • Total recolectado: {totalStars}
 • Promedio por donación: {avgStars} estrellas`,
   
     // Premium admin 
     admin_premium_stats: `⭐ *Estadísticas premium*
 
-📊 **Usuarios:**
+📊 *Usuarios:*
 • Total premium: {totalPremiumUsers}
 • Activos ahora: {activePremiumUsers}
 
-💳 **Transacciones:**
+💳 *Transacciones:*
 • Total operaciones: {totalTransactions}
 • Ingresos totales: {totalRevenue} estrellas`,
   
@@ -156,7 +156,7 @@ module.exports = {
 🕐 Zona horaria: {timezone}
 📅 Registro: {createdAt}
 
-📊 **Estadísticas:**
+📊 *Estadísticas:*
 • Registros de gastos: {totalExpenses}
 • Importe total: {totalAmount}
 • Reportes de errores: {bugReportsCount}
@@ -173,9 +173,9 @@ module.exports = {
     // Difusión admin
     admin_broadcast_prompt: '📢 *Difusión masiva*\n\nIntroduce el texto para todos los usuarios (máx. 3600 caracteres):',
     admin_broadcast_too_long: '❌ Mensaje demasiado largo!\n\n📏 Longitud actual: {current}\n📏 Máximo: {max}\n📏 Elimina: {excess} caracteres',
-    admin_broadcast_confirm: '📢 *Confirmar envío de difusión*\n\n📝 **Texto:**\n{message}\n\n📏 **Longitud:** {length} caracteres\n\n⚠️ Este mensaje será enviado a **TODOS** los usuarios del bot!',
+    admin_broadcast_confirm: '📢 *Confirmar envío de difusión*\n\n📝 *Texto:*\n{message}\n\n📏 *Longitud:* {length} caracteres\n\n⚠️ Este mensaje será enviado a *TODOS* los usuarios del bot!',
     admin_broadcast_started: '📢 Difusión iniciada...',
-    admin_broadcast_result: '📢 *Difusión completada!*\n\n📊 **Estadísticas:**\n• Total usuarios: {total}\n• Enviado: {sent}\n• Errores: {failed}',
+    admin_broadcast_result: '📢 *Difusión completada!*\n\n📊 *Estadísticas:*\n• Total usuarios: {total}\n• Enviado: {sent}\n• Errores: {failed}',
     admin_broadcast_header: '🔴🔴🔴 *¡Notificación!* 🔴🔴🔴',
     
     // General

@@ -86,24 +86,24 @@ module.exports = {
     // एडमिन आँकड़े
     admin_stats_text: `📊 *बॉट आँकड़े*
 
-👥 **उपयोगकर्ता:**
+👥 *उपयोगकर्ता:*
 • कुल: {totalUsers}
 • प्रीमियम: {activePremium}
 • इस सप्ताह नए: {newUsersWeek}
 • इस महीने नए: {newUsersMonth}
 
-💰 **खर्च:**
+💰 *खर्च:*
 • कुल प्रविष्टियाँ: {totalExpenses}
 • इस सप्ताह: {expensesWeek}
 • सक्रिय उपयोगकर्ता: {activeUsers}
 
-🐛 **बग रिपोर्ट:** {totalBugReports}
+🐛 *बग रिपोर्ट:* {totalBugReports}
 
-💎 **दान:**
+💎 *दान:*
 • कुल: {totalDonations}
 • एकत्रित सितारे: {totalStars}
 
-⭐ **प्रीमियम लेनदेन:** {premiumTransactions}`,
+⭐ *प्रीमियम लेनदेन:* {premiumTransactions}`,
   
     // उपयोगकर्ता सूची
     admin_users_title: '👥 *उपयोगकर्ता* (पृष्ठ {page}/{totalPages})\n\nकुल: {totalUsers}\n',
@@ -118,23 +118,23 @@ module.exports = {
     // दान आँकड़े
     admin_donations_text: `💰 *दान आँकड़े*
 
-📊 **सारांश:**
+📊 *सारांश:*
 • कुल दान: {totalDonations}
 • पूर्ण: {completedDonations}
 • लंबित: {pendingDonations}
 
-⭐ **सितारे:**
+⭐ *सितारे:*
 • कुल एकत्रित: {totalStars}
 • औसत दान: {avgStars} सितारे`,
   
     // प्रीमियम आँकड़े
     admin_premium_stats: `⭐ *प्रीमियम आँकड़े*
 
-📊 **उपयोगकर्ता:**
+📊 *उपयोगकर्ता:*
 • कुल प्रीमियम: {totalPremiumUsers}
 • अभी सक्रिय: {activePremiumUsers}
 
-💳 **लेनदेन:**
+💳 *लेनदेन:*
 • कुल संचालन: {totalTransactions}
 • कुल राजस्व: {totalRevenue} सितारे`,
   
@@ -156,7 +156,7 @@ module.exports = {
 🕐 समय क्षेत्र: {timezone}
 📅 पंजीकरण: {createdAt}
 
-📊 **आँकड़े:**
+📊 *आँकड़े:*
 • खर्च प्रविष्टियाँ: {totalExpenses}
 • कुल राशि: {totalAmount}
 • बग रिपोर्ट: {bugReportsCount}
@@ -173,9 +173,9 @@ module.exports = {
     // मास ब्रॉडकास्ट
     admin_broadcast_prompt: '📢 *सामूहिक संदेश*\n\nसभी उपयोगकर्ताओं के लिए संदेश लिखें (अधिकतम 3600 अक्षर):',
     admin_broadcast_too_long: '❌ संदेश बहुत लंबा है!\n\n📏 वर्तमान लंबाई: {current}\n📏 अधिकतम: {max}\n📏 हटाएँ: {excess} अक्षर',
-    admin_broadcast_confirm: '📢 *सामूहिक संदेश की पुष्टि करें*\n\n📝 **संदेश:**\n{message}\n\n📏 **लंबाई:** {length} अक्षर\n\n⚠️ यह संदेश बॉट के **सभी** उपयोगकर्ताओं को भेजा जाएगा!',
+    admin_broadcast_confirm: '📢 *सामूहिक संदेश की पुष्टि करें*\n\n📝 *संदेश:*\n{message}\n\n📏 *लंबाई:* {length} अक्षर\n\n⚠️ यह संदेश बॉट के *सभी* उपयोगकर्ताओं को भेजा जाएगा!',
     admin_broadcast_started: '📢 संदेश भेजना शुरू हुआ...',
-    admin_broadcast_result: '📢 *संदेश भेजना समाप्त!*\n\n📊 **आँकड़े:**\n• कुल उपयोगकर्ता: {total}\n• सफल: {sent}\n• विफल: {failed}',
+    admin_broadcast_result: '📢 *संदेश भेजना समाप्त!*\n\n📊 *आँकड़े:*\n• कुल उपयोगकर्ता: {total}\n• सफल: {sent}\n• विफल: {failed}',
     admin_broadcast_header: '🔴🔴🔴 *अधिसूचना!* 🔴🔴🔴',
     
     // सामान्य संदेश

@@ -86,24 +86,24 @@ module.exports = {
     // 管理员统计
     admin_stats_text: `📊 *机器人统计*
 
-👥 **用户：**
+👥 *用户：*
 • 总数：{totalUsers}
 • 高级用户：{activePremium}
 • 本周新增：{newUsersWeek}
 • 本月新增：{newUsersMonth}
 
-💰 **支出：**
+💰 *支出：*
 • 总记录数：{totalExpenses}
 • 本周：{expensesWeek}
 • 活跃用户：{activeUsers}
 
-🐛 **错误报告数：** {totalBugReports}
+🐛 *错误报告数：* {totalBugReports}
 
-💎 **捐赠：**
+💎 *捐赠：*
 • 总额：{totalDonations}
 • 收到的星星：{totalStars}
 
-⭐ **高级交易数：** {premiumTransactions}`,
+⭐ *高级交易数：* {premiumTransactions}`,
   
     // 用户列表
     admin_users_title: '👥 *用户*（第 {page}/{totalPages} 页）\n\n总数：{totalUsers}\n',
@@ -118,23 +118,23 @@ module.exports = {
     // 捐赠统计
     admin_donations_text: `💰 *捐赠统计*
 
-📊 **摘要：**
+📊 *摘要：*
 • 总捐赠：{totalDonations}
 • 已完成：{completedDonations}
 • 待处理：{pendingDonations}
 
-⭐ **星星：**
+⭐ *星星：*
 • 总收集：{totalStars}
 • 平均捐赠：{avgStars} 颗星`,
   
     // 高级账户统计
     admin_premium_stats: `⭐ *高级账户统计*
 
-📊 **用户：**
+📊 *用户：*
 • 高级总数：{totalPremiumUsers}
 • 当前活跃：{activePremiumUsers}
 
-💳 **交易：**
+💳 *交易：*
 • 总次数：{totalTransactions}
 • 总收入：{totalRevenue} 颗星`,
   
@@ -156,7 +156,7 @@ module.exports = {
 🕐 时区：{timezone}
 📅 注册时间：{createdAt}
 
-📊 **统计：**
+📊 *统计：*
 • 支出记录数：{totalExpenses}
 • 总金额：{totalAmount}
 • 错误报告数：{bugReportsCount}
@@ -173,9 +173,9 @@ module.exports = {
     // 群发消息
     admin_broadcast_prompt: '📢 *群发消息*\n\n请输入要发送给所有用户的消息（最多3600个字符）：',
     admin_broadcast_too_long: '❌ 消息太长！\n\n📏 当前长度：{current}\n📏 最大：{max}\n📏 请减少：{excess} 个字符',
-    admin_broadcast_confirm: '📢 *确认群发*\n\n📝 **消息内容：**\n{message}\n\n📏 **长度：** {length} 个字符\n\n⚠️ 此消息将发送给 **所有** 机器人用户！',
+    admin_broadcast_confirm: '📢 *确认群发*\n\n📝 *消息内容：*\n{message}\n\n📏 *长度：* {length} 个字符\n\n⚠️ 此消息将发送给 *所有* 机器人用户！',
     admin_broadcast_started: '📢 群发开始...',
-    admin_broadcast_result: '📢 *群发完成！*\n\n📊 **统计：**\n• 总用户：{total}\n• 成功：{sent}\n• 失败：{failed}',
+    admin_broadcast_result: '📢 *群发完成！*\n\n📊 *统计：*\n• 总用户：{total}\n• 成功：{sent}\n• 失败：{failed}',
     admin_broadcast_header: '🔴🔴🔴 *通知！* 🔴🔴🔴',
     
     // 通用消息

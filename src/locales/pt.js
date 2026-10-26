@@ -86,24 +86,24 @@ module.exports = {
     // Estatísticas admin
     admin_stats_text: `📊 *Estatísticas do bot*
 
-👥 **Usuários:**
+👥 *Usuários:*
 • Total: {totalUsers}
 • Premium: {activePremium}
 • Novos na semana: {newUsersWeek}
 • Novos no mês: {newUsersMonth}
 
-💰 **Despesas:**
+💰 *Despesas:*
 • Total de registros: {totalExpenses}
 • Nesta semana: {expensesWeek}
 • Usuários ativos: {activeUsers}
 
-🐛 **Relatórios de bugs:** {totalBugReports}
+🐛 *Relatórios de bugs:* {totalBugReports}
 
-💎 **Doações:**
+💎 *Doações:*
 • Total: {totalDonations}
 • Estrelas recebidas: {totalStars}
 
-⭐ **Transações premium:** {premiumTransactions}`,
+⭐ *Transações premium:* {premiumTransactions}`,
   
     // Lista de usuários admin
     admin_users_title: '👥 *Usuários* (pág. {page}/{totalPages})\n\nTotal: {totalUsers}\n',
@@ -118,23 +118,23 @@ module.exports = {
     // Doações admin
     admin_donations_text: `💰 *Estatísticas de doações*
 
-📊 **Resumo:**
+📊 *Resumo:*
 • Doações totais: {totalDonations}
 • Concluídas: {completedDonations}
 • Pendentes: {pendingDonations}
 
-⭐ **Estrelas:**
+⭐ *Estrelas:*
 • Total recebido: {totalStars}
 • Média por doação: {avgStars} estrelas`,
   
     // Premium admin
     admin_premium_stats: `⭐ *Estatísticas premium*
 
-📊 **Usuários:**
+📊 *Usuários:*
 • Total premium: {totalPremiumUsers}
 • Ativos agora: {activePremiumUsers}
 
-💳 **Transações:**
+💳 *Transações:*
 • Total de operações: {totalTransactions}
 • Receita total: {totalRevenue} estrelas`,
   
@@ -156,7 +156,7 @@ module.exports = {
 🕐 Fuso horário: {timezone}
 📅 Registro: {createdAt}
 
-📊 **Estatísticas:**
+📊 *Estatísticas:*
 • Registros de despesas: {totalExpenses}
 • Valor total: {totalAmount}
 • Relatórios de bugs: {bugReportsCount}
@@ -173,9 +173,9 @@ module.exports = {
     // Broadcast admin
     admin_broadcast_prompt: '📢 *Envio em massa*\n\nDigite a mensagem para todos os usuários (máx. 3600 caracteres):',
     admin_broadcast_too_long: '❌ Mensagem muito longa!\n\n📏 Tamanho atual: {current} caracteres\n📏 Máximo: {max}\n📏 Remova: {excess} caracteres',
-    admin_broadcast_confirm: '📢 *Confirmar envio em massa*\n\n📝 **Texto da mensagem:**\n{message}\n\n📏 **Tamanho:** {length} caracteres\n\n⚠️ Essa mensagem será enviada para **TODOS** os usuários do bot!',
+    admin_broadcast_confirm: '📢 *Confirmar envio em massa*\n\n📝 *Texto da mensagem:*\n{message}\n\n📏 *Tamanho:* {length} caracteres\n\n⚠️ Essa mensagem será enviada para *TODOS* os usuários do bot!',
     admin_broadcast_started: '📢 Envio iniciado...',
-    admin_broadcast_result: '📢 *Envio concluído!*\n\n📊 **Estatísticas:**\n• Total de usuários: {total}\n• Enviadas com sucesso: {sent}\n• Erros: {failed}',
+    admin_broadcast_result: '📢 *Envio concluído!*\n\n📊 *Estatísticas:*\n• Total de usuários: {total}\n• Enviadas com sucesso: {sent}\n• Erros: {failed}',
     admin_broadcast_header: '🔴🔴🔴 *Notificação!* 🔴🔴🔴',
     
     // Mensagens gerais

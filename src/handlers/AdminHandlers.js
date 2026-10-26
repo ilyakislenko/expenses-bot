@@ -1,5 +1,6 @@
 const logger = require('../utils/logger');
 const respond = require('../utils/respond');
+const { getTimezoneDisplayName } = require('../utils/timezoneCalculator');
 
 class AdminHandlers {
   constructor(adminService, userService, localizationService, formatter, stateService, funnelService) {
@@ -230,7 +231,7 @@ class AdminHandlers {
       let reportsText = this.localizationService.getText(userLanguage, 'admin_bug_reports_title');
       
       // Статистика по статусам
-      reportsText += '\n\n📊 **Статистика:**\n';
+      reportsText += '\n\n📊 *Статистика:*\n';
       bugReportStats.stats.forEach(stat => {
         const statusText = this.localizationService.getText(userLanguage, `bug_report_status_${stat.status}`);
         reportsText += `${statusText}: ${stat.count}\n`;
@@ -238,12 +239,13 @@ class AdminHandlers {
 
       // Последние репорты
       if (bugReportStats.recentReports.length > 0) {
-        reportsText += '\n📝 **Новые репорты:**\n';
+        reportsText += '\n📝 *Новые репорты:*\n';
         bugReportStats.recentReports.slice(0, 5).forEach((report, index) => {
-          const reportText = report.report_text.length > 50 
-            ? report.report_text.substring(0, 47) + '...' 
+          const reportText = report.report_text.length > 50
+            ? report.report_text.substring(0, 47) + '...'
             : report.report_text;
-          reportsText += `${index + 1}. ID:${report.id} - ${reportText}\n`;
+          // Текст репорта — пользовательский ввод: без экранирования Markdown сообщение не отправится
+          reportsText += `${index + 1}. ID:${report.id} - ${this.formatter.escapeMarkdown(reportText)}\n`;
         });
       }
 
@@ -396,7 +398,7 @@ class AdminHandlers {
     if (!(await this.checkAdminAccess(ctx))) return;
     const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
     this.stateService.setUserState(ctx.from.id, `admin_refund_search:${targetUserId}`);
-    const prompt = '🔎 Введите хэш (telegram_payment_id) транзакции для возврата:';
+    const prompt = '🔎 Введи хэш (telegram_payment_id) транзакции для возврата:';
     await ctx.reply(prompt, { reply_markup: { inline_keyboard: [[{ text: '🔙 Назад', callback_data: `panel_user_${targetUserId}` }]] } });
   }
 
@@ -546,7 +548,7 @@ class AdminHandlers {
         userId: user.id,
         language: user.language,
         currency: user.currency,
-        timezone: user.timezone,
+        timezone: this.formatter.escapeMarkdown(getTimezoneDisplayName(user.timezone)),
         createdAt: user.created_at ? user.created_at.toLocaleDateString() : 'N/A',
         totalExpenses: userDetails.expenseStats.totalExpenses,
         totalAmount: this.formatter.formatAmount(userDetails.expenseStats.totalAmount),

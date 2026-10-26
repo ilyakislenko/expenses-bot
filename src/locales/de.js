@@ -86,24 +86,24 @@ module.exports = {
     // Admin-Statistik
     admin_stats_text: `📊 *Bot-Statistik*
 
-👥 **Benutzer:**
+👥 *Benutzer:*
 • Gesamt: {totalUsers}
 • Premium: {activePremium}
 • Neu diese Woche: {newUsersWeek}
 • Neu diesen Monat: {newUsersMonth}
 
-💰 **Ausgaben:**
+💰 *Ausgaben:*
 • Gesamte Einträge: {totalExpenses}
 • Diese Woche: {expensesWeek}
 • Aktive Benutzer: {activeUsers}
 
-🐛 **Fehlerberichte:** {totalBugReports}
+🐛 *Fehlerberichte:* {totalBugReports}
 
-💎 **Spenden:**
+💎 *Spenden:*
 • Gesamt: {totalDonations}
 • Gesammelte Sterne: {totalStars}
 
-⭐ **Premium-Transaktionen:** {premiumTransactions}`,
+⭐ *Premium-Transaktionen:* {premiumTransactions}`,
   
     // Benutzerliste
     admin_users_title: '👥 *Benutzer* (Seite {page}/{totalPages})\n\nGesamt: {totalUsers}\n',
@@ -118,23 +118,23 @@ module.exports = {
     // Spendenstatistik
     admin_donations_text: `💰 *Spendenstatistik*
 
-📊 **Übersicht:**
+📊 *Übersicht:*
 • Anzahl Spenden: {totalDonations}
 • Abgeschlossen: {completedDonations}
 • Ausstehend: {pendingDonations}
 
-⭐ **Sterne:**
+⭐ *Sterne:*
 • Gesamt gesammelt: {totalStars}
 • Durchschnittliche Spende: {avgStars} Sterne`,
   
     // Premium-Statistiken
     admin_premium_stats: `⭐ *Premium-Statistiken*
 
-📊 **Benutzer:**
+📊 *Benutzer:*
 • Gesamt Premium: {totalPremiumUsers}
 • Momentan aktiv: {activePremiumUsers}
 
-💳 **Transaktionen:**
+💳 *Transaktionen:*
 • Gesamt: {totalTransactions}
 • Gesamteinnahmen: {totalRevenue} Sterne`,
   
@@ -156,7 +156,7 @@ module.exports = {
 🕐 Zeitzone: {timezone}
 📅 Registriert am: {createdAt}
 
-📊 **Statistik:**
+📊 *Statistik:*
 • Ausgabeneinträge: {totalExpenses}
 • Gesamtbetrag: {totalAmount}
 • Fehlerberichte: {bugReportsCount}
@@ -173,9 +173,9 @@ module.exports = {
     // Massen-Nachricht
     admin_broadcast_prompt: '📢 *Massen-Nachricht*\n\nBitte Nachricht für alle Benutzer eingeben (max. 3600 Zeichen):',
     admin_broadcast_too_long: '❌ Nachricht zu lang!\n\n📏 Aktuelle Länge: {current}\n📏 Maximum: {max}\n📏 Kürzen um: {excess} Zeichen',
-    admin_broadcast_confirm: '📢 *Massen-Nachricht bestätigen*\n\n📝 **Nachricht:**\n{message}\n\n📏 **Länge:** {length} Zeichen\n\n⚠️ Diese Nachricht wird an **ALLE** Benutzer des Bots gesendet!',
+    admin_broadcast_confirm: '📢 *Massen-Nachricht bestätigen*\n\n📝 *Nachricht:*\n{message}\n\n📏 *Länge:* {length} Zeichen\n\n⚠️ Diese Nachricht wird an *ALLE* Benutzer des Bots gesendet!',
     admin_broadcast_started: '📢 Nachrichtensendung gestartet...',
-    admin_broadcast_result: '📢 *Sendung abgeschlossen!*\n\n📊 **Statistik:**\n• Gesamt: {total}\n• Gesendet: {sent}\n• Fehlgeschlagen: {failed}',
+    admin_broadcast_result: '📢 *Sendung abgeschlossen!*\n\n📊 *Statistik:*\n• Gesamt: {total}\n• Gesendet: {sent}\n• Fehlgeschlagen: {failed}',
     admin_broadcast_header: '🔴🔴🔴 *Ankündigung!* 🔴🔴🔴',
     
     // Allgemeine Nachrichten

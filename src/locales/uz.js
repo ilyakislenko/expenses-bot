@@ -68,24 +68,24 @@ module.exports = {
     // Admin statistika
     admin_stats_text: `📊 *Bot statistikasi*
 
-👥 **Foydalanuvchilar:**
+👥 *Foydalanuvchilar:*
 • Jami: {totalUsers}
 • Premium: {activePremium}
 • Shu haftada yangilar: {newUsersWeek}
 • Shu oyda yangilar: {newUsersMonth}
 
-💰 **Xarajatlar:**
+💰 *Xarajatlar:*
 • Jami yozuvlar: {totalExpenses}
 • Shu hafta: {expensesWeek}
 • Faol foydalanuvchilar: {activeUsers}
 
-🐛 **Xato xabarlari:** {totalBugReports}
+🐛 *Xato xabarlari:* {totalBugReports}
 
-💎 **Xayriyalar:**
+💎 *Xayriyalar:*
 • Jami: {totalDonations}
 • Yig‘ilgan yulduzlar: {totalStars}
 
-⭐ **Premium tranzaksiyalar:** {premiumTransactions}`,
+⭐ *Premium tranzaksiyalar:* {premiumTransactions}`,
   
     // Foydalanuvchilar ro‘yxati
     admin_users_title: '👥 *Foydalanuvchilar* (Sahifa {page}/{totalPages})\n\nJami: {totalUsers}\n',
@@ -100,23 +100,23 @@ module.exports = {
     // Xayriya statistikasi
     admin_donations_text: `💰 *Xayriya statistikasi*
 
-📊 **Xulosa:**
+📊 *Xulosa:*
 • Jami xayriya: {totalDonations}
 • Yakunlangan: {completedDonations}
 • Kutilmoqda: {pendingDonations}
 
-⭐ **Yulduzlar:**
+⭐ *Yulduzlar:*
 • Jami yig‘ildi: {totalStars}
 • O‘rtacha xayriya: {avgStars} yulduz`,
   
     // Premium statistikasi
     admin_premium_stats: `⭐ *Premium statistikasi*
 
-📊 **Foydalanuvchilar:**
+📊 *Foydalanuvchilar:*
 • Jami premium: {totalPremiumUsers}
 • Hozir faol: {activePremiumUsers}
 
-💳 **Tranzaksiyalar:**
+💳 *Tranzaksiyalar:*
 • Jami: {totalTransactions}
 • Umumiy daromad: {totalRevenue} yulduz`,
   
@@ -138,7 +138,7 @@ module.exports = {
 🕐 Vaqt zonasi: {timezone}
 📅 Ro‘yxatdan o‘tgan sana: {createdAt}
 
-📊 **Statistika:**
+📊 *Statistika:*
 • Xarajat yozuvlari: {totalExpenses}
 • Jami summa: {totalAmount}
 • Xato xabarlari: {bugReportsCount}
@@ -155,9 +155,9 @@ module.exports = {
     // Xabarlarni ommaviy yuborish
     admin_broadcast_prompt: '📢 *Ommaviy xabar*\n\nBarcha foydalanuvchilarga yuborish uchun xabar matnini kiriting (maks. 3600 belgi):',
     admin_broadcast_too_long: '❌ Xabar juda uzun!\n\n📏 Joriy uzunlik: {current}\n📏 Maks.: {max}\n📏 Qisqartirish kerak: {excess} belgi',
-    admin_broadcast_confirm: '📢 *Ommaviy xabarni tasdiqlash*\n\n📝 **Xabar:**\n{message}\n\n📏 **Uzunlik:** {length} belgi\n\n⚠️ Ushbu xabar botning **barcha** foydalanuvchilariga yuboriladi!',
+    admin_broadcast_confirm: '📢 *Ommaviy xabarni tasdiqlash*\n\n📝 *Xabar:*\n{message}\n\n📏 *Uzunlik:* {length} belgi\n\n⚠️ Ushbu xabar botning *barcha* foydalanuvchilariga yuboriladi!',
     admin_broadcast_started: '📢 Xabar jo‘natish boshlandi...',
-    admin_broadcast_result: '📢 *Xabar jo‘natildi!*\n\n📊 **Statistika:**\n• Umumiy: {total}\n• Yuborildi: {sent}\n• Xatolik: {failed}',
+    admin_broadcast_result: '📢 *Xabar jo‘natildi!*\n\n📊 *Statistika:*\n• Umumiy: {total}\n• Yuborildi: {sent}\n• Xatolik: {failed}',
     admin_broadcast_header: '🔴🔴🔴 *E’lon!* 🔴🔴🔴',
     
     // Umumiy xabarlar

@@ -86,24 +86,24 @@ module.exports = {
     // 管理統計
     admin_stats_text: `📊 *ボット統計*
 
-👥 **ユーザー:**
+👥 *ユーザー:*
 • 合計: {totalUsers}
 • プレミアム: {activePremium}
 • 今週新規: {newUsersWeek}
 • 今月新規: {newUsersMonth}
 
-💰 **支出:**
+💰 *支出:*
 • 総記録数: {totalExpenses}
 • 今週: {expensesWeek}
 • アクティブユーザー: {activeUsers}
 
-🐛 **バグ報告:** {totalBugReports}
+🐛 *バグ報告:* {totalBugReports}
 
-💎 **寄付:**
+💎 *寄付:*
 • 合計: {totalDonations}
 • 獲得スター: {totalStars}
 
-⭐ **プレミアム取引件数:** {premiumTransactions}`,
+⭐ *プレミアム取引件数:* {premiumTransactions}`,
   
     // ユーザーリスト
     admin_users_title: '👥 *ユーザー*（ページ {page}/{totalPages}）\n\n合計: {totalUsers}\n',
@@ -118,23 +118,23 @@ module.exports = {
     // 寄付統計
     admin_donations_text: `💰 *寄付統計*
 
-📊 **概要:**
+📊 *概要:*
 • 寄付総数: {totalDonations}
 • 完了: {completedDonations}
 • 保留中: {pendingDonations}
 
-⭐ **スター:**
+⭐ *スター:*
 • 総獲得: {totalStars}
 • 平均寄付: {avgStars} スター`,
   
     // プレミアム統計
     admin_premium_stats: `⭐ *プレミアム統計*
 
-📊 **ユーザー:**
+📊 *ユーザー:*
 • プレミアム合計: {totalPremiumUsers}
 • 現在アクティブ: {activePremiumUsers}
 
-💳 **取引:**
+💳 *取引:*
 • 取引総数: {totalTransactions}
 • 総収入: {totalRevenue} スター`,
   
@@ -156,7 +156,7 @@ module.exports = {
 🕐 タイムゾーン: {timezone}
 📅 登録日: {createdAt}
 
-📊 **統計:**
+📊 *統計:*
 • 支出記録数: {totalExpenses}
 • 総額: {totalAmount}
 • バグ報告数: {bugReportsCount}
@@ -173,9 +173,9 @@ module.exports = {
     // メッセージ一斉送信
     admin_broadcast_prompt: '📢 *一斉送信*\n\n全ユーザーに送信するメッセージを入力してください（最大3600文字）：',
     admin_broadcast_too_long: '❌ メッセージが長すぎます！\n\n📏 現在の長さ: {current}\n📏 最大: {max}\n📏 減らす必要: {excess}文字',
-    admin_broadcast_confirm: '📢 *一斉送信を確認*\n\n📝 **メッセージ内容:**\n{message}\n\n📏 **長さ:** {length} 文字\n\n⚠️ このメッセージは**全て**のユーザーに送信されます！',
+    admin_broadcast_confirm: '📢 *一斉送信を確認*\n\n📝 *メッセージ内容:*\n{message}\n\n📏 *長さ:* {length} 文字\n\n⚠️ このメッセージは*全て*のユーザーに送信されます！',
     admin_broadcast_started: '📢 送信を開始しました...',
-    admin_broadcast_result: '📢 *送信完了！*\n\n📊 **統計:**\n• 総ユーザー数: {total}\n• 成功: {sent}\n• 失敗: {failed}',
+    admin_broadcast_result: '📢 *送信完了！*\n\n📊 *統計:*\n• 総ユーザー数: {total}\n• 成功: {sent}\n• 失敗: {failed}',
     admin_broadcast_header: '🔴🔴🔴 *通知！* 🔴🔴🔴',
     
     // 一般メッセージ

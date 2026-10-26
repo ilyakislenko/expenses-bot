@@ -80,24 +80,24 @@ module.exports = {
   // Admin stats
   admin_stats_text: `📊 *Bot Statistics*
 
-👥 **Users:**
+👥 *Users:*
 • Total: {totalUsers}
 • Premium: {activePremium}
 • New this week: {newUsersWeek}
 • New this month: {newUsersMonth}
 
-💰 **Expenses:**
+💰 *Expenses:*
 • Total records: {totalExpenses}
 • This week: {expensesWeek}
 • Active users: {activeUsers}
 
-🐛 **Bug reports:** {totalBugReports}
+🐛 *Bug reports:* {totalBugReports}
 
-💎 **Donations:**
+💎 *Donations:*
 • Total: {totalDonations}
 • Stars collected: {totalStars}
 
-⭐ **Premium transactions:** {premiumTransactions}`,
+⭐ *Premium transactions:* {premiumTransactions}`,
 
   // Admin users
   admin_users_title: '👥 *Users* (page {page}/{totalPages})\n\nTotal: {totalUsers}\n',
@@ -112,23 +112,23 @@ module.exports = {
   // Admin donations
   admin_donations_text: `💰 *Donation Statistics*
 
-📊 **Overall statistics:**
+📊 *Overall statistics:*
 • Total donations: {totalDonations}
 • Completed: {completedDonations}
 • Pending: {pendingDonations}
 
-⭐ **Stars:**
+⭐ *Stars:*
 • Total collected: {totalStars}
 • Average donation: {avgStars} stars`,
 
   // Admin premium 
   admin_premium_stats: `⭐ *Premium Statistics*
 
-📊 **Users:**
+📊 *Users:*
 • Total premium: {totalPremiumUsers}
 • Currently active: {activePremiumUsers}
 
-💳 **Transactions:**
+💳 *Transactions:*
 • Total operations: {totalTransactions}
 • Total revenue: {totalRevenue} stars`,
 
@@ -151,7 +151,7 @@ module.exports = {
 🕐 Timezone: {timezone}
 📅 Registered: {createdAt}
 
-📊 **Statistics:**
+📊 *Statistics:*
 • Expense records: {totalExpenses}
 • Total amount: {totalAmount}
 • Bug reports: {bugReportsCount}
@@ -168,9 +168,9 @@ module.exports = {
   // Admin broadcast
   admin_broadcast_prompt: '📢 *Broadcast Message*\n\nEnter notification text for all users (up to 3600 characters):',
   admin_broadcast_too_long: '❌ Message too long!\n\n📏 Current length: {current} characters\n📏 Maximum: {max} characters\n📏 Need to remove: {excess} characters',
-  admin_broadcast_confirm: '📢 *Confirm broadcast message*\n\n📝 **Message text:**\n{message}\n\n📏 **Length:** {length} characters\n\n⚠️ This message will be sent to **ALL** bot users!',
+  admin_broadcast_confirm: '📢 *Confirm broadcast message*\n\n📝 *Message text:*\n{message}\n\n📏 *Length:* {length} characters\n\n⚠️ This message will be sent to *ALL* bot users!',
   admin_broadcast_started: '📢 Broadcast started...',
-  admin_broadcast_result: '📢 *Broadcast completed!*\n\n📊 **Statistics:**\n• Total users: {total}\n• Successfully sent: {sent}\n• Errors: {failed}',
+  admin_broadcast_result: '📢 *Broadcast completed!*\n\n📊 *Statistics:*\n• Total users: {total}\n• Successfully sent: {sent}\n• Errors: {failed}',
   admin_broadcast_header: '🔴🔴🔴 *Notification!* 🔴🔴🔴',
   
   // General messages

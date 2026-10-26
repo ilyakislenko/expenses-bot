@@ -86,24 +86,24 @@ module.exports = {
     // ადმინის სტატისტიკა
     admin_stats_text: `📊 *ბოტის სტატისტიკა*
 
-👥 **მომხმარებლები:**
+👥 *მომხმარებლები:*
 • სულ: {totalUsers}
 • პრემიუმი: {activePremium}
 • ახალი ამ კვირაში: {newUsersWeek}
 • ახალი ამ თვეში: {newUsersMonth}
 
-💰 **ხარჯები:**
+💰 *ხარჯები:*
 • ჩანაწერები სულ: {totalExpenses}
 • ამ კვირაში: {expensesWeek}
 • აქტიური მომხმარებლები: {activeUsers}
 
-🐛 **შეცდომის ანგარიშები:** {totalBugReports}
+🐛 *შეცდომის ანგარიშები:* {totalBugReports}
 
-💎 **დონაციები:**
+💎 *დონაციები:*
 • სულ: {totalDonations}
 • შეგროვილი ვარსკვლავები: {totalStars}
 
-⭐ **პრემიუმ ტრანზაქციები:** {premiumTransactions}`,
+⭐ *პრემიუმ ტრანზაქციები:* {premiumTransactions}`,
   
     // მომხმარებელთა სია
     admin_users_title: '👥 *მომხმარებლები* (გვ. {page}/{totalPages})\n\nსულ: {totalUsers}\n',
@@ -118,23 +118,23 @@ module.exports = {
     // დონაციის სტატისტიკა
     admin_donations_text: `💰 *დონაციების სტატისტიკა*
 
-📊 **შეჯამება:**
+📊 *შეჯამება:*
 • დონაციები სულ: {totalDonations}
 • დასრულებული: {completedDonations}
 • მოლოდინში: {pendingDonations}
 
-⭐ **ვარსკვლავები:**
+⭐ *ვარსკვლავები:*
 • სულ შეგროვილი: {totalStars}
 • საშუალო დონაცია: {avgStars} ვარსკვლავი`,
   
     // პრემიუმ სტატისტიკა
     admin_premium_stats: `⭐ *პრემიუმ სტატისტიკა*
 
-📊 **მომხმარებლები:**
+📊 *მომხმარებლები:*
 • სულ პრემიუმი: {totalPremiumUsers}
 • აქტიური ახლა: {activePremiumUsers}
 
-💳 **ტრანზაქციები:**
+💳 *ტრანზაქციები:*
 • სულ: {totalTransactions}
 • შემოსავალი სულ: {totalRevenue} ვარსკვლავი`,
   
@@ -156,7 +156,7 @@ module.exports = {
 🕐 დროის სარტყელი: {timezone}
 📅 რეგისტრაციის თარიღი: {createdAt}
 
-📊 **სტატისტიკა:**
+📊 *სტატისტიკა:*
 • ხარჯების ჩანაწერები: {totalExpenses}
 • საერთო თანხა: {totalAmount}
 • შეცდომის ანგარიშები: {bugReportsCount}
@@ -173,9 +173,9 @@ module.exports = {
       // მასიური გაგზავნა
       admin_broadcast_prompt: '📢 *მასიური შეტყობინება*\n\nშეიყვანეთ ტექსტი, რომელიც გაიგზავნება ყველა მომხმარებელთან (მაქს. 3600 სიმბოლო):',
       admin_broadcast_too_long: '❌ შეტყობინება ძალიან გრძელია!\n\n📏 ამჟამინდელი სიგრძე: {current}\n📏 მაქსიმუმი: {max}\n📏 შეამცირეთ: {excess} სიმბოლო',
-      admin_broadcast_confirm: '📢 *დაადასტურეთ მასიური გაგზავნა*\n\n📝 **ტექსტი:**\n{message}\n\n📏 **სიგრძე:** {length} სიმბოლო\n\n⚠️ ეს შეტყობინება გაეგზავნება **ყველა** მომხმარებელს!',
+      admin_broadcast_confirm: '📢 *დაადასტურეთ მასიური გაგზავნა*\n\n📝 *ტექსტი:*\n{message}\n\n📏 *სიგრძე:* {length} სიმბოლო\n\n⚠️ ეს შეტყობინება გაეგზავნება *ყველა* მომხმარებელს!',
       admin_broadcast_started: '📢 გაგზავნა დაიწყო...',
-      admin_broadcast_result: '📢 *გაგზავნა დასრულდა!*\n\n📊 **სტატისტიკა:**\n• სულ: {total}\n• წარმატებით: {sent}\n• შეცდომა: {failed}',
+      admin_broadcast_result: '📢 *გაგზავნა დასრულდა!*\n\n📊 *სტატისტიკა:*\n• სულ: {total}\n• წარმატებით: {sent}\n• შეცდომა: {failed}',
       admin_broadcast_header: '🔴🔴🔴 *შეტყობინება!* 🔴🔴🔴',
       
       // ზოგადი შეტყობინებები

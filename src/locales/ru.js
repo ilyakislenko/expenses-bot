@@ -86,24 +86,24 @@ module.exports = {
   // Admin stats
   admin_stats_text: `📊 *Статистика бота*
 
-👥 **Пользователи:**
+👥 *Пользователи:*
 • Всего: {totalUsers}
 • Премиум: {activePremium}
 • Новых за неделю: {newUsersWeek}
 • Новых за месяц: {newUsersMonth}
 
-💰 **Расходы:**
+💰 *Расходы:*
 • Всего записей: {totalExpenses}
 • За неделю: {expensesWeek}
 • Активных пользователей: {activeUsers}
 
-🐛 **Баг-репорты:** {totalBugReports}
+🐛 *Баг-репорты:* {totalBugReports}
 
-💎 **Донаты:**
+💎 *Донаты:*
 • Всего: {totalDonations}
 • Звезд собрано: {totalStars}
 
-⭐ **Премиум транзакции:** {premiumTransactions}`,
+⭐ *Премиум транзакции:* {premiumTransactions}`,
 
   // Admin users
   admin_users_title: '👥 *Пользователи* (стр. {page}/{totalPages})\n\nВсего: {totalUsers}\n',
@@ -118,23 +118,23 @@ module.exports = {
   // Admin donations
   admin_donations_text: `💰 *Статистика донатов*
 
-📊 **Общая статистика:**
+📊 *Общая статистика:*
 • Всего донатов: {totalDonations}
 • Завершенных: {completedDonations}
 • В ожидании: {pendingDonations}
 
-⭐ **Звезды:**
+⭐ *Звезды:*
 • Всего собрано: {totalStars}
 • Средний донат: {avgStars} звезд`,
 
   // Admin premium 
   admin_premium_stats: `⭐ *Статистика премиума*
 
-📊 **Пользователи:**
+📊 *Пользователи:*
 • Всего премиум: {totalPremiumUsers}
 • Активных сейчас: {activePremiumUsers}
 
-💳 **Транзакции:**
+💳 *Транзакции:*
 • Всего операций: {totalTransactions}
 • Общий доход: {totalRevenue} звезд`,
 
@@ -157,7 +157,7 @@ module.exports = {
 🕐 Часовой пояс: {timezone}
 📅 Регистрация: {createdAt}
 
-📊 **Статистика:**
+📊 *Статистика:*
 • Записей расходов: {totalExpenses}
 • Общая сумма: {totalAmount}
 • Баг-репортов: {bugReportsCount}
@@ -174,9 +174,9 @@ module.exports = {
   // Admin broadcast
   admin_broadcast_prompt: '📢 *Массовое уведомление*\n\nВведи текст уведомления для всех пользователей (до 3600 символов):',
   admin_broadcast_too_long: '❌ Сообщение слишком длинное!\n\n📏 Текущая длина: {current} символов\n📏 Максимум: {max} символов\n📏 Нужно убрать: {excess} символов',
-  admin_broadcast_confirm: '📢 *Подтверди отправку массового уведомления*\n\n📝 **Текст сообщения:**\n{message}\n\n📏 **Длина:** {length} символов\n\n⚠️ Это сообщение будет отправлено **ВСЕМ** пользователям бота!',
+  admin_broadcast_confirm: '📢 *Подтверди отправку массового уведомления*\n\n📝 *Текст сообщения:*\n{message}\n\n📏 *Длина:* {length} символов\n\n⚠️ Это сообщение будет отправлено *ВСЕМ* пользователям бота!',
   admin_broadcast_started: '📢 Рассылка начата...',
-  admin_broadcast_result: '📢 *Рассылка завершена!*\n\n📊 **Статистика:**\n• Всего пользователей: {total}\n• Успешно отправлено: {sent}\n• Ошибок: {failed}',
+  admin_broadcast_result: '📢 *Рассылка завершена!*\n\n📊 *Статистика:*\n• Всего пользователей: {total}\n• Успешно отправлено: {sent}\n• Ошибок: {failed}',
   admin_broadcast_header: '🔴🔴🔴 *Уведомление!* 🔴🔴🔴',
   
   // Общие сообщения
