@@ -31,8 +31,6 @@ module.exports = {
 '📋 Pul tartibni yaxshi ko‘radi. Qayd qilish vaqti.'
     ],
     reminder_message_title: 'Eslatma',
-    reminder_turn_on_off: (enabled) => enabled ? 'Eslatmalarni o\'chirish' : 'Eslatmalarni yoqish',
-    button_configure_reminder_hours: '⏰ Eslatma vaqtlarini sozlash',
     reminder_hours_info: 'Eslatmalar uchun 3 tagacha soat tanlang (sizning mahalliy vaqt mintaqangiz). Joriy:',
     reminder_hours_limit: 'Siz maksimal 3 soat tanlashingiz mumkin',
     reminder_hours_saved: '✅ Eslatma vaqtlari saqlandi',
@@ -56,7 +54,6 @@ module.exports = {
     
     // Xavfsizlik xabarlari
     security_rate_limit: '⚠️ *Juda ko‘p so‘rov*\n\n{resetTime} soniyadan keyin yana urinib ko‘ring\nLimit: daqiqasiga {limit} ta so‘rov',
-    security_validation_error: '⚠️ *Tekshiruv xatosi*\n\n{message}',
     security_error: '❌ *Xavfsizlik xatosi*\n\nKeyinroq urinib ko‘ring yoki administrator bilan bog‘laning.',
     
     // Admin paneli
@@ -161,17 +158,12 @@ module.exports = {
     admin_broadcast_header: '🔴🔴🔴 *E’lon!* 🔴🔴🔴',
     
     // Umumiy xabarlar
-    welcome: 'Salom, {name}! 👋',
-    main_menu_title: '🏠 *Asosiy menyu*\n\nAmalni tanlang:',
     error: 'Xatolik yuz berdi 😞',
-    unknown_error: 'Kutilmagan xatolik. Keyinroq yana urinib ko‘ring.',
     not_found: 'Topilmadi',
-    error_invalid_description_format: '❌ Noto‘g‘ri format. Quyidagicha yozing: summa izoh yoki summa kategoriya izoh',
     expense_save_error: '❌ Xarajat yozishda xatolik yuz berdi. Qayta urinib ko‘ring.',
     cancel: 'Bekor qilish',
     back: 'Ortga',
     confirm: 'Tasdiqlash',
-    save: 'Saqlash',
     
     // Boshlang‘ich xabar
     start_message: `Salom! 👋 Men xarajat va daromadlaringizni hisobga olishda yordam beraman.
@@ -199,7 +191,6 @@ Menyu pastda: oy sharhi, bugungi yozuvlar, daromad, doimiy xarajatlar (ijara, ob
 Buyruqlar: /stats /history /income /recurring /export /settings /menu`,
   
     // Xarajatlar
-    expense_added: '✅ Yozildi: {amount} - {description}',
     expense_updated: '✅ Yozuv yangilandi: {amount} - {description}',
     expense_deleted: '✅ Yozuv o‘chirildi: {amount} - {description}',
     no_expenses: 'O‘chirish uchun yozuv yo‘q 🤷‍♂️',
@@ -213,7 +204,6 @@ Buyruqlar: /stats /history /income /recurring /export /settings /menu`,
     records_count: 'Yozuvlar soni: {count}',
     no_expenses_period: 'Bu davrda xarajatlar yo‘q.',
     by_categories: 'Kategoriyalar bo\'yicha:',
-    no_expenses_category: 'Bu kategoriyada o\'tgan oyda xarajatlar yo\'q.',
     
     // Kategoriyalar
     select_category: 'Kategoriyani tanlang:',
@@ -221,15 +211,10 @@ Buyruqlar: /stats /history /income /recurring /export /settings /menu`,
     description_label: 'Izoh',
     category_label: 'Kategoriya',
     expense_added_title: 'Xarajat qo‘shildi!',
-    no_categories: 'Kategoriyalar topilmadi.',
-    category_expenses: '"{category}" kategoriyasidagi xarajatlar',
-    no_category_expenses: 'Oxirgi bir oyda bu kategoriyada xarajat yo‘q.',
     
     // Sozlamalar
-    settings_title: 'Sozlamalar:',
     currency_select: 'Asosiy valyutani tanlang:',
     currency_set: 'Valyuta o‘rnatildi: {currency}',
-    currency_updated: 'Valyuta {currency} ga o‘zgartirildi',
     button_change_period_start: '📅 Davr boshlanish sanasi',
     period_start_prompt: 'Yangi davr boshlanish kunini kiriting (1-31). Qisqa oylarda oxirgi kun olinadi.',
     period_start_invalid: '❌ Noto‘g‘ri raqam. 1 dan 31 gacha butun son kiriting.',
@@ -248,12 +233,9 @@ O‘z vaqtingizni tanlang:`,
     family_owner_label: '👑 *Egas:*',
     family_info: '👨‍👩‍👧‍👦 *Oila byudjeti*\n\nBu yerda siz oila a’zolari, hamkasblar, do‘stlar va h.k. bilan birga xarajatlarni birgalikda boshqarishingiz mumkin.\n\n- \uD83D\uDC6A Qo‘shma xarajatlarni hisobga olish uchun umumiy guruh yaratiladi.\n- \u2795 Har bir a’zo xarajat qo‘shishi mumkin.\n- \uD83D\uDDD1\uFE0F Zarur bo‘lsa, o‘z xarajatlaringizni o‘chirishingiz mumkin.\n- \uD83D\uDCCA Barcha a’zolar uchun umumiy statistika mavjud.\n- \uD83D\uDCE4 Butun guruh ma’lumotlarini yagona faylga eksport qilish mumkin.\n\nBirgalikda nazorat — kamroq tartibsizlik va ko‘proq oshkoralik demakdir.',
     family_created: '✅ "{name}" nomli oila yaratildi! Endi a’zolarni taklif qilishingiz mumkin.',
-    family_joined: '✅ "{name}" oilasiga qo‘shildingiz!',
     family_left: '✅ "{name}" oilasidan chiqdingiz.',
     family_deleted: '✅ "{name}" oilasi o‘chirildi. Barcha oilaviy xarajatlar shaxsiy xarajatlarga o‘tkazildi.',
-    family_member_removed: '✅ A’zo oiladan olib tashlandi.',
     family_member_removed_notification: '❌ Siz “{familyName}” oilasidan chiqarildingiz.',
-    family_cannot_leave_owner: '❌ Oila egasi oiladan chiqa olmaydi. "Oilani o‘chirish" funksiyasini ishlating.',
     
     // Oila menyu tugmalari
     create_family: '🏠 Oila yaratish',
@@ -271,7 +253,6 @@ O‘z vaqtingizni tanlang:`,
     invitation_sent: '✅ @{username} foydalanuvchisiga taklif yuborildi',
     invitation_not_found: '❌ Taklif topilmadi yoki muddati o‘tgan.',
     invitation_expired: '❌ Taklif muddati tugagan.',
-    invitation_already_processed: '❌ Taklif allaqachon ko‘rib chiqilgan.',
     
     // Kiritish so‘rovlari
     enter_family_name: 'Oila nomini kiriting (3–50 belgidan):',
@@ -303,38 +284,25 @@ O‘z vaqtingizni tanlang:`,
     invitation_not_pending: '❌ Bu taklif kutilayotgan holatda emas',
     invitation_cancelled_notification: '❌ “{familyName}” oilasiga qo‘shilish taklifi {cancelledBy} tomonidan bekor qilindi',
     enter_invite_code: '🔑 Taklif kodini kiriting:',
-    only_owner_can_remove: '❌ A’zo chiqarish huquqi faqat oila egasida bor.',
-    only_owner_can_delete: '❌ Oilani faqat egasi o‘chirishi mumkin.',
-    cannot_remove_owner: '❌ Egani o‘chira olmaysiz.',
-    cannot_remove_yourself: '❌ O‘zingizni o‘chira olmaysiz.',
-    family_not_found: '❌ Oila topilmadi.',
     not_family_member: '❌ Siz bu oila a’zosi emassiz.',
     not_family_owner: '❌ Siz bu oila egasi emassiz.',
     
     // Tasdiqlash xabarlari
     confirm_delete_family: '⚠️ *Oilani o‘chirish*\n\nBarcha a’zolar o‘chiriladi, xarajatlar shaxsiy holatga o‘tkaziladi.\n\nDavom etasizmi?',
     // Oilaviy statistika
-    family_monthly_stats: '👨‍👩‍👧‍👦 *Bu oygi oilaviy xarajatlar*',
     family_daily_stats: '💰 Kundalik xarajatlar',
-    family_daily_stats_title: '👨‍👩‍👧‍👦 *Bugungi oilaviy xarajatlar*',
     family_export: '📊 Oila ma’lumotlarini eksport qilish',
-    family_total_spent: 'Jami: *{amount}*',
-    family_members_count: 'A’zolar soni: {count}',
-    family_no_expenses: 'Bu davr uchun oilaviy xarajatlar mavjud emas.',
     
     // A’zolar ro‘yxati
     family_members_title: '👥 *Oila a’zolari*',
-    family_member_info: '• {name} ({role}) - {date} kuni qo‘shilgan',
     family_owner_role: 'Ega',
     family_member_role: 'A’zo',
     remove_member: '❌ O‘chirish',
     confirm_remove_member: '⚠️ *A’zoni o‘chirish*\n\n{name} oiladan chiqarilsinmi?',
     member_removed: '✅ {name} oiladan chiqarildi.',
-    member_removed_notification: '❌ Siz “{familyName}” oilasidan {ownerName} tomonidan chiqarildingiz.',
     
     // Premium funksiyalar
     premium_required: '❌ Bu funksiya faqat Premium foydalanuvchilar uchun.',
-    upgrade_to_premium: '💎 Oilaviy byudjetdan foydalanish uchun Premiumga o‘ting!',
     
     timezone_updated: `✅ *Vaqt zonasi yangilandi!*
 
@@ -344,10 +312,8 @@ O‘z vaqtingizni tanlang:`,
 Endi barcha xarajatlaringiz mahalliy vaqt bo‘yicha ko‘rsatiladi.`,
     
     // Limitlar
-    limits_title: '📊 *Limitlar haqida ma’lumot*',
     status_regular: '👤 Oddiy',
     status_premium: '💎 Premium',
-    status_label: '*Holat:* {status}',
     max_description_length: '<b>Izoh uzunligi limiti:</b> {length} belgi',
     premium_benefits: `💎 <b>Premium afzalliklari:</b>
   • 🎯 80% da va oshganda ogohlantiruvchi oylik va kategoriya byudjetlari
@@ -363,7 +329,6 @@ Xarajat va daromadlarni yozish bepul va cheklanmagan.`,
     premium_subscription_title: '⭐️ Obuna',
     premium_status_header: '<b>Holatingiz:</b>',
     premium_privileges: 'Afzalliklar: {status}',
-    premium_limits_info: 'Bu yerda kategoriya soni, yozuvlar, oila funksiyalari va Premium muddati ko‘rsatiladi.',
     premium_menu_title: '<b>Menyu:</b>',
     premium_tariff_button: '⭐️ Tariflar',
     premium_why_paid_button: '👀 Nega pullik?',
@@ -382,10 +347,7 @@ Xarajat va daromadlarni yozish bepul va cheklanmagan.`,
     no_purchases: 'Hozircha xaridlar yo‘q',
     purchases_prev_button: '◀ Oldingi',
     purchases_next_button: 'Keyingi ▶',
-    purchases_page_indicator: 'Sahifa {page}/{total}',
     premium_why_paid_text: 'Ushbu botni saqlash xarajati oyiga ~$200. Foydalanuvchilar soni oshib bormoqda va men xizmatni yaxshilash uchun daromadga muhtojman :)',
-    premium_payment_title: '💳 *Premium obuna to‘lovi*',
-    premium_payment_description: 'Tanlangan: <b>{duration}</b>\nNarxi: <b>{stars} ⭐️</b>\n\nTo‘lash uchun pastdagi tugmani bosing.',
     // Tarif yorliqlari va mahsulot nomi
     tariff_button_30: '1 Oy',
     tariff_button_90: '3 Oy',
@@ -408,16 +370,13 @@ Xarajat va daromadlarni yozish bepul va cheklanmagan.`,
     donate_prompt_text: 'Xayriya yulduzlar sonini kiriting (1–2500).\nKeyingi qatorda (ixtiyoriy) xabaringizni yozishingiz mumkin (maks. 500 belgi).',
     donate_invalid: '❌ Iltimos, 1–2500 oralig‘ida butun son kiriting. Xabar 500 belgidan oshmasligi kerak.',
     donate_created: '✅ Xayriya so‘rovi yaratildi: {stars} ⭐️. To‘lov havolasini yuboraman.',
-    donate_paid: '🙏 Qo‘llab-quvvatlaganingiz uchun rahmat! Qabul qilingan: {stars} ⭐️',
     
     // Tekshirish xatolari
     error_too_long_regular: '❌ Izoh juda uzun! Oddiy foydalanuvchilar uchun 80 belgi limit.',
     error_too_long_premium: '❌ Izoh juda uzun! Premium foydalanuvchilar uchun 160 belgi limit.',
-    error_no_description: '❌ Summadan keyin izoh kiritilish kerak.',
     error_amount: '❌ Noto‘g‘ri summa. 0,01 va 999999 oralig‘ida bo‘lishi kerak.',
     error_format: '❌ Tushunmadim. Summadan boshlang: `250 qahva`, `20 USD taksi` yoki shunchaki `300`.',
     error_forbidden_content: '❌ Ruxsat etilmagan kontent.',
-    error_premium_required: '💎 Bu funksiya faqat Premium bilan mavjud.\n\nPremium beradi:\n• Ogohlantirishli byudjetlar\n• Davrning to‘liq xulosasi\n• Maxsus kategoriyalar\n• Oilaviy byudjet\n• Yozuvlarni tahrirlash',
     error_generic: '❌ Xatolik yuz berdi. Keyinroq urinib ko‘ring yoki administratorga murojaat qiling.',
     
     // Tugmalar
@@ -428,16 +387,13 @@ Xarajat va daromadlarni yozish bepul va cheklanmagan.`,
     button_family: '👨‍👩‍👧‍👦 Oila',
     button_settings: '⚙️ Sozlamalar',
     button_delete_last: '🗑️ Oxirgi yozuvni o‘chirish',
-    button_limits: '📊 Limitlar',
     button_help: '❓ Yordam',
     button_edit: 'Tahrirlash',
-    button_delete: 'O‘chirish',
     button_mark_as_family: '👨‍👩‍👧‍👦 Oilaga qo‘shish',
     button_remove_from_family: '🚫 Oilaviy byudjetdan chiqarish',
     expense_already_family: '❌ Bu xarajat allaqachon oilaviy byudjetda',
     expense_converted_to_family: '✅ Xarajat oilaviy byudjetga qo‘shildi',
     expense_removed_from_family: '✅ Xarajat oilaviy byudjetdan chiqarildi',
-    not_owner: '❌ Siz bu xarajat egasi emassiz',
     button_cancel: '❌ Bekor qilish',
     button_back: '⬅️ Orqaga',
     button_change_currency: '💱 Valyutani o‘zgartirish',
@@ -467,16 +423,12 @@ Xarajat va daromadlarni yozish bepul va cheklanmagan.`,
     edit_format_error: 'Format xatosi.',
     
     // Callback javoblari
-    callback_button_not_found: '❌ Xato: Tugma topilmadi',
     callback_data_not_found: '❌ Xato: Ma’lumot topilmadi',
     callback_expense_added: '✅ "{category}" kategoriyasiga qo‘shildi',
-    callback_expense_saved: '❌ Saqlashda xato',
     callback_canceled: '❌ Bekor qilindi',
     callback_expense_canceled: '❌ Xarajat qo‘shish bekor qilindi',
     callback_deleted: 'Yozuv o‘chirildi!',
     callback_delete_error: 'O‘chirish xatosi yoki yozuv topilmadi',
-    callback_edit_mode: 'Tahrirlash rejimidan chiqildi:',
-    callback_no_cards: 'Yozuv topilmadi... Xato yuz berdi',
     
     // Standart kategoriyalar
     category_food: 'Oziq-ovqat',

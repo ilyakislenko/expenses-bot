@@ -31,8 +31,6 @@ module.exports = {
 '📋 Ақша тәртіпті жақсы көреді. Жазба жасау уақыты.'
     ],
     reminder_message_title: 'Еске салғыш',
-    reminder_turn_on_off: (enabled) => enabled ? 'Еске салғыштарды өшіру' : 'Еске салғыштарды қосу',
-    button_configure_reminder_hours: '⏰ Еске салғыш сағаттарын баптау',
     reminder_hours_info: 'Еске салғыштар үшін 3-ке дейінгі сағатты таңдаңыз (сіздің жергілікті уақыт белдеуіңіз). Ағымдағы:',
     reminder_hours_limit: 'Сіз максимум 3 сағатты таңдай аласыз',
     reminder_hours_saved: '✅ Еске салғыш сағаттары сақталды',
@@ -56,7 +54,6 @@ module.exports = {
     
     // Қауіпсіздік хабарламалары
     security_rate_limit: '⚠️ *Тым көп сұрау*\n\n{resetTime} секундтан кейін қайталап көріңіз\nЛимит: минутына {limit} сұрау',
-    security_validation_error: '⚠️ *Тексеру қатесі*\n\n{message}',
     security_error: '❌ *Қауіпсіздік қатесі*\n\nКейінірек көріңіз немесе әкімшіге хабарласыңыз.',
     
     // Әкімші панелі
@@ -161,17 +158,12 @@ module.exports = {
     admin_broadcast_header: '🔴🔴🔴 *Хабарландыру!* 🔴🔴🔴',
     
     // Жалпы хабарламалар
-    welcome: 'Сәлем, {name}! 👋',
-    main_menu_title: '🏠 *Басты мәзір*\n\nӘрекетті таңдаңыз:',
     error: 'Қате орын алды 😞',
-    unknown_error: 'Күтпеген қате орын алды. Кейінірек қайталап көріңіз.',
     not_found: 'Табылған жоқ',
-    error_invalid_description_format: '❌ Қате формат. Мысалы: сома сипаттама немесе сома санат сипаттама',
     expense_save_error: '❌ Шығынды сақтау кезінде қате. Қайталап көріңіз.',
     cancel: 'Бас тарту',
     back: 'Артқа',
     confirm: 'Растау',
-    save: 'Сақтау',
     
     // Бастапқы хабарлама
     start_message: `Сәлеметсіз бе! 👋 Мен шығындар мен табыстарыңызды есепке алуға көмектесемін.
@@ -199,7 +191,6 @@ module.exports = {
 Командалар: /stats /history /income /recurring /export /settings /menu`,
   
     // Шығындар
-    expense_added: '✅ Жазылды: {amount} - {description}',
     expense_updated: '✅ Жазба жаңартылды: {amount} - {description}',
     expense_deleted: '✅ Жазба жойылды: {amount} - {description}',
     no_expenses: 'Жою үшін жазбалар жоқ 🤷‍♂️',
@@ -213,7 +204,6 @@ module.exports = {
     records_count: 'Жазбалар саны: {count}',
     no_expenses_period: 'Бұл кезеңде шығындар жоқ.',
     by_categories: 'Санаттар бойынша:',
-    no_expenses_category: 'Бұл санатта соңғы айда шығындар жоқ.',
     
     // Санаттар
     select_category: 'Санатты таңдаңыз:',
@@ -221,15 +211,10 @@ module.exports = {
     description_label: 'Сипаттама',
     category_label: 'Санат',
     expense_added_title: 'Шығын қосылды!',
-    no_categories: 'Санаттар табылмады.',
-    category_expenses: '"{category}" санаты бойынша шығындар',
-    no_category_expenses: 'Соңғы айда бұл санат бойынша шығындар жоқ.',
     
     // Баптаулар
-    settings_title: 'Баптаулар:',
     currency_select: 'Әдепкі валютаны таңдаңыз:',
     currency_set: 'Валюта орнатылды: {currency}',
-    currency_updated: 'Валюта {currency} болып өзгертілді',
     button_change_period_start: '📅 Периодтың басталу күні',
     period_start_prompt: 'Ай басталатын күнді енгізіңіз (1-31). Қысқа айларда соңғы күн алынады.',
     period_start_invalid: '❌ Қате сан. 1-ден 31-ге дейінгі бүтін сан енгізіңіз.',
@@ -248,12 +233,9 @@ module.exports = {
     family_owner_label: '👑 *Иесі:*',
     family_info: '👨‍👩‍👧‍👦 *Отбасылық бюджет*\n\nМұнда сіз отбасы, әріптестер, достар және т.б.мен бірге шығындарды бірігіп басқара аласыз.\n\n- \uD83D\uDC6A Бірлескен шығындарды есепке алу үшін ортақ топ құрылады.\n- \u2795 Әрбір қатысушы шығын қос алады.\n- \uD83D\uDDD1\uFE0F Қажет болса, өз шығындарыңызды өшіре аласыз.\n- \uD83D\uDCCA Барлық қатысушыларға ортақ статистика қолжетімді.\n- \uD83D\uDCE4 Топтың барлық деректерін бір файлға экспорттауға болады.\n\nБірлескен бақылау — аздау күйбең, көбірек ашықтық.',
     family_created: '✅ "{name}" отбасы құрылды! Енді қатысушыларды шақыра аласыз.',
-    family_joined: '✅ Сіз "{name}" отбасына қосылдыңыз!',
     family_left: '✅ Сіз "{name}" отбасынан шықтыңыз.',
     family_deleted: '✅ "{name}" отбасы жойылды. Барлық отбасылық шығындар жеке шығындарға ауыстырылды.',
-    family_member_removed: '✅ Қатысушы отбасынан шығарылды.',
     family_member_removed_notification: '❌ Сіз «{familyName}» отбасынан шығарылдыңыз.',
-    family_cannot_leave_owner: '❌ Отбасы иесі шыға алмайды. "Отбасыны жою" функциясын пайдаланыңыз.',
     
     // Отбасылық мәзір батырмалары
     create_family: '🏠 Отбасы құру',
@@ -271,7 +253,6 @@ module.exports = {
     invitation_sent: '✅ @{username} пайдаланушысына шақыру жіберілді',
     invitation_not_found: '❌ Шақыру табылмады немесе мерзімі өткен.',
     invitation_expired: '❌ Шақыру мерзімі өтті.',
-    invitation_already_processed: '❌ Шақыру бұрын өңделген.',
     
     // Кірістер
     enter_family_name: 'Отбасының атауын енгізіңіз (3-50 таңба):',
@@ -303,38 +284,25 @@ module.exports = {
     invitation_not_pending: '❌ Шақыру күту режимінде емес',
     invitation_cancelled_notification: '❌ «{familyName}» отбасына шақыру {cancelledBy} тарапынан болдырылған',
     enter_invite_code: '🔑 Шақыру кодын енгізіңіз:',
-    only_owner_can_remove: '❌ Қатысушыларды тек отбасы иесі ғана өшіре алады.',
-    only_owner_can_delete: '❌ Отбасын жоюды тек иесі жасай алады.',
-    cannot_remove_owner: '❌ Отбасы иесін өшіруге болмайды.',
-    cannot_remove_yourself: '❌ Өзіңізді өшіру мүмкін емес.',
-    family_not_found: '❌ Отбасы табылмады.',
     not_family_member: '❌ Сіз бұл отбасының мүшесі емессіз.',
     not_family_owner: '❌ Сіз отбасы иесі емессіз.',
     
     // Растау хабарламалары
     confirm_delete_family: '⚠️ *Отбасын жою*\n\nБарлық қатысушылар өшіріледі, ал отбасы шығындары жеке шығындарға айналады.\n\nСіз сенімдісіз бе?',
     // Отбасылық статистика
-    family_monthly_stats: '👨‍👩‍👧‍👦 *Айлық отбасылық шығындар*',
     family_daily_stats: '💰 Күндік шығындар',
-    family_daily_stats_title: '👨‍👩‍👧‍👦 *Күндік отбасылық шығындар*',
     family_export: '📊 Отбасылық деректерді экспорттау',
-    family_total_spent: 'Жалпы шығын: *{amount}*',
-    family_members_count: 'Мүшелер саны: {count}',
-    family_no_expenses: 'Бұл кезеңде отбасылық шығындар жоқ.',
     
     // Мүшелер тізімі
     family_members_title: '👥 *Отбасы мүшелері*',
-    family_member_info: '• {name} ({role}) - қосылған күні {date}',
     family_owner_role: 'иесі',
     family_member_role: 'мүше',
     remove_member: '❌ Өшіру',
     confirm_remove_member: '⚠️ *Қатысушыны жою*\n\nСіз {name} отбасынан өшіргіңіз келе ме?',
     member_removed: '✅ {name} отбасынан өшірілді.',
-    member_removed_notification: '❌ Сіз «{familyName}» отбасынан {ownerName} арқылы өшірілдіңіз.',
     
     // Premium функциялары
     premium_required: '❌ Бұл мүмкіндік тек premium пайдаланушыларға қолжетімді.',
-    upgrade_to_premium: '💎 Отбасылық бюджетті пайдалану үшін premium алыңыз!',
     
     timezone_updated: `✅ *Уақыт белдеуі жаңартылды!*
 
@@ -344,10 +312,8 @@ module.exports = {
 Енді барлық шығындарыңыз жергілікті уақытыңызбен көрсетіледі.`,
     
     // Лимиттер
-    limits_title: '📊 *Лимиттер туралы ақпарат*',
     status_regular: '👤 Қалыпты',
     status_premium: '💎 Premium',
-    status_label: '*Мәртебе:* {status}',
     max_description_length: '<b>Сипаттаманың ең көбі:</b> {length} таңба',
     premium_benefits: `💎 <b>Premium артықшылықтары:</b>
   • 🎯 80%-да және асқанда ескертетін айлық және санат бюджеттері
@@ -363,7 +329,6 @@ module.exports = {
     premium_subscription_title: '⭐️ Жазылым',
     premium_status_header: '<b>Сіздің мәртебеңіз:</b>',
     premium_privileges: 'Артықшылықтар: {status}',
-    premium_limits_info: 'Мұнда сіздің лимиттеріңіз: санаттар саны, жазбалар саны, отбасылық мүмкіндіктерге қолжетімділік, premium мерзімі.',
     premium_menu_title: '<b>Мәзір:</b>',
     premium_tariff_button: '⭐️ Тариф',
     premium_why_paid_button: '👀 Неге ақылы?',
@@ -382,10 +347,7 @@ module.exports = {
     no_purchases: 'Әзірге сатып алулар жоқ',
     purchases_prev_button: '◀ Алдыңғы',
     purchases_next_button: 'Келесі ▶',
-    purchases_page_indicator: 'Бет {page}/{total}',
     premium_why_paid_text: 'Бұл бот серверін ұстау айына шамамен $200 тұрады. Пайдаланушылар саны өсуде, ал мен де әзірлеуші ретінде тамақ ішуім керек :)',
-    premium_payment_title: '💳 *Premium жазылымды төлеу*',
-    premium_payment_description: 'Сіздікі: <b>{duration}</b>\nБағасы: <b>{stars} ⭐️</b>\n\nТөлеу үшін төмендегі батырманы басыңыз.',
     // Тариф белгілері және өнім атауы
     tariff_button_30: '1 ай',
     tariff_button_90: '3 ай',
@@ -408,16 +370,13 @@ module.exports = {
     donate_prompt_text: 'Донат жұлдыздар санын енгізіңіз (1-ден 2500-ге дейін).\nХабарлама қосуды қаласаңыз — жаңа жолға жазыңыз (ең көбі 500 таңба).',
     donate_invalid: '❌ 1-ден 2500-ге дейін бүтін сан енгізіңіз. Хабарлама — 500 таңбаға дейін.',
     donate_created: '✅ Донат сұранысы жасалды: {stars} ⭐️. Төлем сілтемесін жіберемін.',
-    donate_paid: '🙏 Қолдауыңызға рахмет! Донат алынды: {stars} ⭐️',
     
     // Тексеру қателері
     error_too_long_regular: '❌ Сипаттама тым ұзын! Қалыпты пайдаланушыларға 80 таңба.',
     error_too_long_premium: '❌ Сипаттама тым ұзын! Premium үшін 160 таңба.',
-    error_no_description: '❌ Сомадан кейін сипаттама енгізу керек.',
     error_amount: '❌ Қате сома. 0.01-ден 999999-ға дейін енгізіңіз.',
     error_format: '❌ Түсінбедім. Сомадан бастаңыз: `250 кофе`, `20 USD такси` немесе жай `300`.',
     error_forbidden_content: '❌ Рұқсат етілмеген мазмұн.',
-    error_premium_required: '💎 Бұл мүмкіндік тек Premium арқылы қолжетімді.\n\nPremium береді:\n• Ескертулері бар бюджеттер\n• Кезеңнің толық қорытындысы\n• Жеке санаттар\n• Отбасылық бюджет\n• Жазбаларды өзгерту',
     error_generic: '❌ Қате. Кейінірек қайталап көріңіз немесе әкімшіге жазыңыз.',
     
     // Батырмалар
@@ -428,16 +387,13 @@ module.exports = {
     button_family: '👨‍👩‍👧‍👦 Отбасы',
     button_settings: '⚙️ Баптаулар',
     button_delete_last: '🗑️ Соңғы жазбаны жою',
-    button_limits: '📊 Лимиттер',
     button_help: '❓ Көмек',
     button_edit: 'Өзгерту',
-    button_delete: 'Жою',
     button_mark_as_family: '👨‍👩‍👧‍👦 Отбасыға',
     button_remove_from_family: '🚫 Отбасылық бюджеттен',
     expense_already_family: '❌ Бұл шығын қазірдің өзінде отбасылық',
     expense_converted_to_family: '✅ Шығын отбасылық бюджетке көшірілді',
     expense_removed_from_family: '✅ Шығын отбасылық бюджеттен алынды',
-    not_owner: '❌ Сіз бұл шығынның авторы емессіз',
     button_cancel: '❌ Бас тарту',
     button_back: '⬅️ Артқа',
     button_change_currency: '💱 Валютаны өзгерту',
@@ -467,16 +423,12 @@ module.exports = {
     edit_format_error: 'Формат қатесі.',
     
     // Callback жауаптары
-    callback_button_not_found: '❌ Қате: батырма табылмады',
     callback_data_not_found: '❌ Қате: деректер табылмады',
     callback_expense_added: '✅ "{category}" санатына қосылды',
-    callback_expense_saved: '❌ Сақтау кезінде қате',
     callback_canceled: '❌ Болдырылды',
     callback_expense_canceled: '❌ Шығын қосу болдырылды',
     callback_deleted: 'Жазба жойылды!',
     callback_delete_error: 'Жою қатесі немесе жазба табылмады',
-    callback_edit_mode: 'Өңдеу режимінен шығу:',
-    callback_no_cards: 'Жазбалар табылмады... қате кетті',
     
     // Әдепкі санаттар
     category_food: 'Тамақ',

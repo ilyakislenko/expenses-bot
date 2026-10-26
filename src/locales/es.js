@@ -49,8 +49,6 @@ module.exports = {
 '📋 El dinero ama el orden. Hora de hacer un registro.'
     ],
     reminder_message_title: 'Recordatorio',
-    reminder_turn_on_off: (enabled) => enabled ? 'Desactivar recordatorios' : 'Activar recordatorios',
-    button_configure_reminder_hours: '⏰ Configurar horas de recordatorio',
     reminder_hours_info: 'Selecciona hasta 3 horas para recordatorios (tu zona horaria local). Actuales:',
     reminder_hours_limit: 'Puedes seleccionar hasta 3 horas',
     reminder_hours_saved: '✅ Horas de recordatorio guardadas',
@@ -74,7 +72,6 @@ module.exports = {
     
     // Mensajes de seguridad
     security_rate_limit: '⚠️ *Demasiadas solicitudes*\n\nIntenta de nuevo en {resetTime} segundos\nLímite: {limit} solicitudes por minuto',
-    security_validation_error: '⚠️ *Error de validación*\n\n{message}',
     security_error: '❌ *Error de seguridad*\n\nInténtalo más tarde o contacta a un administrador.',
     
     // Panel admin
@@ -179,17 +176,12 @@ module.exports = {
     admin_broadcast_header: '🔴🔴🔴 *¡Notificación!* 🔴🔴🔴',
     
     // General
-    welcome: '¡Hola, {name}! 👋',
-    main_menu_title: '🏠 *Menú principal*\n\nSeleccione una acción:',
     error: 'Ocurrió un error 😞',
-    unknown_error: 'Error inesperado. Inténtalo de nuevo más tarde.',
     not_found: 'No encontrado',
-    error_invalid_description_format: '❌ Formato inválido. Usa: cantidad descripción o cantidad categoría descripción',
     expense_save_error: '❌ Error al guardar el gasto. Inténtalo de nuevo.',
     cancel: 'Cancelar',
     back: 'Atrás',
     confirm: 'Confirmar',
-    save: 'Guardar',
     
     // Comando inicio
     start_message: `¡Hola! 👋 Te ayudaré a registrar tus gastos e ingresos.
@@ -217,7 +209,6 @@ El menú está abajo: resumen del mes, registros de hoy, ingresos, gastos recurr
 Comandos: /stats /history /income /recurring /export /settings /menu`,
   
     // Gastos
-    expense_added: '✅ Registrado: {amount} - {description}',
     expense_updated: '✅ Registro actualizado: {amount} - {description}',
     expense_deleted: '✅ Registro eliminado: {amount} - {description}',
     no_expenses: 'No hay registros para eliminar 🤷‍♂️',
@@ -231,7 +222,6 @@ Comandos: /stats /history /income /recurring /export /settings /menu`,
     records_count: 'Registros: {count}',
     no_expenses_period: 'No hay gastos para este período.',
     by_categories: 'Por categorías:',
-    no_expenses_category: 'No hay gastos en esta categoría en el último mes.',
     
     // Categorías
     select_category: 'Elige una categoría:',
@@ -239,15 +229,10 @@ Comandos: /stats /history /income /recurring /export /settings /menu`,
     description_label: 'Descripción',
     category_label: 'Categoría',
     expense_added_title: '¡Gasto añadido!',
-    no_categories: 'No se encontraron categorías.',
-    category_expenses: 'Gastos en la categoría "{category}"',
-    no_category_expenses: 'No hay gastos en esta categoría en el último mes.',
     
     // Ajustes
-    settings_title: 'Ajustes:',
     currency_select: 'Selecciona la moneda por defecto:',
     currency_set: 'Moneda establecida: {currency}',
-    currency_updated: 'Moneda cambiada a {currency}',
     button_change_period_start: '📅 Día de inicio del período',
     period_start_prompt: 'Introduce un día del mes (1-31) como inicio del nuevo período. Meses más cortos usarán el último día.',
     period_start_invalid: '❌ Número inválido. Escribe un número entero entre 1 y 31.',
@@ -266,12 +251,9 @@ Selecciona tu hora actual:`,
     family_owner_label: '👑 *Propietario:*',
     family_info: '👨‍👩‍👧‍👦 Presupuesto familiar\n\nAquí puedes gestionar los gastos junto con familiares, colegas, amigos, etc.\n\n- \uD83D\uDC6A Se crea un grupo compartido para llevar el registro de los gastos conjuntos.\n- \u2795 Cada miembro puede agregar gastos.\n- \uD83D\uDDD1\uFE0F Puedes eliminar tus propios gastos si es necesario.\n- \uD83D\uDCCA Hay estadísticas compartidas disponibles para todos los miembros.\n- \uD83D\uDCE4 Exporta los datos de todo el grupo en un solo archivo.\n\nEl control compartido significa menos caos y más transparencia.',
     family_created: '✅ Familia "{name}" creada. Ahora puedes invitar miembros.',
-    family_joined: '✅ Te uniste a la familia "{name}"!',
     family_left: '✅ Has salido de la familia "{name}".',
     family_deleted: '✅ Familia "{name}" eliminada. Todos los gastos se han vuelto personales.',
-    family_member_removed: '✅ Miembro eliminado de la familia.',
     family_member_removed_notification: '❌ Has sido eliminado de la familia «{familyName}».',
-    family_cannot_leave_owner: '❌ El propietario no puede salir de la familia. Usa "Eliminar familia".',
     
     // Botones del menú familiar
     create_family: '🏠 Crear familia',
@@ -289,7 +271,6 @@ Selecciona tu hora actual:`,
     invitation_sent: '✅ Invitación enviada a @{username}',
     invitation_not_found: '❌ Invitación no encontrada o expirada.',
     invitation_expired: '❌ Invitación expirada.',
-    invitation_already_processed: '❌ Invitación ya procesada.',
     
     // Entradas de usuario
     enter_family_name: 'Introduce el nombre de la familia (3-50 caracteres):',
@@ -321,38 +302,25 @@ Selecciona tu hora actual:`,
     invitation_not_pending: '❌ La invitación no está pendiente',
     invitation_cancelled_notification: '❌ La invitación a la familia «{familyName}» fue cancelada por {cancelledBy}',
     enter_invite_code: '🔑 Introduce el código de invitación:',
-    only_owner_can_remove: '❌ Solo el propietario puede eliminar miembros.',
-    only_owner_can_delete: '❌ Solo el propietario puede eliminar la familia.',
-    cannot_remove_owner: '❌ No se puede eliminar al propietario.',
-    cannot_remove_yourself: '❌ No puedes eliminarte a ti mismo.',
-    family_not_found: '❌ Familia no encontrada.',
     not_family_member: '❌ No eres miembro de la familia.',
     not_family_owner: '❌ No eres el propietario de la familia.',
     
     // Confirmaciones
     confirm_delete_family: '⚠️ *Eliminar familia*\n\nTodos los miembros serán eliminados y los gastos volverán a ser personales.\n\n¿Estás seguro?',
     // Estadísticas familia
-    family_monthly_stats: '👨‍👩‍👧‍👦 *Gastos familiares del mes*',
     family_daily_stats: '💰 Gastos del día',
-    family_daily_stats_title: '👨‍👩‍👧‍👦 *Gastos familiares del día*',
     family_export: '📊 Exportar datos familiares',
-    family_total_spent: 'Gastado: *{amount}*',
-    family_members_count: 'Miembros: {count}',
-    family_no_expenses: 'No hay gastos familiares en este período.',
     
     // Lista de miembros
     family_members_title: '👥 *Miembros de la familia*',
-    family_member_info: '• {name} ({role}) - se unió el {date}',
     family_owner_role: 'propietario',
     family_member_role: 'miembro',
     remove_member: '❌ Eliminar',
     confirm_remove_member: '⚠️ *Eliminar miembro*\n\n¿Seguro que deseas eliminar a {name} de la familia?',
     member_removed: '✅ {name} fue eliminado de la familia.',
-    member_removed_notification: '❌ Has sido eliminado de la familia «{familyName}» por {ownerName}.',
     
     // Funciones premium
     premium_required: '❌ Esta función es solo para usuarios premium.',
-    upgrade_to_premium: '💎 ¡Actualiza a premium para gestionar un presupuesto familiar!',
     
     timezone_updated: `✅ *Zona horaria actualizada!*
 
@@ -362,10 +330,8 @@ Selecciona tu hora actual:`,
 Tus gastos se mostrarán en hora local.`,
     
     // Límites
-    limits_title: '📊 *Información de límites*',
     status_regular: '👤 Estándar',
     status_premium: '💎 Premium',
-    status_label: '*Estado:* {status}',
     max_description_length: '<b>Longitud máxima de descripción:</b> {length} caracteres',
     premium_benefits: `💎 <b>Ventajas premium:</b>
   • 🎯 Presupuestos mensuales y por categoría con avisos al 80 % y al superarlos
@@ -381,7 +347,6 @@ Tus gastos se mostrarán en hora local.`,
     premium_subscription_title: '⭐️ Suscripción',
     premium_status_header: '<b>Tu estado:</b>',
     premium_privileges: 'Privilegios: {status}',
-    premium_limits_info: 'Aquí verás tus límites: número de categorías, gastos, funciones familiares, duración premium actual.',
     premium_menu_title: '<b>Menú:</b>',
     premium_tariff_button: '⭐️ Tarifa',
     premium_why_paid_button: '👀 ¿Por qué es de pago?',
@@ -400,10 +365,7 @@ Tus gastos se mostrarán en hora local.`,
     no_purchases: 'Aún no hay compras',
     purchases_prev_button: '◀ Anterior',
     purchases_next_button: 'Siguiente ▶',
-    purchases_page_indicator: 'Página {page}/{total}',
     premium_why_paid_text: 'Mantener el servidor cuesta unos $200 mensuales, sin contar el aumento de usuarios. Y yo como desarrollador también necesito comer para seguir creando funciones :)',
-    premium_payment_title: '💳 *Pago de suscripción premium*',
-    premium_payment_description: 'Has elegido: <b>{duration}</b>\nCoste: <b>{stars} ⭐️</b>\n\nHaz clic abajo para pagar con Telegram Stars.',
     // Etiquetas de tarifas y nombre del producto
     tariff_button_30: '1 Mes',
     tariff_button_90: '3 Meses',
@@ -426,16 +388,13 @@ Tus gastos se mostrarán en hora local.`,
     donate_prompt_text: 'Introduce el número de estrellas (1 a 2500) que quieras donar.\n\nPuedes incluir un mensaje de hasta 500 caracteres en la línea siguiente.',
     donate_invalid: '❌ Introduce un número entero de 1 a 2500. Mensaje máx. 500 caracteres.',
     donate_created: '✅ Donación creada: {stars} ⭐️. Te envío el enlace de pago.',
-    donate_paid: '🙏 Gracias por tu apoyo. Donación recibida: {stars} ⭐️',
     
     // Errores de validación
     error_too_long_regular: '❌ Descripción demasiado larga! Máx. 80 caracteres para usuarios normales.',
     error_too_long_premium: '❌ Descripción demasiado larga! Máx. 160 caracteres para premium.',
-    error_no_description: '❌ Debes poner una descripción tras la cantidad.',
     error_amount: '❌ Cantidad inválida. Introduce entre 0.01 y 999999.',
     error_format: '❌ No lo entendí. Empieza con una cantidad: `250 café`, `20 USD taxi` o solo `300`.',
     error_forbidden_content: '❌ Contenido no permitido.',
-    error_premium_required: '💎 Esta función solo está disponible con premium.\n\nPremium te da:\n• Presupuestos con avisos\n• Resumen completo del periodo\n• Categorías personalizadas\n• Presupuesto familiar\n• Editar registros',
     error_generic: '❌ Error. Intenta más tarde o contacta con admin.',
     
     // Botones
@@ -446,16 +405,13 @@ Tus gastos se mostrarán en hora local.`,
     button_family: '👨‍👩‍👧‍👦 Familia',
     button_settings: '⚙️ Ajustes',
     button_delete_last: '🗑️ Eliminar último gasto',
-    button_limits: '📊 Límites',
     button_help: '❓ Ayuda',
     button_edit: 'Editar',
-    button_delete: 'Eliminar',
     button_mark_as_family: '👨‍👩‍👧‍👦 A familia',
     button_remove_from_family: '🚫 Quitar de presupuesto familiar',
     expense_already_family: '❌ Este gasto ya es familiar',
     expense_converted_to_family: '✅ Gasto movido a presupuesto familiar',
     expense_removed_from_family: '✅ Gasto quitado de presupuesto familiar',
-    not_owner: '❌ No eres el autor de este gasto',
     button_cancel: '❌ Cancelar',
     button_back: '⬅️ Atrás',
     button_change_currency: '💱 Cambiar moneda',
@@ -485,16 +441,12 @@ Tus gastos se mostrarán en hora local.`,
     edit_format_error: 'Formato inválido.',
     
     // Respuestas callback
-    callback_button_not_found: '❌ Error: botón no encontrado',
     callback_data_not_found: '❌ Error: datos no encontrados',
     callback_expense_added: '✅ Añadido a categoría "{category}"',
-    callback_expense_saved: '❌ Error al guardar',
     callback_canceled: '❌ Cancelado',
     callback_expense_canceled: '❌ Añadido de gasto cancelado',
     callback_deleted: 'Registro eliminado!',
     callback_delete_error: 'Error al borrar o registro no encontrado',
-    callback_edit_mode: 'Salir del modo edición:',
-    callback_no_cards: 'No hay registros... ocurrió un error',
     
       // Categorías por defecto
   category_food: 'Comida',

@@ -49,8 +49,6 @@ module.exports = {
 '📋 お金は秩序を好みます。記録する時間です。'
     ],
     reminder_message_title: 'リマインダー',
-    reminder_turn_on_off: (enabled) => enabled ? 'リマインダーをオフにする' : 'リマインダーをオンにする',
-    button_configure_reminder_hours: '⏰ リマインダー時間を設定',
     reminder_hours_info: 'リマインダーの時間を最大3時間まで選択してください（あなたの現地時間帯）。現在:',
     reminder_hours_limit: '最大3時間まで選択できます',
     reminder_hours_saved: '✅ リマインダー時間が保存されました',
@@ -74,7 +72,6 @@ module.exports = {
     
     // セキュリティメッセージ
     security_rate_limit: '⚠️ *リクエストが多すぎます*\n\n{resetTime}秒後に再試行してください\n制限：1分間に{limit}回',
-    security_validation_error: '⚠️ *検証エラー*\n\n{message}',
     security_error: '❌ *セキュリティエラー*\n\n後でもう一度お試しください、または管理者に連絡してください。',
     
     // 管理パネル
@@ -179,17 +176,12 @@ module.exports = {
     admin_broadcast_header: '🔴🔴🔴 *通知！* 🔴🔴🔴',
     
     // 一般メッセージ
-    welcome: 'こんにちは、{name}！👋',
-    main_menu_title: '🏠 *メインメニュー*\n\n操作を選択してください:',
     error: 'エラーが発生しました 😞',
-    unknown_error: '予期しないエラーが発生しました。後でもう一度お試しください。',
     not_found: '見つかりません',
-    error_invalid_description_format: '❌ フォーマットが無効です。「金額 説明」または「金額 カテゴリ 説明」を使用してください',
     expense_save_error: '❌ 支出保存中にエラーが発生しました。再試行してください。',
     cancel: 'キャンセル',
     back: '戻る',
     confirm: '確認',
-    save: '保存',
     
     // 開始メッセージ
     start_message: `こんにちは！👋 支出と収入の記録をお手伝いします。
@@ -217,7 +209,6 @@ module.exports = {
 コマンド: /stats /history /income /recurring /export /settings /menu`,
   
     // 支出
-    expense_added: '✅ 記録しました: {amount} - {description}',
     expense_updated: '✅ 記録を更新しました: {amount} - {description}',
     expense_deleted: '✅ 記録を削除しました: {amount} - {description}',
     no_expenses: '削除する記録がありません 🤷‍♂️',
@@ -231,7 +222,6 @@ module.exports = {
     records_count: '記録数: {count}',
     no_expenses_period: 'この期間の支出はありません。',
     by_categories: 'カテゴリー別:',
-    no_expenses_category: 'このカテゴリーの過去1ヶ月の支出はありません。',
     
     // カテゴリー
     select_category: 'カテゴリーを選択してください:',
@@ -239,15 +229,10 @@ module.exports = {
     description_label: '説明',
     category_label: 'カテゴリー',
     expense_added_title: '支出を追加しました！',
-    no_categories: 'カテゴリーが見つかりません。',
-    category_expenses: '"{category}" カテゴリーの支出',
-    no_category_expenses: '過去1か月にこのカテゴリーの支出はありません。',
     
     // 設定
-    settings_title: '設定:',
     currency_select: 'デフォルト通貨を選択してください:',
     currency_set: '通貨を設定しました: {currency}',
-    currency_updated: '通貨を {currency} に変更しました',
     button_change_period_start: '📅 期間開始日',
     period_start_prompt: '新しい期間の開始日を入力してください (1〜31日)。短い月は最終日になります。',
     period_start_invalid: '❌ 無効な数値です。1〜31の整数を入力してください。',
@@ -265,12 +250,9 @@ module.exports = {
     family_owner_label: '👑 *所有者:*',
     family_info: '👨‍👩‍👧‍👦 *ファミリーバジェット*\n\nここでは家族や同僚、友人などと一緒に支出を管理できます。\n\n- \uD83D\uDC6A 共同の支出を記録するための共有グループが作成されます。\n- \u2795 各メンバーが支出を追加できます。\n- \uD83D\uDDD1\uFE0F 必要に応じて自分の支出を削除できます。\n- \uD83D\uDCCA すべてのメンバーが利用できる共有統計があります。\n- \uD83D\uDCE4 グループ全体のデータを1つのファイルにエクスポートできます。\n\n共同管理は、混乱を減らし、透明性を高めます。',
     family_created: '✅ 家族「{name}」を作成しました！メンバーを招待できます。',
-    family_joined: '✅ 家族「{name}」に参加しました！',
     family_left: '✅ 家族「{name}」から退出しました。',
     family_deleted: '✅ 家族「{name}」を削除しました。全ての家族支出は個人支出に変わりました。',
-    family_member_removed: '✅ 家族からメンバーを削除しました。',
     family_member_removed_notification: '❌ あなたは「{familyName}」家族から削除されました。',
-    family_cannot_leave_owner: '❌ 家族の所有者は退出できません。「家族を削除」してください。',
     
     // 家族メニューボタン
     create_family: '🏠 家族を作成',
@@ -288,7 +270,6 @@ module.exports = {
     invitation_sent: '✅ @{username} に招待を送信しました',
     invitation_not_found: '❌ 招待が見つからないか有効期限切れです。',
     invitation_expired: '❌ 招待の有効期限が切れました。',
-    invitation_already_processed: '❌ 招待はすでに処理されています。',
     
     // 入力依頼
     enter_family_name: '家族名を入力してください（3〜50文字）：',
@@ -320,38 +301,25 @@ module.exports = {
     invitation_not_pending: '❌ 招待は保留状態ではありません',
     invitation_cancelled_notification: '❌ 「{familyName}」家族への招待は {cancelledBy} によりキャンセルされました',
     enter_invite_code: '🔑 招待コードを入力してください：',
-    only_owner_can_remove: '❌ メンバーを削除できるのは家族の所有者のみです。',
-    only_owner_can_delete: '❌ 家族を削除できるのは所有者のみです。',
-    cannot_remove_owner: '❌ 家族の所有者は削除できません。',
-    cannot_remove_yourself: '❌ 自分自身を削除することはできません。',
-    family_not_found: '❌ 家族が見つかりません。',
     not_family_member: '❌ あなたはこの家族のメンバーではありません。',
     not_family_owner: '❌ あなたは家族の所有者ではありません。',
     
     // 確認
     confirm_delete_family: '⚠️ *家族削除*\n\n全メンバーが削除され、家族支出は個人支出に戻ります。\n\n本当に実行しますか？',
     // 家族統計
-    family_monthly_stats: '👨‍👩‍👧‍👦 *今月の家族支出*',
     family_daily_stats: '💰 今日の支出',
-    family_daily_stats_title: '👨‍👩‍👧‍👦 *今日の家族支出*',
     family_export: '📊 家族データをエクスポート',
-    family_total_spent: '合計支出: *{amount}*',
-    family_members_count: 'メンバー数: {count}',
-    family_no_expenses: 'この期間に家族支出はありません。',
     
     // メンバーリスト
     family_members_title: '👥 *家族メンバー*',
-    family_member_info: '• {name} ({role}) - {date} に参加',
     family_owner_role: '所有者',
     family_member_role: 'メンバー',
     remove_member: '❌ 削除',
     confirm_remove_member: '⚠️ *メンバー削除*\n\n{name} を家族から削除しますか？',
     member_removed: '✅ {name} を家族から削除しました。',
-    member_removed_notification: '❌ あなたは「{familyName}」家族から {ownerName} により削除されました。',
     
     // プレミアム機能
     premium_required: '❌ この機能はプレミアムユーザーのみ利用できます。',
-    upgrade_to_premium: '💎 家族予算を使うにはプレミアムにアップグレードしてください！',
     
     timezone_updated: `✅ *タイムゾーンを更新しました！*
 
@@ -361,10 +329,8 @@ module.exports = {
 これ以降、すべての支出は現地時間で表示されます。`,
     
     // 制限
-    limits_title: '📊 *利用制限情報*',
     status_regular: '👤 通常',
     status_premium: '💎 プレミアム',
-    status_label: '*ステータス:* {status}',
     max_description_length: '<b>説明の最大長:</b> {length} 文字',
     premium_benefits: `💎 <b>プレミアム特典:</b>
 • 🎯 月全体・カテゴリー別の予算（80%到達時と超過時に通知）
@@ -380,7 +346,6 @@ module.exports = {
     premium_subscription_title: '⭐️ サブスクリプション',
     premium_status_header: '<b>あなたのステータス:</b>',
     premium_privileges: '特典: {status}',
-    premium_limits_info: 'ここではカテゴリー数、記録数、家族機能、プレミアム有効期限などの制限を確認できます。',
     premium_menu_title: '<b>メニュー:</b>',
     premium_tariff_button: '⭐️ 料金プラン',
     premium_why_paid_button: '👀 なぜ有料？',
@@ -399,10 +364,7 @@ module.exports = {
     no_purchases: '購入履歴はまだありません',
     purchases_prev_button: '◀ 前へ',
     purchases_next_button: '次へ ▶',
-    purchases_page_indicator: 'ページ {page}/{total}',
     premium_why_paid_text: 'このボットのサーバー維持には毎月約$200かかります。利用者が増え続ける中、開発者としてサービス改善のために生活費も必要です :)',
-    premium_payment_title: '💳 *プレミアム購読の支払い*',
-    premium_payment_description: '選択内容: <b>{duration}</b>\n価格: <b>{stars} ⭐️</b>\n\n下のボタンを押してTelegram Starsで支払ってください。',
     // 料金プランのラベルと商品名
     tariff_button_30: '1 Month',
     tariff_button_90: '3 Months',
@@ -425,16 +387,13 @@ module.exports = {
     donate_prompt_text: '寄付するスターの数（1〜2500）を入力してください。\nオプションで、次の行に最大500文字のメッセージを追加できます。',
     donate_invalid: '❌ 1〜2500の整数を入力してください。メッセージは最大500文字です。',
     donate_created: '✅ 寄付リクエストを作成しました: {stars} ⭐️。支払いリンクを送ります。',
-    donate_paid: '🙏 ご支援ありがとうございます！寄付を受け取りました: {stars} ⭐️',
     
     // バリデーションエラー
     error_too_long_regular: '❌ 説明が長すぎます！通常ユーザーは80文字までです。',
     error_too_long_premium: '❌ 説明が長すぎます！プレミアムは160文字までです。',
-    error_no_description: '❌ 金額の後に説明を入力してください。',
     error_amount: '❌ 無効な金額です。0.01〜999999の数字を入力してください。',
     error_format: '❌ 認識できませんでした。金額から始めてください: `250 コーヒー`、`20 USD タクシー`、または `300` だけ。',
     error_forbidden_content: '❌ 禁止されている内容が含まれています。',
-    error_premium_required: '💎 この機能はプレミアム専用です。\n\nプレミアム特典:\n• 通知付きの予算\n• 期間の詳細サマリー\n• カスタムカテゴリー\n• 家族の予算\n• 記録の編集',
     error_generic: '❌ エラーが発生しました。後でもう一度お試しください、または管理者に連絡してください。',
     
     // ボタン
@@ -445,16 +404,13 @@ module.exports = {
     button_family: '👨‍👩‍👧‍👦 家族',
     button_settings: '⚙️ 設定',
     button_delete_last: '🗑️ 最後の記録を削除',
-    button_limits: '📊 制限',
     button_help: '❓ ヘルプ',
     button_edit: '編集',
-    button_delete: '削除',
     button_mark_as_family: '👨‍👩‍👧‍👦 家族に移動',
     button_remove_from_family: '🚫 家族予算から削除',
     expense_already_family: '❌ この支出はすでに家族支出です',
     expense_converted_to_family: '✅ 支出を家族予算に移動しました',
     expense_removed_from_family: '✅ 支出を家族予算から削除しました',
-    not_owner: '❌ あなたはこの支出の作成者ではありません',
     button_cancel: '❌ キャンセル',
     button_back: '⬅️ 戻る',
     button_change_currency: '💱 通貨を変更',
@@ -484,16 +440,12 @@ module.exports = {
     edit_format_error: '形式が正しくありません。',
     
     // コールバック応答
-    callback_button_not_found: '❌ エラー: ボタンが見つかりません',
     callback_data_not_found: '❌ エラー: データが見つかりません',
     callback_expense_added: '✅ "{category}" カテゴリーに追加されました',
-    callback_expense_saved: '❌ 保存中にエラー',
     callback_canceled: '❌ キャンセルされました',
     callback_expense_canceled: '❌ 支出追加がキャンセルされました',
     callback_deleted: '記録が削除されました！',
     callback_delete_error: '削除エラーまたは記録が見つかりません',
-    callback_edit_mode: '編集モードを終了:',
-    callback_no_cards: '記録が見つかりません…エラーが発生しました',
     
     // デフォルトカテゴリー
     category_food: '食費',

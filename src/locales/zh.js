@@ -49,8 +49,6 @@ module.exports = {
 '📋 钱喜欢有秩序。现在该记录了。'
     ],
     reminder_message_title: '提醒',
-    reminder_turn_on_off: (enabled) => enabled ? '关闭提醒' : '开启提醒',
-    button_configure_reminder_hours: '⏰ 配置提醒时间',
     reminder_hours_info: '选择最多3个小时作为提醒时间（你的本地时区）。当前:',
     reminder_hours_limit: '你最多可以选择3个小时',
     reminder_hours_saved: '✅ 提醒时间已保存',
@@ -74,7 +72,6 @@ module.exports = {
     
     // 安全消息
     security_rate_limit: '⚠️ *请求过多*\n\n请在 {resetTime} 秒后重试\n限制：每分钟 {limit} 次请求',
-    security_validation_error: '⚠️ *验证错误*\n\n{message}',
     security_error: '❌ *安全错误*\n\n请稍后重试或联系管理员。',
     
     // 管理面板
@@ -179,17 +176,12 @@ module.exports = {
     admin_broadcast_header: '🔴🔴🔴 *通知！* 🔴🔴🔴',
     
     // 通用消息
-    welcome: '你好，{name}！👋',
-    main_menu_title: '🏠 *主菜单*\n\n请选择操作：',
     error: '发生错误 😞',
-    unknown_error: '发生意外错误，请稍后再试。',
     not_found: '未找到',
-    error_invalid_description_format: '❌ 格式无效。请使用：金额 描述 或 金额 类别 描述',
     expense_save_error: '❌ 保存支出时出错，请重试。',
     cancel: '取消',
     back: '返回',
     confirm: '确认',
-    save: '保存',
     
     // 启动消息
     start_message: `你好！👋 我会帮你记录支出和收入。
@@ -217,7 +209,6 @@ module.exports = {
 命令：/stats /history /income /recurring /export /settings /menu`,
   
     // 支出
-    expense_added: '✅ 已记录: {amount} - {description}',
     expense_updated: '✅ 记录已更新: {amount} - {description}',
     expense_deleted: '✅ 记录已删除: {amount} - {description}',
     no_expenses: '没有可删除的记录 🤷‍♂️',
@@ -231,7 +222,6 @@ module.exports = {
     records_count: '记录数: {count}',
     no_expenses_period: '该时间段内无支出。',
     by_categories: '按类别:',
-    no_expenses_category: '此类别在过去一个月内没有支出。',
     select_category: '选择类别:',
     
     // 类别
@@ -239,15 +229,10 @@ module.exports = {
     description_label: '描述',
     category_label: '类别',
     expense_added_title: '支出已添加！',
-    no_categories: '未找到类别。',
-    category_expenses: '"{category}" 类别的支出',
-    no_category_expenses: '过去一个月此类别无支出。',
     
     // 设置
-    settings_title: '设置：',
     currency_select: '请选择默认货币：',
     currency_set: '已设置货币: {currency}',
-    currency_updated: '货币已更改为 {currency}',
     button_change_period_start: '📅 期间开始日',
     period_start_prompt: '请输入新期间开始的日期 (1-31)。短月份将取最后一天。',
     period_start_invalid: '❌ 无效数字。请输入 1 到 31 之间的整数。',
@@ -266,12 +251,9 @@ module.exports = {
     family_owner_label: '👑 *拥有者:*',
     family_info: '👨‍👩‍👧‍👦 *家庭预算*\n\n在这里，可以与家人、同事、朋友等一起管理支出。\n\n- \uD83D\uDC6A 会创建一个共享群组，用于记录共同开销。\n- \u2795 每位成员都可以添加支出。\n- \uD83D\uDDD1\uFE0F 如有需要，可删除自己的支出。\n- \uD83D\uDCCA 提供所有成员可查看的共享统计。\n- \uD83D\uDCE4 可将整个群组的数据导出为单个文件。\n\n共享管理意味着更少的混乱与更高的透明度.',
     family_created: '✅ 家庭 "{name}" 已创建！现在可以邀请成员了。',
-    family_joined: '✅ 你已加入家庭 "{name}"！',
     family_left: '✅ 你已退出家庭 "{name}"。',
     family_deleted: '✅ 家庭 "{name}" 已删除。所有家庭支出已转为个人支出。',
-    family_member_removed: '✅ 已从家庭中移除成员。',
     family_member_removed_notification: '❌ 你已被移出“{familyName}”家庭。',
-    family_cannot_leave_owner: '❌ 家庭的拥有者不能退出，请使用“删除家庭”。',
     
     // 家庭菜单按钮
     create_family: '🏠 创建家庭',
@@ -289,7 +271,6 @@ module.exports = {
     invitation_sent: '✅ 已向 @{username} 发送邀请',
     invitation_not_found: '❌ 邀请未找到或已过期。',
     invitation_expired: '❌ 邀请已过期。',
-    invitation_already_processed: '❌ 邀请已被处理。',
     
     // 输入请求
     enter_family_name: '请输入家庭名称（3-50 个字符）：',
@@ -321,38 +302,25 @@ module.exports = {
     invitation_not_pending: '❌ 该邀请不在待处理状态',
     invitation_cancelled_notification: '❌ 你加入“{familyName}”家庭的邀请已被 {cancelledBy} 取消',
     enter_invite_code: '🔑 请输入邀请码：',
-    only_owner_can_remove: '❌ 只有家庭拥有者可以移除成员。',
-    only_owner_can_delete: '❌ 只有家庭拥有者可以删除家庭。',
-    cannot_remove_owner: '❌ 不能移除家庭拥有者。',
-    cannot_remove_yourself: '❌ 不能移除自己。',
-    family_not_found: '❌ 未找到家庭。',
     not_family_member: '❌ 你不是该家庭成员。',
     not_family_owner: '❌ 你不是该家庭的拥有者。',
     
     // 确认
     confirm_delete_family: '⚠️ *删除家庭*\n\n所有成员将被移除，家庭支出将转为个人支出。\n\n确定要继续吗？',
     // 家庭统计
-    family_monthly_stats: '👨‍👩‍👧‍👦 *本月家庭支出*',
     family_daily_stats: '💰 今日支出',
-    family_daily_stats_title: '👨‍👩‍👧‍👦 *今日家庭支出*',
     family_export: '📊 导出家庭数据',
-    family_total_spent: '总花费：*{amount}*',
-    family_members_count: '成员数：{count}',
-    family_no_expenses: '该时间段内无家庭支出。',
     
     // 成员列表
     family_members_title: '👥 *家庭成员*',
-    family_member_info: '• {name} ({role}) - 加入于 {date}',
     family_owner_role: '拥有者',
     family_member_role: '成员',
     remove_member: '❌ 移除',
     confirm_remove_member: '⚠️ *移除成员*\n\n确定要将 {name} 从家庭中移除吗？',
     member_removed: '✅ {name} 已被移出家庭。',
-    member_removed_notification: '❌ 你已被“{familyName}”家庭的 {ownerName} 移除。',
     
     // 高级功能
     premium_required: '❌ 此功能仅对高级用户开放。',
-    upgrade_to_premium: '💎 升级为高级用户即可使用家庭预算！',
     
     timezone_updated: `✅ *时区已更新！*
 
@@ -362,10 +330,8 @@ module.exports = {
 从现在起，你的支出将按当地时间显示。`,
     
     // 限制
-    limits_title: '📊 *限制信息*',
     status_regular: '👤 普通',
     status_premium: '💎 高级',
-    status_label: '*状态:* {status}',
     max_description_length: '<b>描述最大长度:</b> {length} 个字符',
     premium_benefits: `💎 <b>高级用户优势:</b>
 • 🎯 月度和分类预算，达到80%和超支时提醒
@@ -381,7 +347,6 @@ module.exports = {
     premium_subscription_title: '⭐️ 订阅',
     premium_status_header: '<b>你的状态:</b>',
     premium_privileges: '权限: {status}',
-    premium_limits_info: '这里显示你的限制：类别数量、记录数、家庭功能、高级剩余时长。',
     premium_menu_title: '<b>菜单:</b>',
     premium_tariff_button: '⭐️ 套餐',
     premium_why_paid_button: '👀 为什么收费？',
@@ -400,10 +365,7 @@ module.exports = {
     no_purchases: '暂无购买记录',
     purchases_prev_button: '◀ 上一页',
     purchases_next_button: '下一页 ▶',
-    purchases_page_indicator: '第 {page}/{total} 页',
     premium_why_paid_text: '运行此机器人服务器每月约需 $200，且用户数量持续增长。作为开发者，我也需要维持生活来改进服务 :)',
-    premium_payment_title: '💳 *高级订阅付款*',
-    premium_payment_description: '你选择了: <b>{duration}</b>\n价格: <b>{stars} ⭐️</b>\n\n点击下方按钮通过 Telegram Stars 支付。',
     // 套餐标签与产品名
     tariff_button_30: '1 个月',
     tariff_button_90: '3 个月',
@@ -426,16 +388,13 @@ module.exports = {
     donate_prompt_text: '请输入要捐赠的星星数量 (1 到 2500)。\n下一行可添加一条消息（最多500字符）。',
     donate_invalid: '❌ 请输入1到2500之间的整数。消息最长500字符。',
     donate_created: '✅ 已创建捐赠请求: {stars} ⭐️。我会发送支付链接给你。',
-    donate_paid: '🙏 感谢你的支持！已收到捐赠: {stars} ⭐️',
     
     // 验证错误
     error_too_long_regular: '❌ 描述过长！普通用户最多80字符。',
     error_too_long_premium: '❌ 描述过长！高级用户最多160字符。',
-    error_no_description: '❌ 金额后必须提供描述。',
     error_amount: '❌ 金额无效。请输入0.01到999999之间的数字。',
     error_format: '❌ 没看懂。请以金额开头：`250 咖啡`、`20 USD 出租车` 或只写 `300`。',
     error_forbidden_content: '❌ 含有不允许的内容。',
-    error_premium_required: '💎 此功能仅限高级用户。\n\n高级版提供:\n• 带提醒的预算\n• 完整期间总结\n• 自定义类别\n• 家庭预算\n• 编辑记录',
     error_generic: '❌ 出错了，请稍后再试或联系管理员。',
     
     // 按钮
@@ -446,16 +405,13 @@ module.exports = {
     button_family: '👨‍👩‍👧‍👦 家庭',
     button_settings: '⚙️ 设置',
     button_delete_last: '🗑️ 删除最后一条记录',
-    button_limits: '📊 限制',
     button_help: '❓ 帮助',
     button_edit: '编辑',
-    button_delete: '删除',
     button_mark_as_family: '👨‍👩‍👧‍👦 转为家庭支出',
     button_remove_from_family: '🚫 从家庭预算移除',
     expense_already_family: '❌ 此支出已为家庭支出',
     expense_converted_to_family: '✅ 支出已转入家庭预算',
     expense_removed_from_family: '✅ 支出已从家庭预算移除',
-    not_owner: '❌ 你不是该支出的创建者',
     button_cancel: '❌ 取消',
     button_back: '⬅️ 返回',
     button_change_currency: '💱 更改货币',
@@ -485,16 +441,12 @@ module.exports = {
     edit_format_error: '格式错误。',
     
     // 回调响应
-    callback_button_not_found: '❌ 错误：未找到按钮',
     callback_data_not_found: '❌ 错误：未找到数据',
     callback_expense_added: '✅ 已添加到 "{category}" 类别',
-    callback_expense_saved: '❌ 保存出错',
     callback_canceled: '❌ 已取消',
     callback_expense_canceled: '❌ 添加支出已取消',
     callback_deleted: '记录已删除！',
     callback_delete_error: '删除错误或记录未找到',
-    callback_edit_mode: '退出编辑模式：',
-    callback_no_cards: '没有记录…发生错误',
     
       // 默认类别
   category_food: '餐饮',

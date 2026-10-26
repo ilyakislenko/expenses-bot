@@ -2,7 +2,6 @@ module.exports = {
   button_reminders: '🔔 Напоминать о себе',
   reminders_enabled: '🔔 Напоминания включены',
   reminders_disabled: 'Напоминалки выключены. Молчу как рыбка 🤐',
-  button_configure_reminder_hours: '⏰ Настроить часы напоминаний',
   reminder_hours_info: 'Выбери до 3 часов для напоминаний (локальное время твоего часового пояса). Текущие:',
   reminder_hours_limit: 'Можно выбрать не более 3 часов',
   reminder_hours_saved: '✅ Часы напоминаний сохранены',
@@ -61,7 +60,6 @@ module.exports = {
 '📋 Деньги любят порядок. Время сделать запись.'
   ],
   reminder_message_title: 'Напоминалка',
-  reminder_turn_on_off: (enabled) => enabled ? 'Выключить напоминалки' : 'Включить напоминалки',
   
   // Bug reports
   button_bug_report: '🐛 Сообщить о баге / Предложить улучшение',
@@ -74,7 +72,6 @@ module.exports = {
   
   // Security messages
   security_rate_limit: '⚠️ *Слишком много запросов*\n\nПопробуй через {resetTime} секунд\nЛимит: {limit} запросов в минуту',
-  security_validation_error: '⚠️ *Ошибка валидации*\n\n{message}',
   security_error: '❌ *Ошибка безопасности*\n\nПопробуй позже или напиши администратору.',
   
   // Admin panel
@@ -180,15 +177,11 @@ module.exports = {
   admin_broadcast_header: '🔴🔴🔴 *Уведомление!* 🔴🔴🔴',
   
   // Общие сообщения
-  welcome: 'Привет, {name}! 👋',
   error: 'Произошла ошибка 😞',
-  unknown_error: 'Произошла неожиданная ошибка. Попробуй позже.',
   not_found: 'Не найдено',
-  error_invalid_description_format: '❌ Неверный формат расхода. Используй: сумма описание или сумма категория описание',
   cancel: 'Отмена',
   back: 'Назад',
   confirm: 'Подтвердить',
-  save: 'Сохранить',
   
   // Команды
   start_message: `Привет! 👋 Я помогу вести учёт расходов и доходов.
@@ -217,7 +210,6 @@ module.exports = {
 Команды: /stats /history /income /recurring /export /settings /menu`,
 
   // Расходы
-  expense_added: '✅ Записал: {amount} - {description}',
   expense_updated: '✅ Запись обновлена: {amount} - {description}',
   expense_deleted: '✅ Удалена запись: {amount} - {description}',
   no_expenses: 'Нет записей для удаления 🤷‍♂️',
@@ -236,15 +228,10 @@ module.exports = {
   description_label: 'Описание',
   category_label: 'Категория',
   expense_added_title: 'Расход добавлен!',
-  no_categories: 'Категории не найдены.',
-  category_expenses: 'Траты по категории "{category}"',
-  no_category_expenses: 'Нет трат по этой категории за последний месяц.',
   
   // Настройки
-  settings_title: 'Настройки:',
   currency_select: 'Выбери валюту, которая будет использоваться по умолчанию:',
   currency_set: 'Валюта установлена: {currency}',
-  currency_updated: 'Валюта успешно изменена на {currency}',
   button_change_period_start: '📅 Число начала периода',
   period_start_prompt: 'Введи число с которого каждый месяц будет начинаться новый период 👇🏼\n\nЭто число от 1 до 31. В месяцах короче берём последний день.',
   period_start_invalid: '❌ Некорректное число. Введи целое число от 1 до 31.',
@@ -263,12 +250,9 @@ module.exports = {
   family_owner_label: '👑 *Владелец:*',
   family_info: '👨‍👩‍👧‍👦 *Семейный бюджет*\n\nЗдесь ты можешь управлять расходами вместе с близкими, коллегами, друзьями и т.д.\n\n- \uD83D\uDC6A Создаётся общая группа для учёта совместных трат.\n- \u2795 Каждый участник может добавлять расходы.\n- \uD83D\uDDD1\uFE0F Можно удалять свои расходы при необходимости.\n- \uD83D\uDCCA Доступна общая статистика по всем участникам.\n- \uD83D\uDCE4 Экспорт данных всей группы в один файл.\n\nСовместный контроль — меньше хаоса и больше прозрачности.',
   family_created: '✅ Семья "{name}" создана! Теперь ты можешь приглашать участников.',
-  family_joined: '✅ Ты присоединился к семье "{name}"!',
   family_left: '✅ Ты покинул семью "{name}".',
   family_deleted: '✅ Семья "{name}" удалена. Все семейные траты стали личными.',
-  family_member_removed: '✅ Участник удален из семьи.',
   family_member_removed_notification: '❌ Тебя удалили из семьи «{familyName}».',
-  family_cannot_leave_owner: '❌ Владелец семьи не может покинуть семью. Используй "Удалить семью".',
   
   // Кнопки семейного меню
   create_family: '🏠 Создать семью',
@@ -284,7 +268,6 @@ module.exports = {
   
   // Приглашения
   invitation_sent: '✅ Приглашение отправлено пользователю @{username}',
-  invitation_already_processed: '❌ Приглашение уже обработано.',
   
   // Сообщения для ввода
   enter_family_name: 'Введи название семьи (3-50 символов):',
@@ -318,11 +301,6 @@ module.exports = {
   invitation_expired: '❌ Приглашение истекло',
   invitation_cancelled_notification: '❌ Приглашение в семью «{familyName}» было отменено пользователем {cancelledBy}',
   enter_invite_code: '🔑 Введи код приглашения:',
-  only_owner_can_remove: '❌ Только владелец семьи может удалять участников.',
-  only_owner_can_delete: '❌ Только владелец семьи может удалить семью.',
-  cannot_remove_owner: '❌ Нельзя удалить владельца семьи.',
-  cannot_remove_yourself: '❌ Нельзя удалить самого себя.',
-  family_not_found: '❌ Семья не найдена.',
   not_family_member: '❌ Ты не являешься участником семьи.',
   not_family_owner: '❌ Ты не являешься владельцем семьи.',
   
@@ -330,27 +308,19 @@ module.exports = {
   confirm_delete_family: '⚠️ *Удаление семьи*\n\nВсе участники будут удалены, а семейные траты станут личными.\n\nТы уверен?',
   
   // Статистика семьи
-  family_monthly_stats: '👨‍👩‍👧‍👦 *Расходы семьи за месяц*',
   family_daily_stats: '💰 Расходы за день',
-  family_daily_stats_title: '👨‍👩‍👧‍👦 *Расходы семьи за день*',
   family_export: '📊 Экспорт семьи',
-  family_total_spent: 'Потрачено: *{amount}*',
-  family_members_count: 'Участников: {count}',
-  family_no_expenses: 'Нет семейных трат за этот период.',
   
   // Список участников
   family_members_title: '👥 *Участники семьи*',
-  family_member_info: '• {name} ({role}) - присоединился {date}',
   family_owner_role: 'владелец',
   family_member_role: 'участник',
   remove_member: '❌ Исключить',
   confirm_remove_member: '⚠️ *Исключение участника*\n\nТы уверен, что хочешь исключить {name} из семьи?',
   member_removed: '✅ Участник {name} исключен из семьи.',
-  member_removed_notification: '❌ Тебя исключил из семьи «{familyName}» владелец {ownerName}.',
   
   // Премиум функции
   premium_required: '❌ Эта функция доступна только для премиум пользователей.',
-  upgrade_to_premium: '💎 Обновись до премиум для доступа к семейному бюджету!',
   
   timezone_updated: `✅ *Часовой пояс обновлен!*
 
@@ -360,10 +330,8 @@ module.exports = {
 Теперь все твои расходы будут корректно отображаться в твоём местном времени.`,
   
   // Лимиты
-  limits_title: '📊 *Информация о лимитах*',
   status_regular: '👤 Стандарт',
   status_premium: '💎 Премиум',
-  status_label: '*Статус:* {status}',
   max_description_length: '<b>Макс. длина описания:</b> {length} символов',
   premium_benefits: `💎 <b>Преимущества премиума:</b>
 • 🎯 Бюджеты на месяц и на категории с предупреждениями на 80% и при превышении
@@ -379,7 +347,6 @@ module.exports = {
   premium_subscription_title: '⭐️ Подписка',
   premium_status_header: '<b>Твой статус:</b>',
   premium_privileges: 'Привилегии: {status}',
-  premium_limits_info: 'Здесь отображаются твои лимиты, например: количество категорий, трат, доступ к семейным возможностям, текущий период премиума или его отсутствие.',
   premium_menu_title: '<b>Меню:</b>',
   premium_tariff_button: '⭐️ Тариф',
   premium_why_paid_button: '👀 Почему сервис платный?',
@@ -398,10 +365,7 @@ module.exports = {
   no_purchases: 'Покупок пока нет',
   purchases_prev_button: '◀ Назад',
   purchases_next_button: 'Вперёд ▶',
-  purchases_page_indicator: 'Стр. {page}/{total}',
   premium_why_paid_text: 'Содержание сервера для этого бота обходится примерно в $200 в месяц — и это даже без учёта стремительно растущего числа пользователей. А я, как разработчик, ещё и кушать хочу чтобы были силы пилить тебе сервис :)',
-  premium_payment_title: '💳 *Оплата премиум подписки*',
-  premium_payment_description: 'Ты выбрал тариф: <b>{duration}</b>\nСтоимость: <b>{stars} ⭐️</b>\n\nНажми кнопку ниже для перехода к оплате через Telegram Stars.',
   // Лейблы тарифов и продукта
   tariff_button_30: '1 Месяц',
   tariff_button_90: '3 Месяца',
@@ -424,16 +388,13 @@ module.exports = {
   donate_prompt_text: 'Введи число звезд (Telegram Stars), которое ты хочешь задонатить.\n\n(За раз можно отправить от 1 до 2500 звезд)\n\nМожешь добавить письмо до 500 символов — просто напиши его после числа на новой строке.',
   donate_invalid: '❌ Введи целое число от 1 до 2500. Письмо — до 500 символов.',
   donate_created: '✅ Заявка на донат создана: {stars} ⭐️. Сейчас пришлю ссылку на оплату.',
-  donate_paid: '🙏 Спасибо за поддержку! Донат получен: {stars} ⭐️',
   
   // Ошибки валидации
   error_too_long_regular: '❌ Описание слишком длинное!\nМаксимум 80 символов для обычных пользователей.',
   error_too_long_premium: '❌ Описание слишком длинное!\nМаксимум 160 символов для премиум пользователей.',
-  error_no_description: '❌ Нужно указать описание после суммы.',
   error_amount: '❌ Некорректная сумма. Введи число от 0.01 до 999999.',
   error_format: '❌ Не понял. Начни с суммы: `250 кофе`, `20 USD такси` или просто `300`.',
   error_forbidden_content: '❌ Недопустимое содержимое.',
-  error_premium_required: '💎 Эта функция доступна только с премиумом.\n\nПремиум даёт:\n• Бюджеты с предупреждениями\n• Полные итоги периода\n• Собственные категории\n• Семейный бюджет\n• Изменение записей',
   error_generic: '❌ Произошла ошибка. Попробуй позже или напиши администратору.',
   
   // Кнопки
@@ -444,16 +405,13 @@ module.exports = {
   button_family: '👨‍👩‍👧‍👦 Семья',
   button_settings: '⚙️ Настройки',
   button_delete_last: '🗑️ Удалить последнюю запись',
-  button_limits: '📊 Лимиты',
   button_help: '❓ Справка',
   button_edit: 'Редактировать',
-  button_delete: 'Удалить',
   button_mark_as_family: '👨‍👩‍👧‍👦 В семью',
   button_remove_from_family: '🚫 Из семейного бюджета',
   expense_already_family: '❌ Эта трата уже семейная',
   expense_converted_to_family: '✅ Трата перенесена в семейный бюджет',
   expense_removed_from_family: '✅ Трата убрана из семейного бюджета',
-  not_owner: '❌ Ты не являешься автором этой траты',
   button_cancel: '❌ Отмена',
   button_back: '⬅️ Назад',
   button_change_currency: '💱 Сменить валюту',
@@ -462,7 +420,6 @@ module.exports = {
   button_custom_categories: '🏷️ Кастомные категории',
   
   // Главное меню
-  main_menu_title: '🏠 *Главное меню*\n\nВыбери действие:',
   
   // Языки
   language_select: '🌍 Выбери язык:',
@@ -487,26 +444,18 @@ module.exports = {
   edit_format_error: 'Ошибка формата.',
   
   // Callback ответы
-  callback_button_not_found: '❌ Ошибка: кнопка не найдена',
   callback_data_not_found: '❌ Ошибка: данные не найдены',
   callback_expense_added: '✅ Добавлено в категорию "{category}"',
-  callback_expense_saved: '❌ Произошла ошибка при сохранении',
   callback_canceled: '❌ Отменено',
   callback_expense_canceled: '❌ Добавление расхода отменено',
   callback_deleted: 'Запись удалена!',
   callback_delete_error: 'Ошибка удаления или запись не найдена',
-  callback_edit_mode: 'Выход из режима редактирования:',
-  callback_no_cards: 'почему-то карточек нет...произошла ошибка',
   
   // Статистика
   by_categories: 'По категориям:',
-  no_expenses_category: 'Нет трат по этой категории за последний месяц.',
   select_category: 'Выбери категорию:',
   
   // Форматирование
-  amount_format: '{amount} {currency}',
-  date_format: '{day}.{month}.{year}',
-  time_format: '{hour}:{minute}',
   
   // Экспорт CSV
   date_label: 'Дата',

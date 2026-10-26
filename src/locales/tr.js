@@ -49,8 +49,6 @@ module.exports = {
 '📋 Para düzeni sever. Kayıt zamanı.'
     ],
     reminder_message_title: 'Hatırlatma',
-    reminder_turn_on_off: (enabled) => enabled ? 'Hatırlatıcıları kapatın' : 'Hatırlatıcıları açın',
-    button_configure_reminder_hours: '⏰ Hatırlatıcı saatlerini yapılandırın',
     reminder_hours_info: 'Hatırlatıcılar için 3 saate kadar seçin (yerel saat diliminiz). Mevcut:',
     reminder_hours_limit: 'Maksimum 3 saat seçebilirsiniz',
     reminder_hours_saved: '✅ Hatırlatıcı saatleri kaydedildi',
@@ -73,7 +71,6 @@ module.exports = {
   
     // Güvenlik
     security_rate_limit: '⚠️ *Çok fazla istek*\n\n{resetTime} saniye sonra tekrar deneyin\nLimit: dakikada {limit} istek',
-    security_validation_error: '⚠️ *Doğrulama hatası*\n\n{message}',
     security_error: '❌ *Güvenlik hatası*\n\nLütfen daha sonra tekrar deneyin veya yöneticiyle iletişime geçin.',
     
     // Admin paneli
@@ -178,17 +175,12 @@ module.exports = {
         admin_broadcast_header: '🔴🔴🔴 *Duyuru!* 🔴🔴🔴',
         
         // Genel mesajlar
-        welcome: 'Merhaba, {name}! 👋',
-        main_menu_title: '🏠 *Ana menü*\n\nLütfen bir işlem seçin:',
         error: 'Bir hata oluştu 😞',
-        unknown_error: 'Beklenmeyen hata. Lütfen daha sonra tekrar deneyin.',
         not_found: 'Bulunamadı',
-        error_invalid_description_format: '❌ Geçersiz format. Şu şekilde kullanın: Tutar Açıklama veya Tutar Kategori Açıklama',
         expense_save_error: '❌ Harcama kaydedilirken hata oluştu. Tekrar deneyin.',
         cancel: 'İptal',
         back: 'Geri',
         confirm: 'Onayla',
-        save: 'Kaydet',
         
         // Başlangıç mesajı
         start_message: `Merhaba! 👋 Harcamalarınızı ve gelirlerinizi takip etmenize yardımcı olurum.
@@ -216,7 +208,6 @@ Menü aşağıda: ay özeti, bugünkü kayıtlar, gelir, düzenli harcamalar (ki
 Komutlar: /stats /history /income /recurring /export /settings /menu`,
       
         // Harcamalar
-        expense_added: '✅ Kaydedildi: {amount} - {description}',
         expense_updated: '✅ Kayıt güncellendi: {amount} - {description}',
         expense_deleted: '✅ Kayıt silindi: {amount} - {description}',
         no_expenses: 'Silinecek kayıt yok 🤷‍♂️',
@@ -232,7 +223,6 @@ Komutlar: /stats /history /income /recurring /export /settings /menu`,
         
         // Kategorilere göre
         by_categories: 'Kategorilere göre:',
-        no_expenses_category: 'Bu kategoride son ayda harcama yok.',
         
         // Kategoriler
         select_category: 'Kategori seçin:',
@@ -240,15 +230,10 @@ Komutlar: /stats /history /income /recurring /export /settings /menu`,
         description_label: 'Açıklama',
         category_label: 'Kategori',
         expense_added_title: 'Harcama eklendi!',
-        no_categories: 'Kategori bulunamadı.',
-        category_expenses: '"{category}" kategorisindeki harcamalar',
-        no_category_expenses: 'Geçen ay bu kategoride harcama yok.',
         
         // Ayarlar
-        settings_title: 'Ayarlar:',
         currency_select: 'Varsayılan para birimini seçin:',
         currency_set: 'Para birimi ayarlandı: {currency}',
-        currency_updated: 'Para birimi değiştirildi: {currency}',
         button_change_period_start: '📅 Dönem başlangıç günü',
         period_start_prompt: 'Ayın başlangıç gününü gir (1-31). Kısa aylarda son gün seçilir.',
         period_start_invalid: '❌ Geçersiz sayı. 1 ile 31 arasında bir tam sayı girin.',
@@ -267,12 +252,9 @@ Lütfen yerel saati seçin:`,
     family_owner_label: '👑 *Sahip:*',
     family_info: '👨‍👩‍👧‍👦 *Aile Bütçesi*\n\nBurada aile, meslektaşlar, arkadaşlar vb. ile birlikte giderleri ortak şekilde yönetebilirsiniz.\n\n- \uD83D\uDC6A Ortak harcamaları kaydetmek için paylaşılan bir grup oluşturulur.\n- \u2795 Her üye gider ekleyebilir.\n- \uD83D\uDDD1\uFE0F Gerekirse kendi giderlerinizi silebilirsiniz.\n- \uD83D\uDCCA Tüm üyeler için ortak istatistikler mevcuttur.\n- \uD83D\uDCE4 Tüm grup verilerini tek bir dosyaya aktarabilirsiniz.\n\nOrtak kontrol, daha az kaos ve daha fazla şeffaflık demektir.',
     family_created: '✅ "{name}" adlı aile oluşturuldu! Şimdi üye davet edebilirsiniz.',
-    family_joined: '✅ "{name}" ailesine katıldınız!',
     family_left: '✅ "{name}" ailesinden ayrıldınız.',
     family_deleted: '✅ "{name}" ailesi silindi. Tüm aile harcamaları kişisel harcamalara dönüştürüldü.',
-    family_member_removed: '✅ Üye aileden çıkarıldı.',
     family_member_removed_notification: '❌ “{familyName}” ailesinden çıkarıldınız.',
-    family_cannot_leave_owner: '❌ Ailenin sahibi aileden ayrılamaz. "Aileyi sil" seçeneğini kullanın.',
     
     // Aile menü tuşları
     create_family: '🏠 Aile oluştur',
@@ -290,7 +272,6 @@ Lütfen yerel saati seçin:`,
     invitation_sent: '✅ @{username} kullanıcısına davet gönderildi',
     invitation_not_found: '❌ Davet bulunamadı veya süresi doldu.',
     invitation_expired: '❌ Davetin süresi doldu.',
-    invitation_already_processed: '❌ Davet zaten işlenmiş.',
     
     // Giriş mesajları
     enter_family_name: 'Aile adını girin (3-50 karakter):',
@@ -322,38 +303,25 @@ Lütfen yerel saati seçin:`,
     invitation_not_pending: '❌ Davet beklemede değil',
     invitation_cancelled_notification: '❌ “{familyName}” ailesine katılma davetiniz {cancelledBy} tarafından iptal edildi',
     enter_invite_code: '🔑 Davet kodunu girin:',
-    only_owner_can_remove: '❌ Üye çıkarma yetkisi sadece aile sahibine aittir.',
-    only_owner_can_delete: '❌ Aileyi sadece sahibi silebilir.',
-    cannot_remove_owner: '❌ Sahibi çıkaramazsınız.',
-    cannot_remove_yourself: '❌ Kendinizi çıkaramazsınız.',
-    family_not_found: '❌ Aile bulunamadı.',
     not_family_member: '❌ Bu ailenin üyesi değilsiniz.',
     not_family_owner: '❌ Ailenin sahibi değilsiniz.',
     
     // Onay mesajları
     confirm_delete_family: '⚠️ *Aile silme*\n\nTüm üyeler çıkarılacak ve aile harcamaları kişisel harcama olacak.\n\nEmin misiniz?',
     // Aile istatistikleri
-    family_monthly_stats: '👨‍👩‍👧‍👦 *Bu ayın aile harcamaları*',
     family_daily_stats: '💰 Günlük harcamalar',
-    family_daily_stats_title: '👨‍👩‍👧‍👦 *Bugünkü aile harcamaları*',
     family_export: '📊 Aile verilerini dışa aktar',
-    family_total_spent: 'Toplam harcama: *{amount}*',
-    family_members_count: 'Üye sayısı: {count}',
-    family_no_expenses: 'Bu dönem için aile harcaması yok.',
     
     // Üye listesi
     family_members_title: '👥 *Aile üyeleri*',
-    family_member_info: '• {name} ({role}) - {date} tarihinde katıldı',
     family_owner_role: 'Sahip',
     family_member_role: 'Üye',
     remove_member: '❌ Çıkar',
     confirm_remove_member: '⚠️ *Üye çıkarma*\n\n{name} ailesinden çıkarılsın mı?',
     member_removed: '✅ {name} aileden çıkarıldı.',
-    member_removed_notification: '❌ “{familyName}” ailesinden {ownerName} tarafından çıkarıldınız.',
     
     // Premium özellikler
     premium_required: '❌ Bu özellik yalnızca Premium kullanıcılar içindir.',
-    upgrade_to_premium: '💎 Aile bütçesini kullanmak için Premium’a yükseltin!',
     
     timezone_updated: `✅ *Zaman dilimi güncellendi!*
 
@@ -363,10 +331,8 @@ Lütfen yerel saati seçin:`,
 Artık tüm harcamalar yerel saatte gösterilecek.`,
     
     // Limitler
-    limits_title: '📊 *Limit bilgileri*',
     status_regular: '👤 Standart',
     status_premium: '💎 Premium',
-    status_label: '*Durum:* {status}',
     max_description_length: '<b>Maks açıklama uzunluğu:</b> {length} karakter',
     premium_benefits: `💎 <b>Premium avantajları:</b>
   • 🎯 %80’de ve aşıldığında uyarılı aylık ve kategori bütçeleri
@@ -382,7 +348,6 @@ Gider ve gelir kaydı ücretsiz ve sınırsızdır.`,
     premium_subscription_title: '⭐️ Abonelik',
     premium_status_header: '<b>Durumunuz:</b>',
     premium_privileges: 'Avantajlar: {status}',
-    premium_limits_info: 'Burada kategori sayısı, kayıt sayısı, aile özellikleri, Premium süresi gibi limitler görünür.',
     premium_menu_title: '<b>Menü:</b>',
     premium_tariff_button: '⭐️ Tarife',
     premium_why_paid_button: '👀 Neden ücretli?',
@@ -401,10 +366,7 @@ Gider ve gelir kaydı ücretsiz ve sınırsızdır.`,
         no_purchases: 'Henüz satın alma yok',
         purchases_prev_button: '◀ Önceki',
         purchases_next_button: 'Sonraki ▶',
-        purchases_page_indicator: 'Sayfa {page}/{total}',
     premium_why_paid_text: 'Bu botun sunucu masrafı ayda yaklaşık $200. Kullanıcı sayısı sürekli artıyor ve geliştirici olarak hizmeti geliştirmeye devam etmek için gelire ihtiyacım var :)',
-    premium_payment_title: '💳 *Premium abonelik ödeme*',
-    premium_payment_description: 'Seçilen: <b>{duration}</b>\nFiyat: <b>{stars} ⭐️</b>\n\nÖdemek için aşağıya tıklayın.',
     // Tarife etiketleri ve ürün adı
     tariff_button_30: '1 Ay',
     tariff_button_90: '3 Ay',
@@ -427,16 +389,13 @@ Gider ve gelir kaydı ücretsiz ve sınırsızdır.`,
     donate_prompt_text: 'Bağış yapmak istediğiniz yıldız sayısını yazın (1–2500).\nİsterseniz yeni satırda en fazla 500 karakterlik mesaj ekleyebilirsiniz.',
     donate_invalid: '❌ 1 ile 2500 arasında tam sayı girin. Mesaj en fazla 500 karakter olabilir.',
     donate_created: '✅ Bağış isteği oluşturuldu: {stars} ⭐️. Ödeme bağlantısını gönderiyorum.',
-    donate_paid: '🙏 Desteğiniz için teşekkürler! Bağış alındı: {stars} ⭐️',
     
     // Doğrulama hataları
     error_too_long_regular: '❌ Açıklama çok uzun! Standart kullanıcılar için en fazla 80 karakter.',
     error_too_long_premium: '❌ Açıklama çok uzun! Premium için en fazla 160 karakter.',
-    error_no_description: '❌ Tutarın ardından açıklama yazmalısınız.',
     error_amount: '❌ Geçersiz tutar. 0,01 ile 999999 arasında girin.',
     error_format: '❌ Anlayamadım. Tutarla başlayın: `250 kahve`, `20 USD taksi` veya sadece `300`.',
     error_forbidden_content: '❌ Yasaklı içerik.',
-    error_premium_required: '💎 Bu özellik yalnızca Premium ile kullanılabilir.\n\nPremium ile:\n• Uyarılı bütçeler\n• Tam dönem özeti\n• Özel kategoriler\n• Aile bütçesi\n• Kayıtları düzenleme',
     error_generic: '❌ Bir hata oluştu. Daha sonra tekrar deneyin veya yöneticiyle iletişime geçin.',
     
     // Düğmeler
@@ -447,16 +406,13 @@ Gider ve gelir kaydı ücretsiz ve sınırsızdır.`,
     button_family: '👨‍👩‍👧‍👦 Aile',
     button_settings: '⚙️ Ayarlar',
     button_delete_last: '🗑️ Son kaydı sil',
-    button_limits: '📊 Limitler',
     button_help: '❓ Yardım',
     button_edit: 'Düzenle',
-    button_delete: 'Sil',
     button_mark_as_family: '👨‍👩‍👧‍👦 Aileye ekle',
     button_remove_from_family: '🚫 Aile bütçesinden çıkar',
     expense_already_family: '❌ Bu harcama zaten aile bütçesinde',
     expense_converted_to_family: '✅ Harcama aile bütçesine eklendi',
     expense_removed_from_family: '✅ Harcama aile bütçesinden çıkarıldı',
-    not_owner: '❌ Bu harcamanın sahibi değilsiniz',
     button_cancel: '❌ İptal',
     button_back: '⬅️ Geri',
     button_change_currency: '💱 Para birimini değiştir',
@@ -486,16 +442,12 @@ Gider ve gelir kaydı ücretsiz ve sınırsızdır.`,
     edit_format_error: 'Format hatası.',
     
     // Geri bildirimler
-    callback_button_not_found: '❌ Hata: Düğme bulunamadı',
     callback_data_not_found: '❌ Hata: Veri bulunamadı',
     callback_expense_added: '✅ "{category}" kategorisine eklendi',
-    callback_expense_saved: '❌ Kayıt sırasında hata',
     callback_canceled: '❌ İptal edildi',
     callback_expense_canceled: '❌ Harcama ekleme iptal edildi',
     callback_deleted: 'Kayıt silindi!',
     callback_delete_error: 'Silme hatası veya kayıt bulunamadı',
-    callback_edit_mode: 'Düzenleme modundan çıkıldı:',
-    callback_no_cards: 'Kayıt bulunamadı... Hata oluştu',
     
       // Varsayılan kategoriler
   category_food: 'Yemek',

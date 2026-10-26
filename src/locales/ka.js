@@ -49,8 +49,6 @@ module.exports = {
 '📋 ფულს წესრიგი უყვარს. დროა ჩანაწერისთვის.'
     ],
     reminder_message_title: 'შეხსენება',
-    reminder_turn_on_off: (enabled) => enabled ? 'შეხსენებების გამორთვა' : 'შეხსენებების ჩართვა',
-    button_configure_reminder_hours: '⏰ შეხსენების საათების დაყენება',
     reminder_hours_info: 'აირჩიეთ 3-მდე საათი შეხსენებებისთვის (თქვენი ადგილობრივი დროის ზონა). მიმდინარე:',
     reminder_hours_limit: 'შეგიძლიათ აირჩიოთ მაქსიმუმ 3 საათი',
     reminder_hours_saved: '✅ შეხსენების საათები შენახულია',
@@ -74,7 +72,6 @@ module.exports = {
   
     // უსაფრთხოება
     security_rate_limit: '⚠️ *მეტისმეტად ბევრი მოთხოვნა*\n\nსცადეთ ხელახლა {resetTime} წამში\nლიმიტი: {limit} მოთხოვნა წუთში',
-    security_validation_error: '⚠️ *ვალიდაციის შეცდომა*\n\n{message}',
     security_error: '❌ *უსაფრთხოების შეცდომა*\n\nსცადეთ მოგვიანებით ან დაუკავშირდით ადმინს.',
   
     // ადმინის პანელი
@@ -179,17 +176,12 @@ module.exports = {
       admin_broadcast_header: '🔴🔴🔴 *შეტყობინება!* 🔴🔴🔴',
       
       // ზოგადი შეტყობინებები
-      welcome: 'გამარჯობა, {name}! 👋',
-      main_menu_title: '🏠 *მთავარი მენიუ*\n\nაირჩიეთ მოქმედება:',
       error: 'გამოჩნდა შეცდომა 😞',
-      unknown_error: 'მოულოდნელი შეცდომა. სცადეთ მოგვიანებით.',
       not_found: 'ვერ მოიძებნა',
-      error_invalid_description_format: '❌ არასწორი ფორმატი. გამოიყენეთ: თანხა აღწერა ან თანხა კატეგორია აღწერა',
       expense_save_error: '❌ ხარჯის შენახვისას მოხდა შეცდომა. სცადეთ ხელახლა.',
       cancel: 'გაუქმება',
       back: 'უკან',
       confirm: 'დადასტურება',
-      save: 'შენახვა',
       
       // საწყისი შეტყობინება
       start_message: `გამარჯობა! 👋 დაგეხმარებით ხარჯებისა და შემოსავლების აღრიცხვაში.
@@ -217,7 +209,6 @@ module.exports = {
 ბრძანებები: /stats /history /income /recurring /export /settings /menu`,
   
     // ხარჯები
-    expense_added: '✅ ჩაწერილია: {amount} - {description}',
     expense_updated: '✅ ჩანაწერი განახლდა: {amount} - {description}',
     expense_deleted: '✅ ჩანაწერი წაიშალა: {amount} - {description}',
     no_expenses: 'წასაშლელად ჩანაწერი არაა 🤷‍♂️',
@@ -237,15 +228,10 @@ module.exports = {
     description_label: 'აღწერა',
     category_label: 'კატეგორია',
     expense_added_title: 'ხარჯი დამატებულია!',
-    no_categories: 'კატეგორიები ვერ მოიძებნა.',
-    category_expenses: '"{category}" კატეგორიის ხარჯები',
-    no_category_expenses: 'ბოლო თვეში ამ კატეგორიაში ხარჯი არ იყო.',
     
     // პარამეტრები
-    settings_title: 'პარამეტრები:',
     currency_select: 'აირჩიეთ ძირითადი ვალუტა:',
     currency_set: 'ვალუტა დაყენებულია: {currency}',
-    currency_updated: 'ვალუტა შეცვლილია: {currency}',
     button_change_period_start: '📅 პერიოდის დაწყების დღე',
     period_start_prompt: 'შეიყვანეთ ახალი პერიოდის დაწყების თარიღი (1-31). მოკლე თვეებში ბოლო დღე აირჩევა.',
     period_start_invalid: '❌ არასწორი რიცხვი. შეიყვანეთ მთელი რიცხვი 1-დან 31-მდე.',
@@ -264,12 +250,9 @@ module.exports = {
     family_owner_label: '👑 *მფლობელი:*',
     family_info: '👨‍👩‍👧‍👦 *საოჯახო ბიუჯეტი*\n\nაქ შეგიძლიათ ხარჯების მართვა ოჯახის წევრებთან, კოლეგებთან, მეგობრებთან და სხვებთან ერთად.\n\n- \uD83D\uDC6A საერთო ხარჯების აღრიცხვისთვის იქმნება საერთო ჯგუფი.\n- \u2795 თითოეულ წევრს შეუძლია ხარჯების დამატება.\n- \uD83D\uDDD1\uFE0F საჭიროების შემთხვევაში შეგიძლიათ საკუთარი ხარჯების წაშლა.\n- \uD83D\uDCCA ხელმისაწვდომია საერთო სტატისტიკა ყველა წევრისთვის.\n- \uD83D\uDCE4 მთელი ჯგუფის მონაცემების ექსპორტი ერთ ფაილში.\n\nსაერთო კონტროლი ნიშნავს ნაკლებ ქაოს და მეტ გამჭვირვალებას.',
     family_created: '✅ "{name}" ოჯახი შეიქმნა! ახლა შეგიძლიათ წევრები მოიწვიოთ.',
-    family_joined: '✅ თქვენ შეუერთდით "{name}" ოჯახს!',
     family_left: '✅ თქვენ გახვედით "{name}" ოჯახიდან.',
     family_deleted: '✅ "{name}" ოჯახი წაიშალა. ყველა საოჯახო ხარჯი პირად ხარჯებად გარდაიქმნა.',
-    family_member_removed: '✅ წევრი ოჯახიდან ამოშლილია.',
     family_member_removed_notification: '❌ თქვენ ამოშლილი ხართ „{familyName}“ ოჯახიდან.',
-    family_cannot_leave_owner: '❌ ოჯახის მფლობელი ვერ გაივლის. გამოიყენეთ „ოჯახის წაშლა" დახმარება.',
     
     // ოჯახის მენიუს ღილაკები
     create_family: '🏠 ოჯახის შექმნა',
@@ -287,7 +270,6 @@ module.exports = {
     invitation_sent: '✅ მოწვევა გაეგზავნა @{username}',
     invitation_not_found: '❌ მოწვევა ვერ მოიძებნა ან ვადა გაუვიდა.',
     invitation_expired: '❌ მოწვევის ვადა გასულია.',
-    invitation_already_processed: '❌ მოწვევა უკვე დამუშავებულია.',
     
     // შეყვანის მოთხოვნები
     enter_family_name: 'შეიყვანეთ ოჯახის სახელი (3-50 სიმბოლო):',
@@ -319,38 +301,25 @@ module.exports = {
     invitation_not_pending: '❌ ეს მოწვევა აღარ არის მოლოდინის სტატუსში',
     invitation_cancelled_notification: '❌ „{familyName}“ ოჯახში შესვლის თქვენი მოწვევა გაუქმდა {cancelledBy} მიერ',
     enter_invite_code: '🔑 შეიყვანეთ მოწვევის კოდი:',
-    only_owner_can_remove: '❌ მხოლოდ ოჯახის მფლობელს შეუძლია წევრების ამოღება.',
-    only_owner_can_delete: '❌ მხოლოდ ოჯახის მფლობელს შეუძლია ოჯახის წაშლა.',
-    cannot_remove_owner: '❌ მფლობელის ამოშლა შეუძლებელია.',
-    cannot_remove_yourself: '❌ საკუთარ თავს ვერ ამოშლით.',
-    family_not_found: '❌ ოჯახი ვერ მოიძებნა.',
     not_family_member: '❌ თქვენ არ ხართ ამ ოჯახის წევრი.',
     not_family_owner: '❌ თქვენ არ ხართ ოჯახის მფლობელი.',
     
     // დადასტურება
     confirm_delete_family: '⚠️ *ოჯახის წაშლა*\n\nყველა წევრი წაიშლება, საოჯახო ხარჯები პირად ხარჯებად გადაიქცევა.\n\nგსურთ გაგრძელება?',
     // საოჯახო სტატისტიკა
-    family_monthly_stats: '👨‍👩‍👧‍👦 *ამ თვის საოჯახო ხარჯები*',
     family_daily_stats: '💰 დღევანდელი ხარჯები',
-    family_daily_stats_title: '👨‍👩‍👧‍👦 *დღევანდელი საოჯახო ხარჯები*',
     family_export: '📊 საოჯახო მონაცემების ექსპორტი',
-    family_total_spent: 'სულ: *{amount}*',
-    family_members_count: 'წევრთა რაოდენობა: {count}',
-    family_no_expenses: 'ამ პერიოდში საოჯახო ხარჯები არაა.',
     
     // წევრთა სია
     family_members_title: '👥 *ოჯახის წევრები*',
-    family_member_info: '• {name} ({role}) — შემოუერთდა {date}',
     family_owner_role: 'მფლობელი',
     family_member_role: 'წევრი',
     remove_member: '❌ ამოშლა',
     confirm_remove_member: '⚠️ *წევრის ამოშლა*\n\nგსურთ {name} ოჯახის ამოღება?',
     member_removed: '✅ {name} ამოღებულია ოჯახიდან.',
-    member_removed_notification: '❌ თქვენ ამოღებული ხართ „{familyName}“ ოჯახიდან {ownerName} მიერ.',
     
     // პრემიუმ ფუნქციები
     premium_required: '❌ ეს ფუნქცია ხელმისაწვდომია მხოლოდ პრემიუმ მომხმარებლებისთვის.',
-    upgrade_to_premium: '💎 საოჯახო ბიუჯეტის გამოსაყენებლად გადადით პრემიუმ პაკეტზე!',
     
     timezone_updated: `✅ *დროის სარტყელი განახლდა!*
 
@@ -360,10 +329,8 @@ module.exports = {
 აქედან მოყოლებული, ხარჯები გამოჩნდება ადგილობრივი დროით.`,
     
     // ლიმიტები
-    limits_title: '📊 *ლიმიტების შესახებ ინფორმაცია*',
     status_regular: '👤 სტანდარტული',
     status_premium: '💎 პრემიუმი',
-    status_label: '*სტატუსი:* {status}',
     max_description_length: '<b>აღწერის მაქს. სიგრძე:</b> {length} სიმბოლო',
     premium_benefits: `💎 <b>პრემიუმ უპირატესობები:</b>
   • 🎯 თვიური და კატეგორიის ბიუჯეტები შეტყობინებებით 80%-ზე და გადაჭარბებისას
@@ -379,7 +346,6 @@ module.exports = {
     premium_subscription_title: '⭐️ გამოწერა',
     premium_status_header: '<b>თქვენი სტატუსი:</b>',
     premium_privileges: 'უპირატესობები: {status}',
-    premium_limits_info: 'აქ შეგიძლიათ ნახოთ ლიმიტები: კატეგორიების რაოდენობა, ჩანაწერები, საოჯახო ფუნქციები, პრემიუმ ვადა.',
     premium_menu_title: '<b>მენიუ:</b>',
     premium_tariff_button: '⭐️ ტარიფები',
     premium_why_paid_button: '👀 რატომ ფასიანი?',
@@ -398,10 +364,7 @@ module.exports = {
     no_purchases: 'ჯერ არ არის შეძენები',
     purchases_prev_button: '◀ წინა',
     purchases_next_button: 'შემდეგი ▶',
-    purchases_page_indicator: 'გვერდი {page}/{total}',
     premium_why_paid_text: 'ბოტის სერვერის შენახვა თვეში დაახლოებით $200 ჯდება. მომხმარებელთა რაოდენობა იზრდება და როგორც დეველოპერს, სჭირდება შემოსავალი სერვისის გასაუმჯობესებლად :)',
-    premium_payment_title: '💳 *პრემიუმ გამოწერის გადახდა*',
-    premium_payment_description: 'არჩეულია: <b>{duration}</b>\nფასი: <b>{stars} ⭐️</b>\n\nგადახდისთვის დააჭირეთ ქვემოთ ღილაკს.',
     // ტარიფების ლეიბლები და პროდუქტის სახელი
     tariff_button_30: '1 თვე',
     tariff_button_90: '3 თვე',
@@ -424,16 +387,13 @@ module.exports = {
     donate_prompt_text: 'შეიყვანეთ ვარსკვლავების რაოდენობა (1–2500).\nშემდეგ ხაზზე (სურვილისამებრ) შეგიძლიათ დაწეროთ შეტყობინება (მაქს. 500 სიმბოლო).',
     donate_invalid: '❌ შეიყვანეთ მთელი რიცხვი 1-დან 2500-მდე. შეტყობინება მაქს. 500 სიმბოლო.',
     donate_created: '✅ დონაციის მოთხოვნა შექმნილია: {stars} ⭐️. გადმოგიგზავნით ბმულს გადახდისთვის.',
-    donate_paid: '🙏 გმადლობთ მხარდაჭერისთვის! მიღებულია: {stars} ⭐️',
     
     // ვალიდაციის შეცდომები
     error_too_long_regular: '❌ აღწერა ძალიან გრძელია! სტანდარტისთვის მაქს. 80 სიმბოლო.',
     error_too_long_premium: '❌ აღწერა ძალიან გრძელია! პრემიუმისთვის მაქს. 160 სიმბოლო.',
-    error_no_description: '❌ თანხის შემდეგ უნდა დაიწეროს აღწერა.',
     error_amount: '❌ არასწორი თანხა. შეიყვანეთ რიცხვი 0.01–დან 999999-მდე.',
     error_format: '❌ ვერ გავიგე. დაიწყეთ თანხით: `250 ყავა`, `20 USD ტაქსი` ან უბრალოდ `300`.',
     error_forbidden_content: '❌ დაუშვებელი შემცველობა.',
-    error_premium_required: '💎 ეს ფუნქცია მხოლოდ პრემიუმით არის ხელმისაწვდომი.\n\nპრემიუმი გაძლევთ:\n• ბიუჯეტები შეტყობინებებით\n• პერიოდის სრული შეჯამება\n• პერსონალური კატეგორიები\n• საოჯახო ბიუჯეტი\n• ჩანაწერების რედაქტირება',
     error_generic: '❌ მოხდა შეცდომა. სცადეთ მოგვიანებით ან დაუკავშირდით ადმინისტრაციას.',
     
     // ღილაკები
@@ -444,16 +404,13 @@ module.exports = {
     button_family: '👨‍👩‍👧‍👦 ოჯახი',
     button_settings: '⚙️ პარამეტრები',
     button_delete_last: '🗑️ ბოლო ჩანაწერის წაშლა',
-    button_limits: '📊 ლიმიტები',
     button_help: '❓ დახმარება',
     button_edit: 'რედაქტირება',
-    button_delete: 'წაშლა',
     button_mark_as_family: '👨‍👩‍👧‍👦 საოჯახოში გადატანა',
     button_remove_from_family: '🚫 საოჯახოდან წაშლა',
     expense_already_family: '❌ ეს ხარჯი უკვე საოჯახო ბიუჯეტშია',
     expense_converted_to_family: '✅ ხარჯი საოჯახო ბიუჯეტში გადატანილია',
     expense_removed_from_family: '✅ ხარჯი საოჯახო ბიუჯეტიდან ამოშლილია',
-    not_owner: '❌ თქვენ არ ხართ ამ ხარჯის ავტორი',
     button_cancel: '❌ გაუქმება',
     button_back: '⬅️ უკან',
     button_change_currency: '💱 ვალუტის შეცვლა',
@@ -483,16 +440,12 @@ module.exports = {
     edit_format_error: 'ფორმატის შეცდომა.',
     
     // Callback პასუხები
-    callback_button_not_found: '❌ შეცდომა: ღილაკი ვერ მოიძებნა',
     callback_data_not_found: '❌ შეცდომა: მონაცემები ვერ მოიძებნა',
     callback_expense_added: '✅ დაემატა კატეგორიას "{category}"',
-    callback_expense_saved: '❌ შენახვის შეცდომა',
     callback_canceled: '❌ გაუქმებულია',
     callback_expense_canceled: '❌ ხარჯის დამატება გაუქმდა',
     callback_deleted: 'ჩანაწერი წაიშალა!',
     callback_delete_error: 'წაშლის შეცდომა ან ჩანაწერი ვერ მოიძებნა',
-    callback_edit_mode: 'რედაქტირების რეჟიმიდან გასვლა:',
-    callback_no_cards: 'ჩანაწერები არ მოიძებნა... შეცდომა',
     
     // ნაგულისხმევი კატეგორიები
     category_food: 'საკვები',
@@ -525,7 +478,6 @@ module.exports = {
     custom_categories_premium_required: '💎 ეს ფუნქცია მხოლოდ პრემიუმ მომხმარებლებისთვისაა.',
     // სტატისტიკა
     by_categories: 'კატეგორიების მიხედვით:',
-    no_expenses_category: 'ამ კატეგორიაში ბოლო თვეში ხარჯები არ არის.',
 
     button_income: '💵 შემოსავალი',
     button_add_income: '➕ შემოსავლის დამატება',

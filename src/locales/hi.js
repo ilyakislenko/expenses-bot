@@ -49,8 +49,6 @@ module.exports = {
 '📋 पैसे को व्यवस्था पसंद है। एंट्री करने का समय है।'
     ],
     reminder_message_title: 'रिमाइंडर',
-    reminder_turn_on_off: (enabled) => enabled ? 'रिमाइंडर बंद करें' : 'रिमाइंडर चालू करें',
-    button_configure_reminder_hours: '⏰ रिमाइंडर के घंटे सेट करें',
     reminder_hours_info: 'रिमाइंडर के लिए 3 घंटे तक चुनें (आपका स्थानीय समय क्षेत्र)। वर्तमान:',
     reminder_hours_limit: 'आप अधिकतम 3 घंटे चुन सकते हैं',
     reminder_hours_saved: '✅ रिमाइंडर के घंटे सहेजे गए',
@@ -74,7 +72,6 @@ module.exports = {
     
     // सुरक्षा संदेश
     security_rate_limit: '⚠️ *बहुत अधिक अनुरोध*\n\n{resetTime} सेकंड में पुनः प्रयास करें\nसीमा: एक मिनट में {limit} अनुरोध',
-    security_validation_error: '⚠️ *मान्यता त्रुटि*\n\n{message}',
     security_error: '❌ *सुरक्षा त्रुटि*\n\nबाद में प्रयास करें या व्यवस्थापक से संपर्क करें।',
     
     // एडमिन पैनल
@@ -179,17 +176,12 @@ module.exports = {
     admin_broadcast_header: '🔴🔴🔴 *अधिसूचना!* 🔴🔴🔴',
     
     // सामान्य संदेश
-    welcome: 'नमस्ते, {name}! 👋',
-    main_menu_title: '🏠 *मुख्य मेनू*\n\nकृपया एक क्रिया चुनें:',
     error: 'कोई त्रुटि हुई 😞',
-    unknown_error: 'अप्रत्याशित त्रुटि। बाद में पुनः प्रयास करें।',
     not_found: 'नहीं मिला',
-    error_invalid_description_format: '❌ गलत प्रारूप। उपयोग करें: राशि विवरण या राशि श्रेणी विवरण',
     expense_save_error: '❌ खर्च सहेजते समय त्रुटि। पुनः प्रयास करें।',
     cancel: 'रद्द करें',
     back: 'वापस',
     confirm: 'पुष्टि करें',
-    save: 'सहेजें',
     
     // स्टार्ट संदेश
     start_message: `नमस्ते! 👋 मैं आपके खर्च और आय रिकॉर्ड करने में मदद करूँगा।
@@ -217,7 +209,6 @@ module.exports = {
 कमांड: /stats /history /income /recurring /export /settings /menu`,
   
     // खर्च
-    expense_added: '✅ दर्ज किया गया: {amount} - {description}',
     expense_updated: '✅ प्रविष्टि अपडेट की गई: {amount} - {description}',
     expense_deleted: '✅ प्रविष्टि हटाई गई: {amount} - {description}',
     no_expenses: 'हटाने के लिए कोई प्रविष्टि नहीं 🤷‍♂️',
@@ -233,7 +224,6 @@ module.exports = {
     
     // श्रेणियों के अनुसार
     by_categories: 'श्रेणियों के अनुसार:',
-    no_expenses_category: 'इस श्रेणी में पिछले महीने कोई खर्च नहीं है।',
     
     // श्रेणियाँ
     select_category: 'श्रेणी चुनें:',
@@ -241,15 +231,10 @@ module.exports = {
     description_label: 'विवरण',
     category_label: 'श्रेणी',
     expense_added_title: 'खर्च जोड़ा गया!',
-    no_categories: 'कोई श्रेणी नहीं मिली।',
-    category_expenses: '"{category}" श्रेणी के खर्च',
-    no_category_expenses: 'पिछले महीने इस श्रेणी में कोई खर्च नहीं।',
     
     // सेटिंग्स
-    settings_title: 'सेटिंग्स:',
     currency_select: 'डिफ़ॉल्ट मुद्रा चुनें:',
     currency_set: 'मुद्रा सेट की गई: {currency}',
-    currency_updated: 'मुद्रा बदली गई: {currency}',
     button_change_period_start: '📅 अवधि शुरू होने की तारीख',
     period_start_prompt: 'नया महीना शुरू होने का दिन दर्ज करें (1-31)। छोटे महीनों में अंतिम दिन लिया जाएगा।',
     period_start_invalid: '❌ अमान्य संख्या। 1 से 31 के बीच पूर्णांक दर्ज करें।',
@@ -268,12 +253,9 @@ module.exports = {
     family_owner_label: '👑 *मालिक:*',
     family_info: '👨‍👩‍👧‍👦 परिवार बजट\n\nयहाँ आप परिवार, सहकर्मियों, दोस्तों आदि के साथ मिलकर खर्चों का प्रबंधन कर सकते हैं।\n\n- \uD83D\uDC6A संयुक्त खर्चों का रिकॉर्ड रखने के लिए एक साझा समूह बनाया जाता है।\n- \u2795 हर सदस्य खर्च जोड़ सकता है।\n- \uD83D\uDDD1\uFE0F आवश्यकता होने पर आप अपने खर्चों को हटा सकते हैं।\n- \uD83D\uDCCA सभी सदस्यों के लिए साझा आँकड़े उपलब्ध हैं।\n- \uD83D\uDCE4 पूरे समूह के डेटा को एक ही फ़ाइल में निर्यात किया जा सकता है।\n\nसाझा नियंत्रण का मतलब है कम अव्यवस्था और अधिक पारदर्शिता।',
     family_created: '✅ परिवार "{name}" बनाया गया! अब आप सदस्य आमंत्रित कर सकते हैं।',
-    family_joined: '✅ आप परिवार "{name}" में शामिल हो गए हैं!',
     family_left: '✅ आपने परिवार "{name}" छोड़ दिया है।',
     family_deleted: '✅ परिवार "{name}" हटा दिया गया। सभी पारिवारिक खर्च निजी खर्च में बदल गए।',
-    family_member_removed: '✅ सदस्य को परिवार से हटाया गया।',
     family_member_removed_notification: '❌ आपको «{familyName}» परिवार से हटा दिया गया है।',
-    family_cannot_leave_owner: '❌ परिवार का मालिक परिवार नहीं छोड़ सकता। "परिवार हटाएँ" का उपयोग करें।',
     
     // पारिवारिक मेन्यू बटन
     create_family: '🏠 परिवार बनाएँ',
@@ -291,7 +273,6 @@ module.exports = {
     invitation_sent: '✅ @{username} को आमंत्रण भेजा गया',
     invitation_not_found: '❌ आमंत्रण नहीं मिला या समाप्त हो गया।',
     invitation_expired: '❌ आमंत्रण समाप्त हो गया।',
-    invitation_already_processed: '❌ आमंत्रण पहले ही संसाधित हो चुका है।',
     
     // इनपुट संदेश
     enter_family_name: 'परिवार का नाम दर्ज करें (3-50 अक्षर):',
@@ -323,38 +304,25 @@ module.exports = {
     invitation_not_pending: '❌ आमंत्रण लंबित नहीं है',
     invitation_cancelled_notification: '❌ आपको «{familyName}» परिवार से जाने का आमंत्रण {cancelledBy} ने रद्द किया',
     enter_invite_code: '🔑 आमंत्रण कोड दर्ज करें:',
-    only_owner_can_remove: '❌ केवल परिवार का मालिक सदस्य हटा सकता है।',
-    only_owner_can_delete: '❌ केवल मालिक परिवार हटा सकता है।',
-    cannot_remove_owner: '❌ मालिक को हटाया नहीं जा सकता।',
-    cannot_remove_yourself: '❌ आप स्वयं को नहीं हटा सकते।',
-    family_not_found: '❌ परिवार नहीं मिला।',
     not_family_member: '❌ आप इस परिवार के सदस्य नहीं हैं।',
     not_family_owner: '❌ आप परिवार के मालिक नहीं हैं।',
     
     // पुष्टिकरण
     confirm_delete_family: '⚠️ *परिवार हटाना*\n\nसभी सदस्य हटा दिए जाएंगे और पारिवारिक खर्च निजी खर्च बन जाएंगे।\n\nक्या आप सुनिश्चित हैं?',
     // पारिवारिक आँकड़े
-    family_monthly_stats: '👨‍👩‍👧‍👦 *इस महीने के पारिवारिक खर्च*',
     family_daily_stats: '💰 दिन का खर्च',
-    family_daily_stats_title: '👨‍👩‍👧‍👦 *आज के पारिवारिक खर्च*',
     family_export: '📊 पारिवारिक डेटा एक्सपोर्ट',
-    family_total_spent: 'कुल खर्च: *{amount}*',
-    family_members_count: 'सदस्य: {count}',
-    family_no_expenses: 'इस अवधि के लिए कोई पारिवारिक खर्च नहीं।',
     
     // सदस्य सूची
     family_members_title: '👥 *परिवार के सदस्य*',
-    family_member_info: '• {name} ({role}) - {date} को शामिल हुए',
     family_owner_role: 'मालिक',
     family_member_role: 'सदस्य',
     remove_member: '❌ हटाएँ',
     confirm_remove_member: '⚠️ *सदस्य हटाना*\n\nक्या आप सुनिश्चित हैं कि {name} को परिवार से हटाना चाहते हैं?',
     member_removed: '✅ {name} को परिवार से हटा दिया गया।',
-    member_removed_notification: '❌ आपको «{familyName}» परिवार से {ownerName} ने हटा दिया।',
     
     // प्रीमियम सुविधाएँ
     premium_required: '❌ यह सुविधा केवल प्रीमियम उपयोगकर्ताओं के लिए उपलब्ध है।',
-    upgrade_to_premium: '💎 पारिवारिक बजट का उपयोग करने के लिए प्रीमियम में अपग्रेड करें!',
     
     timezone_updated: `✅ *समय क्षेत्र अपडेट किया गया!*
 
@@ -364,10 +332,8 @@ module.exports = {
 अब आपके सभी खर्च आपके स्थानीय समय पर प्रदर्शित होंगे।`,
     
     // सीमाएँ
-    limits_title: '📊 *सीमाओं की जानकारी*',
     status_regular: '👤 सामान्य',
     status_premium: '💎 प्रीमियम',
-    status_label: '*स्थिति:* {status}',
     max_description_length: '<b>विवरण की अधिकतम लंबाई:</b> {length} अक्षर',
     premium_benefits: `💎 <b>प्रीमियम लाभ:</b>
 • 🎯 मासिक और श्रेणी-वार बजट, 80% पर और सीमा पार होने पर अलर्ट
@@ -383,7 +349,6 @@ module.exports = {
     premium_subscription_title: '⭐️ सदस्यता',
     premium_status_header: '<b>आपकी स्थिति:</b>',
     premium_privileges: 'लाभ: {status}',
-    premium_limits_info: 'यहाँ आपके सीमाएँ दिखाई देंगी: श्रेणियों की संख्या, रिकॉर्ड, पारिवारिक सुविधाएँ, प्रीमियम अवधि।',
     premium_menu_title: '<b>मेनू:</b>',
     premium_tariff_button: '⭐️ टैरिफ',
     premium_why_paid_button: '👀 क्यों भुगतान करना है?',
@@ -402,10 +367,7 @@ module.exports = {
     no_purchases: 'अभी तक कोई खरीद नहीं',
     purchases_prev_button: '◀ पिछला',
     purchases_next_button: 'अगला ▶',
-    purchases_page_indicator: 'पृष्ठ {page}/{total}',
     premium_why_paid_text: 'इस बॉट के सर्वर का खर्च लगभग $200/माह आता है, और उपयोगकर्ताओं की संख्या लगातार बढ़ रही है। डेवलपर होने के नाते, मुझे भी सेवा सुधारने के लिए जीवित रहना है :)',
-    premium_payment_title: '💳 *प्रीमियम सदस्यता भुगतान*',
-    premium_payment_description: 'आपने चुना है: <b>{duration}</b>\nकीमत: <b>{stars} ⭐️</b>\n\nभुगतान के लिए नीचे क्लिक करें।',
     // टैरिफ लेबल्स और उत्पाद नाम
     tariff_button_30: '1 माह',
     tariff_button_90: '3 माह',
@@ -428,16 +390,13 @@ module.exports = {
     donate_prompt_text: 'आप कितने सितारे (1 से 2500) दान करना चाहते हैं लिखें।\nआप एक संदेश भी जोड़ सकते हैं (अधिकतम 500 अक्षर)।',
     donate_invalid: '❌ 1 से 2500 के बीच पूर्णांक दर्ज करें। संदेश — अधिकतम 500 अक्षर।',
     donate_created: '✅ दान अनुरोध बना: {stars} ⭐️। भुगतान लिंक भेज रहा हूँ।',
-    donate_paid: '🙏 समर्थन के लिए धन्यवाद! दान प्राप्त हुआ: {stars} ⭐️',
     
     // मान्यकरण त्रुटियाँ
     error_too_long_regular: '❌ विवरण बहुत लंबा है! सामान्य उपयोगकर्ताओं के लिए अधिकतम 80 अक्षर।',
     error_too_long_premium: '❌ विवरण बहुत लंबा है! प्रीमियम के लिए अधिकतम 160 अक्षर।',
-    error_no_description: '❌ राशि के बाद एक विवरण लिखना आवश्यक है।',
     error_amount: '❌ अमान्य राशि। 0.01 से 999999 के बीच दर्ज करें।',
     error_format: '❌ समझ नहीं आया। राशि से शुरू करें: `250 कॉफ़ी`, `20 USD टैक्सी` या सिर्फ़ `300`.',
     error_forbidden_content: '❌ प्रतिबंधित सामग्री।',
-    error_premium_required: '💎 यह सुविधा केवल प्रीमियम के लिए है।\n\nप्रीमियम देता है:\n• अलर्ट के साथ बजट\n• अवधि का पूरा सारांश\n• कस्टम श्रेणियाँ\n• पारिवारिक बजट\n• रिकॉर्ड संपादित करना',
     error_generic: '❌ त्रुटि हुई। बाद में पुनः प्रयास करें या एडमिन से संपर्क करें।',
     
     // बटन
@@ -448,16 +407,13 @@ module.exports = {
     button_family: '👨‍👩‍👧‍👦 परिवार',
     button_settings: '⚙️ सेटिंग्स',
     button_delete_last: '🗑️ अंतिम प्रविष्टि हटाएँ',
-    button_limits: '📊 सीमाएँ',
     button_help: '❓ सहायता',
     button_edit: 'संपादित करें',
-    button_delete: 'हटाएँ',
     button_mark_as_family: '👨‍👩‍👧‍👦 परिवार में डालें',
     button_remove_from_family: '🚫 परिवार बजट से हटाएँ',
     expense_already_family: '❌ यह खर्च पहले से ही पारिवारिक है',
     expense_converted_to_family: '✅ खर्च पारिवारिक बजट में जोड़ा गया',
     expense_removed_from_family: '✅ खर्च परिवार बजट से हटाया गया',
-    not_owner: '❌ आप इस खर्च के लेखक नहीं हैं',
     button_cancel: '❌ रद्द करें',
     button_back: '⬅️ वापस',
     button_change_currency: '💱 मुद्रा बदलें',
@@ -487,16 +443,12 @@ module.exports = {
     edit_format_error: 'प्रारूप त्रुटि।',
     
     // कॉलबैक प्रतिक्रियाएँ
-    callback_button_not_found: '❌ त्रुटि: बटन नहीं मिला',
     callback_data_not_found: '❌ त्रुटि: डेटा नहीं मिला',
     callback_expense_added: '✅ "{category}" श्रेणी में जोड़ा गया',
-    callback_expense_saved: '❌ सहेजने में त्रुटि',
     callback_canceled: '❌ रद्द',
     callback_expense_canceled: '❌ खर्च जोड़ना रद्द',
     callback_deleted: 'प्रविष्टि हटाई गई!',
     callback_delete_error: 'हटाने में त्रुटि या प्रविष्टि नहीं मिली',
-    callback_edit_mode: 'संपादन मोड से बाहर:',
-    callback_no_cards: 'कोई रिकॉर्ड नहीं मिला... त्रुटि हुई',
     
     // डिफ़ॉल्ट श्रेणियाँ
     category_food: 'खाना',

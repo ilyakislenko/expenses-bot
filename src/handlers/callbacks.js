@@ -936,7 +936,7 @@ class CallbackHandlers {
       // Удаляем семью
       const deletedFamily = await this.familyService.deleteFamily(userId);
       
-      const familyDeletedText = this.localizationService.getText(userLanguage, 'family_deleted', { name: deletedFamily.name });
+      const familyDeletedText = this.localizationService.getText(userLanguage, 'family_deleted', { name: this.formatter.escapeMarkdown(deletedFamily.name) });
       const backText = this.localizationService.getText(userLanguage, 'button_back');
       
       await ctx.answerCbQuery();
@@ -964,7 +964,7 @@ class CallbackHandlers {
       // Покидаем семью
       const leftFamily = await this.familyService.leaveFamily(userId);
       
-      const familyLeftText = this.localizationService.getText(userLanguage, 'family_left', { name: leftFamily.name });
+      const familyLeftText = this.localizationService.getText(userLanguage, 'family_left', { name: this.formatter.escapeMarkdown(leftFamily.name) });
       const backText = this.localizationService.getText(userLanguage, 'button_back');
       
       await ctx.answerCbQuery();

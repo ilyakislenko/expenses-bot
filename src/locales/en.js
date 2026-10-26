@@ -2,7 +2,6 @@ module.exports = {
   button_reminders: '🔔 Remind me',
   reminders_enabled: '🔔 Reminders are on',
   reminders_disabled: 'Reminders are OFF. I’ll be quiet 🤐',
-  button_configure_reminder_hours: '⏰ Configure reminder hours',
   reminder_hours_info: 'Select up to 3 hours for reminders (your local timezone). Current:',
   reminder_hours_limit: 'You can select up to 3 hours',
   reminder_hours_saved: '✅ Reminder hours saved',
@@ -55,7 +54,6 @@ module.exports = {
 '📋 Money loves order. Time to make an entry.'
   ],
   reminder_message_title: 'Reminder',
-  reminder_turn_on_off: (enabled) => enabled ? 'Turn reminders OFF' : 'Turn reminders ON',
   
   // Bug reports
   button_bug_report: '🐛 Report Bug / Suggest Improvement',
@@ -68,7 +66,6 @@ module.exports = {
   
   // Security messages
   security_rate_limit: '⚠️ *Too many requests*\n\nTry again in {resetTime} seconds\nLimit: {limit} requests per minute',
-  security_validation_error: '⚠️ *Validation error*\n\n{message}',
   security_error: '❌ *Security error*\n\nPlease try again later or contact administrator.',
   
   // Admin panel
@@ -174,15 +171,11 @@ module.exports = {
   admin_broadcast_header: '🔴🔴🔴 *Notification!* 🔴🔴🔴',
   
   // General messages
-  welcome: 'Hello, {name}! 👋',
   error: 'An error occurred 😞',
-  unknown_error: 'An unexpected error occurred. Please try again later.',
   not_found: 'Not found',
-  error_invalid_description_format: '❌ Invalid expense format. Use: amount description or amount category description',
   cancel: 'Cancel',
   back: 'Back',
   confirm: 'Confirm',
-  save: 'Save',
   
   // Commands
   start_message: `Hello! 👋 I'll help you track your expenses and income.
@@ -211,7 +204,6 @@ The menu is at the bottom: month overview, today's records, income, recurring ex
 Commands: /stats /history /income /recurring /export /settings /menu`,
 
   // Expenses
-  expense_added: '✅ Recorded: {amount} - {description}',
   expense_updated: '✅ Entry updated: {amount} - {description}',
   expense_deleted: '✅ Deleted entry: {amount} - {description}',
   no_expenses: 'No entries to delete 🤷‍♂️',
@@ -230,15 +222,10 @@ Commands: /stats /history /income /recurring /export /settings /menu`,
   description_label: 'Description',
   category_label: 'Category',
   expense_added_title: 'Expense added!',
-  no_categories: 'Categories not found.',
-  category_expenses: 'Expenses for category "{category}"',
-  no_category_expenses: 'No expenses for this category in the last month.',
   
   // Settings
-  settings_title: 'Settings:',
   currency_select: 'Select the currency that will be used by default:',
   currency_set: 'Currency set: {currency}',
-  currency_updated: 'Currency successfully changed to {currency}',
   button_change_period_start: '📅 Period start day',
   period_start_prompt: 'Enter the day from which each month your new period will start 👇🏼\n\nIt must be a number from 1 to 31. For shorter months, the last day will be used.',
   period_start_invalid: '❌ Invalid number. Please enter an integer from 1 to 31.',
@@ -259,10 +246,8 @@ Select your current time:`,
 Now all your expenses will be correctly displayed in your local time.`,
   
   // Limits
-  limits_title: '📊 *Limits Information*',
   status_regular: '👤 Standard',
   status_premium: '💎 Premium',
-  status_label: '*Status:* {status}',
   max_description_length: '<b>Max description length:</b> {length} characters',
   premium_benefits: `💎 <b>Premium benefits:</b>
 • 🎯 Monthly and per-category budgets with alerts at 80% and when exceeded
@@ -277,11 +262,9 @@ Recording expenses and income is free and unlimited.`,
   // Validation errors
   error_too_long_regular: '❌ Description is too long!\nMaximum 80 characters for regular users.',
   error_too_long_premium: '❌ Description is too long!\nMaximum 160 characters for premium users.',
-  error_no_description: '❌ You need to specify a description after the amount.',
   error_amount: '❌ Invalid amount. Enter a number from 0.01 to 999999.',
   error_format: '❌ I did not get it. Start with an amount: `250 coffee`, `20 USD taxi` or just `300`.',
   error_forbidden_content: '❌ Forbidden content.',
-  error_premium_required: '💎 This feature is available with premium only.\n\nPremium gives you:\n• Budgets with alerts\n• Full period summary\n• Custom categories\n• Family budget\n• Editing records',
   error_generic: '❌ An error occurred. Please try again later or contact the administrator.',
   
   // Buttons
@@ -292,15 +275,12 @@ Recording expenses and income is free and unlimited.`,
   button_family: '👨‍👩‍👧‍👦 Family',
   button_settings: '⚙️ Settings',
   button_delete_last: '🗑️ Delete Last Entry',
-  button_limits: '📊 Limits',
   button_help: '❓ Help',
   button_edit: 'Edit',
-  button_delete: 'Delete',
   button_remove_from_family: '🚫 From Family Budget',
   expense_already_family: '❌ This expense is already family',
   expense_converted_to_family: '✅ Expense moved to family budget',
   expense_removed_from_family: '✅ Expense removed from family budget',
-  not_owner: '❌ You are not the owner of this expense',
   button_cancel: '❌ Cancel',
   button_back: '⬅️ Back',
   button_change_currency: '💱 Change Currency',
@@ -309,7 +289,6 @@ Recording expenses and income is free and unlimited.`,
   button_custom_categories: '🏷️ Custom Categories',
   
   // Main menu
-  main_menu_title: '🏠 *Main Menu*\n\nChoose an action:',
   
   // Languages
   language_select: '🌍 Select language:',
@@ -334,26 +313,18 @@ Recording expenses and income is free and unlimited.`,
   edit_format_error: 'Format error.',
   
   // Callback responses
-  callback_button_not_found: '❌ Error: button not found',
   callback_data_not_found: '❌ Error: data not found',
   callback_expense_added: '✅ Added to category "{category}"',
-  callback_expense_saved: '❌ An error occurred while saving',
   callback_canceled: '❌ Canceled',
   callback_expense_canceled: '❌ Adding expense canceled',
   callback_deleted: 'Entry deleted!',
   callback_delete_error: 'Delete error or entry not found',
-  callback_edit_mode: 'Exit edit mode:',
-  callback_no_cards: 'somehow there are no cards...an error occurred',
   
   // Statistics
   by_categories: 'By categories:',
-  no_expenses_category: 'No expenses for this category for the last month.',
   select_category: 'Select category:',
   
   // Formatting
-  amount_format: '{amount} {currency}',
-  date_format: '{month}/{day}/{year}',
-  time_format: '{hour}:{minute}',
   
   // CSV Export
   date_label: 'Date',
@@ -374,12 +345,9 @@ Recording expenses and income is free and unlimited.`,
   family_owner_label: '👑 *Owner:*',
   family_info: '👨‍👩‍👧‍👦 *Family Budget*\n\nHere you can manage expenses together with family, colleagues, friends, etc.\n\n- \uD83D\uDC6A A shared group is created to track joint expenses.\n- \u2795 Each member can add expenses.\n- \uD83D\uDDD1\uFE0F You can delete your own expenses if needed.\n- \uD83D\uDCCA Shared statistics are available for all members.\n- \uD83D\uDCE4 Export the entire group’s data into a single file.\n\nShared control means less chaos and more transparency.',
   family_created: '✅ Family "{name}" created! Now you can invite members.',
-  family_joined: '✅ You joined family "{name}"!',
   family_left: '✅ You left family "{name}".',
   family_deleted: '✅ Family "{name}" deleted. All family expenses became personal.',
-  family_member_removed: '✅ Member removed from family.',
   family_member_removed_notification: '❌ You were removed from family "{familyName}".',
-  family_cannot_leave_owner: '❌ Family owner cannot leave family. Use "Delete Family" instead.',
   
   // Family menu buttons
   create_family: '🏠 Create Family',
@@ -395,7 +363,6 @@ Recording expenses and income is free and unlimited.`,
   
   // Invitations
   invitation_sent: '✅ Invitation sent to user @{username}',
-  invitation_already_processed: '❌ Invitation already processed.',
   
   // Input messages
   enter_family_name: 'Enter family name (3-50 characters):',
@@ -430,11 +397,6 @@ Recording expenses and income is free and unlimited.`,
   button_mark_as_family: '👨‍👩‍👧‍👦 Mark as family',
   invitation_cancelled_notification: '❌ Invitation to family "{familyName}" was cancelled by {cancelledBy}',
   enter_invite_code: '🔑 Enter invitation code:',
-  only_owner_can_remove: '❌ Only family owner can remove members.',
-  only_owner_can_delete: '❌ Only family owner can delete family.',
-  cannot_remove_owner: '❌ Cannot remove family owner.',
-  cannot_remove_yourself: '❌ Cannot remove yourself.',
-  family_not_found: '❌ Family not found.',
   not_family_member: '❌ You are not a family member.',
   not_family_owner: '❌ You are not a family owner.',
   
@@ -442,33 +404,24 @@ Recording expenses and income is free and unlimited.`,
   confirm_delete_family: '⚠️ *Delete Family*\n\nAll members will be removed and family expenses will become personal.\n\nAre you sure?',
   
   // Family statistics
-  family_monthly_stats: '👨‍👩‍👧‍👦 *Family Expenses for Month*',
   family_daily_stats: '💰 Daily Expenses',
-  family_daily_stats_title: '👨‍👩‍👧‍👦 *Family Expenses for Day*',
   family_export: '📊 Family Export',
-  family_total_spent: 'Spent: *{amount}*',
-  family_members_count: 'Members: {count}',
-  family_no_expenses: 'No family expenses for this period.',
   
   // Member list
   family_members_title: '👥 *Family Members*',
-  family_member_info: '• {name} ({role}) - joined {date}',
   family_owner_role: 'owner',
   family_member_role: 'member',
   remove_member: '❌ Remove',
   confirm_remove_member: '⚠️ *Remove Member*\n\nAre you sure you want to remove {name} from the family?',
   member_removed: '✅ Member {name} has been removed from the family.',
-  member_removed_notification: '❌ You have been removed from family "{familyName}" by {ownerName}.',
   
   // Premium features
   premium_required: '❌ This feature is only available for premium users.',
-  upgrade_to_premium: '💎 Upgrade to premium for access to family budget!',
   
   // Premium subscription
   premium_subscription_title: '⭐️ Subscription',
   premium_status_header: '<b>Your Status:</b>',
   premium_privileges: 'Privileges: {status}',
-  premium_limits_info: 'Here your limits are displayed, for example: number of categories, expenses, access to family features, current premium period or its absence.',
   premium_menu_title: '<b>Menu:</b>',
   premium_tariff_button: '⭐️ Tariff',
   premium_why_paid_button: '👀 Why is the service paid?',
@@ -487,10 +440,7 @@ Recording expenses and income is free and unlimited.`,
   no_purchases: 'No purchases yet',
   purchases_prev_button: '◀ Previous',
   purchases_next_button: 'Next ▶',
-  purchases_page_indicator: 'Page {page}/{total}',
   premium_why_paid_text: 'Keeping the server running for this bot costs about $200 a month — and that\'s even without accounting for the rapidly growing number of users. And as the developer, I also need to eat to have the strength to improve the service :)',
-  premium_payment_title: '💳 *Premium Subscription Payment*',
-  premium_payment_description: 'You selected tariff: <b>{duration}</b>\nCost: <b>{stars} ⭐️</b>\n\nClick the button below to proceed to payment via Telegram Stars.',
   // Tariff labels and product name
   tariff_button_30: '1 Month',
   tariff_button_90: '3 Months',
@@ -519,7 +469,6 @@ Recording expenses and income is free and unlimited.`,
   donate_prompt_text: 'Enter the number of stars (Telegram Stars) you want to donate.\n\n(You can send from 1 to 2500 stars at a time)\n\nYou may add a letter up to 500 characters — just write it after the number on a new line.',
   donate_invalid: '❌ Enter an integer from 1 to 2500. Letter up to 500 characters.',
   donate_created: '✅ Donation request created: {stars} ⭐️. I will send a payment link now.',
-  donate_paid: '🙏 Thanks for your support! Donation received: {stars} ⭐️',
   // Custom categories (premium)
   custom_categories_title: '🏷️ Custom Categories',
   custom_categories_info: 'Here you can create your own expense categories (premium only).',

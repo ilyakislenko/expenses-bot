@@ -325,12 +325,13 @@ constructor({ expenseService, userService, premiumService, familyService, catego
       const result = await this.familyService.createInvitation(userId, username);
       this.stateService.deleteUserState(userId);
       
-      const invitationSentText = this.localizationService.getText(userLanguage, 'invitation_sent', { username: result.invitee.username });
+      const invitationSentText = this.localizationService.getText(userLanguage, 'invitation_sent', { username: this.formatter.escapeMarkdown(result.invitee.username) });
       const invitationCodeText = this.localizationService.getText(userLanguage, 'invitation_code', { code: result.invitation.invite_code });
       const message = `${invitationSentText}\n\n${invitationCodeText}`;
       const backText = this.localizationService.getText(userLanguage, 'button_back');
       
       await ctx.reply(message, {
+        parse_mode: 'Markdown',
         reply_markup: {
           inline_keyboard: [
             [{ text: backText, callback_data: 'family_menu' }]
