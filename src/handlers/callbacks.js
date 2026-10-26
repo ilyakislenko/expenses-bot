@@ -81,7 +81,7 @@ class CallbackHandlers {
       hours.splice(idx, 1);
     } else {
       if (hours.length >= 3) {
-        const limitText = this.localizationService.getText(userLanguage, 'reminder_hours_limit') || 'Можно выбрать не более 3 часов';
+        const limitText = this.localizationService.getText(userLanguage, 'reminder_hours_limit');
         await ctx.answerCbQuery(limitText, { show_alert: true });
         return;
       }
@@ -95,7 +95,7 @@ class CallbackHandlers {
   async handleSaveReminderHours(ctx) {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
-    const confirm = this.localizationService.getText(userLanguage, 'reminder_hours_saved') || 'Часы напоминаний сохранены';
+    const confirm = this.localizationService.getText(userLanguage, 'reminder_hours_saved');
     await ctx.answerCbQuery(confirm, { show_alert: false });
     await this.commandHandlers.settings(ctx);
   }
@@ -122,11 +122,16 @@ class CallbackHandlers {
       const transactions = (transactionsAll || []).slice(0, pageSize);
       const donations = (donationsAll || []).slice(0, pageSize);
       const hasMore = (transactionsAll && transactionsAll.length > pageSize) || (donationsAll && donationsAll.length > pageSize);
+      const timezone = await this.userService.getUserTimezone(userId);
+      const formatDate = (value) => this.formatter.formatDate(value, timezone);
 
-      const header = this.localizationService.getText(userLanguage, 'purchases_header') || '🧾 Purchase history';
+      const header = this.localizationService.getText(userLanguage, 'purchases_header');
       let text = `${header}\n\n`;
+      if (!transactions.length && !donations.length) {
+        text += this.localizationService.getText(userLanguage, 'no_purchases');
+      }
       if (transactions && transactions.length) {
-        const premiumTitle = this.localizationService.getText(userLanguage, 'purchases_premium_title') || 'Premium';
+        const premiumTitle = this.localizationService.getText(userLanguage, 'purchases_premium_title');
         text += `⭐ ${premiumTitle}:\n`;
         const shorten = (s) => {
           if (!s) return '-';
@@ -134,7 +139,7 @@ class CallbackHandlers {
           return str.length > 36 ? `${str.slice(0, 14)}…${str.slice(-12)}` : str;
         };
         for (const t of transactions) {
-          const date = new Date(t.created_at).toLocaleString();
+          const date = formatDate(t.created_at);
           const stars = t.stars_amount || 0;
           const status = t.status || 'completed';
           const hash = shorten(t.telegram_payment_id || '-');
@@ -143,10 +148,10 @@ class CallbackHandlers {
         text += `\n`;
       }
       if (donations && donations.length) {
-        const donateTitle = this.localizationService.getText(userLanguage, 'purchases_donations_title') || 'Donations';
+        const donateTitle = this.localizationService.getText(userLanguage, 'purchases_donations_title');
         text += `💎 ${donateTitle}:\n`;
         for (const d of donations) {
-          const date = new Date(d.created_at).toLocaleString();
+          const date = formatDate(d.created_at);
           const stars = d.stars || 0;
           const status = d.status || 'completed';
           const hash = (d.telegram_payment_id ? (d.telegram_payment_id.length > 36 ? `${d.telegram_payment_id.slice(0,14)}…${d.telegram_payment_id.slice(-12)}` : d.telegram_payment_id) : '-');
@@ -155,8 +160,8 @@ class CallbackHandlers {
       }
 
       const backText = this.localizationService.getText(userLanguage, 'premium_back_button');
-      const prevText = this.localizationService.getText(userLanguage, 'purchases_prev_button') || '◀ Prev';
-      const nextText = this.localizationService.getText(userLanguage, 'purchases_next_button') || 'Next ▶';
+      const prevText = this.localizationService.getText(userLanguage, 'purchases_prev_button');
+      const nextText = this.localizationService.getText(userLanguage, 'purchases_next_button');
       const keyboard = [];
       const navRow = [];
       if (page > 1) {
@@ -168,7 +173,7 @@ class CallbackHandlers {
       if (navRow.length) keyboard.push(navRow);
       keyboard.push([{ text: backText, callback_data: 'premium_subscription' }]);
 
-      const body = text.trim() || (this.localizationService.getText(userLanguage, 'no_purchases') || 'Нет покупок');
+      const body = text.trim();
       if (ctx.updateType === 'callback_query') {
         await ctx.editMessageText(body, { reply_markup: { inline_keyboard: keyboard } });
         await ctx.answerCbQuery();
@@ -238,93 +243,31 @@ class CallbackHandlers {
     userLanguage = await this.userService.getUserLanguage(userId);
     const backText = this.localizationService.getText(userLanguage, 'button_back');
     try {
-      const callbackData = ctx.callbackQuery.data;
-      const parts = callbackData.split('|');
-      const [, timezoneCode] = parts;
-      
-      // Проверяем, это новый формат времени или старый формат городов
-        if (callbackData.startsWith('time|')) {
-        // Новый формат: time|hour|minute
-        const [, hour, minute] = callbackData.split('|');
-        const { calculateTimezoneFromUserTime, getTimezoneDisplayName } = require('../utils/timezoneCalculator');
-        
-        // Используем время выбора как опорное время
-        const selectionTime = new Date();
-        const timezone = calculateTimezoneFromUserTime(parseInt(hour), parseInt(minute), selectionTime);
-        const displayName = getTimezoneDisplayName(timezone);
-        
-        // Устанавливаем timezone пользователя
-        await this.userService.setUserTimezone(userId, timezone);
-        
-        const timezoneSetText = this.localizationService.getText(userLanguage, 'timezone_set', { timezone: displayName });
-        const timezoneUpdatedText = this.localizationService.getText(userLanguage, 'timezone_updated', { 
-          time: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,
-          timezone: displayName 
-        });
-        
-        await ctx.answerCbQuery(timezoneSetText);
-        const currentState = this.stateService.getUserState(userId);
-        if (currentState === 'onboarding_timezone') {
-          // Завершаем онбординг и показываем главное меню
-          this.stateService.clearUserState(userId);
-          await this.commandHandlers.start(ctx, { afterOnboarding: true });
-        } else {
-          await ctx.editMessageText(timezoneUpdatedText,
-            { parse_mode: 'Markdown', reply_markup: {
-              inline_keyboard: [
-                [{ text: backText, callback_data: 'back_to_settings' }]
-              ]
-            } }
-          );
-        }
+      // time|<часы>|<минуты> — текущее время пользователя, по нему вычисляем часовой пояс
+      const [, hour, minute] = ctx.callbackQuery.data.split('|');
+      const { calculateTimezoneFromUserTime, getTimezoneDisplayName } = require('../utils/timezoneCalculator');
+      const timezone = calculateTimezoneFromUserTime(parseInt(hour, 10), parseInt(minute, 10), new Date(), { language: userLanguage });
+      const displayName = getTimezoneDisplayName(timezone);
+
+      await this.userService.setUserTimezone(userId, timezone);
+
+      const timezoneSetText = this.localizationService.getText(userLanguage, 'timezone_set', { timezone: displayName });
+      const timezoneUpdatedText = this.localizationService.getText(userLanguage, 'timezone_updated', {
+        time: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,
+        timezone: displayName
+      });
+
+      await ctx.answerCbQuery(timezoneSetText);
+      const currentState = this.stateService.getUserState(userId);
+      if (currentState === 'onboarding_timezone') {
+        // Завершаем онбординг и показываем главное меню
+        this.stateService.clearUserState(userId);
+        await this.commandHandlers.start(ctx, { afterOnboarding: true });
       } else {
-        // Старый формат: tz|city
-        const { getTimezoneByCode } = require('../utils/timezone');
-        
-        // Получаем полное название timezone по коду
-        const timezone = getTimezoneByCode(timezoneCode);
-        if (!timezone) {
-          throw new Error(`Unknown timezone code: ${timezoneCode}`);
-        }
-        
-        // Устанавливаем timezone пользователя
-        await this.userService.setUserTimezone(userId, timezone);
-        
-        // Получаем информацию о timezone для отображения
-        const timezoneLabels = {
-          'Europe/Moscow': '🇷🇺 Москва (UTC+3)',
-          'Europe/London': '🇬🇧 Лондон (UTC+0)',
-          'America/New_York': '🇺🇸 Нью-Йорк (UTC-5)',
-          'America/Los_Angeles': '🇺🇸 Лос-Анджелес (UTC-8)',
-          'Asia/Tokyo': '🇯🇵 Токио (UTC+9)',
-          'Asia/Shanghai': '🇨🇳 Шанхай (UTC+8)',
-          'Australia/Sydney': '🇦🇺 Сидней (UTC+10)',
-          'Europe/Berlin': '🇩🇪 Берлин (UTC+1)',
-          'Europe/Paris': '🇫🇷 Париж (UTC+1)',
-          'Asia/Dubai': '🇦🇪 Дубай (UTC+4)',
-          'Asia/Kolkata': '🇮🇳 Мумбаи (UTC+5:30)',
-          'UTC': '🌐 UTC (UTC+0)'
-        };
-        
-        const timezoneLabel = timezoneLabels[timezone] || timezone;
-        
-        const timezoneSetText = this.localizationService.getText(userLanguage, 'timezone_set', { timezone: timezoneLabel });
-        const timezoneUpdatedText = this.localizationService.getText(userLanguage, 'timezone_updated_simple', { timezone: timezoneLabel });
-        
-        await ctx.answerCbQuery(timezoneSetText);
-        const currentState2 = this.stateService.getUserState(userId);
-        if (currentState2 === 'onboarding_timezone') {
-          this.stateService.clearUserState(userId);
-          await this.commandHandlers.start(ctx, { afterOnboarding: true });
-        } else {
-          await ctx.editMessageText(timezoneUpdatedText,
-            { parse_mode: 'Markdown', reply_markup: {
-              inline_keyboard: [
-                [{ text: backText, callback_data: 'back_to_settings' }]
-              ]
-            } }
-          );
-        }
+        await ctx.editMessageText(timezoneUpdatedText, {
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'back_to_settings' }]] }
+        });
       }
     } catch (error) {
       console.error('Error handling timezone selection:', error);
@@ -759,7 +702,7 @@ class CallbackHandlers {
       const memberName = memberInfo.username || memberInfo.first_name || 'Unknown';
       
       // Показываем подтверждение
-      const confirmText = this.localizationService.getText(userLanguage, 'confirm_remove_member', { name: memberName });
+      const confirmText = this.localizationService.getText(userLanguage, 'confirm_remove_member', { name: this.formatter.escapeMarkdown(memberName) });
       const confirmButtonText = this.localizationService.getText(userLanguage, 'confirm');
       const cancelText = this.localizationService.getText(userLanguage, 'family_cancel');
       
@@ -820,7 +763,7 @@ class CallbackHandlers {
       const memberName = memberInfo.username || memberInfo.first_name || 'Unknown';
       
       // Показываем сообщение об успехе
-      const successText = this.localizationService.getText(userLanguage, 'member_removed', { name: memberName });
+      const successText = this.localizationService.getText(userLanguage, 'member_removed', { name: this.formatter.escapeMarkdown(memberName) });
       const backText = this.localizationService.getText(userLanguage, 'button_back');
       
       await ctx.answerCbQuery();
@@ -1001,12 +944,6 @@ class CallbackHandlers {
       
       // Принимаем приглашение
       const result = await this.familyService.acceptInvitation(userId, inviteCode);
-      
-      console.log('Accept invitation result:', {
-        family: result.family,
-        familyName: result.family?.name,
-        invitation: result.invitation
-      });
       
       const invitationAcceptedText = this.localizationService.getText(userLanguage, 'invitation_accepted', { 
         familyName: result.family?.name || 'Unknown Family'
@@ -1201,7 +1138,7 @@ class CallbackHandlers {
             const originalUsd = Number(t.usd) / (1 - t.discount / 100);
             originalFormatted = this.formatter.formatAmount(originalUsd, 'USD');
           }
-          const discountText = this.localizationService.getText(userLanguage, 'discount_save', { percent: t.discount }) || `${t.discount}%`;
+          const discountText = this.localizationService.getText(userLanguage, 'discount_save', { percent: t.discount });
           line += ` / <s>${originalFormatted}</s> ${priceFormatted} (${discountText})`;
         } else {
           line += ` / ${priceFormatted}`;
@@ -1215,7 +1152,7 @@ class CallbackHandlers {
           const monthlyCurrencyFormatted = this.formatter.formatAmount(monthlyCurrency, userCurrency);
           const monthlyStarsRaw = Number(t.stars) / months;
           const monthlyStars = Number.isInteger(monthlyStarsRaw) ? `${monthlyStarsRaw}` : monthlyStarsRaw.toFixed(1);
-          const perMonth = this.localizationService.getText(userLanguage, 'per_month') || '/ month';
+          const perMonth = this.localizationService.getText(userLanguage, 'per_month');
           linesArr.push(`  <i>≈ ${monthlyStars} ⭐ ${perMonth} • ${monthlyCurrencyFormatted} ${perMonth}</i>\n`);
         } catch (_) {
           // ignore

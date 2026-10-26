@@ -144,6 +144,9 @@ describe('Premium Subscription Menu', () => {
           })
         })
       );
+      const [message] = mockCtx.reply.mock.calls[0];
+      expect(message).toContain('👤 Стандарт');
+      expect(message).not.toContain('premium_expires');
     });
 
     it('should generate premium subscription menu with premium user and expiry date', async () => {
@@ -180,26 +183,28 @@ describe('Premium Subscription Menu', () => {
 
       await commandHandlers.premiumSubscription(mockCtx);
 
-      expect(mockCtx.reply).toHaveBeenCalledWith(
-        expect.stringContaining('⭐️ Подписка'),
-        expect.stringContaining('📅 Премиум подписка действительна до:'),
-        expect.objectContaining({
-          parse_mode: 'HTML',
-          reply_markup: expect.objectContaining({
-            inline_keyboard: expect.arrayContaining([
-              expect.arrayContaining([
-                expect.objectContaining({ text: '⭐️ Тариф', callback_data: 'premium_tariffs' })
-              ]),
-              expect.arrayContaining([
-                expect.objectContaining({ text: '👀 Почему сервис платный?', callback_data: 'premium_why_paid' })
-              ]),
-              expect.arrayContaining([
-                expect.objectContaining({ text: '⬅️ Назад', callback_data: 'back_to_menu' })
-              ])
+      expect(mockCtx.reply).toHaveBeenCalledTimes(1);
+      const [message, extra] = mockCtx.reply.mock.calls[0];
+      const expectedDate = commandHandlers.formatter.formatDate(mockLimitsInfo.premiumExpiresAt, 'UTC');
+      expect(message).toContain('⭐️ Премиум');
+      expect(message).toContain(`📅 Премиум подписка действительна до: <b>${expectedDate}</b>`);
+      expect(message).toContain('⏰ Осталось дней: <b>145</b>');
+      expect(extra).toEqual(expect.objectContaining({
+        parse_mode: 'HTML',
+        reply_markup: expect.objectContaining({
+          inline_keyboard: expect.arrayContaining([
+            expect.arrayContaining([
+              expect.objectContaining({ text: '⭐️ Тариф', callback_data: 'premium_tariffs' })
+            ]),
+            expect.arrayContaining([
+              expect.objectContaining({ text: '👀 Почему сервис платный?', callback_data: 'premium_why_paid' })
+            ]),
+            expect.arrayContaining([
+              expect.objectContaining({ text: '⬅️ Назад', callback_data: 'back_to_menu' })
             ])
-          })
+          ])
         })
-      );
+      }));
     });
   });
 

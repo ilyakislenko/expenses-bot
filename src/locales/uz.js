@@ -67,25 +67,25 @@ module.exports = {
     
     // Admin statistika
     admin_stats_text: `📊 *Bot statistikasi*
-  
-  👥 **Foydalanuvchilar:**
-  • Jami: {totalUsers}
-  • Premium: {activePremium}
-  • Shu haftada yangilar: {newUsersWeek}
-  • Shu oyda yangilar: {newUsersMonth}
-  
-  💰 **Xarajatlar:**
-  • Jami yozuvlar: {totalExpenses}
-  • Shu hafta: {expensesWeek}
-  • Faol foydalanuvchilar: {activeUsers}
-  
-  🐛 **Xato xabarlari:** {totalBugReports}
-  
-  💎 **Xayriyalar:**
-  • Jami: {totalDonations}
-  • Yig‘ilgan yulduzlar: {totalStars}
-  
-  ⭐ **Premium tranzaksiyalar:** {premiumTransactions}`,
+
+👥 **Foydalanuvchilar:**
+• Jami: {totalUsers}
+• Premium: {activePremium}
+• Shu haftada yangilar: {newUsersWeek}
+• Shu oyda yangilar: {newUsersMonth}
+
+💰 **Xarajatlar:**
+• Jami yozuvlar: {totalExpenses}
+• Shu hafta: {expensesWeek}
+• Faol foydalanuvchilar: {activeUsers}
+
+🐛 **Xato xabarlari:** {totalBugReports}
+
+💎 **Xayriyalar:**
+• Jami: {totalDonations}
+• Yig‘ilgan yulduzlar: {totalStars}
+
+⭐ **Premium tranzaksiyalar:** {premiumTransactions}`,
   
     // Foydalanuvchilar ro‘yxati
     admin_users_title: '👥 *Foydalanuvchilar* (Sahifa {page}/{totalPages})\n\nJami: {totalUsers}\n',
@@ -99,26 +99,26 @@ module.exports = {
     
     // Xayriya statistikasi
     admin_donations_text: `💰 *Xayriya statistikasi*
-  
-  📊 **Xulosa:**
-  • Jami xayriya: {totalDonations}
-  • Yakunlangan: {completedDonations}
-  • Kutilmoqda: {pendingDonations}
-  
-  ⭐ **Yulduzlar:**
-  • Jami yig‘ildi: {totalStars}
-  • O‘rtacha xayriya: {avgStars} yulduz`,
+
+📊 **Xulosa:**
+• Jami xayriya: {totalDonations}
+• Yakunlangan: {completedDonations}
+• Kutilmoqda: {pendingDonations}
+
+⭐ **Yulduzlar:**
+• Jami yig‘ildi: {totalStars}
+• O‘rtacha xayriya: {avgStars} yulduz`,
   
     // Premium statistikasi
     admin_premium_stats: `⭐ *Premium statistikasi*
-  
-  📊 **Foydalanuvchilar:**
-  • Jami premium: {totalPremiumUsers}
-  • Hozir faol: {activePremiumUsers}
-  
-  💳 **Tranzaksiyalar:**
-  • Jami: {totalTransactions}
-  • Umumiy daromad: {totalRevenue} yulduz`,
+
+📊 **Foydalanuvchilar:**
+• Jami premium: {totalPremiumUsers}
+• Hozir faol: {activePremiumUsers}
+
+💳 **Tranzaksiyalar:**
+• Jami: {totalTransactions}
+• Umumiy daromad: {totalRevenue} yulduz`,
   
     // Adminlar ro‘yxati
     admin_admins_title: '👑 *Administratorlar* ({count})\n',
@@ -130,19 +130,19 @@ module.exports = {
     // Foydalanuvchi tafsilotlari (admin)
     admin_user_not_found: '❌ Foydalanuvchi topilmadi.',
     admin_user_details: `👤 *Foydalanuvchi ma’lumotlari*
-  
-  {adminFlag}{premiumFlag} **{firstName}** (@{username})
-  🆔 ID: {userId}
-  🌐 Til: {language}
-  💱 Valyuta: {currency}
-  🕐 Vaqt zonasi: {timezone}
-  📅 Ro‘yxatdan o‘tgan sana: {createdAt}
-  
-  📊 **Statistika:**
-  • Xarajat yozuvlari: {totalExpenses}
-  • Jami summa: {totalAmount}
-  • Xato xabarlari: {bugReportsCount}
-  • Tranzaksiyalar: {transactionsCount}`,
+
+{adminFlag}{premiumFlag} {firstName} (@{username})
+🆔 ID: {userId}
+🌐 Til: {language}
+💱 Valyuta: {currency}
+🕐 Vaqt zonasi: {timezone}
+📅 Ro‘yxatdan o‘tgan sana: {createdAt}
+
+📊 **Statistika:**
+• Xarajat yozuvlari: {totalExpenses}
+• Jami summa: {totalAmount}
+• Xato xabarlari: {bugReportsCount}
+• Tranzaksiyalar: {transactionsCount}`,
   
     // Admin amallari
     admin_promote_success: '✅ {userId} admin qilib tayinlandi.',
@@ -235,15 +235,14 @@ Buyruqlar: /stats /history /income /recurring /export /settings /menu`,
     period_start_invalid: '❌ Noto‘g‘ri raqam. 1 dan 31 gacha butun son kiriting.',
     period_start_set: '✅ Davr boshlanish kuni: {day} qilib o‘rnatildi',
     timezone_setup: `🕐 *Vaqt zonasini sozlash*
-  
-  Hozir sizning soatingiz nechchi?
-  
-  *Hozirgi UTC vaqt:* {utcTime}
-  
-  O‘z vaqtingizni tanlang:`,
+
+Hozir sizning soatingiz nechchi?
+
+*Hozirgi UTC vaqt:* {utcTime}
+
+O‘z vaqtingizni tanlang:`,
     timezone_set: '✅ Vaqt zonasi o‘rnatildi: {timezone}',
     // Oilaviy byudjet
-    button_family: '👨‍👩‍👧‍👦 Oila',
     // Family labels
     family_label: '🏠 *Oila:*',
     family_owner_label: '👑 *Egas:*',
@@ -253,7 +252,7 @@ Buyruqlar: /stats /history /income /recurring /export /settings /menu`,
     family_left: '✅ "{name}" oilasidan chiqdingiz.',
     family_deleted: '✅ "{name}" oilasi o‘chirildi. Barcha oilaviy xarajatlar shaxsiy xarajatlarga o‘tkazildi.',
     family_member_removed: '✅ A’zo oiladan olib tashlandi.',
-    family_member_removed_notification: '❌ Siz *{familyName}* oilasidan chiqarildingiz.',
+    family_member_removed_notification: '❌ Siz “{familyName}” oilasidan chiqarildingiz.',
     family_cannot_leave_owner: '❌ Oila egasi oiladan chiqa olmaydi. "Oilani o‘chirish" funksiyasini ishlating.',
     
     // Oila menyu tugmalari
@@ -264,15 +263,12 @@ Buyruqlar: /stats /history /income /recurring /export /settings /menu`,
     delete_family: '🗑️ Oilani o‘chirish',
     family_members: '👥 Oila a’zolari',
     family_stats: '💰 Oylik xarajatlar',
-    family_daily_stats: '💰 Kundalik xarajatlar',
     family_add_expense: '💰 Oilaviy xarajat qo‘shish',
     family_menu: '👨‍👩‍👧‍👦 Oila menyusi',
     family_cancel: '❌ Bekor qilish',
     
     // Takliflar
     invitation_sent: '✅ @{username} foydalanuvchisiga taklif yuborildi',
-    invitation_accepted: '✅ "{name}" oilasiga qo‘shilish taklifini qabul qildingiz!',
-    invitation_rejected: '❌ "{name}" oilasiga qo‘shilish taklifini rad qildingiz.',
     invitation_not_found: '❌ Taklif topilmadi yoki muddati o‘tgan.',
     invitation_expired: '❌ Taklif muddati tugagan.',
     invitation_already_processed: '❌ Taklif allaqachon ko‘rib chiqilgan.',
@@ -299,13 +295,13 @@ Buyruqlar: /stats /history /income /recurring /export /settings /menu`,
     invitation_cancelled: '✅ Taklif bekor qilindi.',
     not_authorized: '❌ Ushbu amalni bajarishga ruxsatingiz yo‘q.',
     invitation_code: '🔑 Taklif kodi: `{code}`',
-    family_invitation_received: '🎉 Siz *{familyName}* oilasiga taklif qilindingiz\n\n👤 Taklif qilgan: {inviterName}\n🔑 Kod: `{inviteCode}`\n\nAmalni tanlang:',
+    family_invitation_received: '🎉 Siz “{familyName}” oilasiga taklif qilindingiz\n\n👤 Taklif qilgan: {inviterName}\n🔑 Kod: `{inviteCode}`\n\nAmalni tanlang:',
     accept_invitation: '✅ Qabul qilish',
     reject_invitation: '❌ Rad etish',
-    invitation_accepted: '🎉 Tabriklaymiz! *{familyName}* oilasiga qo‘shildingiz',
+    invitation_accepted: '🎉 Tabriklaymiz! “{familyName}” oilasiga qo‘shildingiz',
     invitation_rejected: '❌ Taklifni rad etdingiz',
     invitation_not_pending: '❌ Bu taklif kutilayotgan holatda emas',
-    invitation_cancelled_notification: '❌ *{familyName}* oilasiga qo‘shilish taklifi {cancelledBy} tomonidan bekor qilindi',
+    invitation_cancelled_notification: '❌ “{familyName}” oilasiga qo‘shilish taklifi {cancelledBy} tomonidan bekor qilindi',
     enter_invite_code: '🔑 Taklif kodini kiriting:',
     only_owner_can_remove: '❌ A’zo chiqarish huquqi faqat oila egasida bor.',
     only_owner_can_delete: '❌ Oilani faqat egasi o‘chirishi mumkin.',
@@ -317,7 +313,6 @@ Buyruqlar: /stats /history /income /recurring /export /settings /menu`,
     
     // Tasdiqlash xabarlari
     confirm_delete_family: '⚠️ *Oilani o‘chirish*\n\nBarcha a’zolar o‘chiriladi, xarajatlar shaxsiy holatga o‘tkaziladi.\n\nDavom etasizmi?',
-    confirm_remove_member: '⚠️ *A’zoni o‘chirish*\n\nA’zo oiladan chiqariladi.\n\nDavom etasizmi?',
     // Oilaviy statistika
     family_monthly_stats: '👨‍👩‍👧‍👦 *Bu oygi oilaviy xarajatlar*',
     family_daily_stats: '💰 Kundalik xarajatlar',
@@ -335,23 +330,18 @@ Buyruqlar: /stats /history /income /recurring /export /settings /menu`,
     remove_member: '❌ O‘chirish',
     confirm_remove_member: '⚠️ *A’zoni o‘chirish*\n\n{name} oiladan chiqarilsinmi?',
     member_removed: '✅ {name} oiladan chiqarildi.',
-    member_removed_notification: '❌ Siz *{familyName}* oilasidan {ownerName} tomonidan chiqarildingiz.',
+    member_removed_notification: '❌ Siz “{familyName}” oilasidan {ownerName} tomonidan chiqarildingiz.',
     
     // Premium funksiyalar
     premium_required: '❌ Bu funksiya faqat Premium foydalanuvchilar uchun.',
     upgrade_to_premium: '💎 Oilaviy byudjetdan foydalanish uchun Premiumga o‘ting!',
     
     timezone_updated: `✅ *Vaqt zonasi yangilandi!*
-  
-  🕐 Tanlangan vaqt: *{time}*
-  🌍 Vaqt zonasi: *{timezone}*
-  
-  Endi barcha xarajatlaringiz mahalliy vaqt bo‘yicha ko‘rsatiladi.`,
-    timezone_updated_simple: `✅ *Vaqt zonasi yangilandi!*
-  
-  🌍 Yangi vaqt zonasi: *{timezone}*
-  
-  Endi barcha xarajatlaringiz to‘g‘ri vaqt bilan ko‘rsatiladi.`,
+
+🕐 Tanlangan vaqt: *{time}*
+🌍 Vaqt zonasi: *{timezone}*
+
+Endi barcha xarajatlaringiz mahalliy vaqt bo‘yicha ko‘rsatiladi.`,
     
     // Limitlar
     limits_title: '📊 *Limitlar haqida ma’lumot*',
@@ -649,5 +639,7 @@ Xarajat va daromadlarni yozish bepul va cheklanmagan.`,
   report_per_day: '📅 Kuniga o‘rtacha: {amount}',
   report_largest: '🔝 Eng katta xarajat: {amount} — {description} ({date})',
   overview_budget_limit: 'limit {amount}',
-  report_title_current: 'Hozircha xulosa: {range}'
+  report_title_current: 'Hozircha xulosa: {range}',
+  input_canceled: '✅ Bekor qilindi. Xarajatlarni odatdagidek yozishingiz mumkin.',
+  no_active_state: 'Hozir bekor qiladigan narsa yo‘q.'
 };

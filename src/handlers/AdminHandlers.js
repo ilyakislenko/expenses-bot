@@ -1,12 +1,6 @@
 const logger = require('../utils/logger');
 const respond = require('../utils/respond');
 
-// Функция для экранирования символов Markdown
-function escapeMarkdown(text) {
-  if (!text) return text;
-  return text.toString().replace(/[*_`[\]()~>#+-=|{}.!]/g, '\\$&');
-}
-
 class AdminHandlers {
   constructor(adminService, userService, localizationService, formatter, stateService, funnelService) {
     this.adminService = adminService;
@@ -189,8 +183,8 @@ class AdminHandlers {
         const userNumber = (page - 1) * 10 + index + 1;
         const adminFlag = user.is_admin ? '👑' : '';
         const premiumFlag = user.premium ? '⭐' : '';
-        const firstName = escapeMarkdown(user.first_name || 'N/A');
-        const username = escapeMarkdown(user.username || 'N/A');
+        const firstName = this.formatter.escapeMarkdown(user.first_name || 'N/A');
+        const username = this.formatter.escapeMarkdown(user.username || 'N/A');
         usersText += `\n${userNumber}. ${adminFlag}${premiumFlag} ${firstName} (@${username}) - ID: ${user.id}`;
       });
 
@@ -238,7 +232,7 @@ class AdminHandlers {
       // Статистика по статусам
       reportsText += '\n\n📊 **Статистика:**\n';
       bugReportStats.stats.forEach(stat => {
-        const statusText = this.localizationService.getText(userLanguage, `bug_report_status_${stat.status}`) || stat.status;
+        const statusText = this.localizationService.getText(userLanguage, `bug_report_status_${stat.status}`);
         reportsText += `${statusText}: ${stat.count}\n`;
       });
 
@@ -355,8 +349,8 @@ class AdminHandlers {
       });
 
       admins.forEach((admin, index) => {
-        const firstName = escapeMarkdown(admin.first_name || 'N/A');
-        const username = escapeMarkdown(admin.username || 'N/A');
+        const firstName = this.formatter.escapeMarkdown(admin.first_name || 'N/A');
+        const username = this.formatter.escapeMarkdown(admin.username || 'N/A');
         adminsText += `\n${index + 1}. ${firstName} (@${username}) - ID: ${admin.id}`;
       });
 
@@ -501,8 +495,8 @@ class AdminHandlers {
       users.forEach((user, index) => {
         const adminFlag = user.is_admin ? '👑' : '';
         const premiumFlag = user.premium ? '⭐' : '';
-        const firstName = escapeMarkdown(user.first_name || 'N/A');
-        const username = escapeMarkdown(user.username || 'N/A');
+        const firstName = this.formatter.escapeMarkdown(user.first_name || 'N/A');
+        const username = this.formatter.escapeMarkdown(user.username || 'N/A');
         resultsText += `\n${index + 1}. ${adminFlag}${premiumFlag} ${firstName} (@${username}) - ID: ${user.id}`;
       });
 
@@ -547,8 +541,8 @@ class AdminHandlers {
       const userDetailsText = this.localizationService.getText(userLanguage, 'admin_user_details', {
         adminFlag,
         premiumFlag,
-        firstName: escapeMarkdown(user.first_name || 'N/A'),
-        username: escapeMarkdown(user.username || 'N/A'),
+        firstName: this.formatter.escapeMarkdown(user.first_name || 'N/A'),
+        username: this.formatter.escapeMarkdown(user.username || 'N/A'),
         userId: user.id,
         language: user.language,
         currency: user.currency,

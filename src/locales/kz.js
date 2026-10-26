@@ -67,25 +67,25 @@ module.exports = {
     
     // Әкімші статистикасы
     admin_stats_text: `📊 *Бот статистикасы*
-  
-  👥 **Пайдаланушылар:**
-  • Барлығы: {totalUsers}
-  • Premium: {activePremium}
-  • Апта ішінде жаңалары: {newUsersWeek}
-  • Ай ішінде жаңалары: {newUsersMonth}
-  
-  💰 **Шығындар:**
-  • Барлық жазбалар: {totalExpenses}
-  • Апта ішінде: {expensesWeek}
-  • Белсенді пайдаланушылар: {activeUsers}
-  
-  🐛 **Қате хабарламалары:** {totalBugReports}
-  
-  💎 **Донаттар:**
-  • Барлығы: {totalDonations}
-  • Жиналған жұлдыздар: {totalStars}
-  
-  ⭐ **Premium транзакциялар:** {premiumTransactions}`,
+
+👥 **Пайдаланушылар:**
+• Барлығы: {totalUsers}
+• Premium: {activePremium}
+• Апта ішінде жаңалары: {newUsersWeek}
+• Ай ішінде жаңалары: {newUsersMonth}
+
+💰 **Шығындар:**
+• Барлық жазбалар: {totalExpenses}
+• Апта ішінде: {expensesWeek}
+• Белсенді пайдаланушылар: {activeUsers}
+
+🐛 **Қате хабарламалары:** {totalBugReports}
+
+💎 **Донаттар:**
+• Барлығы: {totalDonations}
+• Жиналған жұлдыздар: {totalStars}
+
+⭐ **Premium транзакциялар:** {premiumTransactions}`,
   
     // Әкімші пайдаланушылар тізімі
     admin_users_title: '👥 *Пайдаланушылар* (бет {page}/{totalPages})\n\nБарлығы: {totalUsers}\n',
@@ -99,26 +99,26 @@ module.exports = {
     
     // Донаттар статистикасы
     admin_donations_text: `💰 *Донат статистикасы*
-  
-  📊 **Жалпы:**
-  • Донаттар саны: {totalDonations}
-  • Аяқталған: {completedDonations}
-  • Күтуде: {pendingDonations}
-  
-  ⭐ **Жұлдыздар:**
-  • Барлығы жиналған: {totalStars}
-  • Орташа донат: {avgStars} жұлдыз`,
+
+📊 **Жалпы:**
+• Донаттар саны: {totalDonations}
+• Аяқталған: {completedDonations}
+• Күтуде: {pendingDonations}
+
+⭐ **Жұлдыздар:**
+• Барлығы жиналған: {totalStars}
+• Орташа донат: {avgStars} жұлдыз`,
   
     // Premium статистикасы
     admin_premium_stats: `⭐ *Premium статистикасы*
-  
-  📊 **Пайдаланушылар:**
-  • Барлығы premium: {totalPremiumUsers}
-  • Қазір белсенді: {activePremiumUsers}
-  
-  💳 **Транзакциялар:**
-  • Барлығы: {totalTransactions}
-  • Жалпы табыс: {totalRevenue} жұлдыз`,
+
+📊 **Пайдаланушылар:**
+• Барлығы premium: {totalPremiumUsers}
+• Қазір белсенді: {activePremiumUsers}
+
+💳 **Транзакциялар:**
+• Барлығы: {totalTransactions}
+• Жалпы табыс: {totalRevenue} жұлдыз`,
   
     // Әкімшілер тізімі
     admin_admins_title: '👑 *Әкімшілер* ({count})\n',
@@ -130,19 +130,19 @@ module.exports = {
     // Әкімші пайдаланушы деректері
     admin_user_not_found: '❌ Пайдаланушы табылмады.',
     admin_user_details: `👤 *Пайдаланушы туралы ақпарат*
-  
-  {adminFlag}{premiumFlag} **{firstName}** (@{username})
-  🆔 ID: {userId}
-  🌐 Тіл: {language}
-  💱 Валюта: {currency}
-  🕐 Уақыт белдеуі: {timezone}
-  📅 Тіркелген күні: {createdAt}
-  
-  📊 **Статистика:**
-  • Шығын жазбалары: {totalExpenses}
-  • Жалпы сома: {totalAmount}
-  • Қате хабарламалары: {bugReportsCount}
-  • Транзакциялар: {transactionsCount}`,
+
+{adminFlag}{premiumFlag} {firstName} (@{username})
+🆔 ID: {userId}
+🌐 Тіл: {language}
+💱 Валюта: {currency}
+🕐 Уақыт белдеуі: {timezone}
+📅 Тіркелген күні: {createdAt}
+
+📊 **Статистика:**
+• Шығын жазбалары: {totalExpenses}
+• Жалпы сома: {totalAmount}
+• Қате хабарламалары: {bugReportsCount}
+• Транзакциялар: {transactionsCount}`,
   
     // Әкімші әрекеттері
     admin_promote_success: '✅ {userId} әкімші болып тағайындалды.',
@@ -235,15 +235,14 @@ module.exports = {
     period_start_invalid: '❌ Қате сан. 1-ден 31-ге дейінгі бүтін сан енгізіңіз.',
     period_start_set: '✅ Периодтың басталу күні орнатылды: {day}',
     timezone_setup: `🕐 *Уақыт белдеуін баптау*
-  
-  Қазір сағат қанша?
-  
-  *Ағымдағы UTC уақыты:* {utcTime}
-  
-  Өз уақытыңызды таңдаңыз:`,
+
+Қазір сағат қанша?
+
+*Ағымдағы UTC уақыты:* {utcTime}
+
+Өз уақытыңызды таңдаңыз:`,
     timezone_set: '✅ Уақыт белдеуі орнатылды: {timezone}',
     // Отбасылық бюджет
-    button_family: '👨‍👩‍👧‍👦 Отбасы',
     // Family labels
     family_label: '🏠 *Отбасы:*',
     family_owner_label: '👑 *Иесі:*',
@@ -253,7 +252,7 @@ module.exports = {
     family_left: '✅ Сіз "{name}" отбасынан шықтыңыз.',
     family_deleted: '✅ "{name}" отбасы жойылды. Барлық отбасылық шығындар жеке шығындарға ауыстырылды.',
     family_member_removed: '✅ Қатысушы отбасынан шығарылды.',
-    family_member_removed_notification: '❌ Сіз *{familyName}* отбасынан шығарылдыңыз.',
+    family_member_removed_notification: '❌ Сіз «{familyName}» отбасынан шығарылдыңыз.',
     family_cannot_leave_owner: '❌ Отбасы иесі шыға алмайды. "Отбасыны жою" функциясын пайдаланыңыз.',
     
     // Отбасылық мәзір батырмалары
@@ -264,15 +263,12 @@ module.exports = {
     delete_family: '🗑️ Отбасын жою',
     family_members: '👥 Отбасы мүшелері',
     family_stats: '💰 Айлық шығындар',
-    family_daily_stats: '💰 Күндік шығындар',
     family_add_expense: '💰 Отбасылық шығын қосу',
     family_menu: '👨‍👩‍👧‍👦 Отбасы мәзірі',
     family_cancel: '❌ Бас тарту',
     
     // Шақырулар
     invitation_sent: '✅ @{username} пайдаланушысына шақыру жіберілді',
-    invitation_accepted: '✅ Сіз "{name}" отбасына қосылу шақыруын қабылдадыңыз!',
-    invitation_rejected: '❌ Сіз "{name}" отбасына қосылу шақыруын қабылдамадыңыз.',
     invitation_not_found: '❌ Шақыру табылмады немесе мерзімі өткен.',
     invitation_expired: '❌ Шақыру мерзімі өтті.',
     invitation_already_processed: '❌ Шақыру бұрын өңделген.',
@@ -299,13 +295,13 @@ module.exports = {
     invitation_cancelled: '✅ Шақыру болдырылды.',
     not_authorized: '❌ Сізде бұл әрекетті орындауға құқық жоқ.',
     invitation_code: '🔑 Шақыру коды: `{code}`',
-    family_invitation_received: '🎉 Сізді *{familyName}* отбасына шақырып жатыр\n\n👤 Шақырған: {inviterName}\n🔑 Код: `{inviteCode}`\n\nӘрекет таңдаңыз:',
+    family_invitation_received: '🎉 Сізді «{familyName}» отбасына шақырып жатыр\n\n👤 Шақырған: {inviterName}\n🔑 Код: `{inviteCode}`\n\nӘрекет таңдаңыз:',
     accept_invitation: '✅ Қабылдау',
     reject_invitation: '❌ Қабылдамау',
-    invitation_accepted: '🎉 Құттықтаймыз! Сіз *{familyName}* отбасына қосылдыңыз',
+    invitation_accepted: '🎉 Құттықтаймыз! Сіз «{familyName}» отбасына қосылдыңыз',
     invitation_rejected: '❌ Сіз шақыруды қабылдамадыңыз',
     invitation_not_pending: '❌ Шақыру күту режимінде емес',
-    invitation_cancelled_notification: '❌ *{familyName}* отбасына шақыру {cancelledBy} тарапынан болдырылған',
+    invitation_cancelled_notification: '❌ «{familyName}» отбасына шақыру {cancelledBy} тарапынан болдырылған',
     enter_invite_code: '🔑 Шақыру кодын енгізіңіз:',
     only_owner_can_remove: '❌ Қатысушыларды тек отбасы иесі ғана өшіре алады.',
     only_owner_can_delete: '❌ Отбасын жоюды тек иесі жасай алады.',
@@ -317,7 +313,6 @@ module.exports = {
     
     // Растау хабарламалары
     confirm_delete_family: '⚠️ *Отбасын жою*\n\nБарлық қатысушылар өшіріледі, ал отбасы шығындары жеке шығындарға айналады.\n\nСіз сенімдісіз бе?',
-    confirm_remove_member: '⚠️ *Қатысушыны жою*\n\nҚатысушы отбасынан жойылады.\n\nСенімдісіз бе?',
     // Отбасылық статистика
     family_monthly_stats: '👨‍👩‍👧‍👦 *Айлық отбасылық шығындар*',
     family_daily_stats: '💰 Күндік шығындар',
@@ -335,23 +330,18 @@ module.exports = {
     remove_member: '❌ Өшіру',
     confirm_remove_member: '⚠️ *Қатысушыны жою*\n\nСіз {name} отбасынан өшіргіңіз келе ме?',
     member_removed: '✅ {name} отбасынан өшірілді.',
-    member_removed_notification: '❌ Сіз *{familyName}* отбасынан {ownerName} арқылы өшірілдіңіз.',
+    member_removed_notification: '❌ Сіз «{familyName}» отбасынан {ownerName} арқылы өшірілдіңіз.',
     
     // Premium функциялары
     premium_required: '❌ Бұл мүмкіндік тек premium пайдаланушыларға қолжетімді.',
     upgrade_to_premium: '💎 Отбасылық бюджетті пайдалану үшін premium алыңыз!',
     
     timezone_updated: `✅ *Уақыт белдеуі жаңартылды!*
-  
-  🕐 Таңдалған уақыт: *{time}*
-  🌍 Уақыт белдеуі: *{timezone}*
-  
-  Енді барлық шығындарыңыз жергілікті уақытыңызбен көрсетіледі.`,
-    timezone_updated_simple: `✅ *Уақыт белдеуі жаңартылды!*
-  
-  🌍 Жаңа уақыт белдеуі: *{timezone}*
-  
-  Барлық шығындарыңыз енді дұрыс уақытта көрсетіледі.`,
+
+🕐 Таңдалған уақыт: *{time}*
+🌍 Уақыт белдеуі: *{timezone}*
+
+Енді барлық шығындарыңыз жергілікті уақытыңызбен көрсетіледі.`,
     
     // Лимиттер
     limits_title: '📊 *Лимиттер туралы ақпарат*',
@@ -647,5 +637,7 @@ module.exports = {
   report_per_day: '📅 Күніне орташа: {amount}',
   report_largest: '🔝 Ең үлкен шығын: {amount} — {description} ({date})',
   overview_budget_limit: 'лимит {amount}',
-  report_title_current: 'Қазіргі қорытынды: {range}'
+  report_title_current: 'Қазіргі қорытынды: {range}',
+  input_canceled: '✅ Болдырылмады. Шығындарды әдеттегідей жаза аласыз.',
+  no_active_state: 'Қазір болдырмайтын ештеңе жоқ.'
 };

@@ -281,7 +281,7 @@ constructor({ expenseService, userService, premiumService, familyService, catego
       const result = await this.familyService.acceptInvitation(userId, invitationCode);
       this.stateService.deleteUserState(userId);
       
-      const message = this.localizationService.getText(userLanguage, 'invitation_accepted', { name: result.family.name });
+      const message = this.localizationService.getText(userLanguage, 'invitation_accepted', { familyName: result.family.name });
       const backText = this.localizationService.getText(userLanguage, 'button_back');
       
       await ctx.reply(message, {
@@ -346,7 +346,7 @@ constructor({ expenseService, userService, premiumService, familyService, catego
         errorText = this.localizationService.getText(userLanguage, 'user_not_premium');
       } else if (error.message.includes('already has a pending invitation')) {
         errorText = this.localizationService.getText(userLanguage, 'user_already_has_invitation');
-      } else if (error.message.includes('only owner can invite')) {
+      } else if (error.message.includes('Only family owner can invite')) {
         errorText = this.localizationService.getText(userLanguage, 'only_owner_can_invite');
       } else {
         errorText = this.localizationService.getText(userLanguage, 'error');

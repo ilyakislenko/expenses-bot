@@ -46,17 +46,6 @@ class Formatter {
         minute: '2-digit',
         timeZone: timezone
       }).format(dateObj);
-      
-      // Отладочная информация только для проблемных случаев
-      if (timezone === 'UTC' || timezone === 'Europe/Moscow') {
-        console.log('Date formatting:', {
-          original: date,
-          parsed: dateObj.toISOString(),
-          timezone: timezone,
-          formatted: formattedDate
-        });
-      }
-      
       return formattedDate;
     } catch (error) {
       console.error('Error formatting date:', error, 'date:', date);

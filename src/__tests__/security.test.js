@@ -176,10 +176,28 @@ describe('EnhancedValidator', () => {
       expect(result.error).toBe('callback_data_too_long');
     });
 
-    test('should reject invalid callback format', () => {
-      const result = validator.validateCallbackData('category/food');
+    test('should reject callback data with markup or control characters', () => {
+      expect(validator.validateCallbackData('category|<b>1</b>')).toMatchObject({ isValid: false, error: 'invalid_callback_format' });
+      expect(validator.validateCallbackData('ov|0\n1')).toMatchObject({ isValid: false, error: 'invalid_callback_format' });
+    });
+
+    test('should reject script-like callback content', () => {
+      const result = validator.validateCallbackData('x|javascript:alert(1)');
       expect(result.isValid).toBe(false);
-      expect(result.error).toBe('invalid_callback_format');
+      expect(result.error).toBe('forbidden_callback_content');
+    });
+
+    test('should accept the callback formats the bot actually routes', () => {
+      for (const data of ['ov|-1', 'oc|13|0|0', 'ex|5|d.0.0', 'bg_add|total', 'rp|-1', 'time|23|30', 'set_income_currency|USD|settings']) {
+        expect(validator.validateCallbackData(data)).toEqual({ isValid: true, data });
+      }
+    });
+
+    test('should accept invitation codes that happen to contain stop-words', () => {
+      for (const code of ['XBOT12YZ', 'ROOT7Q2A', 'ADMIN123', 'SPAM0000']) {
+        const data = `accept_invitation|${code}`;
+        expect(validator.validateCallbackData(data)).toEqual({ isValid: true, data });
+      }
     });
 
     test('should validate callback data with pipe separator', () => {

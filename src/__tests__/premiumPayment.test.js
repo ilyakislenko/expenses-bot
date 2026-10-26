@@ -59,20 +59,21 @@ describe('Premium Payment Buttons', () => {
       expect(buttons[1][1].tariffKey).toBe('month_12');
     });
 
-    it('should include stars in button text', () => {
+    it('shows each tariff with its localized duration and current Stars price', () => {
       const { PREMIUM_TARIFFS, generatePremiumPaymentButtons } = require('../utils/constants');
-      
-      jest.spyOn(localizationService, 'getText').mockImplementation((lang, key) => {
-        return key;
+
+      const buttons = generatePremiumPaymentButtons(PREMIUM_TARIFFS, localizationService, 'en').flat();
+
+      const expected = [
+        [PREMIUM_TARIFFS.MONTH_1, 'tariff_button_30'],
+        [PREMIUM_TARIFFS.MONTH_3, 'tariff_button_90'],
+        [PREMIUM_TARIFFS.MONTH_6, 'tariff_button_180'],
+        [PREMIUM_TARIFFS.MONTH_12, 'tariff_button_365']
+      ];
+      expected.forEach(([tariff, labelKey], i) => {
+        expect(buttons[i].text).toContain(localizationService.getText('en', labelKey));
+        expect(buttons[i].text).toContain(`${tariff.stars} ⭐️`);
       });
-
-      const buttons = generatePremiumPaymentButtons(PREMIUM_TARIFFS, localizationService, 'ru');
-
-      // Проверяем, что в тексте кнопок есть звезды
-      expect(buttons[0][0].text).toContain('87 ⭐️');
-      expect(buttons[0][1].text).toContain('222 ⭐️');
-      expect(buttons[1][0].text).toContain('392 ⭐️');
-      expect(buttons[1][1].text).toContain('679 ⭐️');
     });
   });
 

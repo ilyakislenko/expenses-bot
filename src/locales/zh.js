@@ -85,25 +85,25 @@ module.exports = {
     
     // 管理员统计
     admin_stats_text: `📊 *机器人统计*
-  
-  👥 **用户：**
-  • 总数：{totalUsers}
-  • 高级用户：{activePremium}
-  • 本周新增：{newUsersWeek}
-  • 本月新增：{newUsersMonth}
-  
-  💰 **支出：**
-  • 总记录数：{totalExpenses}
-  • 本周：{expensesWeek}
-  • 活跃用户：{activeUsers}
-  
-  🐛 **错误报告数：** {totalBugReports}
-  
-  💎 **捐赠：**
-  • 总额：{totalDonations}
-  • 收到的星星：{totalStars}
-  
-  ⭐ **高级交易数：** {premiumTransactions}`,
+
+👥 **用户：**
+• 总数：{totalUsers}
+• 高级用户：{activePremium}
+• 本周新增：{newUsersWeek}
+• 本月新增：{newUsersMonth}
+
+💰 **支出：**
+• 总记录数：{totalExpenses}
+• 本周：{expensesWeek}
+• 活跃用户：{activeUsers}
+
+🐛 **错误报告数：** {totalBugReports}
+
+💎 **捐赠：**
+• 总额：{totalDonations}
+• 收到的星星：{totalStars}
+
+⭐ **高级交易数：** {premiumTransactions}`,
   
     // 用户列表
     admin_users_title: '👥 *用户*（第 {page}/{totalPages} 页）\n\n总数：{totalUsers}\n',
@@ -117,26 +117,26 @@ module.exports = {
     
     // 捐赠统计
     admin_donations_text: `💰 *捐赠统计*
-  
-  📊 **摘要：**
-  • 总捐赠：{totalDonations}
-  • 已完成：{completedDonations}
-  • 待处理：{pendingDonations}
-  
-  ⭐ **星星：**
-  • 总收集：{totalStars}
-  • 平均捐赠：{avgStars} 颗星`,
+
+📊 **摘要：**
+• 总捐赠：{totalDonations}
+• 已完成：{completedDonations}
+• 待处理：{pendingDonations}
+
+⭐ **星星：**
+• 总收集：{totalStars}
+• 平均捐赠：{avgStars} 颗星`,
   
     // 高级账户统计
     admin_premium_stats: `⭐ *高级账户统计*
-  
-  📊 **用户：**
-  • 高级总数：{totalPremiumUsers}
-  • 当前活跃：{activePremiumUsers}
-  
-  💳 **交易：**
-  • 总次数：{totalTransactions}
-  • 总收入：{totalRevenue} 颗星`,
+
+📊 **用户：**
+• 高级总数：{totalPremiumUsers}
+• 当前活跃：{activePremiumUsers}
+
+💳 **交易：**
+• 总次数：{totalTransactions}
+• 总收入：{totalRevenue} 颗星`,
   
     // 管理员列表
     admin_admins_title: '👑 *管理员*（{count} 人）\n',
@@ -148,19 +148,19 @@ module.exports = {
     // 管理员用户详情
     admin_user_not_found: '❌ 未找到用户。',
     admin_user_details: `👤 *用户信息*
-  
-  {adminFlag}{premiumFlag} **{firstName}** (@{username})
-  🆔 ID：{userId}
-  🌐 语言：{language}
-  💱 货币：{currency}
-  🕐 时区：{timezone}
-  📅 注册时间：{createdAt}
-  
-  📊 **统计：**
-  • 支出记录数：{totalExpenses}
-  • 总金额：{totalAmount}
-  • 错误报告数：{bugReportsCount}
-  • 交易次数：{transactionsCount}`,
+
+{adminFlag}{premiumFlag} {firstName} (@{username})
+🆔 ID：{userId}
+🌐 语言：{language}
+💱 货币：{currency}
+🕐 时区：{timezone}
+📅 注册时间：{createdAt}
+
+📊 **统计：**
+• 支出记录数：{totalExpenses}
+• 总金额：{totalAmount}
+• 错误报告数：{bugReportsCount}
+• 交易次数：{transactionsCount}`,
   
     // 管理员操作
     admin_promote_success: '✅ 已将用户 {userId} 设为管理员。',
@@ -253,15 +253,14 @@ module.exports = {
     period_start_invalid: '❌ 无效数字。请输入 1 到 31 之间的整数。',
     period_start_set: '✅ 已设置期间开始日: {day}',
     timezone_setup: `🕐 *时区设置*
-  
-  你当地的当前时间是？
-  
-  *当前 UTC 时间:* {utcTime}
-  
-  请选择你的当前时间：`,
+
+你当地的当前时间是？
+
+*当前 UTC 时间:* {utcTime}
+
+请选择你的当前时间：`,
     timezone_set: '✅ 已设置时区: {timezone}',
     // 家庭预算
-    button_family: '👨‍👩‍👧‍👦 家庭',
     // Family labels
     family_label: '🏠 *家庭:*',
     family_owner_label: '👑 *拥有者:*',
@@ -271,7 +270,7 @@ module.exports = {
     family_left: '✅ 你已退出家庭 "{name}"。',
     family_deleted: '✅ 家庭 "{name}" 已删除。所有家庭支出已转为个人支出。',
     family_member_removed: '✅ 已从家庭中移除成员。',
-    family_member_removed_notification: '❌ 你已被移出 *{familyName}* 家庭。',
+    family_member_removed_notification: '❌ 你已被移出“{familyName}”家庭。',
     family_cannot_leave_owner: '❌ 家庭的拥有者不能退出，请使用“删除家庭”。',
     
     // 家庭菜单按钮
@@ -282,15 +281,12 @@ module.exports = {
     delete_family: '🗑️ 删除家庭',
     family_members: '👥 家庭成员',
     family_stats: '💰 本月支出',
-    family_daily_stats: '💰 今日支出',
     family_add_expense: '💰 添加家庭支出',
     family_menu: '👨‍👩‍👧‍👦 家庭菜单',
     family_cancel: '❌ 取消',
     
     // 邀请
     invitation_sent: '✅ 已向 @{username} 发送邀请',
-    invitation_accepted: '✅ 你已接受加入 "{name}" 家庭的邀请！',
-    invitation_rejected: '❌ 你已拒绝加入 "{name}" 家庭的邀请。',
     invitation_not_found: '❌ 邀请未找到或已过期。',
     invitation_expired: '❌ 邀请已过期。',
     invitation_already_processed: '❌ 邀请已被处理。',
@@ -317,13 +313,13 @@ module.exports = {
     invitation_cancelled: '✅ 邀请已取消。',
     not_authorized: '❌ 你没有执行此操作的权限。',
     invitation_code: '🔑 邀请码: `{code}`',
-    family_invitation_received: '🎉 你被邀请加入 *{familyName}* 家庭\n\n👤 邀请人: {inviterName}\n🔑 邀请码: `{inviteCode}`\n\n请选择操作：',
+    family_invitation_received: '🎉 你被邀请加入“{familyName}”家庭\n\n👤 邀请人: {inviterName}\n🔑 邀请码: `{inviteCode}`\n\n请选择操作：',
     accept_invitation: '✅ 接受',
     reject_invitation: '❌ 拒绝',
-    invitation_accepted: '🎉 恭喜！你已加入 *{familyName}* 家庭',
+    invitation_accepted: '🎉 恭喜！你已加入“{familyName}”家庭',
     invitation_rejected: '❌ 你已拒绝该邀请',
     invitation_not_pending: '❌ 该邀请不在待处理状态',
-    invitation_cancelled_notification: '❌ 你加入 *{familyName}* 家庭的邀请已被 {cancelledBy} 取消',
+    invitation_cancelled_notification: '❌ 你加入“{familyName}”家庭的邀请已被 {cancelledBy} 取消',
     enter_invite_code: '🔑 请输入邀请码：',
     only_owner_can_remove: '❌ 只有家庭拥有者可以移除成员。',
     only_owner_can_delete: '❌ 只有家庭拥有者可以删除家庭。',
@@ -335,7 +331,6 @@ module.exports = {
     
     // 确认
     confirm_delete_family: '⚠️ *删除家庭*\n\n所有成员将被移除，家庭支出将转为个人支出。\n\n确定要继续吗？',
-    confirm_remove_member: '⚠️ *移除成员*\n\n该成员将被移出家庭。\n\n确定要继续吗？',
     // 家庭统计
     family_monthly_stats: '👨‍👩‍👧‍👦 *本月家庭支出*',
     family_daily_stats: '💰 今日支出',
@@ -353,23 +348,18 @@ module.exports = {
     remove_member: '❌ 移除',
     confirm_remove_member: '⚠️ *移除成员*\n\n确定要将 {name} 从家庭中移除吗？',
     member_removed: '✅ {name} 已被移出家庭。',
-    member_removed_notification: '❌ 你已被 *{familyName}* 家庭的 {ownerName} 移除。',
+    member_removed_notification: '❌ 你已被“{familyName}”家庭的 {ownerName} 移除。',
     
     // 高级功能
     premium_required: '❌ 此功能仅对高级用户开放。',
     upgrade_to_premium: '💎 升级为高级用户即可使用家庭预算！',
     
     timezone_updated: `✅ *时区已更新！*
-  
-  🕐 选择时间：*{time}*
-  🌍 时区：*{timezone}*
-  
-  从现在起，你的支出将按当地时间显示。`,
-    timezone_updated_simple: `✅ *时区已更新！*
-  
-  🌍 新时区：*{timezone}*
-  
-  你的支出将按当地时间显示。`,
+
+🕐 选择时间：*{time}*
+🌍 时区：*{timezone}*
+
+从现在起，你的支出将按当地时间显示。`,
     
     // 限制
     limits_title: '📊 *限制信息*',
@@ -668,5 +658,7 @@ module.exports = {
     report_per_day: '📅 每日平均：{amount}',
     report_largest: '🔝 最大一笔支出：{amount} — {description}（{date}）',
     overview_budget_limit: '限额 {amount}',
-    report_title_current: '截至目前的总结：{range}'
+    report_title_current: '截至目前的总结：{range}',
+    input_canceled: '✅ 已取消。你可以像平常一样记录支出。',
+    no_active_state: '目前没有可以取消的操作。'
 };

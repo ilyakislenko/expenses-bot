@@ -85,25 +85,25 @@ module.exports = {
     
     // Estadísticas admin
     admin_stats_text: `📊 *Estadísticas del bot*
-  
-  👥 **Usuarios:**
-  • Total: {totalUsers}
-  • Premium: {activePremium}
-  • Nuevos esta semana: {newUsersWeek}
-  • Nuevos este mes: {newUsersMonth}
-  
-  💰 **Gastos:**
-  • Registros totales: {totalExpenses}
-  • Esta semana: {expensesWeek}
-  • Usuarios activos: {activeUsers}
-  
-  🐛 **Reportes de errores:** {totalBugReports}
-  
-  💎 **Donaciones:**
-  • Total: {totalDonations}
-  • Estrellas reunidas: {totalStars}
-  
-  ⭐ **Transacciones premium:** {premiumTransactions}`,
+
+👥 **Usuarios:**
+• Total: {totalUsers}
+• Premium: {activePremium}
+• Nuevos esta semana: {newUsersWeek}
+• Nuevos este mes: {newUsersMonth}
+
+💰 **Gastos:**
+• Registros totales: {totalExpenses}
+• Esta semana: {expensesWeek}
+• Usuarios activos: {activeUsers}
+
+🐛 **Reportes de errores:** {totalBugReports}
+
+💎 **Donaciones:**
+• Total: {totalDonations}
+• Estrellas reunidas: {totalStars}
+
+⭐ **Transacciones premium:** {premiumTransactions}`,
   
     // Lista usuarios admin
     admin_users_title: '👥 *Usuarios* (pág. {page}/{totalPages})\n\nTotal: {totalUsers}\n',
@@ -117,26 +117,26 @@ module.exports = {
     
     // Donaciones admin
     admin_donations_text: `💰 *Estadísticas de donaciones*
-  
-  📊 **Resumen:**
-  • Donaciones totales: {totalDonations}
-  • Completadas: {completedDonations}
-  • Pendientes: {pendingDonations}
-  
-  ⭐ **Estrellas:**
-  • Total recolectado: {totalStars}
-  • Promedio por donación: {avgStars} estrellas`,
+
+📊 **Resumen:**
+• Donaciones totales: {totalDonations}
+• Completadas: {completedDonations}
+• Pendientes: {pendingDonations}
+
+⭐ **Estrellas:**
+• Total recolectado: {totalStars}
+• Promedio por donación: {avgStars} estrellas`,
   
     // Premium admin 
     admin_premium_stats: `⭐ *Estadísticas premium*
-  
-  📊 **Usuarios:**
-  • Total premium: {totalPremiumUsers}
-  • Activos ahora: {activePremiumUsers}
-  
-  💳 **Transacciones:**
-  • Total operaciones: {totalTransactions}
-  • Ingresos totales: {totalRevenue} estrellas`,
+
+📊 **Usuarios:**
+• Total premium: {totalPremiumUsers}
+• Activos ahora: {activePremiumUsers}
+
+💳 **Transacciones:**
+• Total operaciones: {totalTransactions}
+• Ingresos totales: {totalRevenue} estrellas`,
   
     // Administradores
     admin_admins_title: '👑 *Administradores* ({count})\n',
@@ -148,19 +148,19 @@ module.exports = {
     // Detalles usuario admin
     admin_user_not_found: '❌ Usuario no encontrado.',
     admin_user_details: `👤 *Información del usuario*
-  
-  {adminFlag}{premiumFlag} **{firstName}** (@{username})
-  🆔 ID: {userId}
-  🌐 Idioma: {language}
-  💱 Moneda: {currency}
-  🕐 Zona horaria: {timezone}
-  📅 Registro: {createdAt}
-  
-  📊 **Estadísticas:**
-  • Registros de gastos: {totalExpenses}
-  • Importe total: {totalAmount}
-  • Reportes de errores: {bugReportsCount}
-  • Transacciones: {transactionsCount}`,
+
+{adminFlag}{premiumFlag} {firstName} (@{username})
+🆔 ID: {userId}
+🌐 Idioma: {language}
+💱 Moneda: {currency}
+🕐 Zona horaria: {timezone}
+📅 Registro: {createdAt}
+
+📊 **Estadísticas:**
+• Registros de gastos: {totalExpenses}
+• Importe total: {totalAmount}
+• Reportes de errores: {bugReportsCount}
+• Transacciones: {transactionsCount}`,
   
     // Acciones admin
     admin_promote_success: '✅ Usuario {userId} ahora es administrador.',
@@ -253,15 +253,14 @@ Comandos: /stats /history /income /recurring /export /settings /menu`,
     period_start_invalid: '❌ Número inválido. Escribe un número entero entre 1 y 31.',
     period_start_set: '✅ Día de inicio establecido: {day}',
     timezone_setup: `🕐 *Configuración de zona horaria*
-  
-  ¿Qué hora es ahora?
-  
-  *Hora actual UTC:* {utcTime}
-  
-  Selecciona tu hora actual:`,
+
+¿Qué hora es ahora?
+
+*Hora actual UTC:* {utcTime}
+
+Selecciona tu hora actual:`,
     timezone_set: '✅ Zona horaria establecida: {timezone}',
     // Presupuesto familiar
-    button_family: '👨‍👩‍👧‍👦 Familia',
     // Family labels
     family_label: '🏠 *Familia:*',
     family_owner_label: '👑 *Propietario:*',
@@ -271,7 +270,7 @@ Comandos: /stats /history /income /recurring /export /settings /menu`,
     family_left: '✅ Has salido de la familia "{name}".',
     family_deleted: '✅ Familia "{name}" eliminada. Todos los gastos se han vuelto personales.',
     family_member_removed: '✅ Miembro eliminado de la familia.',
-    family_member_removed_notification: '❌ Has sido eliminado de la familia *{familyName}*.',
+    family_member_removed_notification: '❌ Has sido eliminado de la familia «{familyName}».',
     family_cannot_leave_owner: '❌ El propietario no puede salir de la familia. Usa "Eliminar familia".',
     
     // Botones del menú familiar
@@ -282,15 +281,12 @@ Comandos: /stats /history /income /recurring /export /settings /menu`,
     delete_family: '🗑️ Eliminar familia',
     family_members: '👥 Miembros de la familia',
     family_stats: '💰 Gastos del mes',
-    family_daily_stats: '💰 Gastos del día',
     family_add_expense: '💰 Añadir gasto familiar',
     family_menu: '👨‍👩‍👧‍👦 Menú familiar',
     family_cancel: '❌ Cancelar',
     
     // Invitaciones
     invitation_sent: '✅ Invitación enviada a @{username}',
-    invitation_accepted: '✅ Has aceptado unirte a la familia "{name}"!',
-    invitation_rejected: '❌ Has rechazado la invitación a la familia "{name}".',
     invitation_not_found: '❌ Invitación no encontrada o expirada.',
     invitation_expired: '❌ Invitación expirada.',
     invitation_already_processed: '❌ Invitación ya procesada.',
@@ -317,13 +313,13 @@ Comandos: /stats /history /income /recurring /export /settings /menu`,
     invitation_cancelled: '✅ Invitación cancelada.',
     not_authorized: '❌ No tienes permisos para esta acción.',
     invitation_code: '🔑 Código de invitación: `{code}`',
-    family_invitation_received: '🎉 Te invitan a la familia *{familyName}*\n\n👤 Invitado por: {inviterName}\n🔑 Código: `{inviteCode}`\n\nElige una acción:',
+    family_invitation_received: '🎉 Te invitan a la familia «{familyName}»\n\n👤 Invitado por: {inviterName}\n🔑 Código: `{inviteCode}`\n\nElige una acción:',
     accept_invitation: '✅ Aceptar',
     reject_invitation: '❌ Rechazar',
-    invitation_accepted: '🎉 ¡Te has unido a la familia *{familyName}*!',
+    invitation_accepted: '🎉 ¡Te has unido a la familia «{familyName}»!',
     invitation_rejected: '❌ Has rechazado la invitación a la familia',
     invitation_not_pending: '❌ La invitación no está pendiente',
-    invitation_cancelled_notification: '❌ La invitación a la familia *{familyName}* fue cancelada por {cancelledBy}',
+    invitation_cancelled_notification: '❌ La invitación a la familia «{familyName}» fue cancelada por {cancelledBy}',
     enter_invite_code: '🔑 Introduce el código de invitación:',
     only_owner_can_remove: '❌ Solo el propietario puede eliminar miembros.',
     only_owner_can_delete: '❌ Solo el propietario puede eliminar la familia.',
@@ -335,7 +331,6 @@ Comandos: /stats /history /income /recurring /export /settings /menu`,
     
     // Confirmaciones
     confirm_delete_family: '⚠️ *Eliminar familia*\n\nTodos los miembros serán eliminados y los gastos volverán a ser personales.\n\n¿Estás seguro?',
-    confirm_remove_member: '⚠️ *Eliminar miembro*\n\nEl miembro será eliminado de la familia.\n\n¿Seguro?',
     // Estadísticas familia
     family_monthly_stats: '👨‍👩‍👧‍👦 *Gastos familiares del mes*',
     family_daily_stats: '💰 Gastos del día',
@@ -353,23 +348,18 @@ Comandos: /stats /history /income /recurring /export /settings /menu`,
     remove_member: '❌ Eliminar',
     confirm_remove_member: '⚠️ *Eliminar miembro*\n\n¿Seguro que deseas eliminar a {name} de la familia?',
     member_removed: '✅ {name} fue eliminado de la familia.',
-    member_removed_notification: '❌ Has sido eliminado de la familia *{familyName}* por {ownerName}.',
+    member_removed_notification: '❌ Has sido eliminado de la familia «{familyName}» por {ownerName}.',
     
     // Funciones premium
     premium_required: '❌ Esta función es solo para usuarios premium.',
     upgrade_to_premium: '💎 ¡Actualiza a premium para gestionar un presupuesto familiar!',
     
     timezone_updated: `✅ *Zona horaria actualizada!*
-  
-  🕐 Hora elegida: *{time}*
-  🌍 Zona horaria: *{timezone}*
-  
-  Tus gastos se mostrarán en hora local.`,
-    timezone_updated_simple: `✅ *Zona horaria actualizada!*
-  
-  🌍 Nueva zona horaria: *{timezone}*
-  
-  Tus gastos ahora se muestran correctamente en tu hora local.`,
+
+🕐 Hora elegida: *{time}*
+🌍 Zona horaria: *{timezone}*
+
+Tus gastos se mostrarán en hora local.`,
     
     // Límites
     limits_title: '📊 *Información de límites*',
@@ -670,5 +660,7 @@ Comandos: /stats /history /income /recurring /export /settings /menu`,
     report_per_day: '📅 Media por día: {amount}',
     report_largest: '🔝 Mayor gasto: {amount} — {description} ({date})',
     overview_budget_limit: 'límite {amount}',
-    report_title_current: 'Resumen hasta hoy: {range}'
+    report_title_current: 'Resumen hasta hoy: {range}',
+    input_canceled: '✅ Cancelado. Puedes registrar gastos como siempre.',
+    no_active_state: 'Ahora no hay nada que cancelar.'
 };

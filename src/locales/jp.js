@@ -85,25 +85,25 @@ module.exports = {
     
     // 管理統計
     admin_stats_text: `📊 *ボット統計*
-  
-  👥 **ユーザー:**
-  • 合計: {totalUsers}
-  • プレミアム: {activePremium}
-  • 今週新規: {newUsersWeek}
-  • 今月新規: {newUsersMonth}
-  
-  💰 **支出:**
-  • 総記録数: {totalExpenses}
-  • 今週: {expensesWeek}
-  • アクティブユーザー: {activeUsers}
-  
-  🐛 **バグ報告:** {totalBugReports}
-  
-  💎 **寄付:**
-  • 合計: {totalDonations}
-  • 獲得スター: {totalStars}
-  
-  ⭐ **プレミアム取引件数:** {premiumTransactions}`,
+
+👥 **ユーザー:**
+• 合計: {totalUsers}
+• プレミアム: {activePremium}
+• 今週新規: {newUsersWeek}
+• 今月新規: {newUsersMonth}
+
+💰 **支出:**
+• 総記録数: {totalExpenses}
+• 今週: {expensesWeek}
+• アクティブユーザー: {activeUsers}
+
+🐛 **バグ報告:** {totalBugReports}
+
+💎 **寄付:**
+• 合計: {totalDonations}
+• 獲得スター: {totalStars}
+
+⭐ **プレミアム取引件数:** {premiumTransactions}`,
   
     // ユーザーリスト
     admin_users_title: '👥 *ユーザー*（ページ {page}/{totalPages}）\n\n合計: {totalUsers}\n',
@@ -117,26 +117,26 @@ module.exports = {
     
     // 寄付統計
     admin_donations_text: `💰 *寄付統計*
-  
-  📊 **概要:**
-  • 寄付総数: {totalDonations}
-  • 完了: {completedDonations}
-  • 保留中: {pendingDonations}
-  
-  ⭐ **スター:**
-  • 総獲得: {totalStars}
-  • 平均寄付: {avgStars} スター`,
+
+📊 **概要:**
+• 寄付総数: {totalDonations}
+• 完了: {completedDonations}
+• 保留中: {pendingDonations}
+
+⭐ **スター:**
+• 総獲得: {totalStars}
+• 平均寄付: {avgStars} スター`,
   
     // プレミアム統計
     admin_premium_stats: `⭐ *プレミアム統計*
-  
-  📊 **ユーザー:**
-  • プレミアム合計: {totalPremiumUsers}
-  • 現在アクティブ: {activePremiumUsers}
-  
-  💳 **取引:**
-  • 取引総数: {totalTransactions}
-  • 総収入: {totalRevenue} スター`,
+
+📊 **ユーザー:**
+• プレミアム合計: {totalPremiumUsers}
+• 現在アクティブ: {activePremiumUsers}
+
+💳 **取引:**
+• 取引総数: {totalTransactions}
+• 総収入: {totalRevenue} スター`,
   
     // 管理者リスト
     admin_admins_title: '👑 *管理者*（{count}人）\n',
@@ -148,19 +148,19 @@ module.exports = {
     // 管理者ユーザー詳細
     admin_user_not_found: '❌ ユーザーが見つかりません。',
     admin_user_details: `👤 *ユーザー情報*
-  
-  {adminFlag}{premiumFlag} **{firstName}** (@{username})
-  🆔 ID: {userId}
-  🌐 言語: {language}
-  💱 通貨: {currency}
-  🕐 タイムゾーン: {timezone}
-  📅 登録日: {createdAt}
-  
-  📊 **統計:**
-  • 支出記録数: {totalExpenses}
-  • 総額: {totalAmount}
-  • バグ報告数: {bugReportsCount}
-  • 取引数: {transactionsCount}`,
+
+{adminFlag}{premiumFlag} {firstName} (@{username})
+🆔 ID: {userId}
+🌐 言語: {language}
+💱 通貨: {currency}
+🕐 タイムゾーン: {timezone}
+📅 登録日: {createdAt}
+
+📊 **統計:**
+• 支出記録数: {totalExpenses}
+• 総額: {totalAmount}
+• バグ報告数: {bugReportsCount}
+• 取引数: {transactionsCount}`,
   
     // 管理者操作
     admin_promote_success: '✅ ユーザー {userId} を管理者に昇格しました。',
@@ -253,15 +253,14 @@ module.exports = {
     period_start_invalid: '❌ 無効な数値です。1〜31の整数を入力してください。',
     period_start_set: '✅ 期間開始日を {day} に設定しました',
     timezone_setup: `🕐 *タイムゾーン設定*
-  
-  現在の時間は何時ですか？
-  
-  *現在のUTC時間:* {utcTime}
-  
-  現在の時間を選択してください:`,
+
+現在の時間は何時ですか？
+
+*現在のUTC時間:* {utcTime}
+
+現在の時間を選択してください:`,
     timezone_set: '✅ タイムゾーンを {timezone} に設定しました',
     // 家族予算
-    button_family: '👨‍👩‍👧‍👦 家族',
     family_label: '🏠 *家族:*',
     family_owner_label: '👑 *所有者:*',
     family_info: '👨‍👩‍👧‍👦 *ファミリーバジェット*\n\nここでは家族や同僚、友人などと一緒に支出を管理できます。\n\n- \uD83D\uDC6A 共同の支出を記録するための共有グループが作成されます。\n- \u2795 各メンバーが支出を追加できます。\n- \uD83D\uDDD1\uFE0F 必要に応じて自分の支出を削除できます。\n- \uD83D\uDCCA すべてのメンバーが利用できる共有統計があります。\n- \uD83D\uDCE4 グループ全体のデータを1つのファイルにエクスポートできます。\n\n共同管理は、混乱を減らし、透明性を高めます。',
@@ -270,7 +269,7 @@ module.exports = {
     family_left: '✅ 家族「{name}」から退出しました。',
     family_deleted: '✅ 家族「{name}」を削除しました。全ての家族支出は個人支出に変わりました。',
     family_member_removed: '✅ 家族からメンバーを削除しました。',
-    family_member_removed_notification: '❌ あなたは*{familyName}*家族から削除されました。',
+    family_member_removed_notification: '❌ あなたは「{familyName}」家族から削除されました。',
     family_cannot_leave_owner: '❌ 家族の所有者は退出できません。「家族を削除」してください。',
     
     // 家族メニューボタン
@@ -281,15 +280,12 @@ module.exports = {
     delete_family: '🗑️ 家族を削除',
     family_members: '👥 家族メンバー',
     family_stats: '💰 月間支出',
-    family_daily_stats: '💰 当日支出',
     family_add_expense: '💰 家族支出を追加',
     family_menu: '👨‍👩‍👧‍👦 家族メニュー',
     family_cancel: '❌ キャンセル',
     
     // 招待
     invitation_sent: '✅ @{username} に招待を送信しました',
-    invitation_accepted: '✅ 家族「{name}」への参加招待を承諾しました！',
-    invitation_rejected: '❌ 家族「{name}」への参加招待を拒否しました。',
     invitation_not_found: '❌ 招待が見つからないか有効期限切れです。',
     invitation_expired: '❌ 招待の有効期限が切れました。',
     invitation_already_processed: '❌ 招待はすでに処理されています。',
@@ -316,13 +312,13 @@ module.exports = {
     invitation_cancelled: '✅ 招待をキャンセルしました。',
     not_authorized: '❌ この操作を行う権限がありません。',
     invitation_code: '🔑 招待コード: `{code}`',
-    family_invitation_received: '🎉 あなたは *{familyName}* 家族に招待されました\n\n👤 招待者: {inviterName}\n🔑 コード: `{inviteCode}`\n\n操作を選択してください：',
+    family_invitation_received: '🎉 あなたは「{familyName}」家族に招待されました\n\n👤 招待者: {inviterName}\n🔑 コード: `{inviteCode}`\n\n操作を選択してください：',
     accept_invitation: '✅ 承諾',
     reject_invitation: '❌ 拒否',
-    invitation_accepted: '🎉 おめでとうございます！*{familyName}* 家族に参加しました',
+    invitation_accepted: '🎉 おめでとうございます！家族「{familyName}」に参加しました',
     invitation_rejected: '❌ 招待を拒否しました',
     invitation_not_pending: '❌ 招待は保留状態ではありません',
-    invitation_cancelled_notification: '❌ *{familyName}* 家族への招待は {cancelledBy} によりキャンセルされました',
+    invitation_cancelled_notification: '❌ 「{familyName}」家族への招待は {cancelledBy} によりキャンセルされました',
     enter_invite_code: '🔑 招待コードを入力してください：',
     only_owner_can_remove: '❌ メンバーを削除できるのは家族の所有者のみです。',
     only_owner_can_delete: '❌ 家族を削除できるのは所有者のみです。',
@@ -334,7 +330,6 @@ module.exports = {
     
     // 確認
     confirm_delete_family: '⚠️ *家族削除*\n\n全メンバーが削除され、家族支出は個人支出に戻ります。\n\n本当に実行しますか？',
-    confirm_remove_member: '⚠️ *メンバー削除*\n\nこのメンバーは家族から削除されます。\n\n本当に実行しますか？',
     // 家族統計
     family_monthly_stats: '👨‍👩‍👧‍👦 *今月の家族支出*',
     family_daily_stats: '💰 今日の支出',
@@ -352,23 +347,18 @@ module.exports = {
     remove_member: '❌ 削除',
     confirm_remove_member: '⚠️ *メンバー削除*\n\n{name} を家族から削除しますか？',
     member_removed: '✅ {name} を家族から削除しました。',
-    member_removed_notification: '❌ あなたは *{familyName}* 家族から {ownerName} により削除されました。',
+    member_removed_notification: '❌ あなたは「{familyName}」家族から {ownerName} により削除されました。',
     
     // プレミアム機能
     premium_required: '❌ この機能はプレミアムユーザーのみ利用できます。',
     upgrade_to_premium: '💎 家族予算を使うにはプレミアムにアップグレードしてください！',
     
     timezone_updated: `✅ *タイムゾーンを更新しました！*
-  
-  🕐 選択した時間: *{time}*
-  🌍 タイムゾーン: *{timezone}*
-  
-  これ以降、すべての支出は現地時間で表示されます。`,
-    timezone_updated_simple: `✅ *タイムゾーンを更新しました！*
-  
-  🌍 新しいタイムゾーン: *{timezone}*
-  
-  これ以降、すべての支出は正しい時間で表示されます。`,
+
+🕐 選択した時間: *{time}*
+🌍 タイムゾーン: *{timezone}*
+
+これ以降、すべての支出は現地時間で表示されます。`,
     
     // 制限
     limits_title: '📊 *利用制限情報*',
@@ -667,5 +657,7 @@ module.exports = {
     report_per_day: '📅 1日あたりの平均: {amount}',
     report_largest: '🔝 最大の支出: {amount} — {description}（{date}）',
     overview_budget_limit: '上限 {amount}',
-    report_title_current: '現時点のサマリー: {range}'
+    report_title_current: '現時点のサマリー: {range}',
+    input_canceled: '✅ キャンセルしました。いつも通り支出を記録できます。',
+    no_active_state: '現在キャンセルするものはありません。'
 };

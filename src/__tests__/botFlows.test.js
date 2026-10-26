@@ -1,125 +1,232 @@
-const Container = require('../container');
+const CommandHandlers = require('../handlers/commands');
+const ExpenseService = require('../services/ExpenseService');
+const LocalizationService = require('../services/LocalizationService');
+const Formatter = require('../utils/formatter');
+const {
+  generateMainMenuKeyboard,
+  generateSettingsKeyboard
+} = require('../utils/constants');
 
-// Mock repositories
-jest.mock('../repositories/UserRepository', () => {
-  return jest.fn().mockImplementation(() => ({
-    createUser: jest.fn().mockResolvedValue({ id: 1, username: 'testuser', first_name: 'Test' }),
-    setUserCurrency: jest.fn().mockResolvedValue(undefined),
-    getUserCurrency: jest.fn().mockResolvedValue('RUB'),
-    setUserPremium: jest.fn().mockResolvedValue(undefined),
-    getUserPremium: jest.fn().mockResolvedValue(false)
-  }));
-});
-
-jest.mock('../repositories/ExpenseRepository', () => {
-  return jest.fn().mockImplementation(() => ({
-    addExpense: jest.fn().mockResolvedValue({ id: 1, amount: 100, description: 'test' }),
-    getUserExpenses: jest.fn().mockResolvedValue([
-      { id: 1, amount: 100, description: 'test', category_name: 'Еда', category_icon: '🍕' }
-    ]),
-    getTotalExpenses: jest.fn().mockResolvedValue({ total: 100, count: 1, currency: 'RUB' }),
-    getExpensesByCategory: jest.fn().mockResolvedValue([
-      { name: 'Еда', icon: '🍕', total: 100, count: 1, currency: 'RUB' }
-    ]),
-    deleteLastExpense: jest.fn().mockResolvedValue({ id: 1, amount: 100 }),
-    exportExpenses: jest.fn().mockResolvedValue([
-      { amount: 100, currency: 'RUB', description: 'test', category: 'Еда' }
-    ]),
-    getExpensesByCategoryId: jest.fn().mockResolvedValue([
-      { id: 1, amount: 100, description: 'test', category_name: 'Еда', category_icon: '🍕' }
-    ]),
-    deleteExpenseById: jest.fn().mockResolvedValue({ id: 1, amount: 100 }),
-    updateExpenseById: jest.fn().mockResolvedValue({ id: 1, amount: 200, description: 'updated' }),
-    getExpenseById: jest.fn().mockResolvedValue({ id: 1, amount: 100, description: 'test' })
-  }));
-});
-
-jest.mock('../repositories/CategoryRepository', () => {
-  return jest.fn().mockImplementation(() => ({
-    getCategories: jest.fn().mockResolvedValue([
-      { id: 1, name: 'Еда', icon: '🍕' },
-      { id: 2, name: 'Транспорт', icon: '🚗' }
-    ]),
-    getCategoryByName: jest.fn().mockResolvedValue({ id: 1, name: 'Еда' })
-  }));
-});
-
-// Мок для ctx
-function createMockCtx() {
-  return {
-    from: { id: 1, username: 'testuser', first_name: 'Test' },
-    reply: jest.fn(),
-    replyWithDocument: jest.fn(),
-    editMessageText: jest.fn(),
-    answerCbQuery: jest.fn(),
-    message: { text: '' },
-    callbackQuery: { data: '' },
-    match: []
+function createCtx({ callback = false, text = '/start', languageCode } = {}) {
+  const ctx = {
+    from: { id: 1, username: 'testuser', first_name: 'Test', language_code: languageCode },
+    message: { text },
+    reply: jest.fn().mockResolvedValue({}),
+    editMessageText: jest.fn().mockResolvedValue({}),
+    answerCbQuery: jest.fn().mockResolvedValue(true)
   };
+  if (callback) ctx.callbackQuery = { data: 'x', message: { message_id: 10 } };
+  return ctx;
 }
 
-describe('CommandHandlers', () => {
-  let ctx;
-  let commandHandlers;
+const buttons = (inlineKeyboard) => inlineKeyboard.flat();
+
+describe('CommandHandlers flows', () => {
+  let localizationService;
+  let userService;
+  let funnelService;
+  let stateService;
+  let premiumService;
+  let familyService;
+  let incomeService;
+  let handlers;
+  const t = (lang, key, params) => localizationService.getText(lang, key, params);
 
   beforeEach(() => {
-    ctx = createMockCtx();
-    const container = new Container();
-    commandHandlers = container.get('commandHandlers');
+    localizationService = new LocalizationService();
+    userService = {
+      getUserById: jest.fn().mockResolvedValue({ id: 1 }),
+      registerUser: jest.fn().mockResolvedValue({ id: 1 }),
+      getUserLanguage: jest.fn().mockResolvedValue('en'),
+      getUserCurrency: jest.fn().mockResolvedValue('USD'),
+      // Без летнего времени (UTC-3) и с "_", который в Markdown нужно экранировать
+      getUserTimezone: jest.fn().mockResolvedValue('America/Sao_Paulo'),
+      getUserPeriodStartDay: jest.fn().mockResolvedValue(5),
+      getReminderSettings: jest.fn().mockResolvedValue({ reminder_enabled: true, reminder_hours: [18, 9] })
+    };
+    funnelService = { registerSource: jest.fn(), track: jest.fn() };
+    stateService = { setUserState: jest.fn(), getUserState: jest.fn(), clearUserState: jest.fn() };
+    premiumService = { isPremiumUser: jest.fn().mockResolvedValue(false) };
+    familyService = { getUserFamily: jest.fn().mockResolvedValue(null) };
+    incomeService = { getIncomeCurrency: jest.fn().mockResolvedValue('EUR') };
+
+    handlers = new CommandHandlers({
+      userService,
+      funnelService,
+      stateService,
+      premiumService,
+      familyService,
+      incomeService,
+      localizationService,
+      formatter: new Formatter({}),
+      keyboardGenerators: {
+        generateMainMenuKeyboard: (lang, showFamily) => generateMainMenuKeyboard(localizationService, lang, showFamily),
+        generateSettingsKeyboard: (lang) => generateSettingsKeyboard(localizationService, lang)
+      }
+    });
   });
 
-  it('start: sends welcome message', async () => {
-    await commandHandlers.start(ctx);
-    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Привет'), expect.objectContaining({ parse_mode: 'Markdown' }));
+  describe('start', () => {
+    test('new user: registers, records source and starts onboarding with language picker', async () => {
+      userService.getUserById.mockResolvedValue(undefined);
+      const ctx = createCtx({ text: '/start ads_tg', languageCode: 'ru' });
+
+      await handlers.start(ctx);
+
+      expect(userService.registerUser).toHaveBeenCalledWith(1, 'testuser', 'Test');
+      expect(funnelService.registerSource).toHaveBeenCalledWith(1, 'ads_tg');
+      expect(funnelService.track).toHaveBeenCalledWith(1, 'registered');
+      expect(stateService.setUserState).toHaveBeenCalledWith(1, 'onboarding_language');
+
+      const [text, extra] = ctx.reply.mock.calls[0];
+      expect(text).toBe(t('ru', 'language_select'));
+      const languageButtons = buttons(extra.reply_markup.inline_keyboard).filter((b) => b.callback_data.startsWith('set_language|'));
+      expect(languageButtons.map((b) => b.callback_data)).toEqual(
+        expect.arrayContaining(['set_language|ru', 'set_language|en'])
+      );
+    });
+
+    test('new user with unsupported Telegram language gets English onboarding', async () => {
+      userService.getUserById.mockResolvedValue(undefined);
+      const ctx = createCtx({ languageCode: 'xx' });
+
+      await handlers.start(ctx);
+
+      expect(ctx.reply.mock.calls[0][0]).toBe(t('en', 'language_select'));
+    });
+
+    test('returning user: greeted in own language with main menu, no onboarding', async () => {
+      userService.getUserLanguage.mockResolvedValue('ru');
+      const ctx = createCtx();
+
+      await handlers.start(ctx);
+
+      expect(stateService.setUserState).not.toHaveBeenCalled();
+      expect(funnelService.track).not.toHaveBeenCalled();
+      const [text, extra] = ctx.reply.mock.calls[0];
+      expect(text).toBe(t('ru', 'start_returning'));
+      expect(extra.parse_mode).toBe('Markdown');
+      expect(extra.reply_markup.keyboard).toEqual(generateMainMenuKeyboard(localizationService, 'ru', false));
+    });
+
+    test('after onboarding: completes funnel step and sends the full welcome', async () => {
+      const ctx = createCtx();
+
+      await handlers.start(ctx, { afterOnboarding: true });
+
+      expect(funnelService.track).toHaveBeenCalledWith(1, 'onboarding_completed');
+      expect(ctx.reply.mock.calls[0][0]).toBe(
+        `${t('en', 'start_message')}\n\n${t('en', 'start_reminders_note')}`
+      );
+    });
+
+    test('main menu shows family expense button only for premium users in a family', async () => {
+      premiumService.isPremiumUser.mockResolvedValue(true);
+      familyService.getUserFamily.mockResolvedValue({ id: 7 });
+      const ctx = createCtx();
+
+      await handlers.start(ctx);
+
+      const keyboard = ctx.reply.mock.calls[0][1].reply_markup.keyboard;
+      expect(keyboard.flat().map((b) => b.text)).toContain(t('en', 'family_add_expense'));
+
+      premiumService.isPremiumUser.mockResolvedValue(false);
+      const ctx2 = createCtx();
+      await handlers.start(ctx2);
+      expect(ctx2.reply.mock.calls[0][1].reply_markup.keyboard.flat().map((b) => b.text))
+        .not.toContain(t('en', 'family_add_expense'));
+    });
   });
 
-  it('help: sends help message', async () => {
-    await commandHandlers.help(ctx);
-    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Справка по командам'), expect.objectContaining({ parse_mode: 'Markdown' }));
+  describe('help', () => {
+    test('command: replies with help text and bug report / back buttons', async () => {
+      const ctx = createCtx({ text: '/help' });
+
+      await handlers.help(ctx);
+
+      const [text, extra] = ctx.reply.mock.calls[0];
+      expect(text).toBe(t('en', 'help_message'));
+      expect(buttons(extra.reply_markup.inline_keyboard).map((b) => b.callback_data))
+        .toEqual(['bug_report', 'back_to_menu']);
+    });
+
+    test('button: edits the current message instead of sending a new one', async () => {
+      const ctx = createCtx({ callback: true });
+
+      await handlers.help(ctx);
+
+      expect(ctx.answerCbQuery).toHaveBeenCalled();
+      expect(ctx.editMessageText).toHaveBeenCalledWith(t('en', 'help_message'), expect.any(Object));
+      expect(ctx.reply).not.toHaveBeenCalled();
+    });
   });
 
-  it('currency: sends currency keyboard', async () => {
-    await commandHandlers.currency(ctx);
-    expect(ctx.reply).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ reply_markup: expect.any(Object) }));
+  test('currency: offers set_currency buttons for supported currencies and a back button', async () => {
+    const ctx = createCtx({ text: '/currency' });
+
+    await handlers.currency(ctx);
+
+    const [text, extra] = ctx.reply.mock.calls[0];
+    expect(text).toBe(t('en', 'currency_select'));
+    const data = buttons(extra.reply_markup.inline_keyboard).map((b) => b.callback_data);
+    expect(data).toEqual(expect.arrayContaining(['set_currency|RUB', 'set_currency|USD', 'set_currency|EUR']));
+    expect(data[data.length - 1]).toBe('settings_currencies');
   });
 
-  it('settings: sends settings message', async () => {
-    await commandHandlers.settings(ctx);
-    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Настройки'), expect.objectContaining({ parse_mode: 'Markdown' }));
+  describe('settings', () => {
+    test('shows current currencies, timezone with its UTC offset, period start and sorted reminder hours', async () => {
+      const ctx = createCtx({ text: '/settings' });
+
+      await handlers.settings(ctx);
+
+      const [text, extra] = ctx.reply.mock.calls[0];
+      expect(text).toContain(t('en', 'settings_currency_line', { currency: 'USD', incomeCurrency: 'EUR' }));
+      expect(text).toContain(t('en', 'settings_timezone_line', { timezone: 'America/Sao\\_Paulo (UTC-3)' }));
+      expect(text).toContain(t('en', 'settings_period_line', { day: 5 }));
+      expect(text).toContain(t('en', 'settings_reminders_on_line', { hours: '09:00, 18:00' }));
+      expect(extra.reply_markup.inline_keyboard).toEqual(generateSettingsKeyboard(localizationService, 'en'));
+    });
+
+    test('shows reminders as disabled when turned off', async () => {
+      userService.getReminderSettings.mockResolvedValue({ reminder_enabled: false, reminder_hours: [10] });
+      const ctx = createCtx({ text: '/settings' });
+
+      await handlers.settings(ctx);
+
+      expect(ctx.reply.mock.calls[0][0]).toContain(t('en', 'settings_reminders_off_line'));
+    });
   });
 });
 
-            describe('ExpenseService', () => {
-              it('getCategories returns array', async () => {
-                const container = new Container();
-                const expenseService = container.get('expenseService');
-                const categories = await expenseService.getCategories(1);
-                expect(Array.isArray(categories)).toBe(true);
-              });
-            });
+describe('ExpenseService.getCategories', () => {
+  const build = (isPremium) => {
+    const categoryRepository = {
+      getCategoriesWithPremium: jest.fn().mockResolvedValue([
+        { id: 1, name: 'Еда', icon: '🍕' },
+        { id: 9, name: 'Котик', icon: '🐱' }
+      ])
+    };
+    const premiumService = { isPremiumUser: jest.fn().mockResolvedValue(isPremium) };
+    return { categoryRepository, service: new ExpenseService({}, {}, categoryRepository, premiumService, {}) };
+  };
 
-            describe('UserService', () => {
-              it('getUserCurrency returns string', async () => {
-                const container = new Container();
-                const userService = container.get('userService');
-                const currency = await userService.getUserCurrency(1);
-                expect(typeof currency).toBe('string');
-              });
-            });
+  test('passes premium status so custom categories are included only for premium', async () => {
+    for (const isPremium of [true, false]) {
+      const { categoryRepository, service } = build(isPremium);
+      await service.getCategories(1);
+      expect(categoryRepository.getCategoriesWithPremium).toHaveBeenCalledWith(1, isPremium);
+    }
+  });
 
-describe('UserService', () => {
-  it('getUserCurrency returns string', async () => {
-    const container = new Container();
-    const userService = container.get('userService');
-    const currency = await userService.getUserCurrency(1);
-    expect(typeof currency === 'string' || currency === null).toBe(true);
+  test('translates built-in category names and keeps custom ones', async () => {
+    const localizationService = new LocalizationService();
+    const { service } = build(true);
+
+    const categories = await service.getCategories(1, localizationService, 'en');
+
+    expect(categories).toEqual([
+      { id: 1, name: localizationService.getText('en', 'category_food'), icon: '🍕' },
+      { id: 9, name: 'Котик', icon: '🐱' }
+    ]);
   });
 });
-
-describe('Formatter', () => {
-  it('formatAmount returns string', () => {
-    const container = new Container();
-    const formatter = container.get('formatter');
-    expect(typeof formatter.formatAmount(100, 'RUB')).toBe('string');
-  });
-}); 

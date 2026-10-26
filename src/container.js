@@ -236,7 +236,8 @@ class Container {
       case 'notificationService':
         return new NotificationService(
           this.get('localizationService'),
-          this.get('userService')
+          this.get('userService'),
+          this.get('formatter')
         );
 
       case 'familyService':

@@ -85,25 +85,25 @@ module.exports = {
     
     // एडमिन आँकड़े
     admin_stats_text: `📊 *बॉट आँकड़े*
-  
-  👥 **उपयोगकर्ता:**
-  • कुल: {totalUsers}
-  • प्रीमियम: {activePremium}
-  • इस सप्ताह नए: {newUsersWeek}
-  • इस महीने नए: {newUsersMonth}
-  
-  💰 **खर्च:**
-  • कुल प्रविष्टियाँ: {totalExpenses}
-  • इस सप्ताह: {expensesWeek}
-  • सक्रिय उपयोगकर्ता: {activeUsers}
-  
-  🐛 **बग रिपोर्ट:** {totalBugReports}
-  
-  💎 **दान:**
-  • कुल: {totalDonations}
-  • एकत्रित सितारे: {totalStars}
-  
-  ⭐ **प्रीमियम लेनदेन:** {premiumTransactions}`,
+
+👥 **उपयोगकर्ता:**
+• कुल: {totalUsers}
+• प्रीमियम: {activePremium}
+• इस सप्ताह नए: {newUsersWeek}
+• इस महीने नए: {newUsersMonth}
+
+💰 **खर्च:**
+• कुल प्रविष्टियाँ: {totalExpenses}
+• इस सप्ताह: {expensesWeek}
+• सक्रिय उपयोगकर्ता: {activeUsers}
+
+🐛 **बग रिपोर्ट:** {totalBugReports}
+
+💎 **दान:**
+• कुल: {totalDonations}
+• एकत्रित सितारे: {totalStars}
+
+⭐ **प्रीमियम लेनदेन:** {premiumTransactions}`,
   
     // उपयोगकर्ता सूची
     admin_users_title: '👥 *उपयोगकर्ता* (पृष्ठ {page}/{totalPages})\n\nकुल: {totalUsers}\n',
@@ -117,26 +117,26 @@ module.exports = {
     
     // दान आँकड़े
     admin_donations_text: `💰 *दान आँकड़े*
-  
-  📊 **सारांश:**
-  • कुल दान: {totalDonations}
-  • पूर्ण: {completedDonations}
-  • लंबित: {pendingDonations}
-  
-  ⭐ **सितारे:**
-  • कुल एकत्रित: {totalStars}
-  • औसत दान: {avgStars} सितारे`,
+
+📊 **सारांश:**
+• कुल दान: {totalDonations}
+• पूर्ण: {completedDonations}
+• लंबित: {pendingDonations}
+
+⭐ **सितारे:**
+• कुल एकत्रित: {totalStars}
+• औसत दान: {avgStars} सितारे`,
   
     // प्रीमियम आँकड़े
     admin_premium_stats: `⭐ *प्रीमियम आँकड़े*
-  
-  📊 **उपयोगकर्ता:**
-  • कुल प्रीमियम: {totalPremiumUsers}
-  • अभी सक्रिय: {activePremiumUsers}
-  
-  💳 **लेनदेन:**
-  • कुल संचालन: {totalTransactions}
-  • कुल राजस्व: {totalRevenue} सितारे`,
+
+📊 **उपयोगकर्ता:**
+• कुल प्रीमियम: {totalPremiumUsers}
+• अभी सक्रिय: {activePremiumUsers}
+
+💳 **लेनदेन:**
+• कुल संचालन: {totalTransactions}
+• कुल राजस्व: {totalRevenue} सितारे`,
   
     // एडमिन सूची
     admin_admins_title: '👑 *एडमिन* ({count})\n',
@@ -148,19 +148,19 @@ module.exports = {
     // एडमिन उपयोगकर्ता विवरण
     admin_user_not_found: '❌ उपयोगकर्ता नहीं मिला।',
     admin_user_details: `👤 *उपयोगकर्ता जानकारी*
-  
-  {adminFlag}{premiumFlag} **{firstName}** (@{username})
-  🆔 ID: {userId}
-  🌐 भाषा: {language}
-  💱 मुद्रा: {currency}
-  🕐 समय क्षेत्र: {timezone}
-  📅 पंजीकरण: {createdAt}
-  
-  📊 **आँकड़े:**
-  • खर्च प्रविष्टियाँ: {totalExpenses}
-  • कुल राशि: {totalAmount}
-  • बग रिपोर्ट: {bugReportsCount}
-  • लेनदेन: {transactionsCount}`,
+
+{adminFlag}{premiumFlag} {firstName} (@{username})
+🆔 ID: {userId}
+🌐 भाषा: {language}
+💱 मुद्रा: {currency}
+🕐 समय क्षेत्र: {timezone}
+📅 पंजीकरण: {createdAt}
+
+📊 **आँकड़े:**
+• खर्च प्रविष्टियाँ: {totalExpenses}
+• कुल राशि: {totalAmount}
+• बग रिपोर्ट: {bugReportsCount}
+• लेनदेन: {transactionsCount}`,
   
     // एडमिन क्रियाएँ
     admin_promote_success: '✅ उपयोगकर्ता {userId} को एडमिन बनाया गया।',
@@ -255,15 +255,14 @@ module.exports = {
     period_start_invalid: '❌ अमान्य संख्या। 1 से 31 के बीच पूर्णांक दर्ज करें।',
     period_start_set: '✅ अवधि शुरू होने का दिन सेट किया गया: {day}',
     timezone_setup: `🕐 *समय क्षेत्र सेटिंग*
-  
-  अभी कितने बजे हैं?
-  
-  *वर्तमान UTC समय:* {utcTime}
-  
-  अपना वर्तमान समय चुनें:`,
+
+अभी कितने बजे हैं?
+
+*वर्तमान UTC समय:* {utcTime}
+
+अपना वर्तमान समय चुनें:`,
     timezone_set: '✅ समय क्षेत्र सेट किया गया: {timezone}',
     // पारिवारिक बजट
-    button_family: '👨‍👩‍👧‍👦 परिवार',
     // Family labels
     family_label: '🏠 *परिवार:*',
     family_owner_label: '👑 *मालिक:*',
@@ -273,7 +272,7 @@ module.exports = {
     family_left: '✅ आपने परिवार "{name}" छोड़ दिया है।',
     family_deleted: '✅ परिवार "{name}" हटा दिया गया। सभी पारिवारिक खर्च निजी खर्च में बदल गए।',
     family_member_removed: '✅ सदस्य को परिवार से हटाया गया।',
-    family_member_removed_notification: '❌ आपको *{familyName}* परिवार से हटा दिया गया है।',
+    family_member_removed_notification: '❌ आपको «{familyName}» परिवार से हटा दिया गया है।',
     family_cannot_leave_owner: '❌ परिवार का मालिक परिवार नहीं छोड़ सकता। "परिवार हटाएँ" का उपयोग करें।',
     
     // पारिवारिक मेन्यू बटन
@@ -284,15 +283,12 @@ module.exports = {
     delete_family: '🗑️ परिवार हटाएँ',
     family_members: '👥 परिवार के सदस्य',
     family_stats: '💰 महीने का खर्च',
-    family_daily_stats: '💰 दिन का खर्च',
     family_add_expense: '💰 पारिवारिक खर्च जोड़ें',
     family_menu: '👨‍👩‍👧‍👦 पारिवारिक मेनू',
     family_cancel: '❌ रद्द करें',
     
     // आमंत्रण
     invitation_sent: '✅ @{username} को आमंत्रण भेजा गया',
-    invitation_accepted: '✅ आपने "{name}" परिवार से जुड़ने का आमंत्रण स्वीकार किया!',
-    invitation_rejected: '❌ आपने "{name}" परिवार से जुड़ने का आमंत्रण अस्वीकार किया।',
     invitation_not_found: '❌ आमंत्रण नहीं मिला या समाप्त हो गया।',
     invitation_expired: '❌ आमंत्रण समाप्त हो गया।',
     invitation_already_processed: '❌ आमंत्रण पहले ही संसाधित हो चुका है।',
@@ -319,13 +315,13 @@ module.exports = {
     invitation_cancelled: '✅ आमंत्रण रद्द किया गया।',
     not_authorized: '❌ आपके पास यह कार्रवाई करने की अनुमति नहीं है।',
     invitation_code: '🔑 आमंत्रण कोड: `{code}`',
-    family_invitation_received: '🎉 आपको *{familyName}* परिवार में आमंत्रित किया गया है\n\n👤 आमंत्रण भेजा: {inviterName}\n🔑 कोड: `{inviteCode}`\n\nकृपया कार्रवाई चुनें:',
+    family_invitation_received: '🎉 आपको «{familyName}» परिवार में आमंत्रित किया गया है\n\n👤 आमंत्रण भेजा: {inviterName}\n🔑 कोड: `{inviteCode}`\n\nकृपया कार्रवाई चुनें:',
     accept_invitation: '✅ स्वीकार करें',
     reject_invitation: '❌ अस्वीकार करें',
-    invitation_accepted: '🎉 बधाई! आप *{familyName}* परिवार में शामिल हो गए हैं',
+    invitation_accepted: '🎉 बधाई! आप «{familyName}» परिवार में शामिल हो गए हैं',
     invitation_rejected: '❌ आपने आमंत्रण अस्वीकार कर दिया',
     invitation_not_pending: '❌ आमंत्रण लंबित नहीं है',
-    invitation_cancelled_notification: '❌ आपको *{familyName}* परिवार से जाने का आमंत्रण {cancelledBy} ने रद्द किया',
+    invitation_cancelled_notification: '❌ आपको «{familyName}» परिवार से जाने का आमंत्रण {cancelledBy} ने रद्द किया',
     enter_invite_code: '🔑 आमंत्रण कोड दर्ज करें:',
     only_owner_can_remove: '❌ केवल परिवार का मालिक सदस्य हटा सकता है।',
     only_owner_can_delete: '❌ केवल मालिक परिवार हटा सकता है।',
@@ -337,7 +333,6 @@ module.exports = {
     
     // पुष्टिकरण
     confirm_delete_family: '⚠️ *परिवार हटाना*\n\nसभी सदस्य हटा दिए जाएंगे और पारिवारिक खर्च निजी खर्च बन जाएंगे।\n\nक्या आप सुनिश्चित हैं?',
-    confirm_remove_member: '⚠️ *सदस्य हटाना*\n\nसदस्य को परिवार से हटाया जाएगा।\n\nक्या आप सुनिश्चित हैं?',
     // पारिवारिक आँकड़े
     family_monthly_stats: '👨‍👩‍👧‍👦 *इस महीने के पारिवारिक खर्च*',
     family_daily_stats: '💰 दिन का खर्च',
@@ -355,23 +350,18 @@ module.exports = {
     remove_member: '❌ हटाएँ',
     confirm_remove_member: '⚠️ *सदस्य हटाना*\n\nक्या आप सुनिश्चित हैं कि {name} को परिवार से हटाना चाहते हैं?',
     member_removed: '✅ {name} को परिवार से हटा दिया गया।',
-    member_removed_notification: '❌ आपको *{familyName}* परिवार से {ownerName} ने हटा दिया।',
+    member_removed_notification: '❌ आपको «{familyName}» परिवार से {ownerName} ने हटा दिया।',
     
     // प्रीमियम सुविधाएँ
     premium_required: '❌ यह सुविधा केवल प्रीमियम उपयोगकर्ताओं के लिए उपलब्ध है।',
     upgrade_to_premium: '💎 पारिवारिक बजट का उपयोग करने के लिए प्रीमियम में अपग्रेड करें!',
     
     timezone_updated: `✅ *समय क्षेत्र अपडेट किया गया!*
-  
-  🕐 चुना गया समय: *{time}*
-  🌍 समय क्षेत्र: *{timezone}*
-  
-  अब आपके सभी खर्च आपके स्थानीय समय पर प्रदर्शित होंगे।`,
-    timezone_updated_simple: `✅ *समय क्षेत्र अपडेट किया गया!*
-  
-  🌍 नया समय क्षेत्र: *{timezone}*
-  
-  अब सभी खर्च सही समय पर दिखाए जाएँगे।`,
+
+🕐 चुना गया समय: *{time}*
+🌍 समय क्षेत्र: *{timezone}*
+
+अब आपके सभी खर्च आपके स्थानीय समय पर प्रदर्शित होंगे।`,
     
     // सीमाएँ
     limits_title: '📊 *सीमाओं की जानकारी*',
@@ -670,5 +660,7 @@ module.exports = {
     report_per_day: '📅 प्रति दिन औसत: {amount}',
     report_largest: '🔝 सबसे बड़ा खर्च: {amount} — {description} ({date})',
     overview_budget_limit: 'सीमा {amount}',
-    report_title_current: 'अब तक का सारांश: {range}'
+    report_title_current: 'अब तक का सारांश: {range}',
+    input_canceled: '✅ रद्द कर दिया गया। आप पहले की तरह खर्च दर्ज कर सकते हैं।',
+    no_active_state: 'अभी रद्द करने के लिए कुछ नहीं है।'
 };

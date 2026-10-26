@@ -1,10 +1,11 @@
 const logger = require('../utils/logger');
 
 class NotificationService {
-  constructor(localizationService, userService) {
+  constructor(localizationService, userService, formatter) {
     this.bot = null;
     this.localizationService = localizationService;
     this.userService = userService;
+    this.formatter = formatter;
   }
 
   setBot(bot) {
@@ -13,13 +14,6 @@ class NotificationService {
 
   async sendFamilyInvitation(inviteeId, familyName, inviterName, inviteCode) {
     try {
-      console.log('NotificationService.sendFamilyInvitation called:', {
-        inviteeId,
-        familyName,
-        inviterName,
-        inviteCode,
-        botAvailable: !!this.bot
-      });
       
       if (!this.bot) {
         logger.warn('Bot not available for sending notification', {
@@ -34,9 +28,10 @@ class NotificationService {
       // Получаем язык пользователя (по умолчанию русский)
       let userLanguage = await this.userService.getUserLanguage(inviteeId) || 'ru';
       
+      // Имя семьи и username из пользовательского ввода: без экранирования Telegram отклонит Markdown
       const message = this.localizationService.getText(userLanguage, 'family_invitation_received', {
-        familyName,
-        inviterName,
+        familyName: this.formatter.escapeMarkdown(familyName),
+        inviterName: this.formatter.escapeMarkdown(inviterName),
         inviteCode
       });
 
@@ -78,8 +73,8 @@ class NotificationService {
       let userLanguage = await this.userService.getUserLanguage(userId) || 'ru';
       
       const message = this.localizationService.getText(userLanguage, 'family_member_removed_notification', {
-        familyName,
-        removedBy
+        familyName: this.formatter.escapeMarkdown(familyName),
+        removedBy: this.formatter.escapeMarkdown(removedBy)
       });
 
       await this.bot.telegram.sendMessage(userId, message, {
@@ -106,8 +101,8 @@ class NotificationService {
       let userLanguage = await this.userService.getUserLanguage(inviteeId) || 'ru';
       
       const message = this.localizationService.getText(userLanguage, 'invitation_cancelled_notification', {
-        familyName,
-        cancelledBy
+        familyName: this.formatter.escapeMarkdown(familyName),
+        cancelledBy: this.formatter.escapeMarkdown(cancelledBy)
       });
 
       await this.bot.telegram.sendMessage(inviteeId, message, {

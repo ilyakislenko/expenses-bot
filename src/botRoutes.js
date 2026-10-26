@@ -30,20 +30,15 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.command('menu', errorHandler((ctx) => commandHandlers.mainMenu(ctx))); // «☰ Ещё»
   bot.command('income', errorHandler((ctx) => incomeHandlers.showMenu(ctx))); // доходы за период
   bot.command('recurring', errorHandler((ctx) => recurringExpenseHandlers.showMenu(ctx))); // ежемесячные регулярные траты
-  bot.command('cancel', async (ctx) => {
+  bot.command('cancel', errorHandler(async (ctx) => {
     const userId = ctx.from.id;
     const userLanguage = await handlers.userService.getUserLanguage(userId);
-
-    // Сбрасываем состояние редактирования
-    if (stateService.hasUserEditState(ctx.from.id)) {
-      stateService.deleteUserEditState(ctx.from.id);
-      const editCanceledText = handlers.localizationService.getText(userLanguage, 'edit_canceled') || 'Редактирование отменено.';
-      await ctx.reply(editCanceledText);
-    } else {
-      const noActiveStateText = handlers.localizationService.getText(userLanguage, 'no_active_state') || 'Нет активного состояния.';
-      await ctx.reply(noActiveStateText);
-    }
-  });
+    // Отменяем любой ожидаемый ввод: правку записи, черновик траты, доход, бюджет, регулярную трату и т.д.
+    const hadInput = stateService.hasUserEditState(userId) || stateService.hasPendingExpense(userId)
+      || !!stateService.getPendingRecurring(userId) || stateService.hasUserState(userId);
+    stateService.clearUserState(userId);
+    await ctx.reply(handlers.localizationService.getText(userLanguage, hadInput ? 'input_canceled' : 'no_active_state'));
+  }));
 
   // Custom categories (premium)
   bot.action('custom_categories', errorHandler((ctx) => callbackHandlers.handleCustomCategoriesMenu(ctx)));
@@ -159,7 +154,6 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('save_reminder_hours', errorHandler((ctx) => callbackHandlers.handleSaveReminderHours(ctx)));
   bot.action('clear_reminder_hours', errorHandler((ctx) => callbackHandlers.handleClearReminderHours(ctx)));
   bot.action('bug_report', errorHandler((ctx) => callbackHandlers.handleBugReport(ctx)));
-  bot.action(/^tz\|/, errorHandler((ctx) => callbackHandlers.handleTimezoneSelection(ctx)));
   bot.action(/^time\|/, errorHandler((ctx) => callbackHandlers.handleTimezoneSelection(ctx)));
   bot.action(/^set_language\|/, errorHandler((ctx) => callbackHandlers.handleLanguageSelection(ctx)));
 

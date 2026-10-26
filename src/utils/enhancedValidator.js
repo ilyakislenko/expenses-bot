@@ -134,8 +134,10 @@ class EnhancedValidator {
       return { isValid: false, error: 'invalid_callback_format' };
     }
 
-    // Проверка на запрещенные паттерны
-    if (this.containsForbiddenPatterns(data)) {
+    // Проверка на запрещенные паттерны (только разметка/скрипты: стоп-слова
+    // не применяем — callback data генерирует бот, а случайные коды
+    // приглашений вида `accept_invitation|XBOT12YZ` содержат «bot»/«root» и т.п.)
+    if (this.forbidden.patterns.some((pattern) => pattern.test(data))) {
       logger.warn('Forbidden pattern in callback data', { data });
       return { isValid: false, error: 'forbidden_callback_content' };
     }

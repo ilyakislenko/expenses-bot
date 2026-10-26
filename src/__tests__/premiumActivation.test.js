@@ -1,157 +1,163 @@
-const Container = require('../container');
+const UserService = require('../services/UserService');
 
-// Mock repositories
-jest.mock('../repositories/UserRepository', () => {
-  return jest.fn().mockImplementation(() => ({
-    getUserById: jest.fn().mockResolvedValue({ 
-      id: 123456, 
-      premium: false,
-      premium_expires_at: null,
-      premium_activated_at: null
-    }),
-    query: jest.fn().mockResolvedValue({ rows: [] })
-  }));
-});
-
-jest.mock('../repositories/ExpenseRepository', () => {
-  return jest.fn().mockImplementation(() => ({
-    getExpenseCount: jest.fn().mockResolvedValue(45)
-  }));
-});
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 describe('Premium Subscription Activation', () => {
   let userService;
-  let paymentService;
   let mockUserRepository;
+  let mockPremiumTransactionRepository;
 
   beforeEach(() => {
-    const container = new Container();
-    userService = container.get('userService');
-    paymentService = container.get('paymentService');
-    mockUserRepository = container.get('userRepository');
+    mockUserRepository = {
+      getUserById: jest.fn(),
+      query: jest.fn().mockResolvedValue({ rows: [], rowCount: 0 })
+    };
+    mockPremiumTransactionRepository = {
+      createTransaction: jest.fn().mockResolvedValue({ id: 1 })
+    };
+    userService = new UserService(mockUserRepository, {}, mockPremiumTransactionRepository);
   });
 
   describe('UserService.activatePremium', () => {
-    it('should activate premium subscription for new user', async () => {
-      const userId = 123456;
-      const daysToAdd = 30;
-      
-      // Mock user without premium
+    it('starts a new subscription from now for a user without premium', async () => {
       mockUserRepository.getUserById.mockResolvedValue({
         id: 123456,
         premium: false,
         premium_expires_at: null,
         premium_activated_at: null
       });
-      
-      const result = await userService.activatePremium(userId, daysToAdd);
-      
-      expect(mockUserRepository.query).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE users'),
-        [expect.any(Date), userId]
-      );
+
+      const before = Date.now();
+      const result = await userService.activatePremium(123456, 30);
+      const after = Date.now();
+
       expect(result.isNewActivation).toBe(true);
       expect(result.daysAdded).toBe(30);
+      expect(result.newExpiryDate.getTime()).toBeGreaterThanOrEqual(before + 30 * DAY_MS);
+      expect(result.newExpiryDate.getTime()).toBeLessThanOrEqual(after + 30 * DAY_MS);
+      expect(mockUserRepository.query).toHaveBeenCalledWith(expect.any(String), [result.newExpiryDate, 123456]);
     });
 
-    it('should extend existing premium subscription', async () => {
-      const userId = 123456;
-      const daysToAdd = 30;
-      const existingExpiry = new Date();
-      existingExpiry.setDate(existingExpiry.getDate() + 10); // 10 дней осталось
-      
-      // Mock user with active premium
+    it('adds the paid days on top of an active subscription', async () => {
+      const existingExpiry = new Date(Date.now() + 10 * DAY_MS);
       mockUserRepository.getUserById.mockResolvedValue({
         id: 123456,
         premium: true,
         premium_expires_at: existingExpiry,
         premium_activated_at: new Date('2024-01-01')
       });
-      
-      const result = await userService.activatePremium(userId, daysToAdd);
-      
-      expect(mockUserRepository.query).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE users'),
-        [expect.any(Date), userId]
-      );
+
+      const result = await userService.activatePremium(123456, 30);
+
       expect(result.isNewActivation).toBe(false);
       expect(result.daysAdded).toBe(30);
+      expect(result.newExpiryDate.getTime()).toBe(existingExpiry.getTime() + 30 * DAY_MS);
     });
 
-    it('should reactivate expired premium subscription', async () => {
-      const userId = 123456;
-      const daysToAdd = 30;
-      const expiredDate = new Date('2020-01-01');
-      
-      // Mock user with expired premium
+    it('restarts an expired subscription from now instead of the old expiry', async () => {
       mockUserRepository.getUserById.mockResolvedValue({
         id: 123456,
         premium: true,
-        premium_expires_at: expiredDate,
+        premium_expires_at: new Date('2020-01-01'),
         premium_activated_at: new Date('2020-01-01')
       });
-      
-      const result = await userService.activatePremium(userId, daysToAdd);
-      
-      expect(mockUserRepository.query).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE users'),
-        [expect.any(Date), userId]
-      );
+
+      const before = Date.now();
+      const result = await userService.activatePremium(123456, 30);
+
       expect(result.isNewActivation).toBe(true);
-      expect(result.daysAdded).toBe(30);
+      expect(result.newExpiryDate.getTime()).toBeGreaterThanOrEqual(before + 30 * DAY_MS);
+    });
+
+    it('records the payment with previous and new expiry dates', async () => {
+      const existingExpiry = new Date(Date.now() + 5 * DAY_MS);
+      mockUserRepository.getUserById.mockResolvedValue({
+        id: 123456,
+        premium: true,
+        premium_expires_at: existingExpiry,
+        premium_activated_at: new Date('2024-01-01')
+      });
+
+      const result = await userService.activatePremium(123456, 90, {
+        stars: 349,
+        usd: 6.99,
+        rub: 589,
+        telegram_payment_id: 'charge_1',
+        invoice_payload: JSON.stringify({ type: 'premium_subscription', tariff: 90, stars: 349, user_id: 123456 })
+      });
+
+      expect(mockPremiumTransactionRepository.createTransaction).toHaveBeenCalledWith(expect.objectContaining({
+        user_id: 123456,
+        transaction_type: 'extension',
+        tariff_duration: 90,
+        stars_amount: 349,
+        telegram_payment_id: 'charge_1',
+        previous_expiry_date: existingExpiry,
+        new_expiry_date: result.newExpiryDate,
+        status: 'completed',
+        is_recurring: false
+      }));
+    });
+
+    it('refuses a trial for a user who already had premium and changes nothing', async () => {
+      mockUserRepository.getUserById.mockResolvedValue({
+        id: 123456,
+        premium: false,
+        premium_expires_at: new Date('2020-01-01'),
+        premium_activated_at: new Date('2019-12-01')
+      });
+
+      await expect(userService.activatePremium(123456, 14, {
+        stars: 0,
+        invoice_payload: JSON.stringify({ type: 'trial', user_id: 123456, tariff: 14, stars: 0 })
+      })).rejects.toThrow('Trial premium is not available');
+
+      expect(mockUserRepository.query).not.toHaveBeenCalled();
+      expect(mockPremiumTransactionRepository.createTransaction).not.toHaveBeenCalled();
     });
   });
 
   describe('UserService.isPremiumActive', () => {
-    it('should return false for non-premium user', async () => {
-      mockUserRepository.getUserById.mockResolvedValue({
-        id: 123456,
-        premium: false,
-        premium_expires_at: null
-      });
+    it('returns false for a non-premium user', async () => {
+      mockUserRepository.getUserById.mockResolvedValue({ id: 123456, premium: false, premium_expires_at: null });
 
-      const result = await userService.isPremiumActive(123456);
-      expect(result).toBe(false);
+      await expect(userService.isPremiumActive(123456)).resolves.toBe(false);
     });
 
-    it('should return false for expired premium and disable it', async () => {
+    it('returns false for an unknown user', async () => {
+      mockUserRepository.getUserById.mockResolvedValue(null);
+
+      await expect(userService.isPremiumActive(123456)).resolves.toBe(false);
+    });
+
+    it('returns false for expired premium and switches it off', async () => {
       mockUserRepository.getUserById.mockResolvedValue({
         id: 123456,
         premium: true,
         premium_expires_at: new Date('2020-01-01')
       });
+      const disable = jest.spyOn(userService, 'disableExpiredPremium');
 
-      mockUserRepository.query.mockResolvedValue({ rowCount: 1 });
-
-      const result = await userService.isPremiumActive(123456);
-      
-      expect(result).toBe(false);
-      expect(mockUserRepository.query).toHaveBeenCalledWith(
-        expect.stringMatching(/UPDATE users\s+SET premium = false/),
-        [123456]
-      );
+      await expect(userService.isPremiumActive(123456)).resolves.toBe(false);
+      expect(disable).toHaveBeenCalledWith(123456);
     });
 
-    it('should return true for active premium', async () => {
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 30); // 30 дней в будущем
-      
+    it('returns true for active premium', async () => {
       mockUserRepository.getUserById.mockResolvedValue({
         id: 123456,
         premium: true,
-        premium_expires_at: futureDate
+        premium_expires_at: new Date(Date.now() + 30 * DAY_MS)
       });
+      const disable = jest.spyOn(userService, 'disableExpiredPremium');
 
-      const result = await userService.isPremiumActive(123456);
-      expect(result).toBe(true);
+      await expect(userService.isPremiumActive(123456)).resolves.toBe(true);
+      expect(disable).not.toHaveBeenCalled();
     });
   });
 
   describe('UserService.getPremiumStatus', () => {
-    it('should return correct premium status for active subscription', async () => {
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 30);
-      
+    it('reports an active subscription with the days remaining', async () => {
+      const futureDate = new Date(Date.now() + 30 * DAY_MS);
       mockUserRepository.getUserById.mockResolvedValue({
         id: 123456,
         premium: true,
@@ -160,98 +166,35 @@ describe('Premium Subscription Activation', () => {
       });
 
       const status = await userService.getPremiumStatus(123456);
-      
+
       expect(status.isPremium).toBe(true);
       expect(status.expiresAt).toEqual(futureDate);
-      expect(status.daysRemaining).toBeGreaterThan(0);
+      expect(status.daysRemaining).toBe(30);
       expect(status.activatedAt).toEqual(new Date('2024-01-01'));
     });
 
-    it('should return correct premium status for expired subscription and disable it', async () => {
-      const pastDate = new Date('2020-01-01');
-      
+    it('reports an expired subscription as inactive and switches it off', async () => {
       mockUserRepository.getUserById.mockResolvedValue({
         id: 123456,
         premium: true,
-        premium_expires_at: pastDate,
+        premium_expires_at: new Date('2020-01-01'),
         premium_activated_at: new Date('2019-01-01')
       });
-
-      mockUserRepository.query.mockResolvedValue({ rowCount: 1 });
+      const disable = jest.spyOn(userService, 'disableExpiredPremium');
 
       const status = await userService.getPremiumStatus(123456);
-      
+
       expect(status.isPremium).toBe(false);
       expect(status.daysRemaining).toBe(0);
-      expect(mockUserRepository.query).toHaveBeenCalledWith(
-        expect.stringMatching(/UPDATE users\s+SET premium = false/),
-        [123456]
-      );
+      expect(disable).toHaveBeenCalledWith(123456);
     });
   });
 
   describe('UserService.disableAllExpiredPremium', () => {
-    it('should disable all expired premium subscriptions', async () => {
+    it('returns how many subscriptions were switched off', async () => {
       mockUserRepository.query.mockResolvedValue({ rowCount: 5 });
 
-      const disabledCount = await userService.disableAllExpiredPremium();
-
-      expect(disabledCount).toBe(5);
-      expect(mockUserRepository.query).toHaveBeenCalledWith(
-        expect.stringMatching(/UPDATE users\s+SET premium = false/)
-      );
+      await expect(userService.disableAllExpiredPremium()).resolves.toBe(5);
     });
   });
-
-  describe('PaymentService.handleSuccessfulPayment', () => {
-    it('should extend existing premium subscription', async () => {
-      const payment = {
-        invoice_payload: JSON.stringify({
-          user_id: 123456,
-          tariff: 30,
-          stars: 149
-        }),
-        total_amount: 14900
-      };
-
-      const mockUserService = {
-        activatePremium: jest.fn().mockResolvedValue({
-          isNewActivation: false,
-          newExpiryDate: new Date('2025-01-30T23:59:59Z'),
-          daysAdded: 30
-        })
-      };
-
-      const result = await paymentService.handleSuccessfulPayment(payment, mockUserService);
-
-      expect(mockUserService.activatePremium).toHaveBeenCalledWith(123456, 30);
-      expect(result.isNewActivation).toBe(false);
-      expect(result.daysAdded).toBe(30);
-    });
-
-    it('should activate new premium subscription', async () => {
-      const payment = {
-        invoice_payload: JSON.stringify({
-          user_id: 123456,
-          tariff: 30,
-          stars: 149
-        }),
-        total_amount: 14900
-      };
-
-      const mockUserService = {
-        activatePremium: jest.fn().mockResolvedValue({
-          isNewActivation: true,
-          newExpiryDate: new Date('2024-12-31T23:59:59Z'),
-          daysAdded: 30
-        })
-      };
-
-      const result = await paymentService.handleSuccessfulPayment(payment, mockUserService);
-
-      expect(mockUserService.activatePremium).toHaveBeenCalledWith(123456, 30);
-      expect(result.isNewActivation).toBe(true);
-      expect(result.daysAdded).toBe(30);
-    });
-  });
-}); 
+});

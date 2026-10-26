@@ -1,9 +1,13 @@
 const PaymentService = require('../services/PaymentService');
+const LocalizationService = require('../services/LocalizationService');
+const { PREMIUM_TARIFFS } = require('../utils/constants');
 
-// Mock bot
+const CYRILLIC = /[а-яё]/i;
+
 const mockBot = {
   telegram: {
-    sendInvoice: jest.fn()
+    sendInvoice: jest.fn(),
+    callApi: jest.fn()
   },
   options: {
     username: 'test_bot'
@@ -11,195 +15,250 @@ const mockBot = {
   token: 'test_token'
 };
 
-// Mock fetch globally
 global.fetch = jest.fn();
+
+function mockFetchResult(body) {
+  global.fetch.mockResolvedValue({ ok: true, json: jest.fn().mockResolvedValue(body) });
+}
+
+// Параметры последнего запроса createInvoiceLink к Bot API
+function lastInvoiceLinkParams() {
+  const url = new URL(global.fetch.mock.calls[global.fetch.mock.calls.length - 1][0]);
+  return url.searchParams;
+}
 
 describe('PaymentService', () => {
   let paymentService;
+  let localizationService;
+  let donationRepository;
+  let funnelService;
 
   beforeEach(() => {
-    paymentService = new PaymentService();
+    jest.clearAllMocks();
+    localizationService = new LocalizationService();
+    donationRepository = { markDonationCompleted: jest.fn().mockResolvedValue(undefined) };
+    funnelService = { track: jest.fn().mockResolvedValue(undefined) };
+    paymentService = new PaymentService(donationRepository, localizationService, funnelService);
     paymentService.setBot(mockBot);
   });
 
   describe('createStarsInvoice', () => {
-    it('should create invoice with correct parameters', async () => {
-      const userId = 123456;
-      const tariff = {
-        duration: 30,
-        stars: 149,
-        usd: 2.99,
-        rub: 259
-      };
-      const userLanguage = 'ru';
+    it('charges the tariff price in Stars and encodes what to activate in the payload', async () => {
+      const tariff = PREMIUM_TARIFFS.MONTH_1;
+      mockBot.telegram.sendInvoice.mockResolvedValue({ invoice_id: 'test_invoice_id' });
 
-      mockBot.telegram.sendInvoice.mockResolvedValue({
-        invoice_id: 'test_invoice_id'
+      const result = await paymentService.createStarsInvoice(123456, tariff, 'ru');
+
+      expect(result).toEqual({ invoice_id: 'test_invoice_id' });
+      const [chatId, invoice] = mockBot.telegram.sendInvoice.mock.calls[0];
+      expect(chatId).toBe(123456);
+      expect(invoice.currency).toBe('XTR');
+      expect(invoice.prices).toEqual([expect.objectContaining({ amount: tariff.stars })]);
+      expect(JSON.parse(invoice.payload)).toEqual({
+        type: 'premium_subscription',
+        tariff: tariff.duration,
+        stars: tariff.stars,
+        user_id: 123456
       });
-
-      const result = await paymentService.createStarsInvoice(userId, tariff, userLanguage);
-
-      expect(mockBot.telegram.sendInvoice).toHaveBeenCalledWith(userId, {
-        title: 'Премиум подписка',
-        description: 'Премиум подписка на 1 месяц - 149 ⭐️',
-        payload: JSON.stringify({
-          type: 'premium_subscription',
-          tariff: 30,
-          stars: 149,
-          user_id: userId
-        }),
-        provider_token: '',
-        currency: 'XTR',
-        prices: [{
-          label: 'Премиум подписка',
-          amount: 149
-        }],
-        start_parameter: 'premium_30_149',
-        need_name: false,
-        need_phone_number: false,
-        need_email: false,
-        need_shipping_address: false,
-        is_flexible: false
-      });
-
-      expect(result).toEqual({
-        invoice_id: 'test_invoice_id'
-      });
+      expect(invoice.title).toBe(localizationService.getText('ru', 'premium_product'));
+      expect(invoice.description).toContain(localizationService.getText('ru', 'tariff_button_30'));
     });
 
-    it('should create invoice in English', async () => {
-      const userId = 123456;
-      const tariff = {
-        duration: 90,
-        stars: 349,
-        usd: 6.99,
-        rub: 589
-      };
-      const userLanguage = 'en';
+    it('shows an English-speaking user a fully English invoice', async () => {
+      const tariff = PREMIUM_TARIFFS.MONTH_3;
+      mockBot.telegram.sendInvoice.mockResolvedValue({ invoice_id: 'test_invoice_id_en' });
 
-      mockBot.telegram.sendInvoice.mockResolvedValue({
-        invoice_id: 'test_invoice_id_en'
+      await paymentService.createStarsInvoice(123456, tariff, 'en');
+
+      const [, invoice] = mockBot.telegram.sendInvoice.mock.calls[0];
+      expect(invoice.title).toBe(localizationService.getText('en', 'premium_product'));
+      expect(invoice.description).toContain(localizationService.getText('en', 'tariff_button_90'));
+      expect(invoice.description).toContain(String(tariff.stars));
+      expect(invoice.title).not.toMatch(CYRILLIC);
+      expect(invoice.description).not.toMatch(CYRILLIC);
+      expect(invoice.prices[0].label).not.toMatch(CYRILLIC);
+      expect(invoice.prices[0].amount).toBe(tariff.stars);
+    });
+
+    it('propagates Telegram errors', async () => {
+      mockBot.telegram.sendInvoice.mockRejectedValue(new Error('Bad Request'));
+
+      await expect(paymentService.createStarsInvoice(123456, PREMIUM_TARIFFS.MONTH_1, 'ru'))
+        .rejects.toThrow('Bad Request');
+    });
+  });
+
+  describe('createInvoiceLink', () => {
+    it('returns the link and sells the monthly tariff as an auto-renewing 30-day subscription', async () => {
+      const tariff = PREMIUM_TARIFFS.MONTH_1;
+      mockFetchResult({ ok: true, result: 'https://t.me/bot?invoice=test_invoice_link' });
+
+      const result = await paymentService.createInvoiceLink(123456, tariff, 'ru');
+
+      expect(result).toBe('https://t.me/bot?invoice=test_invoice_link');
+      expect(global.fetch.mock.calls[0][0]).toMatch(/^https:\/\/api\.telegram\.org\/bottest_token\/createInvoiceLink\?/);
+      const params = lastInvoiceLinkParams();
+      expect(params.get('currency')).toBe('XTR');
+      expect(JSON.parse(params.get('prices'))).toEqual([expect.objectContaining({ amount: tariff.stars })]);
+      expect(JSON.parse(params.get('payload'))).toEqual({
+        type: 'premium_subscription',
+        tariff: 30,
+        stars: tariff.stars,
+        user_id: 123456
       });
+      expect(params.get('subscription_period')).toBe('2592000');
+    });
 
-      await paymentService.createStarsInvoice(userId, tariff, userLanguage);
+    it('sells longer tariffs as one-time payments (no subscription period)', async () => {
+      mockFetchResult({ ok: true, result: 'https://t.me/bot?invoice=link_90' });
 
-      expect(mockBot.telegram.sendInvoice).toHaveBeenCalledWith(userId,
-        expect.objectContaining({
-          title: 'Premium Subscription',
-          description: 'Premium subscription for 3 месяца - 349 Stars',
-          prices: [{
-            label: 'Premium Subscription',
-            amount: 349
-          }]
-        })
-      );
+      await paymentService.createInvoiceLink(123456, PREMIUM_TARIFFS.MONTH_3, 'ru');
+
+      const params = lastInvoiceLinkParams();
+      expect(params.has('subscription_period')).toBe(false);
+      expect(JSON.parse(params.get('payload')).tariff).toBe(90);
+    });
+
+    it('creates a fully English invoice link for an English-speaking user', async () => {
+      const tariff = PREMIUM_TARIFFS.MONTH_3;
+      mockFetchResult({ ok: true, result: 'https://t.me/bot?invoice=test_invoice_link_en' });
+
+      const result = await paymentService.createInvoiceLink(123456, tariff, 'en');
+
+      expect(result).toBe('https://t.me/bot?invoice=test_invoice_link_en');
+      const params = lastInvoiceLinkParams();
+      expect(params.get('title')).toBe(localizationService.getText('en', 'premium_product'));
+      expect(params.get('description')).toContain(localizationService.getText('en', 'tariff_button_90'));
+      expect(params.get('title')).not.toMatch(CYRILLIC);
+      expect(params.get('description')).not.toMatch(CYRILLIC);
+      expect(JSON.parse(params.get('prices'))[0].label).not.toMatch(CYRILLIC);
+    });
+
+    it('throws when Telegram rejects the request', async () => {
+      mockFetchResult({ ok: false, description: 'PAYMENT_PROVIDER_INVALID' });
+
+      await expect(paymentService.createInvoiceLink(123456, PREMIUM_TARIFFS.MONTH_1, 'ru'))
+        .rejects.toThrow('Telegram API error: PAYMENT_PROVIDER_INVALID');
     });
   });
 
   describe('handleSuccessfulPayment', () => {
-    it('should handle successful payment correctly', async () => {
-      const payment = {
-        invoice_payload: JSON.stringify({
-          type: 'premium_subscription',
-          tariff: 30,
-          stars: 149,
-          user_id: 123456
-        }),
-        total_amount: 14900
-      };
+    let userService;
 
-      // PaymentService uses logger, so we just test that it doesn't throw
-      const mockUserService = {
+    beforeEach(() => {
+      userService = {
+        transactionExists: jest.fn().mockResolvedValue(false),
         activatePremium: jest.fn().mockResolvedValue({
           isNewActivation: true,
           newExpiryDate: new Date('2024-12-31T23:59:59Z'),
           daysAdded: 30
         })
       };
-      
-      const result = await paymentService.handleSuccessfulPayment(payment, mockUserService);
-      
-      expect(mockUserService.activatePremium).toHaveBeenCalledWith(123456, 30);
-      expect(result.isNewActivation).toBe(true);
-      expect(result.daysAdded).toBe(30);
+    });
+
+    function premiumPayment(overrides = {}) {
+      return {
+        invoice_payload: JSON.stringify({
+          type: 'premium_subscription',
+          tariff: 30,
+          stars: PREMIUM_TARIFFS.MONTH_1.stars,
+          user_id: 123456
+        }),
+        total_amount: PREMIUM_TARIFFS.MONTH_1.stars,
+        telegram_payment_charge_id: 'charge_1',
+        ...overrides
+      };
+    }
+
+    it('activates premium for the paid tariff and records the payment', async () => {
+      const payment = premiumPayment();
+
+      const result = await paymentService.handleSuccessfulPayment(payment, userService);
+
+      expect(userService.activatePremium).toHaveBeenCalledTimes(1);
+      const [userId, days, transactionData] = userService.activatePremium.mock.calls[0];
+      expect(userId).toBe(123456);
+      expect(days).toBe(30);
+      expect(transactionData).toEqual(expect.objectContaining({
+        stars: PREMIUM_TARIFFS.MONTH_1.stars,
+        usd: PREMIUM_TARIFFS.MONTH_1.usd,
+        rub: PREMIUM_TARIFFS.MONTH_1.rub,
+        telegram_payment_id: 'charge_1',
+        invoice_payload: payment.invoice_payload,
+        is_recurring: false,
+        subscription_expires_at: null
+      }));
+      expect(funnelService.track).toHaveBeenCalledWith(123456, 'paid');
+      expect(result).toEqual(expect.objectContaining({
+        type: 'premium_subscription',
+        isRenewal: false,
+        isNewActivation: true,
+        daysAdded: 30
+      }));
+    });
+
+    it('ignores a duplicate delivery of the same charge', async () => {
+      userService.transactionExists.mockResolvedValue(true);
+
+      const result = await paymentService.handleSuccessfulPayment(premiumPayment(), userService);
+
+      expect(result).toEqual({ type: 'premium_subscription', status: 'duplicate' });
+      expect(userService.activatePremium).not.toHaveBeenCalled();
+      expect(funnelService.track).not.toHaveBeenCalled();
+    });
+
+    it('treats a recurring charge after the first one as a renewal and keeps the subscription end', async () => {
+      const expiresTs = 1767225600; // 2026-01-01T00:00:00Z
+      const result = await paymentService.handleSuccessfulPayment(premiumPayment({
+        is_recurring: true,
+        is_first_recurring: false,
+        subscription_expiration_date: expiresTs
+      }), userService);
+
+      expect(result.isRenewal).toBe(true);
+      const [, , transactionData] = userService.activatePremium.mock.calls[0];
+      expect(transactionData.is_recurring).toBe(true);
+      expect(transactionData.subscription_expires_at).toEqual(new Date(expiresTs * 1000));
+    });
+
+    it('does not count the first recurring charge as a renewal', async () => {
+      const result = await paymentService.handleSuccessfulPayment(premiumPayment({
+        is_recurring: true,
+        is_first_recurring: true,
+        subscription_expiration_date: 1767225600
+      }), userService);
+
+      expect(result.isRenewal).toBe(false);
+    });
+
+    it('completes a donation without granting premium', async () => {
+      const payment = {
+        invoice_payload: JSON.stringify({ type: 'donation', stars: 50, user_id: 123456, donation_id: 7 }),
+        telegram_payment_charge_id: 'charge_donation'
+      };
+
+      const result = await paymentService.handleSuccessfulPayment(payment, userService);
+
+      expect(result).toEqual({ type: 'donation', status: 'completed' });
+      expect(donationRepository.markDonationCompleted).toHaveBeenCalledWith(7, 'charge_donation');
+      expect(userService.activatePremium).not.toHaveBeenCalled();
+    });
+
+    it('ignores payments of unknown type', async () => {
+      const payment = { invoice_payload: JSON.stringify({ type: 'something_else', user_id: 123456 }) };
+
+      const result = await paymentService.handleSuccessfulPayment(payment, userService);
+
+      expect(result).toEqual({ type: 'unknown', status: 'ignored' });
+      expect(userService.activatePremium).not.toHaveBeenCalled();
     });
   });
 
   describe('createStarsPaymentLink', () => {
-    it('should create correct payment link', () => {
-      const tariff = {
-        duration: 30,
-        stars: 149
-      };
-      const userLanguage = 'ru';
-
-      const link = paymentService.createStarsPaymentLink(tariff, userLanguage);
+    it('creates a deep link to the bot with the tariff', () => {
+      const link = paymentService.createStarsPaymentLink({ duration: 30, stars: 149 }, 'ru');
 
       expect(link).toBe('https://t.me/test_bot?start=stars_payment_30_149');
     });
   });
-
-  describe('createInvoiceLink', () => {
-    it('should create invoice link with correct parameters', async () => {
-      const userId = 123456;
-      const tariff = { duration: 30, stars: 149 };
-      const userLanguage = 'ru';
-
-      const mockResponse = {
-        ok: true,
-        json: jest.fn().mockResolvedValue({
-          ok: true,
-          result: 'https://t.me/bot?invoice=test_invoice_link'
-        })
-      };
-      global.fetch.mockResolvedValue(mockResponse);
-
-      const result = await paymentService.createInvoiceLink(userId, tariff, userLanguage);
-
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('https://api.telegram.org/bottest_token/createInvoiceLink')
-      );
-      expect(result).toBe('https://t.me/bot?invoice=test_invoice_link');
-    });
-
-    it('should create invoice link in English', async () => {
-      const userId = 123456;
-      const tariff = { duration: 90, stars: 349 };
-      const userLanguage = 'en';
-
-      const mockResponse = {
-        ok: true,
-        json: jest.fn().mockResolvedValue({
-          ok: true,
-          result: 'https://t.me/bot?invoice=test_invoice_link_en'
-        })
-      };
-      global.fetch.mockResolvedValue(mockResponse);
-
-      const result = await paymentService.createInvoiceLink(userId, tariff, userLanguage);
-
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('title=Premium+Subscription')
-      );
-      expect(result).toBe('https://t.me/bot?invoice=test_invoice_link_en');
-    });
-
-    it('should handle API errors', async () => {
-      const userId = 123456;
-      const tariff = { duration: 30, stars: 149 };
-      const userLanguage = 'ru';
-
-      const mockResponse = {
-        ok: true,
-        json: jest.fn().mockResolvedValue({
-          ok: false,
-          description: 'PAYMENT_PROVIDER_INVALID'
-        })
-      };
-      global.fetch.mockResolvedValue(mockResponse);
-
-      await expect(paymentService.createInvoiceLink(userId, tariff, userLanguage))
-        .rejects.toThrow('Telegram API error: PAYMENT_PROVIDER_INVALID');
-    });
-  });
-}); 
+});

@@ -150,7 +150,7 @@ module.exports = {
   admin_user_not_found: '❌ Пользователь не найден.',
   admin_user_details: `👤 *Информация о пользователе*
 
-{adminFlag}{premiumFlag} **{firstName}** (@{username})
+{adminFlag}{premiumFlag} {firstName} (@{username})
 🆔 ID: {userId}
 🌐 Язык: {language}
 💱 Валюта: {currency}
@@ -181,12 +181,10 @@ module.exports = {
   
   // Общие сообщения
   welcome: 'Привет, {name}! 👋',
-  main_menu_title: '🏠 *Главное меню*\n\nВыбери действие:',
   error: 'Произошла ошибка 😞',
   unknown_error: 'Произошла неожиданная ошибка. Попробуй позже.',
   not_found: 'Не найдено',
   error_invalid_description_format: '❌ Неверный формат расхода. Используй: сумма описание или сумма категория описание',
-  expense_save_error: '❌ Ошибка при сохранении расхода. Попробуй ещё раз.',
   cancel: 'Отмена',
   back: 'Назад',
   confirm: 'Подтвердить',
@@ -234,7 +232,6 @@ module.exports = {
   no_expenses_period: 'Нет трат за этот период.',
   
   // Категории
-  select_category: 'Выбери категорию:',
   amount_label: 'Сумма',
   description_label: 'Описание',
   category_label: 'Категория',
@@ -262,7 +259,6 @@ module.exports = {
   timezone_set: '✅ Часовой пояс установлен: {timezone}',
   
   // Семейный бюджет
-  button_family: '👨‍👩‍👧‍👦 Семья',
   family_label: '🏠 *Семья:*',
   family_owner_label: '👑 *Владелец:*',
   family_info: '👨‍👩‍👧‍👦 *Семейный бюджет*\n\nЗдесь ты можешь управлять расходами вместе с близкими, коллегами, друзьями и т.д.\n\n- \uD83D\uDC6A Создаётся общая группа для учёта совместных трат.\n- \u2795 Каждый участник может добавлять расходы.\n- \uD83D\uDDD1\uFE0F Можно удалять свои расходы при необходимости.\n- \uD83D\uDCCA Доступна общая статистика по всем участникам.\n- \uD83D\uDCE4 Экспорт данных всей группы в один файл.\n\nСовместный контроль — меньше хаоса и больше прозрачности.',
@@ -271,7 +267,7 @@ module.exports = {
   family_left: '✅ Ты покинул семью "{name}".',
   family_deleted: '✅ Семья "{name}" удалена. Все семейные траты стали личными.',
   family_member_removed: '✅ Участник удален из семьи.',
-  family_member_removed_notification: '❌ Тебя удалили из семьи *{familyName}*.',
+  family_member_removed_notification: '❌ Тебя удалили из семьи «{familyName}».',
   family_cannot_leave_owner: '❌ Владелец семьи не может покинуть семью. Используй "Удалить семью".',
   
   // Кнопки семейного меню
@@ -282,17 +278,12 @@ module.exports = {
   delete_family: '🗑️ Удалить семью',
   family_members: '👥 Участники семьи',
   family_stats: '💰 Расходы за месяц',
-  family_daily_stats: '💰 Расходы за день',
   family_add_expense: '💰 Добавить семейную трату',
   family_menu: '👨‍👩‍👧‍👦 Меню семьи',
   family_cancel: '❌ Отмена',
   
   // Приглашения
   invitation_sent: '✅ Приглашение отправлено пользователю @{username}',
-  invitation_accepted: '✅ Ты принял приглашение в семью "{name}"!',
-  invitation_rejected: '❌ Ты отклонил приглашение в семью "{name}".',
-  invitation_not_found: '❌ Приглашение не найдено или истекло.',
-  invitation_expired: '❌ Приглашение истекло.',
   invitation_already_processed: '❌ Приглашение уже обработано.',
   
   // Сообщения для ввода
@@ -318,14 +309,14 @@ module.exports = {
   invitation_not_found: '❌ Приглашение не найдено.',
   not_authorized: '❌ У тебя нет прав для выполнения этого действия.',
   invitation_code: '🔑 Код приглашения: `{code}`',
-  family_invitation_received: '🎉 Тебя приглашают в семью *{familyName}*\n\n👤 Пригласил: {inviterName}\n🔑 Код: `{inviteCode}`\n\nВыбери действие:',
+  family_invitation_received: '🎉 Тебя приглашают в семью «{familyName}»\n\n👤 Пригласил: {inviterName}\n🔑 Код: `{inviteCode}`\n\nВыбери действие:',
   accept_invitation: '✅ Принять',
   reject_invitation: '❌ Отклонить',
-  invitation_accepted: '🎉 Поздравляем! Ты присоединился к семье *{familyName}*',
+  invitation_accepted: '🎉 Поздравляем! Ты присоединился к семье «{familyName}»',
   invitation_rejected: '❌ Ты отклонил приглашение в семью',
   invitation_not_pending: '❌ Приглашение не в ожидании',
   invitation_expired: '❌ Приглашение истекло',
-  invitation_cancelled_notification: '❌ Приглашение в семью *{familyName}* было отменено пользователем {cancelledBy}',
+  invitation_cancelled_notification: '❌ Приглашение в семью «{familyName}» было отменено пользователем {cancelledBy}',
   enter_invite_code: '🔑 Введи код приглашения:',
   only_owner_can_remove: '❌ Только владелец семьи может удалять участников.',
   only_owner_can_delete: '❌ Только владелец семьи может удалить семью.',
@@ -337,7 +328,6 @@ module.exports = {
   
   // Подтверждения
   confirm_delete_family: '⚠️ *Удаление семьи*\n\nВсе участники будут удалены, а семейные траты станут личными.\n\nТы уверен?',
-  confirm_remove_member: '⚠️ *Удаление участника*\n\nУчастник будет удален из семьи.\n\nТы уверен?',
   
   // Статистика семьи
   family_monthly_stats: '👨‍👩‍👧‍👦 *Расходы семьи за месяц*',
@@ -356,7 +346,7 @@ module.exports = {
   remove_member: '❌ Исключить',
   confirm_remove_member: '⚠️ *Исключение участника*\n\nТы уверен, что хочешь исключить {name} из семьи?',
   member_removed: '✅ Участник {name} исключен из семьи.',
-  member_removed_notification: '❌ Тебя исключил из семьи *{familyName}* владелец {ownerName}.',
+  member_removed_notification: '❌ Тебя исключил из семьи «{familyName}» владелец {ownerName}.',
   
   // Премиум функции
   premium_required: '❌ Эта функция доступна только для премиум пользователей.',
@@ -366,11 +356,6 @@ module.exports = {
 
 🕐 Выбранное время: *{time}*
 🌍 Рассчитанный часовой пояс: *{timezone}*
-
-Теперь все твои расходы будут корректно отображаться в твоём местном времени.`,
-  timezone_updated_simple: `✅ *Часовой пояс обновлен!*
-
-🌍 Новый часовой пояс: *{timezone}*
 
 Теперь все твои расходы будут корректно отображаться в твоём местном времени.`,
   
@@ -695,5 +680,7 @@ module.exports = {
   report_per_day: '📅 В среднем в день: {amount}',
   report_largest: '🔝 Самая крупная трата: {amount} — {description} ({date})',
   overview_budget_limit: 'лимит {amount}',
-  report_title_current: 'Итоги на сегодня: {range}'
+  report_title_current: 'Итоги на сегодня: {range}',
+  input_canceled: '✅ Отменил. Можно записывать траты как обычно.',
+  no_active_state: 'Сейчас нечего отменять.'
 }; 

@@ -144,7 +144,7 @@ module.exports = {
   admin_user_not_found: '❌ User not found.',
   admin_user_details: `👤 *User Information*
 
-{adminFlag}{premiumFlag} **{firstName}** (@{username})
+{adminFlag}{premiumFlag} {firstName} (@{username})
 🆔 ID: {userId}
 🌐 Language: {language}
 💱 Currency: {currency}
@@ -175,12 +175,10 @@ module.exports = {
   
   // General messages
   welcome: 'Hello, {name}! 👋',
-  main_menu_title: '🏠 *Main Menu*\n\nChoose an action:',
   error: 'An error occurred 😞',
   unknown_error: 'An unexpected error occurred. Please try again later.',
   not_found: 'Not found',
   error_invalid_description_format: '❌ Invalid expense format. Use: amount description or amount category description',
-  expense_save_error: '❌ Error saving expense. Please try again.',
   cancel: 'Cancel',
   back: 'Back',
   confirm: 'Confirm',
@@ -228,7 +226,6 @@ Commands: /stats /history /income /recurring /export /settings /menu`,
   no_expenses_period: 'No expenses for this period.',
   
   // Categories
-  select_category: 'Select category:',
   amount_label: 'Amount',
   description_label: 'Description',
   category_label: 'Category',
@@ -258,11 +255,6 @@ Select your current time:`,
 
 🕐 Selected time: *{time}*
 🌍 Calculated timezone: *{timezone}*
-
-Now all your expenses will be correctly displayed in your local time.`,
-  timezone_updated_simple: `✅ *Timezone updated!*
-
-🌍 New timezone: *{timezone}*
 
 Now all your expenses will be correctly displayed in your local time.`,
   
@@ -304,7 +296,6 @@ Recording expenses and income is free and unlimited.`,
   button_help: '❓ Help',
   button_edit: 'Edit',
   button_delete: 'Delete',
-  button_mark_as_family: '👨‍👩‍👧‍👦 To Family',
   button_remove_from_family: '🚫 From Family Budget',
   expense_already_family: '❌ This expense is already family',
   expense_converted_to_family: '✅ Expense moved to family budget',
@@ -387,7 +378,7 @@ Recording expenses and income is free and unlimited.`,
   family_left: '✅ You left family "{name}".',
   family_deleted: '✅ Family "{name}" deleted. All family expenses became personal.',
   family_member_removed: '✅ Member removed from family.',
-  family_member_removed_notification: '❌ You were removed from family *{familyName}*.',
+  family_member_removed_notification: '❌ You were removed from family "{familyName}".',
   family_cannot_leave_owner: '❌ Family owner cannot leave family. Use "Delete Family" instead.',
   
   // Family menu buttons
@@ -398,17 +389,12 @@ Recording expenses and income is free and unlimited.`,
   delete_family: '🗑️ Delete Family',
   family_members: '👥 Family Members',
   family_stats: '💰 Monthly Expenses',
-  family_daily_stats: '💰 Daily Expenses',
   family_add_expense: '💰 Add Family Expense',
   family_menu: '👨‍👩‍👧‍👦 Family Menu',
   family_cancel: '❌ Cancel',
   
   // Invitations
   invitation_sent: '✅ Invitation sent to user @{username}',
-  invitation_accepted: '✅ You accepted invitation to family "{name}"!',
-  invitation_rejected: '❌ You rejected invitation to family "{name}".',
-  invitation_not_found: '❌ Invitation not found or expired.',
-  invitation_expired: '❌ Invitation expired.',
   invitation_already_processed: '❌ Invitation already processed.',
   
   // Input messages
@@ -434,15 +420,15 @@ Recording expenses and income is free and unlimited.`,
   invitation_not_found: '❌ Invitation not found.',
   not_authorized: '❌ You are not authorized to perform this action.',
   invitation_code: '🔑 Invitation code: `{code}`',
-  family_invitation_received: '🎉 You are invited to family *{familyName}*\n\n👤 Invited by: {inviterName}\n🔑 Code: `{inviteCode}`\n\nChoose action:',
+  family_invitation_received: '🎉 You are invited to family "{familyName}"\n\n👤 Invited by: {inviterName}\n🔑 Code: `{inviteCode}`\n\nChoose action:',
   accept_invitation: '✅ Accept',
   reject_invitation: '❌ Reject',
-  invitation_accepted: '🎉 Congratulations! You joined family *{familyName}*',
+  invitation_accepted: '🎉 Congratulations! You joined the family "{familyName}"',
   invitation_rejected: '❌ You rejected the family invitation',
   invitation_not_pending: '❌ Invitation is not pending',
   invitation_expired: '❌ Invitation has expired',
   button_mark_as_family: '👨‍👩‍👧‍👦 Mark as family',
-  invitation_cancelled_notification: '❌ Invitation to family *{familyName}* was cancelled by {cancelledBy}',
+  invitation_cancelled_notification: '❌ Invitation to family "{familyName}" was cancelled by {cancelledBy}',
   enter_invite_code: '🔑 Enter invitation code:',
   only_owner_can_remove: '❌ Only family owner can remove members.',
   only_owner_can_delete: '❌ Only family owner can delete family.',
@@ -454,7 +440,6 @@ Recording expenses and income is free and unlimited.`,
   
   // Confirmations
   confirm_delete_family: '⚠️ *Delete Family*\n\nAll members will be removed and family expenses will become personal.\n\nAre you sure?',
-  confirm_remove_member: '⚠️ *Remove Member*\n\nMember will be removed from family.\n\nAre you sure?',
   
   // Family statistics
   family_monthly_stats: '👨‍👩‍👧‍👦 *Family Expenses for Month*',
@@ -473,7 +458,7 @@ Recording expenses and income is free and unlimited.`,
   remove_member: '❌ Remove',
   confirm_remove_member: '⚠️ *Remove Member*\n\nAre you sure you want to remove {name} from the family?',
   member_removed: '✅ Member {name} has been removed from the family.',
-  member_removed_notification: '❌ You have been removed from family *{familyName}* by {ownerName}.',
+  member_removed_notification: '❌ You have been removed from family "{familyName}" by {ownerName}.',
   
   // Premium features
   premium_required: '❌ This feature is only available for premium users.',
@@ -693,5 +678,7 @@ Recording expenses and income is free and unlimited.`,
   report_per_day: '📅 Average per day: {amount}',
   report_largest: '🔝 Largest expense: {amount} — {description} ({date})',
   overview_budget_limit: 'limit {amount}',
-  report_title_current: 'Summary so far: {range}'
+  report_title_current: 'Summary so far: {range}',
+  input_canceled: '✅ Canceled. You can record expenses as usual.',
+  no_active_state: 'Nothing to cancel right now.'
 }; 

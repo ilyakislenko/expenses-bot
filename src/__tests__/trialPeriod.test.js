@@ -1,121 +1,96 @@
 const UserService = require('../services/UserService');
-const { TRIAL_PERIOD } = require('../utils/constants');
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 describe('Trial Period for New Users', () => {
   let userService;
   let mockUserRepository;
-  let mockCategoryRepository;
   let mockPremiumTransactionRepository;
+
+  const newUser = {
+    id: 123456,
+    username: 'testuser',
+    first_name: 'Test User',
+    premium: false,
+    premium_expires_at: null,
+    premium_activated_at: null,
+    has_trial: true
+  };
 
   beforeEach(() => {
     mockUserRepository = {
       createUser: jest.fn(),
-      query: jest.fn(),
-      getUserById: jest.fn()
+      query: jest.fn().mockResolvedValue({ rowCount: 1 }),
+      getUserById: jest.fn(),
+      markTrialConsumed: jest.fn().mockResolvedValue(undefined)
     };
-
-    mockCategoryRepository = {
-      createUserCategory: jest.fn(),
-      getUserCategories: jest.fn(),
-      getCategoriesWithPremium: jest.fn(),
-      deleteUserCategory: jest.fn(),
-      updateUserCategory: jest.fn()
-    };
-
     mockPremiumTransactionRepository = {
-      createTransaction: jest.fn()
+      createTransaction: jest.fn().mockResolvedValue({ id: 1 })
     };
-
-    userService = new UserService(
-      mockUserRepository,
-      mockCategoryRepository,
-      mockPremiumTransactionRepository
-    );
+    userService = new UserService(mockUserRepository, {}, mockPremiumTransactionRepository);
   });
 
   describe('UserService.registerUser', () => {
-    it('should give trial premium to new users', async () => {
-      const userId = 123456;
-      const username = 'testuser';
-      const firstName = 'Test User';
+    it('gives a new user 14 days of premium and consumes the trial', async () => {
+      mockUserRepository.createUser.mockResolvedValue(newUser);
+      mockUserRepository.getUserById.mockResolvedValue(newUser);
 
-      // Мокаем создание пользователя
-      mockUserRepository.createUser.mockResolvedValue({
-        id: userId,
-        username,
-        first_name: firstName,
-        premium: false,
-        premium_expires_at: null,
-        premium_activated_at: null
-      });
+      const before = Date.now();
+      const result = await userService.registerUser(123456, 'testuser', 'Test User');
+      const after = Date.now();
 
-      // Мокаем getUserById для activatePremium
-      mockUserRepository.getUserById.mockResolvedValue({
-        id: userId,
-        username,
-        first_name: firstName,
-        premium: false,
-        premium_expires_at: null,
-        premium_activated_at: null
-      });
+      expect(result).toEqual(newUser);
+      expect(mockUserRepository.createUser).toHaveBeenCalledWith(123456, 'testuser', 'Test User');
 
-      // Мокаем активацию премиума
-      mockUserRepository.query.mockResolvedValue({ rowCount: 1 });
-
-      // Мокаем создание транзакции
-      mockPremiumTransactionRepository.createTransaction.mockResolvedValue({ id: 1 });
-
-      const result = await userService.registerUser(userId, username, firstName);
-
-      // Проверяем, что пользователь создан
-      expect(mockUserRepository.createUser).toHaveBeenCalledWith(userId, username, firstName);
-
-      // Проверяем, что премиум активирован
-      expect(mockUserRepository.query).toHaveBeenCalledWith(
-        expect.stringMatching(/UPDATE users\s+SET premium = true/),
-        [expect.any(Date), userId]
-      );
-
-      // Проверяем, что транзакция создана с правильными данными
-      expect(mockPremiumTransactionRepository.createTransaction).toHaveBeenCalledWith({
-        user_id: userId,
+      expect(mockPremiumTransactionRepository.createTransaction).toHaveBeenCalledTimes(1);
+      const trial = mockPremiumTransactionRepository.createTransaction.mock.calls[0][0];
+      expect(trial).toEqual(expect.objectContaining({
+        user_id: 123456,
         transaction_type: 'trial',
-        tariff_duration: TRIAL_PERIOD.DAYS,
+        tariff_duration: 14,
         stars_amount: 0,
         usd_amount: 0,
         rub_amount: 0,
         telegram_payment_id: null,
-        invoice_payload: expect.stringContaining('"type":"trial"'),
         previous_expiry_date: null,
-        new_expiry_date: expect.any(Date),
         status: 'completed'
-      });
+      }));
+      expect(JSON.parse(trial.invoice_payload).type).toBe('trial');
+      expect(trial.new_expiry_date.getTime()).toBeGreaterThanOrEqual(before + 14 * DAY_MS);
+      expect(trial.new_expiry_date.getTime()).toBeLessThanOrEqual(after + 14 * DAY_MS);
 
-      expect(result).toEqual({
-        id: userId,
-        username,
-        first_name: firstName,
-        premium: false,
-        premium_expires_at: null,
-        premium_activated_at: null
-      });
+      // Премиум сохранён пользователю с той же датой окончания
+      expect(mockUserRepository.query).toHaveBeenCalledWith(expect.any(String), [trial.new_expiry_date, 123456]);
+      expect(mockUserRepository.markTrialConsumed).toHaveBeenCalledWith(123456);
     });
 
-    it('should handle errors during user registration', async () => {
-      const userId = 123456;
-      const username = 'testuser';
-      const firstName = 'Test User';
+    it('does not give a trial to a user whose trial was already consumed', async () => {
+      mockUserRepository.createUser.mockResolvedValue({ ...newUser, has_trial: false });
 
-      const error = new Error('Database error');
-      mockUserRepository.createUser.mockRejectedValue(error);
+      await userService.registerUser(123456, 'testuser', 'Test User');
 
-      await expect(userService.registerUser(userId, username, firstName))
+      expect(mockUserRepository.query).not.toHaveBeenCalled();
+      expect(mockPremiumTransactionRepository.createTransaction).not.toHaveBeenCalled();
+      expect(mockUserRepository.markTrialConsumed).not.toHaveBeenCalled();
+    });
+
+    it('does not give a trial to a user who already had premium', async () => {
+      mockUserRepository.createUser.mockResolvedValue({
+        ...newUser,
+        premium_activated_at: new Date('2024-01-01')
+      });
+
+      await userService.registerUser(123456, 'testuser', 'Test User');
+
+      expect(mockPremiumTransactionRepository.createTransaction).not.toHaveBeenCalled();
+      expect(mockUserRepository.markTrialConsumed).not.toHaveBeenCalled();
+    });
+
+    it('propagates errors during user registration', async () => {
+      mockUserRepository.createUser.mockRejectedValue(new Error('Database error'));
+
+      await expect(userService.registerUser(123456, 'testuser', 'Test User'))
         .rejects.toThrow('Database error');
     });
-
-    it('should use correct trial period duration from constants', () => {
-      expect(TRIAL_PERIOD.DAYS).toBe(14);
-      expect(TRIAL_PERIOD.TYPE).toBe('trial');
-    });
   });
-}); 
+});

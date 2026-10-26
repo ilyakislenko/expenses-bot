@@ -1,5 +1,6 @@
 const respond = require('../utils/respond');
 const FunnelService = require('../services/FunnelService');
+const { getTimezoneDisplayName } = require('../utils/timezoneCalculator');
 
 class CommandHandlers {
   constructor({ expenseService, userService, premiumService, familyService, localizationService, formatter, stateService, keyboardGenerators, paymentService, incomeService, funnelService }) {
@@ -227,7 +228,7 @@ class CommandHandlers {
       `⚙️ *${t('settings_header')}*`,
       '',
       t('settings_currency_line', { currency, incomeCurrency }),
-      t('settings_timezone_line', { timezone }),
+      t('settings_timezone_line', { timezone: this.formatter.escapeMarkdown(getTimezoneDisplayName(timezone)) }),
       t('settings_language_line', { language: `${language.flag} ${language.name}` }),
       t('settings_period_line', { day: periodStartDay }),
       reminders.reminder_enabled
@@ -578,7 +579,7 @@ class CommandHandlers {
     const backButton = this.localizationService.getText(userLanguage, 'premium_back_button');
     
     const donateButton = this.localizationService.getText(userLanguage, 'premium_donate_button');
-    const purchasesButton = this.localizationService.getText(userLanguage, 'premium_purchases_button') || '🧾 Purchase history';
+    const purchasesButton = this.localizationService.getText(userLanguage, 'premium_purchases_button');
     const inlineKeyboard = [
       [
         { text: tariffButton, callback_data: 'premium_tariffs' },

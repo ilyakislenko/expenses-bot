@@ -62,6 +62,7 @@
 | `/limits` | Подписка и лимиты |
 | `/menu` | «☰ Ещё» |
 | `/help` | Короткая справка |
+| `/cancel` | Отменить любой ожидаемый ввод (правка записи, черновик траты, доход, бюджет, регулярная трата и т.д.) |
 | `/paysupport`, `/terms`, `/privacy`, `/refund` | Требования Telegram Payments |
 
 ## Навигация
@@ -155,7 +156,7 @@ Cron в :35 каждого часа: в первые 3 дня нового пе�
 | `settings_currencies` | Основная валюта и валюта дохода |
 | `change_currency` → `set_currency\|CUR` | Основная валюта (в онбординге — переход к часовому поясу) |
 | `configure_reminder_hours` | Напоминания: вкл/выкл (`toggle_reminders`) и часы (`toggle_reminder_hour\|H`, `save_reminder_hours`, `clear_reminder_hours`) |
-| `change_timezone`, `tz\|`, `time\|` | Часовой пояс |
+| `change_timezone`, `time\|<час>\|<минуты>` | Часовой пояс: пользователь выбирает своё текущее время, смещение — целые часы; сохраняется фиксированный пояс без летнего времени (`Etc/GMT-N`, для UTC+3 — `Europe/Moscow`, для UTC+5 у языка hi — `Asia/Kolkata`), см. `utils/timezoneCalculator.js` |
 | `change_language`, `set_language\|` | Язык |
 | `change_period_start` | Число начала периода |
 | `custom_categories*` | Кастомные категории (премиум) |
@@ -194,6 +195,9 @@ Reply-клавиатура
 
 - Все callback actions обёрнуты в `errorHandler`
 - Состояния ввода (доход, регулярная трата, бюджет, семейная трата и др.) хранятся в `StateService` и сбрасываются при нажатии
-  любой inline-кнопки (`stateCleanupMiddleware`); ожидание новой суммы/описания записи живёт до ввода или «Отмена»
+  любой inline-кнопки (`stateCleanupMiddleware`) или командой `/cancel`; ожидание новой суммы/описания записи живёт до ввода или «Отмена»
+- Пользовательский текст (описания, имена семей, username) в сообщениях с `parse_mode: 'Markdown'` экранируется
+  `formatter.escapeMarkdown` и не ставится внутрь `*жирного*`: внутри сущности legacy Markdown экранирование не работает
 - Локализация: 13 языков, ключ без перевода показывается как есть — новые ключи нужно добавлять во все `src/locales/*.js`.
   Обращение: ru, de, es, fr, pt — на «ты»; tr, ka, kz, uz, hi, jp — вежливое; zh — 你
+- Тесты (`npm test`) не ходят в БД: `src/__tests__/setup.js` подменяет `DATABASE_URL` до загрузки модулей

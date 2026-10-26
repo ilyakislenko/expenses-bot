@@ -83,25 +83,25 @@ module.exports = {
     admin_error: '❌ Yönetici işlemi yapılırken hata oluştu.',
       // Yönetici istatistikleri
       admin_stats_text: `📊 *Bot istatistikleri*
-  
-      👥 **Kullanıcılar:**
-      • Toplam: {totalUsers}
-      • Premium: {activePremium}
-      • Bu hafta yeni: {newUsersWeek}
-      • Bu ay yeni: {newUsersMonth}
-      
-      💰 **Harcamalar:**
-      • Toplam kayıt: {totalExpenses}
-      • Bu hafta: {expensesWeek}
-      • Aktif kullanıcılar: {activeUsers}
-      
-      🐛 **Hata bildirimleri:** {totalBugReports}
-      
-      💎 **Bağışlar:**
-      • Toplam: {totalDonations}
-      • Toplanan yıldız: {totalStars}
-      
-      ⭐ **Premium işlemleri:** {premiumTransactions}`,
+
+👥 **Kullanıcılar:**
+• Toplam: {totalUsers}
+• Premium: {activePremium}
+• Bu hafta yeni: {newUsersWeek}
+• Bu ay yeni: {newUsersMonth}
+
+💰 **Harcamalar:**
+• Toplam kayıt: {totalExpenses}
+• Bu hafta: {expensesWeek}
+• Aktif kullanıcılar: {activeUsers}
+
+🐛 **Hata bildirimleri:** {totalBugReports}
+
+💎 **Bağışlar:**
+• Toplam: {totalDonations}
+• Toplanan yıldız: {totalStars}
+
+⭐ **Premium işlemleri:** {premiumTransactions}`,
       
         // Kullanıcı listesi
         admin_users_title: '👥 *Kullanıcılar* (Sayfa {page}/{totalPages})\n\nToplam: {totalUsers}\n',
@@ -115,26 +115,26 @@ module.exports = {
         
         // Bağış istatistikleri
         admin_donations_text: `💰 *Bağış istatistikleri*
-      
-      📊 **Özet:**
-      • Toplam bağış: {totalDonations}
-      • Tamamlanan: {completedDonations}
-      • Bekleyen: {pendingDonations}
-      
-      ⭐ **Yıldızlar:**
-      • Toplam toplanan: {totalStars}
-      • Ortalama bağış: {avgStars} yıldız`,
+
+📊 **Özet:**
+• Toplam bağış: {totalDonations}
+• Tamamlanan: {completedDonations}
+• Bekleyen: {pendingDonations}
+
+⭐ **Yıldızlar:**
+• Toplam toplanan: {totalStars}
+• Ortalama bağış: {avgStars} yıldız`,
       
         // Premium istatistikleri
         admin_premium_stats: `⭐ *Premium istatistikleri*
-      
-      📊 **Kullanıcılar:**
-      • Toplam premium: {totalPremiumUsers}
-      • Şu an aktif: {activePremiumUsers}
-      
-      💳 **İşlemler:**
-      • Toplam işlem: {totalTransactions}
-      • Toplam gelir: {totalRevenue} yıldız`,
+
+📊 **Kullanıcılar:**
+• Toplam premium: {totalPremiumUsers}
+• Şu an aktif: {activePremiumUsers}
+
+💳 **İşlemler:**
+• Toplam işlem: {totalTransactions}
+• Toplam gelir: {totalRevenue} yıldız`,
       
         // Admin listesi
         admin_admins_title: '👑 *Yöneticiler* ({count})\n',
@@ -147,19 +147,19 @@ module.exports = {
         // Admin kullanıcı detay
         admin_user_not_found: '❌ Kullanıcı bulunamadı.',
         admin_user_details: `👤 *Kullanıcı bilgileri*
-      
-      {adminFlag}{premiumFlag} **{firstName}** (@{username})
-      🆔 ID: {userId}
-      🌐 Dil: {language}
-      💱 Para birimi: {currency}
-      🕐 Zaman dilimi: {timezone}
-      📅 Kayıt tarihi: {createdAt}
-      
-      📊 **İstatistikler:**
-      • Harcama kaydı: {totalExpenses}
-      • Toplam tutar: {totalAmount}
-      • Hata bildirimi: {bugReportsCount}
-      • İşlem sayısı: {transactionsCount}`,
+
+{adminFlag}{premiumFlag} {firstName} (@{username})
+🆔 ID: {userId}
+🌐 Dil: {language}
+💱 Para birimi: {currency}
+🕐 Zaman dilimi: {timezone}
+📅 Kayıt tarihi: {createdAt}
+
+📊 **İstatistikler:**
+• Harcama kaydı: {totalExpenses}
+• Toplam tutar: {totalAmount}
+• Hata bildirimi: {bugReportsCount}
+• İşlem sayısı: {transactionsCount}`,
         
         // Admin işlemleri
         admin_promote_success: '✅ {userId} yönetici yapıldı.',
@@ -254,15 +254,14 @@ Komutlar: /stats /history /income /recurring /export /settings /menu`,
         period_start_invalid: '❌ Geçersiz sayı. 1 ile 31 arasında bir tam sayı girin.',
         period_start_set: '✅ Dönem başlangıç günü ayarlandı: {day}',
         timezone_setup: `🕐 *Zaman dilimi ayarı*
-      
-      Şu an saat kaç?
-      
-      *Geçerli UTC zamanı:* {utcTime}
-      
-      Lütfen yerel saati seçin:`,
+
+Şu an saat kaç?
+
+*Geçerli UTC zamanı:* {utcTime}
+
+Lütfen yerel saati seçin:`,
         timezone_set: '✅ Zaman dilimi ayarlandı: {timezone}',
     // Aile bütçesi
-    button_family: '👨‍👩‍👧‍👦 Aile',
     // Family labels
     family_label: '🏠 *Aile:*',
     family_owner_label: '👑 *Sahip:*',
@@ -272,7 +271,7 @@ Komutlar: /stats /history /income /recurring /export /settings /menu`,
     family_left: '✅ "{name}" ailesinden ayrıldınız.',
     family_deleted: '✅ "{name}" ailesi silindi. Tüm aile harcamaları kişisel harcamalara dönüştürüldü.',
     family_member_removed: '✅ Üye aileden çıkarıldı.',
-    family_member_removed_notification: '❌ *{familyName}* ailesinden çıkarıldınız.',
+    family_member_removed_notification: '❌ “{familyName}” ailesinden çıkarıldınız.',
     family_cannot_leave_owner: '❌ Ailenin sahibi aileden ayrılamaz. "Aileyi sil" seçeneğini kullanın.',
     
     // Aile menü tuşları
@@ -283,15 +282,12 @@ Komutlar: /stats /history /income /recurring /export /settings /menu`,
     delete_family: '🗑️ Aileyi sil',
     family_members: '👥 Aile üyeleri',
     family_stats: '💰 Aylık harcama',
-    family_daily_stats: '💰 Günlük harcama',
     family_add_expense: '💰 Aile harcaması ekle',
     family_menu: '👨‍👩‍👧‍👦 Aile menüsü',
     family_cancel: '❌ İptal',
     
     // Davetler
     invitation_sent: '✅ @{username} kullanıcısına davet gönderildi',
-    invitation_accepted: '✅ "{name}" ailesine katılma davetini kabul ettiniz!',
-    invitation_rejected: '❌ "{name}" ailesine katılma davetini reddettiniz.',
     invitation_not_found: '❌ Davet bulunamadı veya süresi doldu.',
     invitation_expired: '❌ Davetin süresi doldu.',
     invitation_already_processed: '❌ Davet zaten işlenmiş.',
@@ -318,13 +314,13 @@ Komutlar: /stats /history /income /recurring /export /settings /menu`,
     invitation_cancelled: '✅ Davet iptal edildi.',
     not_authorized: '❌ Bu işlemi yapmaya yetkiniz yok.',
     invitation_code: '🔑 Davet kodu: `{code}`',
-    family_invitation_received: '🎉 *{familyName}* ailesine davet edildiniz\n\n👤 Davet eden: {inviterName}\n🔑 Kod: `{inviteCode}`\n\nLütfen bir işlem seçin:',
+    family_invitation_received: '🎉 “{familyName}” ailesine davet edildiniz\n\n👤 Davet eden: {inviterName}\n🔑 Kod: `{inviteCode}`\n\nLütfen bir işlem seçin:',
     accept_invitation: '✅ Kabul et',
     reject_invitation: '❌ Reddet',
-    invitation_accepted: '🎉 Tebrikler! *{familyName}* ailesine katıldınız',
+    invitation_accepted: '🎉 Tebrikler! “{familyName}” ailesine katıldınız',
     invitation_rejected: '❌ Daveti reddettiniz',
     invitation_not_pending: '❌ Davet beklemede değil',
-    invitation_cancelled_notification: '❌ *{familyName}* ailesine katılma davetiniz {cancelledBy} tarafından iptal edildi',
+    invitation_cancelled_notification: '❌ “{familyName}” ailesine katılma davetiniz {cancelledBy} tarafından iptal edildi',
     enter_invite_code: '🔑 Davet kodunu girin:',
     only_owner_can_remove: '❌ Üye çıkarma yetkisi sadece aile sahibine aittir.',
     only_owner_can_delete: '❌ Aileyi sadece sahibi silebilir.',
@@ -336,7 +332,6 @@ Komutlar: /stats /history /income /recurring /export /settings /menu`,
     
     // Onay mesajları
     confirm_delete_family: '⚠️ *Aile silme*\n\nTüm üyeler çıkarılacak ve aile harcamaları kişisel harcama olacak.\n\nEmin misiniz?',
-    confirm_remove_member: '⚠️ *Üye çıkarma*\n\nÜye aileden çıkarılacak.\n\nEmin misiniz?',
     // Aile istatistikleri
     family_monthly_stats: '👨‍👩‍👧‍👦 *Bu ayın aile harcamaları*',
     family_daily_stats: '💰 Günlük harcamalar',
@@ -354,23 +349,18 @@ Komutlar: /stats /history /income /recurring /export /settings /menu`,
     remove_member: '❌ Çıkar',
     confirm_remove_member: '⚠️ *Üye çıkarma*\n\n{name} ailesinden çıkarılsın mı?',
     member_removed: '✅ {name} aileden çıkarıldı.',
-    member_removed_notification: '❌ *{familyName}* ailesinden {ownerName} tarafından çıkarıldınız.',
+    member_removed_notification: '❌ “{familyName}” ailesinden {ownerName} tarafından çıkarıldınız.',
     
     // Premium özellikler
     premium_required: '❌ Bu özellik yalnızca Premium kullanıcılar içindir.',
     upgrade_to_premium: '💎 Aile bütçesini kullanmak için Premium’a yükseltin!',
     
     timezone_updated: `✅ *Zaman dilimi güncellendi!*
-  
-  🕐 Seçilen saat: *{time}*
-  🌍 Zaman dilimi: *{timezone}*
-  
-  Artık tüm harcamalar yerel saatte gösterilecek.`,
-    timezone_updated_simple: `✅ *Zaman dilimi güncellendi!*
-  
-  🌍 Yeni zaman dilimi: *{timezone}*
-  
-  Tüm harcamalar doğru saat ile gösterilecek.`,
+
+🕐 Seçilen saat: *{time}*
+🌍 Zaman dilimi: *{timezone}*
+
+Artık tüm harcamalar yerel saatte gösterilecek.`,
     
     // Limitler
     limits_title: '📊 *Limit bilgileri*',
@@ -667,5 +657,7 @@ Gider ve gelir kaydı ücretsiz ve sınırsızdır.`,
   report_per_day: '📅 Günlük ortalama: {amount}',
   report_largest: '🔝 En büyük harcama: {amount} — {description} ({date})',
   overview_budget_limit: 'limit {amount}',
-  report_title_current: 'Şu ana kadarki özet: {range}'
+  report_title_current: 'Şu ana kadarki özet: {range}',
+  input_canceled: '✅ İptal edildi. Harcamalarınızı her zamanki gibi kaydedebilirsiniz.',
+  no_active_state: 'Şu anda iptal edilecek bir şey yok.'
 };

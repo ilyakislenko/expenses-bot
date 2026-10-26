@@ -85,25 +85,25 @@ module.exports = {
   
     // ადმინის სტატისტიკა
     admin_stats_text: `📊 *ბოტის სტატისტიკა*
-  
-    👥 **მომხმარებლები:**
-    • სულ: {totalUsers}
-    • პრემიუმი: {activePremium}
-    • ახალი ამ კვირაში: {newUsersWeek}
-    • ახალი ამ თვეში: {newUsersMonth}
-  
-    💰 **ხარჯები:**
-    • ჩანაწერები სულ: {totalExpenses}
-    • ამ კვირაში: {expensesWeek}
-    • აქტიური მომხმარებლები: {activeUsers}
-  
-    🐛 **შეცდომის ანგარიშები:** {totalBugReports}
-  
-    💎 **დონაციები:**
-    • სულ: {totalDonations}
-    • შეგროვილი ვარსკვლავები: {totalStars}
-  
-    ⭐ **პრემიუმ ტრანზაქციები:** {premiumTransactions}`,
+
+👥 **მომხმარებლები:**
+• სულ: {totalUsers}
+• პრემიუმი: {activePremium}
+• ახალი ამ კვირაში: {newUsersWeek}
+• ახალი ამ თვეში: {newUsersMonth}
+
+💰 **ხარჯები:**
+• ჩანაწერები სულ: {totalExpenses}
+• ამ კვირაში: {expensesWeek}
+• აქტიური მომხმარებლები: {activeUsers}
+
+🐛 **შეცდომის ანგარიშები:** {totalBugReports}
+
+💎 **დონაციები:**
+• სულ: {totalDonations}
+• შეგროვილი ვარსკვლავები: {totalStars}
+
+⭐ **პრემიუმ ტრანზაქციები:** {premiumTransactions}`,
   
     // მომხმარებელთა სია
     admin_users_title: '👥 *მომხმარებლები* (გვ. {page}/{totalPages})\n\nსულ: {totalUsers}\n',
@@ -117,26 +117,26 @@ module.exports = {
   
     // დონაციის სტატისტიკა
     admin_donations_text: `💰 *დონაციების სტატისტიკა*
-  
-    📊 **შეჯამება:**
-    • დონაციები სულ: {totalDonations}
-    • დასრულებული: {completedDonations}
-    • მოლოდინში: {pendingDonations}
-  
-    ⭐ **ვარსკვლავები:**
-    • სულ შეგროვილი: {totalStars}
-    • საშუალო დონაცია: {avgStars} ვარსკვლავი`,
+
+📊 **შეჯამება:**
+• დონაციები სულ: {totalDonations}
+• დასრულებული: {completedDonations}
+• მოლოდინში: {pendingDonations}
+
+⭐ **ვარსკვლავები:**
+• სულ შეგროვილი: {totalStars}
+• საშუალო დონაცია: {avgStars} ვარსკვლავი`,
   
     // პრემიუმ სტატისტიკა
     admin_premium_stats: `⭐ *პრემიუმ სტატისტიკა*
-  
-    📊 **მომხმარებლები:**
-    • სულ პრემიუმი: {totalPremiumUsers}
-    • აქტიური ახლა: {activePremiumUsers}
-  
-    💳 **ტრანზაქციები:**
-    • სულ: {totalTransactions}
-    • შემოსავალი სულ: {totalRevenue} ვარსკვლავი`,
+
+📊 **მომხმარებლები:**
+• სულ პრემიუმი: {totalPremiumUsers}
+• აქტიური ახლა: {activePremiumUsers}
+
+💳 **ტრანზაქციები:**
+• სულ: {totalTransactions}
+• შემოსავალი სულ: {totalRevenue} ვარსკვლავი`,
   
     // ადმინების სია
     admin_admins_title: '👑 *ადმინები* ({count})\n',
@@ -148,19 +148,19 @@ module.exports = {
       // მომხმარებლის დეტალები (ადმინი)
       admin_user_not_found: '❌ მომხმარებელი ვერ მოიძებნა.',
       admin_user_details: `👤 *მომხმარებლის ინფორმაცია*
-    
-    {adminFlag}{premiumFlag} **{firstName}** (@{username})
-    🆔 ID: {userId}
-    🌐 ენა: {language}
-    💱 ვალუტა: {currency}
-    🕐 დროის სარტყელი: {timezone}
-    📅 რეგისტრაციის თარიღი: {createdAt}
-    
-    📊 **სტატისტიკა:**
-    • ხარჯების ჩანაწერები: {totalExpenses}
-    • საერთო თანხა: {totalAmount}
-    • შეცდომის ანგარიშები: {bugReportsCount}
-    • ტრანზაქციების რაოდენობა: {transactionsCount}`,
+
+{adminFlag}{premiumFlag} {firstName} (@{username})
+🆔 ID: {userId}
+🌐 ენა: {language}
+💱 ვალუტა: {currency}
+🕐 დროის სარტყელი: {timezone}
+📅 რეგისტრაციის თარიღი: {createdAt}
+
+📊 **სტატისტიკა:**
+• ხარჯების ჩანაწერები: {totalExpenses}
+• საერთო თანხა: {totalAmount}
+• შეცდომის ანგარიშები: {bugReportsCount}
+• ტრანზაქციების რაოდენობა: {transactionsCount}`,
     
       // ადმინის ქმედებები
       admin_promote_success: '✅ {userId} ადმინისტრად დაყენდა.',
@@ -251,15 +251,14 @@ module.exports = {
     period_start_invalid: '❌ არასწორი რიცხვი. შეიყვანეთ მთელი რიცხვი 1-დან 31-მდე.',
     period_start_set: '✅ პერიოდის დაწყების დღედ დაყენდა: {day}',
     timezone_setup: `🕐 *დროის სარტყელის დაყენება*
-  
-  ახლა რომელი დროა თქვენთან?
-  
-  *მიმდინარე UTC დრო:* {utcTime}
-  
-  აირჩიეთ თქვენი ადგილობრივი დრო:`,
+
+ახლა რომელი დროა თქვენთან?
+
+*მიმდინარე UTC დრო:* {utcTime}
+
+აირჩიეთ თქვენი ადგილობრივი დრო:`,
     timezone_set: '✅ დროის სარტყელი დაყენებულია: {timezone}',
     // საოჯახო ბიუჯეტი
-    button_family: '👨‍👩‍👧‍👦 ოჯახი',
     // Family labels
     family_label: '🏠 *ოჯახი:*',
     family_owner_label: '👑 *მფლობელი:*',
@@ -269,7 +268,7 @@ module.exports = {
     family_left: '✅ თქვენ გახვედით "{name}" ოჯახიდან.',
     family_deleted: '✅ "{name}" ოჯახი წაიშალა. ყველა საოჯახო ხარჯი პირად ხარჯებად გარდაიქმნა.',
     family_member_removed: '✅ წევრი ოჯახიდან ამოშლილია.',
-    family_member_removed_notification: '❌ თქვენ ამოშლილი ხართ *{familyName}* ოჯახიდან.',
+    family_member_removed_notification: '❌ თქვენ ამოშლილი ხართ „{familyName}“ ოჯახიდან.',
     family_cannot_leave_owner: '❌ ოჯახის მფლობელი ვერ გაივლის. გამოიყენეთ „ოჯახის წაშლა" დახმარება.',
     
     // ოჯახის მენიუს ღილაკები
@@ -280,15 +279,12 @@ module.exports = {
     delete_family: '🗑️ ოჯახის წაშლა',
     family_members: '👥 ოჯახის წევრები',
     family_stats: '💰 თვის ხარჯები',
-    family_daily_stats: '💰 დღევანდელი ხარჯები',
     family_add_expense: '💰 საოჯახო ხარჯის დამატება',
     family_menu: '👨‍👩‍👧‍👦 ოჯახის მენიუ',
     family_cancel: '❌ გაუქმება',
     
     // მიწვევები
     invitation_sent: '✅ მოწვევა გაეგზავნა @{username}',
-    invitation_accepted: '✅ თქვენ მიიღეთ "{name}" ოჯახში შესვლის მოწვევა!',
-    invitation_rejected: '❌ თქვენ უარი თქვით "{name}" ოჯახში შესვლის მოწვევაზე.',
     invitation_not_found: '❌ მოწვევა ვერ მოიძებნა ან ვადა გაუვიდა.',
     invitation_expired: '❌ მოწვევის ვადა გასულია.',
     invitation_already_processed: '❌ მოწვევა უკვე დამუშავებულია.',
@@ -315,13 +311,13 @@ module.exports = {
     invitation_cancelled: '✅ მოწვევა გაუქმდა.',
     not_authorized: '❌ არ გაქვთ ამ ქმედების შესრულების უფლება.',
     invitation_code: '🔑 მოწვევის კოდი: `{code}`',
-    family_invitation_received: '🎉 თქვენ მოწვეული ხართ *{familyName}* ოჯახში\n\n👤 შემმოწვეველი: {inviterName}\n🔑 კოდი: `{inviteCode}`\n\nაირჩიეთ მოქმედება:',
+    family_invitation_received: '🎉 თქვენ მოწვეული ხართ „{familyName}“ ოჯახში\n\n👤 შემმოწვეველი: {inviterName}\n🔑 კოდი: `{inviteCode}`\n\nაირჩიეთ მოქმედება:',
     accept_invitation: '✅ მიღება',
     reject_invitation: '❌ უარყოფა',
-    invitation_accepted: '🎉 გილოცავთ! თქვენ შეუერთდით *{familyName}* ოჯახს',
+    invitation_accepted: '🎉 გილოცავთ! თქვენ შეუერთდით „{familyName}“ ოჯახს',
     invitation_rejected: '❌ თქვენ უარი თქვით მოწვევაზე',
     invitation_not_pending: '❌ ეს მოწვევა აღარ არის მოლოდინის სტატუსში',
-    invitation_cancelled_notification: '❌ *{familyName}* ოჯახში შესვლის თქვენი მოწვევა გაუქმდა {cancelledBy} მიერ',
+    invitation_cancelled_notification: '❌ „{familyName}“ ოჯახში შესვლის თქვენი მოწვევა გაუქმდა {cancelledBy} მიერ',
     enter_invite_code: '🔑 შეიყვანეთ მოწვევის კოდი:',
     only_owner_can_remove: '❌ მხოლოდ ოჯახის მფლობელს შეუძლია წევრების ამოღება.',
     only_owner_can_delete: '❌ მხოლოდ ოჯახის მფლობელს შეუძლია ოჯახის წაშლა.',
@@ -333,7 +329,6 @@ module.exports = {
     
     // დადასტურება
     confirm_delete_family: '⚠️ *ოჯახის წაშლა*\n\nყველა წევრი წაიშლება, საოჯახო ხარჯები პირად ხარჯებად გადაიქცევა.\n\nგსურთ გაგრძელება?',
-    confirm_remove_member: '⚠️ *წევრის ამოღება*\n\nწევრი ოჯახიდან ამოიშლება.\n\nგსურთ გაგრძელება?',
     // საოჯახო სტატისტიკა
     family_monthly_stats: '👨‍👩‍👧‍👦 *ამ თვის საოჯახო ხარჯები*',
     family_daily_stats: '💰 დღევანდელი ხარჯები',
@@ -351,23 +346,18 @@ module.exports = {
     remove_member: '❌ ამოშლა',
     confirm_remove_member: '⚠️ *წევრის ამოშლა*\n\nგსურთ {name} ოჯახის ამოღება?',
     member_removed: '✅ {name} ამოღებულია ოჯახიდან.',
-    member_removed_notification: '❌ თქვენ ამოღებული ხართ *{familyName}* ოჯახიდან {ownerName} მიერ.',
+    member_removed_notification: '❌ თქვენ ამოღებული ხართ „{familyName}“ ოჯახიდან {ownerName} მიერ.',
     
     // პრემიუმ ფუნქციები
     premium_required: '❌ ეს ფუნქცია ხელმისაწვდომია მხოლოდ პრემიუმ მომხმარებლებისთვის.',
     upgrade_to_premium: '💎 საოჯახო ბიუჯეტის გამოსაყენებლად გადადით პრემიუმ პაკეტზე!',
     
     timezone_updated: `✅ *დროის სარტყელი განახლდა!*
-  
-  🕐 არჩეული დრო: *{time}*
-  🌍 დროის სარტყელი: *{timezone}*
-  
-  აქედან მოყოლებული, ხარჯები გამოჩნდება ადგილობრივი დროით.`,
-    timezone_updated_simple: `✅ *დროის სარტყელი განახლდა!*
-  
-  🌍 ახალი დროის სარტყელი: *{timezone}*
-  
-  ხარჯები გამოჩნდება სწორ დროში.`,
+
+🕐 არჩეული დრო: *{time}*
+🌍 დროის სარტყელი: *{timezone}*
+
+აქედან მოყოლებული, ხარჯები გამოჩნდება ადგილობრივი დროით.`,
     
     // ლიმიტები
     limits_title: '📊 *ლიმიტების შესახებ ინფორმაცია*',
@@ -666,5 +656,7 @@ module.exports = {
   report_per_day: '📅 საშუალოდ დღეში: {amount}',
   report_largest: '🔝 ყველაზე დიდი ხარჯი: {amount} — {description} ({date})',
   overview_budget_limit: 'ლიმიტი {amount}',
-  report_title_current: 'შეჯამება ამ დრომდე: {range}'
+  report_title_current: 'შეჯამება ამ დრომდე: {range}',
+  input_canceled: '✅ გაუქმდა. ხარჯების ჩაწერა ჩვეულებრივ შეგიძლიათ.',
+  no_active_state: 'ახლა გასაუქმებელი არაფერია.'
 };
