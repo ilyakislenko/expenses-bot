@@ -15,6 +15,9 @@ const uz = require('../locales/uz');
 const jp = require('../locales/jp');
 const zh = require('../locales/zh');
 
+// Коды Telegram, не совпадающие с кодами языков бота
+const TELEGRAM_LANGUAGE_ALIASES = { ja: 'jp', kk: 'kz' };
+
 class LocalizationService {
   constructor() {
     // Поддерживаемые языки
@@ -104,11 +107,10 @@ class LocalizationService {
         return key;
       }
       
-      // Заменяем параметры в тексте
-      if (params && typeof params === 'object') {
+      // Заменяем параметры в тексте буквально: в значениях $&, $' и т.п. не раскрываются
+      if (params && typeof params === 'object' && typeof text === 'string') {
         Object.keys(params).forEach(param => {
-          const regex = new RegExp(`{${param}}`, 'g');
-          text = text.replace(regex, params[param]);
+          text = text.split(`{${param}}`).join(String(params[param]));
         });
       }
       
@@ -134,7 +136,17 @@ class LocalizationService {
    * Проверяет, поддерживается ли язык
    */
   isLanguageSupported(language) {
-    return !!this.supportedLanguages[language];
+    return typeof language === 'string' && Object.prototype.hasOwnProperty.call(this.supportedLanguages, language);
+  }
+
+  /**
+   * Код языка из Telegram (IETF: ja, kk, pt-br, zh-hans) → код языка бота или null, если язык не поддерживается
+   */
+  resolveTelegramLanguage(languageCode) {
+    if (typeof languageCode !== 'string' || !languageCode) return null;
+    const base = languageCode.toLowerCase().split(/[-_]/)[0];
+    const code = TELEGRAM_LANGUAGE_ALIASES[base] || base;
+    return this.isLanguageSupported(code) ? code : null;
   }
 
   /**
@@ -159,42 +171,17 @@ class LocalizationService {
   }
 
   /**
-   * Получает клавиатуру выбора языка
+   * Клавиатура выбора языка на указанном языке.
+   * onboarding: кнопки несут признак шага онбординга (`|ob`), «Назад» в Настройки нет — это первый шаг.
    */
-  getLanguageKeyboard() {
-    const languages = this.getSupportedLanguages();
-    const keyboard = [];
-    
-    languages.forEach(lang => {
-      keyboard.push([{
-        text: `${lang.flag} ${lang.name}`,
-        callback_data: `set_language|${lang.code}`
-      }]);
-    });
-    
-    const backText = this.getText('ru', 'button_back');
-    keyboard.push([{ text: backText, callback_data: 'settings' }]);
-    
-    return keyboard;
-  }
-
-  /**
-   * Получает клавиатуру выбора языка на указанном языке
-   */
-  getLanguageKeyboardLocalized(language) {
-    const languages = this.getSupportedLanguages();
-    const keyboard = [];
-    
-    languages.forEach(lang => {
-      keyboard.push([{
-        text: `${lang.flag} ${lang.name}`,
-        callback_data: `set_language|${lang.code}`
-      }]);
-    });
-    
-    const backText = this.getText(language, 'button_back');
-    keyboard.push([{ text: backText, callback_data: 'settings' }]);
-    
+  getLanguageKeyboardLocalized(language, { onboarding = false } = {}) {
+    const keyboard = this.getSupportedLanguages().map(lang => [{
+      text: `${lang.flag} ${lang.name}`,
+      callback_data: `set_language|${lang.code}${onboarding ? '|ob' : ''}`
+    }]);
+    if (!onboarding) {
+      keyboard.push([{ text: this.getText(language, 'button_back'), callback_data: 'settings' }]);
+    }
     return keyboard;
   }
 

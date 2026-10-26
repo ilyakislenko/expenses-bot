@@ -9,15 +9,11 @@ class UserRepository extends BaseRepository {
       ON CONFLICT (id) DO UPDATE SET 
         username = EXCLUDED.username,
         first_name = EXCLUDED.first_name
-      RETURNING *
+      RETURNING *, (xmax = 0) AS is_new,
+        (created_at > LOCALTIMESTAMP - INTERVAL '10 seconds') AS just_created
     `;
     const result = await this.query(query, [userId, username, firstName]);
     return result.rows[0];
-  }
-
-  async markTrialConsumed(userId) {
-    const query = 'UPDATE users SET has_trial = FALSE WHERE id = $1';
-    await this.query(query, [userId]);
   }
 
   async getUserCurrency(userId) {
@@ -68,10 +64,27 @@ class UserRepository extends BaseRepository {
     return result.rows[0];
   }
 
-  async getUserByUsername(username) {
-    const query = 'SELECT * FROM users WHERE username = $1';
+  // Username в Telegram не зависит от регистра. Совпадений больше одного быть не должно (refreshProfile
+  // освобождает ник у прежнего владельца), но если они есть — выбрать «первого попавшегося» нельзя.
+  async findUsersByUsername(username) {
+    const query = 'SELECT * FROM users WHERE LOWER(username) = LOWER($1) ORDER BY id';
     const result = await this.query(query, [username]);
-    return result.rows[0];
+    return result.rows;
+  }
+
+  // Обновляет username/first_name из ctx.from; пишет только при изменении.
+  // Username в Telegram в каждый момент принадлежит одному аккаунту: у прежнего владельца
+  // (сменил ник, а бот об этом не знал) он сбрасывается, чтобы приглашение не ушло не тому человеку.
+  async refreshProfile(userId, username, firstName) {
+    const query = `
+      WITH released AS (
+        UPDATE users SET username = NULL
+        WHERE $2::text IS NOT NULL AND LOWER(username) = LOWER($2::text) AND id <> $1
+      )
+      UPDATE users SET username = $2::text, first_name = $3::text
+      WHERE id = $1 AND (username IS DISTINCT FROM $2::text OR first_name IS DISTINCT FROM $3::text)
+    `;
+    await this.query(query, [userId, username ?? null, firstName ?? null]);
   }
 
   async getReminderSettings(userId) {
@@ -138,12 +151,6 @@ class UserRepository extends BaseRepository {
   async setUserPeriodStartDay(userId, day) {
     const query = 'UPDATE users SET period_start_day = $1 WHERE id = $2';
     await this.query(query, [day, userId]);
-  }
-
-  async getUserByUsername(username) {
-    const query = 'SELECT * FROM users WHERE username = $1';
-    const result = await this.query(query, [username]);
-    return result.rows[0];
   }
 
   async isUserAdmin(userId) {

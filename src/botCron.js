@@ -1,6 +1,56 @@
 const currencyConfig = require('./config/currencies');
+const logger = require('./utils/logger');
 
-module.exports = function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, recurringExpenseService, premiumLifecycleService, reportService, dailySummaryService, supportedCurrencies = currencyConfig.SUPPORTED_CURRENCIES) {
+const DEFAULT_REMINDER_HOURS = [10, 14, 18];
+
+// Локальные дата (YYYY-MM-DD) и час. hourCycle h23: в полночь час 0, а не 24
+function localDateHour(timezone, now) {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: timezone, hourCycle: 'h23', hour: '2-digit', year: 'numeric', month: '2-digit', day: '2-digit' })
+    .formatToParts(now)
+    .reduce((acc, p) => (acc[p.type] = p.value, acc), {});
+  return { date: `${parts.year}-${parts.month}-${parts.day}`, hour: Number(parts.hour) % 24 };
+}
+
+// Напоминалки: в выбранные локальные часы (до 3 раз в день), только если за сегодняшний локальный день ещё нет трат.
+// Ошибка у одного пользователя (невалидный пояс, заблокированный бот) не прерывает рассылку остальным.
+async function sendReminders({ userService, expenseService, notificationService }, now = new Date()) {
+  const { rows } = await userService.userRepository.query(`
+    SELECT id, timezone, language, reminder_hours, reminder_sent_today_hours,
+           to_char(last_reminder_local_date, 'YYYY-MM-DD') AS last_reminder_local_date
+    FROM users WHERE reminder_enabled = true`);
+  const { localizationService } = notificationService;
+  let sent = 0;
+  for (const user of rows) {
+    try {
+      const tz = user.timezone || 'UTC';
+      // NULL — часы по умолчанию, [] — все напоминания выключены
+      const targetHours = Array.isArray(user.reminder_hours) ? user.reminder_hours : DEFAULT_REMINDER_HOURS;
+      const { date, hour } = localDateHour(tz, now);
+      if (!targetHours.includes(hour)) continue;
+
+      // Часы, по которым уже напоминали, относятся только к дню last_reminder_local_date
+      const sentHours = user.last_reminder_local_date === date && Array.isArray(user.reminder_sent_today_hours)
+        ? user.reminder_sent_today_hours
+        : [];
+      if (sentHours.includes(hour)) continue;
+      if (await expenseService.hasAnyExpenseToday(user.id, tz)) continue;
+
+      const lang = user.language || 'en';
+      const variants = localizationService.getText(lang, 'reminder_sample_variants');
+      const title = localizationService.getText(lang, 'reminder_message_title');
+      const message = Array.isArray(variants) && variants.length ? variants[Math.floor(Math.random() * variants.length)] : '';
+      await notificationService.bot.telegram.sendMessage(user.id, `🔔 *${title}*\n\n${message}`, { parse_mode: 'Markdown' });
+      await userService.updateLastReminderLocalDate(user.id, date);
+      await userService.setReminderSentTodayHours(user.id, [...sentHours, hour].sort((a, b) => a - b));
+      sent++;
+    } catch (error) {
+      logger.warn('Reminder not delivered', { userId: user.id, error: error.message });
+    }
+  }
+  return sent;
+}
+
+function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, recurringExpenseService, premiumLifecycleService, reportService, dailySummaryService, supportedCurrencies = currencyConfig.SUPPORTED_CURRENCIES) {
   // Проверяем, нужно ли обновлять курсы при запуске
   (async () => {
     try {
@@ -47,6 +97,15 @@ module.exports = function setupBotCron(cron, currencyUtils, donationRepository, 
   processRecurringExpenses();
   cron.schedule('*/15 * * * *', processRecurringExpenses);
 
+  // Флаг premium у истёкших: проверки премиума смотрят на срок, но флаг читают админка и приглашения в семью
+  cron.schedule('*/10 * * * *', async () => {
+    try {
+      await userService.disableAllExpiredPremium();
+    } catch (err) {
+      console.error('Ошибка при снятии истёкшего премиума:', err);
+    }
+  });
+
   // Окончание премиума: за 2 дня, в день окончания и через неделю (днём по местному времени, по разу на срок)
   cron.schedule('25 * * * *', async () => {
     try {
@@ -72,7 +131,7 @@ module.exports = function setupBotCron(cron, currencyUtils, donationRepository, 
   });
 
   // Ежедневная сводка: в выбранный пользователем локальный час (ровно в HH:00), по разу за день, если были траты.
-  // С напоминаниями в :00 не пересекается: те приходят только в дни без записей.
+  // С напоминаниями в :00 не пересекается: те приходят только в дни без трат.
   cron.schedule('0 * * * *', async () => {
     try {
       const sent = await dailySummaryService.processDue();
@@ -86,69 +145,17 @@ module.exports = function setupBotCron(cron, currencyUtils, donationRepository, 
 
   // Ежедневные напоминалки до 3 раз в локальные часы пользователя
   cron.schedule('0 * * * *', async () => {
-    // Запускаем каждый час: на выбранных локальных часах сработает проверка
     try {
-      // Получаем список пользователей, у кого включены напоминалки
-      const { rows } = await userService.userRepository.query('SELECT id, timezone, last_reminder_local_date, language, reminder_hours, reminder_sent_today_hours FROM users WHERE reminder_enabled = true');
-      const nowUtc = new Date();
-      for (const user of rows) {
-        const tz = user.timezone || 'UTC';
-        // Вычисляем локальное время
-        const formatter = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false, year: 'numeric', month: '2-digit', day: '2-digit' });
-        const parts = formatter.formatToParts(nowUtc).reduce((acc, p) => (acc[p.type] = p.value, acc), {});
-        const localHour = parseInt(parts.hour, 10);
-
-        const localDateStr = `${parts.year}-${parts.month}-${parts.day}`;
-
-        // Часы по умолчанию, если пользователь не задал свои (NULL)
-        // Пустой массив [] трактуем как отключенные все напоминания
-        if (user.reminder_hours !== null && Array.isArray(user.reminder_hours) && user.reminder_hours.length === 0) {
-          continue; // все отключены
-        }
-        const targetHours = Array.isArray(user.reminder_hours) ? user.reminder_hours : [10, 14, 18];
-        if (!targetHours.includes(localHour)) continue;
-
-        // Маркер локального дня и часов, по которым уже отправляли
-        const lastReminderDateStr = user.last_reminder_local_date
-          ? (typeof user.last_reminder_local_date === 'string'
-              ? user.last_reminder_local_date
-              : user.last_reminder_local_date.toISOString().slice(0, 10))
-          : null;
-        let sentHours = Array.isArray(user.reminder_sent_today_hours) ? user.reminder_sent_today_hours : [];
-        if (lastReminderDateStr !== localDateStr && sentHours.length) {
-          sentHours = [];
-          await userService.setReminderSentTodayHours(user.id, sentHours);
-        }
-        if (sentHours.includes(localHour)) continue;
-
-        // Проверяем, были ли траты в нужном интервале до текущего локального часа
-        // Если это первый час из списка — проверяем с начала дня, иначе с предыдущего выбранного часа
-        const sortedHours = [...targetHours].sort((a,b)=>a-b);
-        const index = sortedHours.indexOf(localHour);
-        const startHour = index <= 0 ? 0 : sortedHours[index - 1];
-        const endHour = localHour;
-        const hasExpenses = await expenseService.hasAnyExpenseBetweenLocal(user.id, tz, startHour, endHour);
-        if (hasExpenses) {
-          await userService.updateLastReminderLocalDate(user.id, localDateStr);
-          continue;
-        }
-
-        // Выбираем случайный текст напоминалки
-        const lang = user.language || 'en';
-        const variants = notificationService.localizationService.getText(lang, 'reminder_sample_variants');
-        const title = notificationService.localizationService.getText(lang, 'reminder_message_title');
-        const message = Array.isArray(variants) && variants.length ? variants[Math.floor(Math.random() * variants.length)] : 'Пора записать расходы!';
-        try {
-          await notificationService.bot.telegram.sendMessage(user.id, `🔔 *${title}*\n\n${message}`, { parse_mode: 'Markdown' });
-          await userService.updateLastReminderLocalDate(user.id, localDateStr);
-          sentHours = Array.from(new Set([...(sentHours || []), localHour])).sort((a,b)=>a-b);
-          await userService.setReminderSentTodayHours(user.id, sentHours);
-        } catch (e) {
-          console.error('Failed to send reminder', { userId: user.id, e });
-        }
+      const sent = await sendReminders({ userService, expenseService, notificationService });
+      if (sent > 0) {
+        console.log(`Напоминалки: отправлено ${sent}`);
       }
     } catch (err) {
       console.error('Ошибка при отправке напоминалок:', err);
     }
   });
-}; 
+}
+
+module.exports = setupBotCron;
+module.exports.sendReminders = sendReminders;
+module.exports.localDateHour = localDateHour;

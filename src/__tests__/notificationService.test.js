@@ -32,7 +32,7 @@ describe('NotificationService family messages', () => {
   });
 
   test('removal and cancellation notices escape names too', async () => {
-    await service.sendFamilyMemberRemoved(42, 'Семья_1', 'owner_name');
+    await service.sendFamilyMemberRemoved(42, 'Семья_1');
     await service.sendInvitationCancelled(42, 'Семья_1', 'owner_name');
 
     for (const [, text] of sendMessage.mock.calls) {

@@ -170,10 +170,10 @@ module.exports = {
     // 群发消息
     admin_broadcast_prompt: '📢 *群发消息*\n\n请输入要发送给所有用户的消息（最多3600个字符）：',
     admin_broadcast_too_long: '❌ 消息太长！\n\n📏 当前长度：{current}\n📏 最大：{max}\n📏 请减少：{excess} 个字符',
-    admin_broadcast_confirm: '📢 *确认群发*\n\n📝 *消息内容：*\n{message}\n\n📏 *长度：* {length} 个字符\n\n⚠️ 此消息将发送给 *所有* 机器人用户！',
+    admin_broadcast_confirm: '📢 确认群发\n\n📝 消息内容：\n{message}\n\n📏 长度：{length} 个字符\n\n⚠️ 此消息将发送给所有机器人用户！',
     admin_broadcast_started: '📢 群发开始...',
     admin_broadcast_result: '📢 *群发完成！*\n\n📊 *统计：*\n• 总用户：{total}\n• 成功：{sent}\n• 失败：{failed}',
-    admin_broadcast_header: '🔴🔴🔴 *通知！* 🔴🔴🔴',
+    admin_broadcast_header: '🔴🔴🔴 通知！ 🔴🔴🔴',
     
     // 通用消息
     error: '发生错误 😞',
@@ -251,9 +251,9 @@ module.exports = {
     family_owner_label: '👑 *拥有者:*',
     family_info: '👨‍👩‍👧‍👦 *家庭预算*\n\n在这里，可以与家人、同事、朋友等一起管理支出。\n\n- \uD83D\uDC6A 会创建一个共享群组，用于记录共同开销。\n- \u2795 每位成员都可以添加支出。\n- \uD83D\uDDD1\uFE0F 如有需要，可删除自己的支出。\n- \uD83D\uDCCA 提供所有成员可查看的共享统计。\n- \uD83D\uDCE4 可将整个群组的数据导出为单个文件。\n\n共享管理意味着更少的混乱与更高的透明度.',
     family_created: '✅ 家庭 "{name}" 已创建！现在可以邀请成员了。',
-    family_left: '✅ 你已退出家庭 "{name}"。',
+    family_left: '✅ 你已退出家庭 "{name}"。你在该家庭中的支出已变为个人支出。',
     family_deleted: '✅ 家庭 "{name}" 已删除。所有家庭支出已转为个人支出。',
-    family_member_removed_notification: '❌ 你已被移出“{familyName}”家庭。',
+    family_member_removed_notification: '❌ 你已被移出“{familyName}”家庭。你在该家庭中的支出已变为个人支出。',
     
     // 家庭菜单按钮
     create_family: '🏠 创建家庭',
@@ -316,7 +316,7 @@ module.exports = {
     family_owner_role: '拥有者',
     family_member_role: '成员',
     remove_member: '❌ 移除',
-    confirm_remove_member: '⚠️ *移除成员*\n\n确定要将 {name} 从家庭中移除吗？',
+    confirm_remove_member: '⚠️ *移除成员*\n\n确定要将 {name} 从家庭中移除吗？其家庭支出将变为个人支出，家庭将无法再看到。',
     member_removed: '✅ {name} 已被移出家庭。',
     
     // 高级功能
@@ -392,9 +392,8 @@ module.exports = {
     // 验证错误
     error_too_long_regular: '❌ 描述过长！普通用户最多80字符。',
     error_too_long_premium: '❌ 描述过长！高级用户最多160字符。',
-    error_amount: '❌ 金额无效。请输入0.01到999999之间的数字。',
+    error_amount: '❌ 金额无效。请输入0.01到{max}之间的数字。',
     error_format: '❌ 没看懂。请以金额开头：`250 咖啡`、`20 USD 出租车` 或只写 `300`。',
-    error_forbidden_content: '❌ 含有不允许的内容。',
     error_generic: '❌ 出错了，请稍后再试或联系管理员。',
     
     // 按钮
@@ -658,5 +657,16 @@ module.exports = {
     command_paysupport: '支付支持',
     command_terms: '服务条款',
     command_privacy: '隐私政策',
-    payment_outdated: '⚠️ 此账单已过期：价格已变更。请重新打开套餐 — /limits'
+    payment_outdated: '⚠️ 此账单已过期：价格已变更。请重新打开套餐 — /limits',
+    security_validation_error: '⚠️ 无法处理该请求。请你再试一次，或用 /start 打开菜单。',
+    expense_draft_outdated: '⌛ 这条草稿已失效。请重新发送这笔支出。',
+    family_invitation_hours_left: '⏰ 剩余 {hours} 小时',
+    family_no_members: '没有成员',
+    family_already_member: '❌ 你已经在一个家庭中了。',
+    admin_bug_reports_all_title: '📝 全部错误报告（最近 {count} 条）',
+    admin_bug_reports_new_title: '🆕 新错误报告（最近 {count} 条）',
+    admin_bug_reports_empty: '暂无报告。',
+    payment_subscription_already_active: '🔁 你已经有一个有效的月度订阅，无需再订一个。想提前延长高级版，请选择一次性套餐：/limits',
+    payment_foreign_payer: '⚠️ 此付款链接是为其他用户创建的。请你在机器人中自行打开套餐 — /limits',
+    premium_expired_granted: '🌙 你的高级版已到期。记录支出和收入仍然免费；预算、完整总结、自定义类别、家庭和编辑记录需要高级版。你可以随时续费。'
 };

@@ -170,10 +170,10 @@ module.exports = {
     // Diffusion admin
     admin_broadcast_prompt: '📢 *Diffusion générale*\n\nEntre le texte à envoyer à tous les utilisateurs (max. 3600 caractères) :',
     admin_broadcast_too_long: '❌ Message trop long !\n\n📏 Longueur actuelle : {current}\n📏 Maximum : {max}\n📏 Supprime : {excess} caractères',
-    admin_broadcast_confirm: '📢 *Confirmer la diffusion*\n\n📝 *Texte :*\n{message}\n\n📏 *Longueur :* {length} caractères\n\n⚠️ Ce message sera envoyé à *TOUS* les utilisateurs du bot !',
+    admin_broadcast_confirm: '📢 Confirmer la diffusion\n\n📝 Texte :\n{message}\n\n📏 Longueur : {length} caractères\n\n⚠️ Ce message sera envoyé à TOUS les utilisateurs du bot !',
     admin_broadcast_started: '📢 Diffusion commencée...',
     admin_broadcast_result: '📢 *Diffusion terminée !*\n\n📊 *Statistiques :*\n• Total utilisateurs : {total}\n• Envoyé : {sent}\n• Échecs : {failed}',
-    admin_broadcast_header: '🔴🔴🔴 *Notification !* 🔴🔴🔴',
+    admin_broadcast_header: '🔴🔴🔴 Notification ! 🔴🔴🔴',
     
     // Général
     error: 'Une erreur est survenue 😞',
@@ -250,9 +250,9 @@ Sélectionne ton heure actuelle :`,
     family_owner_label: '👑 *Propriétaire:*',
     family_info: '👨‍👩‍👧‍👦 Budget familial\n\nIci, tu peux gérer les dépenses avec ta famille, tes collègues, tes amis, etc.\n\n- \uD83D\uDC6A Un groupe partagé est créé pour suivre les dépenses communes.\n- \u2795 Chaque membre peut ajouter des dépenses.\n- \uD83D\uDDD1\uFE0F Tu peux supprimer tes propres dépenses si nécessaire.\n- \uD83D\uDCCA Des statistiques partagées sont disponibles pour tous les membres.\n- \uD83D\uDCE4 Exporte les données de tout le groupe dans un seul fichier.\n\nUn contrôle partagé signifie moins de chaos et plus de transparence.',
     family_created: '✅ Famille "{name}" créée ! Tu peux maintenant inviter des membres.',
-    family_left: '✅ Tu as quitté la famille "{name}".',
+    family_left: '✅ Tu as quitté la famille "{name}". Tes dépenses dans cette famille sont maintenant personnelles.',
     family_deleted: '✅ Famille "{name}" supprimée. Toutes les dépenses familiales sont redevenues personnelles.',
-    family_member_removed_notification: '❌ Tu as été retiré de la famille « {familyName} ».',
+    family_member_removed_notification: '❌ Tu as été retiré de la famille « {familyName} ». Tes dépenses dans cette famille sont maintenant personnelles.',
     
     // Boutons du menu familial
     create_family: '🏠 Créer une famille',
@@ -315,7 +315,7 @@ Sélectionne ton heure actuelle :`,
     family_owner_role: 'propriétaire',
     family_member_role: 'membre',
     remove_member: '❌ Retirer',
-    confirm_remove_member: '⚠️ *Retrait de membre*\n\nVeux-tu vraiment retirer {name} de la famille ?',
+    confirm_remove_member: '⚠️ *Retrait de membre*\n\nVeux-tu vraiment retirer {name} de la famille ? Ses dépenses familiales deviendront personnelles et la famille ne les verra plus.',
     member_removed: '✅ {name} a été retiré de la famille.',
     
     // Fonctions premium
@@ -390,9 +390,8 @@ Toutes tes dépenses seront désormais affichées à ton heure locale.`,
     // Erreurs de validation
     error_too_long_regular: '❌ Description trop longue ! Max. 80 caractères pour les utilisateurs standard.',
     error_too_long_premium: '❌ Description trop longue ! Max. 160 caractères pour les premium.',
-    error_amount: '❌ Montant invalide. Entre un nombre entre 0.01 et 999999.',
+    error_amount: '❌ Montant invalide. Saisis un nombre de 0.01 à {max}.',
     error_format: '❌ Je n\'ai pas compris. Commence par un montant : `250 café`, `20 USD taxi` ou juste `300`.',
-    error_forbidden_content: '❌ Contenu interdit.',
     error_generic: '❌ Erreur. Réessaie plus tard ou contacte un admin.',
     
     // Boutons
@@ -659,5 +658,16 @@ Toutes tes dépenses seront désormais affichées à ton heure locale.`,
     command_paysupport: 'Support paiement',
     command_terms: 'Conditions d\'utilisation',
     command_privacy: 'Politique de confidentialité',
-    payment_outdated: '⚠️ Cette facture est obsolète : le prix a changé. Ouvre à nouveau les tarifs — /limits'
+    payment_outdated: '⚠️ Cette facture est obsolète : le prix a changé. Ouvre à nouveau les tarifs — /limits',
+    security_validation_error: '⚠️ Impossible de traiter cette demande. Réessaie ou ouvre le menu avec /start.',
+    expense_draft_outdated: '⌛ Ce brouillon est périmé. Envoie la dépense à nouveau.',
+    family_invitation_hours_left: '⏰ Encore {hours} h',
+    family_no_members: 'Aucun membre',
+    family_already_member: '❌ Tu fais déjà partie d’une famille.',
+    admin_bug_reports_all_title: '📝 Tous les rapports de bugs ({count} derniers)',
+    admin_bug_reports_new_title: '🆕 Nouveaux rapports de bugs ({count} derniers)',
+    admin_bug_reports_empty: 'Aucun rapport.',
+    payment_subscription_already_active: '🔁 Tu as déjà un abonnement mensuel actif, inutile d’en prendre un deuxième. Pour prolonger premium à l’avance, choisis un tarif à paiement unique : /limits',
+    payment_foreign_payer: '⚠️ Ce lien de paiement a été créé pour un autre utilisateur. Ouvre toi-même les tarifs dans le bot — /limits',
+    premium_expired_granted: '🌙 Ton premium est terminé. Le suivi des dépenses et des revenus reste gratuit ; les budgets, le bilan complet, les catégories personnalisées, la famille et la modification des entrées sont inclus avec premium. Tu peux le prolonger à tout moment.'
 };

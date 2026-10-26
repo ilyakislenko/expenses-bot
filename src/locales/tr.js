@@ -169,10 +169,10 @@ module.exports = {
         // Toplu duyuru
         admin_broadcast_prompt: '📢 *Toplu mesaj*\n\nTüm kullanıcılara gidecek mesajı yazın (en fazla 3600 karakter):',
         admin_broadcast_too_long: '❌ Mesaj çok uzun!\n\n📏 Mevcut uzunluk: {current}\n📏 Maksimum: {max}\n📏 Kısaltın: {excess} karakter',
-        admin_broadcast_confirm: '📢 *Toplu mesajı onayla*\n\n📝 *Mesaj:*\n{message}\n\n📏 *Uzunluk:* {length} karakter\n\n⚠️ Bu mesaj botun *tüm* kullanıcılarına gönderilecek!',
+        admin_broadcast_confirm: '📢 Toplu mesajı onaylayın\n\n📝 Mesaj:\n{message}\n\n📏 Uzunluk: {length} karakter\n\n⚠️ Bu mesaj botun TÜM kullanıcılarına gönderilecek!',
         admin_broadcast_started: '📢 Gönderim başladı...',
         admin_broadcast_result: '📢 *Gönderim bitti!*\n\n📊 *İstatistik:*\n• Toplam: {total}\n• Başarılı: {sent}\n• Başarısız: {failed}',
-        admin_broadcast_header: '🔴🔴🔴 *Duyuru!* 🔴🔴🔴',
+        admin_broadcast_header: '🔴🔴🔴 Duyuru! 🔴🔴🔴',
         
         // Genel mesajlar
         error: 'Bir hata oluştu 😞',
@@ -252,9 +252,9 @@ Lütfen yerel saati seçin:`,
     family_owner_label: '👑 *Sahip:*',
     family_info: '👨‍👩‍👧‍👦 *Aile Bütçesi*\n\nBurada aile, meslektaşlar, arkadaşlar vb. ile birlikte giderleri ortak şekilde yönetebilirsiniz.\n\n- \uD83D\uDC6A Ortak harcamaları kaydetmek için paylaşılan bir grup oluşturulur.\n- \u2795 Her üye gider ekleyebilir.\n- \uD83D\uDDD1\uFE0F Gerekirse kendi giderlerinizi silebilirsiniz.\n- \uD83D\uDCCA Tüm üyeler için ortak istatistikler mevcuttur.\n- \uD83D\uDCE4 Tüm grup verilerini tek bir dosyaya aktarabilirsiniz.\n\nOrtak kontrol, daha az kaos ve daha fazla şeffaflık demektir.',
     family_created: '✅ "{name}" adlı aile oluşturuldu! Şimdi üye davet edebilirsiniz.',
-    family_left: '✅ "{name}" ailesinden ayrıldınız.',
+    family_left: '✅ "{name}" ailesinden ayrıldınız. Bu ailedeki harcamalarınız artık kişisel.',
     family_deleted: '✅ "{name}" ailesi silindi. Tüm aile harcamaları kişisel harcamalara dönüştürüldü.',
-    family_member_removed_notification: '❌ “{familyName}” ailesinden çıkarıldınız.',
+    family_member_removed_notification: '❌ “{familyName}” ailesinden çıkarıldınız. Bu ailedeki harcamalarınız artık kişisel.',
     
     // Aile menü tuşları
     create_family: '🏠 Aile oluştur',
@@ -317,7 +317,7 @@ Lütfen yerel saati seçin:`,
     family_owner_role: 'Sahip',
     family_member_role: 'Üye',
     remove_member: '❌ Çıkar',
-    confirm_remove_member: '⚠️ *Üye çıkarma*\n\n{name} ailesinden çıkarılsın mı?',
+    confirm_remove_member: '⚠️ *Üye çıkarma*\n\n{name} aileden çıkarılsın mı? Bu kişinin aile harcamaları kişisel harcamaları olacak ve aile bunları artık görmeyecek.',
     member_removed: '✅ {name} aileden çıkarıldı.',
     
     // Premium özellikler
@@ -393,9 +393,8 @@ Gider ve gelir kaydı ücretsiz ve sınırsızdır.`,
     // Doğrulama hataları
     error_too_long_regular: '❌ Açıklama çok uzun! Standart kullanıcılar için en fazla 80 karakter.',
     error_too_long_premium: '❌ Açıklama çok uzun! Premium için en fazla 160 karakter.',
-    error_amount: '❌ Geçersiz tutar. 0,01 ile 999999 arasında girin.',
+    error_amount: '❌ Geçersiz tutar. 0.01 ile {max} arasında bir sayı girin.',
     error_format: '❌ Anlayamadım. Tutarla başlayın: `250 kahve`, `20 USD taksi` veya sadece `300`.',
-    error_forbidden_content: '❌ Yasaklı içerik.',
     error_generic: '❌ Bir hata oluştu. Daha sonra tekrar deneyin veya yöneticiyle iletişime geçin.',
     
     // Düğmeler
@@ -657,5 +656,16 @@ Gider ve gelir kaydı ücretsiz ve sınırsızdır.`,
   command_paysupport: 'Ödeme desteği',
   command_terms: 'Kullanım koşulları',
   command_privacy: 'Gizlilik politikası',
-  payment_outdated: '⚠️ Bu fatura güncel değil: fiyat değişti. Tarifeleri yeniden açın — /limits'
+  payment_outdated: '⚠️ Bu fatura güncel değil: fiyat değişti. Tarifeleri yeniden açın — /limits',
+  security_validation_error: '⚠️ İstek işlenemedi. Lütfen tekrar deneyin veya /start ile menüyü açın.',
+  expense_draft_outdated: '⌛ Bu taslak artık geçerli değil. Lütfen harcamayı tekrar gönderin.',
+  family_invitation_hours_left: '⏰ Kalan süre: {hours} sa',
+  family_no_members: 'Üye yok',
+  family_already_member: '❌ Zaten bir ailedesiniz.',
+  admin_bug_reports_all_title: '📝 Tüm hata raporları (son {count})',
+  admin_bug_reports_new_title: '🆕 Yeni hata raporları (son {count})',
+  admin_bug_reports_empty: 'Rapor yok.',
+  payment_subscription_already_active: '🔁 Zaten aktif bir aylık aboneliğiniz var, ikincisine gerek yok. Premium\'u önceden uzatmak için tek seferlik bir tarife seçin: /limits',
+  payment_foreign_payer: '⚠️ Bu ödeme bağlantısı başka bir kullanıcı için oluşturuldu. Tarifeleri botta kendiniz açın — /limits',
+  premium_expired_granted: '🌙 Premium süreniz sona erdi. Gider ve gelir takibi ücretsiz kalır; bütçeler, tam özet, özel kategoriler, aile ve kayıt düzenleme Premium ile kullanılabilir. İstediğiniz zaman uzatabilirsiniz.'
 };

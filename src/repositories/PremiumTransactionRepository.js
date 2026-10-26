@@ -267,18 +267,30 @@ class PremiumTransactionRepository extends BaseRepository {
   }
 
   /**
-   * Действующая подписка Telegram Stars с автопродлением (последний платёж по ней ещё не истёк)
+   * Действующая подписка Telegram Stars с автопродлением (последний платёж по ней ещё не истёк):
+   * { subscription_expires_at, telegram_payment_id } или null
    */
   async getActiveRecurringSubscription(userId) {
     const query = `
-      SELECT subscription_expires_at
+      SELECT subscription_expires_at, telegram_payment_id
       FROM premium_transactions
       WHERE user_id = $1 AND is_recurring = true AND status = 'completed' AND subscription_expires_at > NOW()
-      ORDER BY subscription_expires_at DESC
+      ORDER BY subscription_expires_at DESC, created_at DESC
       LIMIT 1
     `;
     const result = await this.query(query, [userId]);
     return result.rows[0] || null;
+  }
+
+  // Подписка отменена (админ снял премиум): оплаченный период больше не считается действующей подпиской
+  async endActiveRecurringSubscriptions(userId) {
+    const query = `
+      UPDATE premium_transactions
+      SET subscription_expires_at = NOW(), updated_at = NOW()
+      WHERE user_id = $1 AND is_recurring = true AND status = 'completed' AND subscription_expires_at > NOW()
+    `;
+    const result = await this.query(query, [userId]);
+    return result.rowCount;
   }
 }
 

@@ -3,41 +3,51 @@ const dbConfig = require('../config/database');
 const logger = require('../utils/logger');
 const { databaseQueriesTotal, databaseQueryDuration, databaseConnectionsActive } = require('../utils/metrics');
 
+// Один пул на процесс: все репозитории делят его, иначе каждый держал бы до POOL.max соединений
+let sharedPool = null;
+
+function getPool() {
+  if (sharedPool) return sharedPool;
+  const pool = new Pool({
+    ...dbConfig.CONNECTION,
+    ...dbConfig.POOL
+  });
+  const poolState = () => ({
+    totalCount: pool.totalCount,
+    idleCount: pool.idleCount,
+    waitingCount: pool.waitingCount
+  });
+
+  // Логируем события пула соединений
+  pool.on('connect', () => {
+    logger.debug('Database client connected', poolState());
+    databaseConnectionsActive.inc();
+  });
+
+  pool.on('remove', () => {
+    logger.debug('Database client removed', poolState());
+    databaseConnectionsActive.dec();
+  });
+
+  pool.on('error', (err) => {
+    logger.error('Database pool error:', { error: err.message, stack: err.stack, ...poolState() });
+  });
+
+  sharedPool = pool;
+  return pool;
+}
+
 class BaseRepository {
   constructor() {
-    this.pool = new Pool({
-      ...dbConfig.CONNECTION,
-      ...dbConfig.POOL
-    });
+    this.pool = getPool();
+  }
 
-    // Логируем события пула соединений
-    this.pool.on('connect', (client) => {
-      logger.debug('Database client connected', { 
-        totalCount: this.pool.totalCount,
-        idleCount: this.pool.idleCount,
-        waitingCount: this.pool.waitingCount
-      });
-      databaseConnectionsActive.inc();
-    });
-
-    this.pool.on('remove', (client) => {
-      logger.debug('Database client removed', { 
-        totalCount: this.pool.totalCount,
-        idleCount: this.pool.idleCount,
-        waitingCount: this.pool.waitingCount
-      });
-      databaseConnectionsActive.dec();
-    });
-
-    this.pool.on('error', (err, client) => {
-      logger.error('Database pool error:', { 
-        error: err.message,
-        stack: err.stack,
-        totalCount: this.pool.totalCount,
-        idleCount: this.pool.idleCount,
-        waitingCount: this.pool.waitingCount
-      });
-    });
+  // Закрытие общего пула при остановке процесса
+  static async closePool() {
+    if (!sharedPool) return;
+    const pool = sharedPool;
+    sharedPool = null;
+    await pool.end();
   }
 
   async query(text, params) {

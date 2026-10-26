@@ -165,10 +165,10 @@ module.exports = {
   // Admin broadcast
   admin_broadcast_prompt: '📢 *Broadcast Message*\n\nEnter notification text for all users (up to 3600 characters):',
   admin_broadcast_too_long: '❌ Message too long!\n\n📏 Current length: {current} characters\n📏 Maximum: {max} characters\n📏 Need to remove: {excess} characters',
-  admin_broadcast_confirm: '📢 *Confirm broadcast message*\n\n📝 *Message text:*\n{message}\n\n📏 *Length:* {length} characters\n\n⚠️ This message will be sent to *ALL* bot users!',
+  admin_broadcast_confirm: '📢 Confirm broadcast message\n\n📝 Message text:\n{message}\n\n📏 Length: {length} characters\n\n⚠️ This message will be sent to ALL bot users!',
   admin_broadcast_started: '📢 Broadcast started...',
   admin_broadcast_result: '📢 *Broadcast completed!*\n\n📊 *Statistics:*\n• Total users: {total}\n• Successfully sent: {sent}\n• Errors: {failed}',
-  admin_broadcast_header: '🔴🔴🔴 *Notification!* 🔴🔴🔴',
+  admin_broadcast_header: '🔴🔴🔴 Notification! 🔴🔴🔴',
   
   // General messages
   error: 'An error occurred 😞',
@@ -262,9 +262,8 @@ Recording expenses and income is free and unlimited.`,
   // Validation errors
   error_too_long_regular: '❌ Description is too long!\nMaximum 80 characters for regular users.',
   error_too_long_premium: '❌ Description is too long!\nMaximum 160 characters for premium users.',
-  error_amount: '❌ Invalid amount. Enter a number from 0.01 to 999999.',
+  error_amount: '❌ Invalid amount. Enter a number from 0.01 to {max}.',
   error_format: '❌ I did not get it. Start with an amount: `250 coffee`, `20 USD taxi` or just `300`.',
-  error_forbidden_content: '❌ Forbidden content.',
   error_generic: '❌ An error occurred. Please try again later or contact the administrator.',
   
   // Buttons
@@ -345,9 +344,9 @@ Recording expenses and income is free and unlimited.`,
   family_owner_label: '👑 *Owner:*',
   family_info: '👨‍👩‍👧‍👦 *Family Budget*\n\nHere you can manage expenses together with family, colleagues, friends, etc.\n\n- \uD83D\uDC6A A shared group is created to track joint expenses.\n- \u2795 Each member can add expenses.\n- \uD83D\uDDD1\uFE0F You can delete your own expenses if needed.\n- \uD83D\uDCCA Shared statistics are available for all members.\n- \uD83D\uDCE4 Export the entire group’s data into a single file.\n\nShared control means less chaos and more transparency.',
   family_created: '✅ Family "{name}" created! Now you can invite members.',
-  family_left: '✅ You left family "{name}".',
+  family_left: '✅ You left family "{name}". Your expenses in this family are now personal.',
   family_deleted: '✅ Family "{name}" deleted. All family expenses became personal.',
-  family_member_removed_notification: '❌ You were removed from family "{familyName}".',
+  family_member_removed_notification: '❌ You were removed from family "{familyName}". Your expenses in this family are now personal.',
   
   // Family menu buttons
   create_family: '🏠 Create Family',
@@ -412,7 +411,7 @@ Recording expenses and income is free and unlimited.`,
   family_owner_role: 'owner',
   family_member_role: 'member',
   remove_member: '❌ Remove',
-  confirm_remove_member: '⚠️ *Remove Member*\n\nAre you sure you want to remove {name} from the family?',
+  confirm_remove_member: '⚠️ *Remove Member*\n\nAre you sure you want to remove {name} from the family? Their family expenses will become their personal ones, and the family will no longer see them.',
   member_removed: '✅ Member {name} has been removed from the family.',
   
   // Premium features
@@ -677,5 +676,16 @@ Recording expenses and income is free and unlimited.`,
   command_paysupport: 'Payment support',
   command_terms: 'Terms of Service',
   command_privacy: 'Privacy Policy',
-  payment_outdated: '⚠️ This invoice is outdated: the price has changed. Open the plans again — /limits'
+  payment_outdated: '⚠️ This invoice is outdated: the price has changed. Open the plans again — /limits',
+  security_validation_error: '⚠️ Couldn\'t process this request. Try again or open the menu with /start.',
+  expense_draft_outdated: '⌛ This draft is outdated. Send the expense again.',
+  family_invitation_hours_left: '⏰ {hours} h left',
+  family_no_members: 'No members',
+  family_already_member: '❌ You are already in a family.',
+  admin_bug_reports_all_title: '📝 All bug reports (latest {count})',
+  admin_bug_reports_new_title: '🆕 New bug reports (latest {count})',
+  admin_bug_reports_empty: 'No reports.',
+  payment_subscription_already_active: '🔁 You already have an active monthly subscription — no need for a second one. To extend premium in advance, pick a one-time plan: /limits',
+  payment_foreign_payer: '⚠️ This payment link was created for another user. Open the plans in the bot yourself — /limits',
+  premium_expired_granted: '🌙 Your premium has ended. Tracking expenses and income stays free; budgets, the full summary, custom categories, family and editing records come with premium. You can extend it any time.'
 }; 

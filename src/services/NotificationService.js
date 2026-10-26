@@ -68,13 +68,12 @@ class NotificationService {
     }
   }
 
-  async sendFamilyMemberRemoved(userId, familyName, removedBy) {
+  async sendFamilyMemberRemoved(userId, familyName) {
     try {
       let userLanguage = await this.userService.getUserLanguage(userId) || 'ru';
       
       const message = this.localizationService.getText(userLanguage, 'family_member_removed_notification', {
-        familyName: this.formatter.escapeMarkdown(familyName),
-        removedBy: this.formatter.escapeMarkdown(removedBy)
+        familyName: this.formatter.escapeMarkdown(familyName)
       });
 
       await this.bot.telegram.sendMessage(userId, message, {
@@ -83,14 +82,12 @@ class NotificationService {
 
       logger.info('Family member removed notification sent', {
         userId,
-        familyName,
-        removedBy
+        familyName
       });
     } catch (error) {
       logger.error('Failed to send family member removed notification', {
         userId,
         familyName,
-        removedBy,
         error: error.message
       });
     }

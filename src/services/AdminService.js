@@ -25,17 +25,17 @@ class AdminService {
     const totalUsers = await this.userService.getUsersCount();
     const admins = await this.userService.getAllAdmins();
     
-    // Получаем статистику премиум пользователей
+    // Получаем статистику премиум пользователей (premium_expires_at — время Node без пояса, сравниваем с ним же)
     const query = `
       SELECT 
-        COUNT(CASE WHEN premium = true AND premium_expires_at > NOW() THEN 1 END) as active_premium,
+        COUNT(CASE WHEN premium = true AND premium_expires_at > $1 THEN 1 END) as active_premium,
         COUNT(CASE WHEN premium_activated_at IS NOT NULL THEN 1 END) as ever_had_premium,
         COUNT(CASE WHEN created_at >= NOW() - INTERVAL '7 days' THEN 1 END) as new_last_week,
         COUNT(CASE WHEN created_at >= NOW() - INTERVAL '30 days' THEN 1 END) as new_last_month
       FROM users
     `;
     
-    const result = await this.userService.userRepository.query(query);
+    const result = await this.userService.userRepository.query(query, [new Date()]);
     const stats = result.rows[0];
     
     return {
@@ -86,6 +86,11 @@ class AdminService {
     };
   }
 
+  // Последние баг-репорты: все или только новые (status = 'new')
+  async listBugReports(status = null, limit = 10) {
+    return this.bugReportRepository.getAllBugReports(limit, 0, status);
+  }
+
   // Статистика донатов
   async getDonationStats() {
     const query = `
@@ -120,11 +125,11 @@ class AdminService {
     const query = `
       SELECT 
         COUNT(CASE WHEN premium = true THEN 1 END) as total_premium_users,
-        COUNT(CASE WHEN premium = true AND premium_expires_at > NOW() THEN 1 END) as active_premium_users
+        COUNT(CASE WHEN premium = true AND premium_expires_at > $1 THEN 1 END) as active_premium_users
       FROM users
     `;
     
-    const userStatsResult = await this.userService.userRepository.query(query);
+    const userStatsResult = await this.userService.userRepository.query(query, [new Date()]);
     const userStats = userStatsResult.rows[0];
     
     const transactionStats = await this.premiumTransactionRepository.getTransactionStats();
@@ -153,10 +158,9 @@ class AdminService {
       return user ? [user] : [];
     }
     
-    // Поиск по username (убираем @ если есть)
+    // Поиск по username без учёта регистра (убираем @ если есть); показываем все совпадения
     const username = trimmedQuery.replace('@', '');
-    const user = await this.userService.getUserByUsername(username);
-    return user ? [user] : [];
+    return this.userService.userRepository.findUsersByUsername(username);
   }
 
   // Выдать премиум пользователю
@@ -207,6 +211,8 @@ class AdminService {
         // Получаем язык пользователя для локализованного заголовка
         const userLanguage = await this.userService.getUserLanguage(user.id);
         const broadcastHeader = this.localizationService.getText(userLanguage, 'admin_broadcast_header');
+        // Текст админа уходит как есть, без parse_mode: один «_» (например, в /daily_summary)
+        // в Markdown не дал бы доставить сообщение никому
         const broadcastMessage = `${broadcastHeader}\n\n${messageText}`;
 
         // Пробуем разные способы отправки
@@ -215,7 +221,7 @@ class AdminService {
         // Способ 1: NotificationService
         if (this.notificationService && this.notificationService.sendMessage) {
           try {
-            await this.notificationService.sendMessage(user.id, broadcastMessage, { parse_mode: 'Markdown' });
+            await this.notificationService.sendMessage(user.id, broadcastMessage);
             messageSent = true;
           } catch (notificationError) {
             logger.warn('NotificationService failed, trying direct bot access', {
@@ -228,7 +234,7 @@ class AdminService {
         // Способ 2: Прямой доступ к bot через AdminService
         if (!messageSent && this.bot) {
           try {
-            await this.bot.telegram.sendMessage(user.id, broadcastMessage, { parse_mode: 'Markdown' });
+            await this.bot.telegram.sendMessage(user.id, broadcastMessage);
             messageSent = true;
           } catch (botError) {
             logger.warn('Direct bot access failed, trying userService bot', {
@@ -240,7 +246,7 @@ class AdminService {
         
         // Способ 3: Fallback через userService (если есть)
         if (!messageSent && this.userService.bot) {
-          await this.userService.bot.telegram.sendMessage(user.id, broadcastMessage, { parse_mode: 'Markdown' });
+          await this.userService.bot.telegram.sendMessage(user.id, broadcastMessage);
           messageSent = true;
         }
         
@@ -292,19 +298,6 @@ class AdminService {
         limit
       }
     };
-  }
-
-  // Поиск пользователя
-  async findUser(query) {
-    // Если query - число, ищем по ID
-    if (/^\d+$/.test(query)) {
-      const user = await this.userService.getUserById(parseInt(query, 10));
-      return user ? [user] : [];
-    }
-    
-    // Иначе ищем по username
-    const user = await this.userService.userRepository.getUserByUsername(query);
-    return user ? [user] : [];
   }
 
   // Управление админами
@@ -408,13 +401,16 @@ class AdminService {
     const transactions = await this.userService.getUserTransactions(userId, 10, 0);
     const bugReports = await this.bugReportRepository.getBugReportsByUserId(userId, 5, 0);
     
-    // Статистика расходов пользователя
+    // Статистика расходов пользователя.
+    // users.created_at — TIMESTAMP без пояса, заполняется по часам сессии Postgres (UTC);
+    // node-pg прочитал бы его как местное время сервера, поэтому переводим в момент времени здесь
     const expenseStatsQuery = `
       SELECT 
         COUNT(*) as total_expenses,
         SUM(amount) as total_amount,
         MIN(created_at_utc) as first_expense,
-        MAX(created_at_utc) as last_expense
+        MAX(created_at_utc) as last_expense,
+        (SELECT created_at AT TIME ZONE 'UTC' FROM users WHERE id = $1) as registered_at
       FROM expenses 
       WHERE user_id = $1
     `;
@@ -425,6 +421,7 @@ class AdminService {
     return {
       user,
       premiumStatus,
+      registeredAt: expenseStats.registered_at,
       expenseStats: {
         totalExpenses: parseInt(expenseStats.total_expenses, 10),
         totalAmount: parseFloat(expenseStats.total_amount || 0),

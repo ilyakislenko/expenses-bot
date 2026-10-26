@@ -20,49 +20,48 @@ const TRIAL_PERIOD = {
   TYPE: 'trial'
 };
 
-//Константы для тарифов премиум подписки
+// Константы для тарифов премиум подписки. Скидки не хранятся: их считает tariffDiscount от месячной цены.
 const PREMIUM_TARIFFS = {
   MONTH_1: {
     duration: 30,
+    months: 1,
     stars: 149,
     usd: 2.99,
-    rub: 259,
-    originalStars: null,
-    discount: null,
-    monthlyUsd: 2.99,
-    monthlyRub: 299
+    rub: 259
   },
   MONTH_3: {
     duration: 90,
+    months: 3,
     stars: 349,
     usd: 6.99,
-    rub: 589,
-    originalStars: 447,
-    discount: 25,
-    monthlyUsd: 2.33,
-    monthlyRub: 196
+    rub: 589
   },
   MONTH_6: {
     duration: 180,
+    months: 6,
     stars: 599,
     usd: 11.98,
-    rub: 999,
-    originalStars: 894,
-    discount: 36,
-    monthlyUsd: 1.99,
-    monthlyRub: 167
+    rub: 999
   },
   MONTH_12: {
     duration: 365,
+    months: 12,
     stars: 999,
     usd: 19.99,
-    rub: 1649,
-    originalStars: 1788,
-    discount: 48,
-    monthlyUsd: 1.67,
-    monthlyRub: 137
+    rub: 1649
   }
 };
+
+// Выгода тарифа относительно помесячной оплаты: цена «без скидки» = месячный тариф × число месяцев
+function tariffDiscount(tariff) {
+  const month = PREMIUM_TARIFFS.MONTH_1;
+  const fullStars = month.stars * tariff.months;
+  return {
+    fullStars,
+    fullUsd: month.usd * tariff.months,
+    percent: Math.round((1 - tariff.stars / fullStars) * 100)
+  };
+}
 
 
 // Главная reply-клавиатура: только частые разделы, остальное — в «☰ Ещё».
@@ -150,34 +149,32 @@ function generateSettingsKeyboard(localizationService, userLanguage) {
   ];
 }
 
-// Функция для генерации клавиатуры выбора времени
-function generateTimeKeyboard(localizationService, userLanguage) {
+// Клавиатура выбора времени: часы 0–23 с текущими минутами UTC.
+// Пояс считается от даты сообщения с клавиатурой (handleTimezoneSelection), поэтому позднее нажатие не сдвигает его.
+// onboarding: кнопки несут признак шага онбординга (`|ob`), «Назад» ведёт на предыдущий шаг (валюта), а не в Настройки.
+function generateTimeKeyboard(localizationService, userLanguage, { onboarding = false } = {}) {
   const keyboard = [];
-  const currentUtcTime = new Date();
-  const currentUtcHours = currentUtcTime.getUTCHours();
-  const currentUtcMinutes = currentUtcTime.getUTCMinutes();
-  
-  // Создаем 6 рядов по 4 кнопки (0-23 часа)
+  const currentUtcMinutes = new Date().getUTCMinutes();
+  const suffix = onboarding ? '|ob' : '';
+
+  // 6 рядов по 4 кнопки (0-23 часа)
   for (let row = 0; row < 6; row++) {
     const rowButtons = [];
     for (let col = 0; col < 4; col++) {
       const hour = row * 4 + col;
-      if (hour <= 23) {
-        const timeText = `${hour.toString().padStart(2, '0')}:${currentUtcMinutes.toString().padStart(2, '0')}`;
-        rowButtons.push({
-          text: timeText,
-          callback_data: `time|${hour}|${currentUtcMinutes}`
-        });
-      }
+      rowButtons.push({
+        text: `${hour.toString().padStart(2, '0')}:${currentUtcMinutes.toString().padStart(2, '0')}`,
+        callback_data: `time|${hour}|${currentUtcMinutes}${suffix}`
+      });
     }
-    if (rowButtons.length > 0) {
-      keyboard.push(rowButtons);
-    }
+    keyboard.push(rowButtons);
   }
-  
-  // Добавляем кнопку "Назад"
-  keyboard.push([{ text: localizationService.getText(userLanguage, 'button_back'), callback_data: 'back_to_settings' }]);
-  
+
+  keyboard.push([{
+    text: localizationService.getText(userLanguage, 'button_back'),
+    callback_data: onboarding ? 'ob_currency' : 'back_to_settings'
+  }]);
+
   return keyboard;
 }
 
@@ -227,6 +224,7 @@ function generatePremiumPaymentButtons(tariffs, localizationService, userLanguag
 module.exports = {
   USER_LIMITS,
   PREMIUM_TARIFFS,
+  tariffDiscount,
   TRIAL_PERIOD,
   generateMainMenuKeyboard,
   generateMoreMenu,

@@ -11,24 +11,26 @@ describe('PaymentService.validatePreCheckout', () => {
     invoice_payload: JSON.stringify({ type: 'premium_subscription', tariff, stars, user_id: 1 })
   });
 
+  const PAYER = 1;
+
   test('accepts the current price of every tariff', () => {
     for (const tariff of Object.values(PREMIUM_TARIFFS)) {
-      expect(service.validatePreCheckout(premium(tariff.duration, tariff.stars))).toEqual({ ok: true });
+      expect(service.validatePreCheckout(premium(tariff.duration, tariff.stars), PAYER)).toEqual({ ok: true });
     }
   });
 
   test('rejects an old invoice after a price change, an unknown tariff and other currencies', () => {
     const month = PREMIUM_TARIFFS.MONTH_1;
-    expect(service.validatePreCheckout(premium(month.duration, month.stars - 1))).toEqual({ ok: false, reason: 'price_changed' });
-    expect(service.validatePreCheckout(premium(7, 10))).toEqual({ ok: false, reason: 'unknown_tariff' });
-    expect(service.validatePreCheckout({ ...premium(month.duration, month.stars), currency: 'USD' }).ok).toBe(false);
-    expect(service.validatePreCheckout({ currency: 'XTR', total_amount: 5, invoice_payload: 'not json' }).ok).toBe(false);
+    expect(service.validatePreCheckout(premium(month.duration, month.stars - 1), PAYER)).toEqual({ ok: false, reason: 'price_changed' });
+    expect(service.validatePreCheckout(premium(7, 10), PAYER)).toEqual({ ok: false, reason: 'unknown_tariff' });
+    expect(service.validatePreCheckout({ ...premium(month.duration, month.stars), currency: 'USD' }, PAYER).ok).toBe(false);
+    expect(service.validatePreCheckout({ currency: 'XTR', total_amount: 5, invoice_payload: 'not json' }, PAYER).ok).toBe(false);
   });
 
   test('donations: any positive amount with a donation id', () => {
-    const donation = (id, amount) => ({ currency: 'XTR', total_amount: amount, invoice_payload: JSON.stringify({ type: 'donation', donation_id: id }) });
-    expect(service.validatePreCheckout(donation(5, 50)).ok).toBe(true);
-    expect(service.validatePreCheckout(donation(null, 50)).ok).toBe(false);
+    const donation = (id, amount) => ({ currency: 'XTR', total_amount: amount, invoice_payload: JSON.stringify({ type: 'donation', donation_id: id, user_id: PAYER }) });
+    expect(service.validatePreCheckout(donation(5, 50), PAYER).ok).toBe(true);
+    expect(service.validatePreCheckout(donation(null, 50), PAYER).ok).toBe(false);
   });
 });
 

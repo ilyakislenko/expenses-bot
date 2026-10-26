@@ -9,19 +9,38 @@
 
 const MINUTES_PER_DAY = 24 * 60;
 
+// Пояс, который понимают Intl и PostgreSQL (`AT TIME ZONE`): невалидная строка в users.timezone ломает cron у всех
+function isValidTimezone(timezone) {
+  if (typeof timezone !== 'string' || !timezone) return false;
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: timezone });
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
 /**
  * @param {number} userHour - выбранный час (0-23)
- * @param {number} userMinute - минуты на кнопке (текущие минуты UTC на момент показа клавиатуры)
- * @param {Date} [referenceTime] - момент нажатия
+ * @param {number} userMinute - минуты на кнопке (минуты UTC на момент показа клавиатуры)
+ * @param {Date} [referenceTime] - момент показа клавиатуры (дата сообщения с кнопками)
  * @param {{ language?: string }} [options] - язык пользователя, чтобы отличить Индию (UTC+5:30) от UTC+5
  * @returns {string} IANA timezone
+ * @throws {RangeError} если час/минуты не целые числа в диапазоне 0–23 / 0–59 или referenceTime не дата
  */
 function calculateTimezoneFromUserTime(userHour, userMinute, referenceTime = new Date(), { language } = {}) {
+  if (!Number.isInteger(userHour) || userHour < 0 || userHour > 23
+    || !Number.isInteger(userMinute) || userMinute < 0 || userMinute > 59) {
+    throw new RangeError(`Invalid user time: ${userHour}:${userMinute}`);
+  }
+  if (!(referenceTime instanceof Date) || Number.isNaN(referenceTime.getTime())) {
+    throw new RangeError('Invalid reference time');
+  }
   let diff = (userHour * 60 + userMinute) - (referenceTime.getUTCHours() * 60 + referenceTime.getUTCMinutes());
   // Допустимые смещения: от UTC-12 до UTC+14
   if (diff > 14 * 60) diff -= MINUTES_PER_DAY;
   if (diff < -12 * 60) diff += MINUTES_PER_DAY;
-  // Округление съедает задержку между показом клавиатуры и нажатием (до 30 минут)
+  // Округление съедает секунды между показом клавиатуры и её датой
   const offset = Math.round(diff / 60);
 
   if (offset === 0) return 'UTC';
@@ -62,5 +81,6 @@ function getTimezoneDisplayName(timezone, date = new Date()) {
 
 module.exports = {
   calculateTimezoneFromUserTime,
-  getTimezoneDisplayName
+  getTimezoneDisplayName,
+  isValidTimezone
 };

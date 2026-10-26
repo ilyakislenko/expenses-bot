@@ -2,9 +2,10 @@ const moneyInputErrorText = require('./moneyInputErrors');
 const respond = require('../utils/respond');
 
 const MAX_RECURRING_AMOUNT = 99999999; // expenses.amount DECIMAL(10,2)
+const LIST_DESCRIPTION_LENGTH = 40; // строки списка: 20 позиций с полными описаниями не влезут в сообщение
 
 class RecurringExpenseHandlers {
-  constructor({ recurringExpenseService, expenseService, userService, premiumService, localizationService, formatter, stateService, validator }) {
+  constructor({ recurringExpenseService, expenseService, userService, premiumService, localizationService, formatter, stateService, validator, budgetService }) {
     this.recurringExpenseService = recurringExpenseService;
     this.expenseService = expenseService;
     this.userService = userService;
@@ -13,6 +14,7 @@ class RecurringExpenseHandlers {
     this.formatter = formatter;
     this.stateService = stateService;
     this.validator = validator;
+    this.budgetService = budgetService;
   }
 
   t(lang, key, params) {
@@ -41,7 +43,7 @@ class RecurringExpenseHandlers {
     } else {
       text += items.map((item, i) => `${i + 1}. ` + this.t(lang, 'recurring_item', {
         icon: item.category_icon || '🔁',
-        description: this.formatter.escapeMarkdown(item.description),
+        description: this.formatter.escapeMarkdown(this.formatter.shorten(item.description, LIST_DESCRIPTION_LENGTH)),
         amount: this.formatter.formatAmount(Number(item.amount), item.currency),
         day: item.day_of_month,
         next: this.formatter.formatLocalDate(item.nextChargeDate)
@@ -175,14 +177,20 @@ class RecurringExpenseHandlers {
     }
     this.stateService.deletePendingRecurring(userId);
 
-    const text = this.t(lang, created.chargedNow ? 'recurring_added_charged_now' : 'recurring_added', {
+    let text = this.t(lang, created.chargedNow ? 'recurring_added_charged_now' : 'recurring_added', {
       description: this.formatter.escapeMarkdown(pending.description),
       amount: this.formatter.formatAmount(pending.amount, created.currency),
       day: pending.dayOfMonth,
       next: this.formatter.formatLocalDate(created.nextChargeDate)
     });
+    const keyboard = [[{ text: this.t(lang, 'button_recurring'), callback_data: 'recurring_menu' }]];
+    // Трата записана сразу (число списания — сегодня): предупреждения бюджета, как после обычной траты
+    if (created.budgetWarnings.length) {
+      text += `\n\n${created.budgetWarnings.map(w => this.budgetService.warningText(lang, w)).join('\n')}`;
+      keyboard.push([{ text: this.t(lang, 'button_budgets'), callback_data: 'bg_menu' }]);
+    }
     await ctx.answerCbQuery().catch(() => {});
-    await this.render(ctx, text, [[{ text: this.t(lang, 'button_recurring'), callback_data: 'recurring_menu' }]]);
+    await this.render(ctx, text, keyboard);
   }
 
   async delete(ctx) {

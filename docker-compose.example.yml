@@ -11,6 +11,9 @@ services:
     env_file:
       - ./.env
     command: sh -c "npm ci --only=production && node src/index.js"
+    # Внутри контейнера метрики должны слушать все интерфейсы, иначе прометей их не достанет
+    environment:
+      - MONITORING_HOST=0.0.0.0
     volumes:
       - ./:/app:ro
       - ./logs:/app/logs

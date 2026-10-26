@@ -2,24 +2,37 @@ const BaseRepository = require('./BaseRepository');
 
 class UserNotificationRepository extends BaseRepository {
   // Кандидаты для уведомлений о премиуме: срок истекает или истёк недавно.
-  // Окно берётся с запасом, точная проверка — в сервисе (premium_expires_at хранится без часового пояса).
-  async getPremiumLifecycleCandidates() {
+  // Окно берётся с запасом, точная проверка — в сервисе. premium_expires_at — TIMESTAMP без пояса, его пишет Node
+  // в своём поясе, поэтому сравниваем с переданным из Node временем, а не с NOW() сессии Postgres.
+  // premium_source: 'paid' — были оплаты, 'granted' — выдан админом без оплат, 'trial' — только пробный период.
+  async getPremiumLifecycleCandidates(now = new Date()) {
     const query = `
       SELECT u.id, u.language, u.timezone, u.premium_expires_at,
-             NOT EXISTS (
-               SELECT 1 FROM premium_transactions t
-               WHERE t.user_id = u.id AND t.status = 'completed' AND t.stars_amount > 0
-             ) AS is_trial_only,
+             CASE
+               WHEN EXISTS (
+                 SELECT 1 FROM premium_transactions t
+                 WHERE t.user_id = u.id AND t.status = 'completed' AND t.stars_amount > 0
+               ) THEN 'paid'
+               WHEN EXISTS (
+                 SELECT 1 FROM premium_transactions t
+                 WHERE t.user_id = u.id AND t.status = 'completed' AND t.transaction_type <> 'trial'
+               ) THEN 'granted'
+               ELSE 'trial'
+             END AS premium_source,
              EXISTS (
                SELECT 1 FROM premium_transactions t
                WHERE t.user_id = u.id AND t.status = 'completed' AND t.is_recurring AND t.subscription_expires_at > NOW()
-             ) AS has_active_subscription
+             ) AS has_active_subscription,
+             (
+               SELECT MAX(t.updated_at) FROM premium_transactions t
+               WHERE t.user_id = u.id AND t.status = 'refunded'
+             ) AS last_refund_at
       FROM users u
       WHERE u.id > 0
         AND u.premium_expires_at IS NOT NULL
-        AND u.premium_expires_at BETWEEN NOW() - INTERVAL '9 days' AND NOW() + INTERVAL '3 days'
+        AND u.premium_expires_at BETWEEN $1::timestamp - INTERVAL '9 days' AND $1::timestamp + INTERVAL '3 days'
     `;
-    const result = await this.query(query, []);
+    const result = await this.query(query, [now]);
     return result.rows;
   }
 

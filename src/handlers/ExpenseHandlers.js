@@ -80,7 +80,6 @@ class ExpenseHandlers {
       return true;
     }
 
-    this.stateService.setPendingExpense(userId, draft);
     const keyboard = [];
     for (let i = 0; i < categories.length; i += 2) {
       keyboard.push(categories.slice(i, i + 2).map(category => ({
@@ -96,7 +95,8 @@ class ExpenseHandlers {
       message += `\n${this.t(lang, 'description_label')}: ${this.formatter.escapeMarkdown(parsed.description)}`;
       message += `\n\n${this.t(lang, 'category_will_be_remembered')}`;
     }
-    await ctx.reply(message, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
+    const card = await ctx.reply(message, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
+    this.stateService.setPendingExpense(userId, card.message_id, draft);
     return true;
   }
 
@@ -105,27 +105,39 @@ class ExpenseHandlers {
       const isPremium = await this.premiumService.isPremiumUser(userId);
       return this.t(lang, isPremium ? 'error_too_long_premium' : 'error_too_long_regular');
     }
-    if (error === 'amount') return this.t(lang, 'error_amount');
-    if (error === 'forbidden_content') return this.t(lang, 'error_forbidden_content');
+    if (error === 'amount') {
+      return this.t(lang, 'error_amount', { max: new Intl.NumberFormat('ru-RU').format(this.validator.limits.maxAmount) });
+    }
     return this.t(lang, 'error_format');
   }
 
-  // callback: category|<id> — выбор категории для черновика траты
+  // callback: category|<id> — выбор категории для черновика, привязанного к этой карточке
   async handleCategorySelection(ctx) {
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
-    const pending = this.stateService.getPendingExpense(userId);
-    if (!pending) {
-      return ctx.answerCbQuery(this.t(lang, 'callback_data_not_found'));
-    }
+    const messageId = ctx.callbackQuery.message?.message_id;
     const categoryId = parseInt(ctx.match[1], 10);
     const categories = await this.expenseService.getCategories(userId);
     const category = categories.find(c => c.id === categoryId);
     if (!category) {
       return ctx.answerCbQuery(this.t(lang, 'callback_data_not_found'));
     }
-    const expense = await this.expenseService.addExpense(userId, { ...pending, categoryId });
-    this.stateService.deletePendingExpense(userId);
+    const pending = this.stateService.takePendingExpense(userId, messageId);
+    if (pending === null) {
+      // Повторное нажатие: трата по этой карточке уже записана
+      return ctx.answerCbQuery().catch(() => {});
+    }
+    if (!pending) {
+      // Черновик отменён, вытеснен или потерян при перезапуске бота
+      return ctx.answerCbQuery(this.t(lang, 'expense_draft_outdated'), { show_alert: true });
+    }
+    let expense;
+    try {
+      expense = await this.expenseService.addExpense(userId, { ...pending, categoryId });
+    } catch (error) {
+      this.stateService.setPendingExpense(userId, messageId, pending);
+      throw error;
+    }
     await ctx.answerCbQuery(this.t(lang, 'callback_expense_added', {
       category: this.formatter.translateCategoryName(category.name, this.localizationService, lang)
     }));
@@ -436,7 +448,7 @@ class ExpenseHandlers {
         text += `\n\n*${this.t(lang, 'overview_upcoming')}*\n`;
         text += upcoming.map(item => {
           const [, m, d] = item.nextChargeDate.split('-');
-          return `🔁 ${this.formatter.escapeMarkdown(item.description)} — ${this.formatter.formatAmount(Number(item.amount), item.currency)} · ${d}.${m}`;
+          return `🔁 ${this.formatter.escapeMarkdown(this.formatter.shorten(item.description))} — ${this.formatter.formatAmount(Number(item.amount), item.currency)} · ${d}.${m}`;
         }).join('\n');
       }
       if (!incomeTotals.count) {
@@ -481,13 +493,14 @@ class ExpenseHandlers {
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
     if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
-    const category = await this.expenseService.getCategoryById(categoryId);
+    const category = await this.expenseService.getCategoryById(userId, categoryId);
     if (!category) return this.showOverview(ctx, offset);
 
     const { timezone, currency, period } = await this.expenseService.getPeriodContext(userId, 'month', offset);
     const expenses = await this.expenseService.getExpenses(userId, timezone, period, category.name);
 
-    let text = `${category.icon} *${this.categoryName(category.name, lang)}* · ${this.formatter.formatPeriodRange(period)}\n\n`;
+    // Имя — пользовательский текст: экранируем и не кладём внутрь *жирного* (там экранирование не работает)
+    let text = `${category.icon} ${this.categoryName(category.name, lang)} · *${this.formatter.formatPeriodRange(period)}*\n\n`;
     const { lines, keyboard } = this.renderList(expenses, {
       page, timezone, lang, withDate: true, withAuthor: false,
       backFor: p => `c.${categoryId}.${offset}.${p}`,

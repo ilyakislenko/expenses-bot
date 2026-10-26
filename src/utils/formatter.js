@@ -129,7 +129,7 @@ class Formatter {
       message += `${byCategoriesText}\n`;
       for (const [key, sum] of catMap.entries()) {
         const [icon, name] = key.split('||');
-        const translatedName = this.translateCategoryName(name, localizationService, userLanguage);
+        const translatedName = this.escapeMarkdown(this.translateCategoryName(name, localizationService, userLanguage));
         const percentage = totalInUserCurrency > 0 ? (sum / totalInUserCurrency * 100).toFixed(1) : 0;
         message += `${icon} ${translatedName}: ${this.formatAmount(sum, userCurrency)} (${percentage}%)\n`;
       }
@@ -140,6 +140,12 @@ class Formatter {
   // Экранирование пользовательского текста для parse_mode: 'Markdown'
   escapeMarkdown(text) {
     return String(text ?? '').replace(/([_*`\[])/g, '\\$1');
+  }
+
+  // Обрезка длинного текста для строк списков (лимит сообщения Telegram — 4096 символов). Экранировать — после.
+  shorten(text, max = 40) {
+    const str = String(text ?? '');
+    return str.length > max ? `${str.slice(0, max - 1).trimEnd()}…` : str;
   }
 
   // Текстовая шкала: 0.72 → '▓▓▓▓▓▓▓░░░' (больше 100% — полная шкала)
@@ -178,11 +184,19 @@ class Formatter {
   }
 
 
-// Обновлённая версия formatCSV: поддержка многострочных полей, правильное экранирование, итоги в одной ячейке
+// CSV для Excel: BOM (иначе кириллица ломается); разделитель и десятичный знак — как в Excel для языка
+// пользователя: где дробь пишут через запятую (ru, de, fr…), Excel ждёт ';' и «10,50», иначе ',' и «10.50».
 async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationService = null, userLanguage = 'ru') {
-  // Вспомогательная функция для экранирования: удваивает кавычки, сохраняет \n для многострочных полей
-  function escapeCSV(value) {
-    const str = String(value ?? '');
+  const commaDecimal = !['en', 'hi', 'jp', 'zh'].includes(userLanguage);
+  const SEP = commaDecimal ? ';' : ',';
+  const EMPTY_CELLS = SEP.repeat(4);
+  const formatNumber = (value) => (commaDecimal ? String(value).replace('.', ',') : String(value));
+  // Экранирование: удваивает кавычки, сохраняет \n для многострочных полей.
+  // Текст, начинающийся с = + - @ (или табуляции/CR), Excel исполнит как формулу — нейтрализуем апострофом.
+  // Числовые ячейки (сумма) не трогаем.
+  function escapeCSV(value, { text = true } = {}) {
+    let str = String(value ?? '');
+    if (text && /^[=+\-@\t\r]/.test(str)) str = `'${str}`;
     // Удаляем только \r (для кросс-платформенности), \n оставляем для многострочности
     const clean = str.replace(/\r/g, '').replace(/"/g, '""');
     return `"${clean}"`;
@@ -200,7 +214,7 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationServic
   const descriptionHeader = localizationService ? 
     localizationService.getText(userLanguage, 'description_label') : 'Description';
 
-  let csv = `${dateHeader},${amountHeader},${currencyHeader},${categoryHeader},${descriptionHeader}\n`;
+  let csv = '\uFEFF' + [dateHeader, amountHeader, currencyHeader, categoryHeader, descriptionHeader].join(SEP) + '\n';
   const totalsByCurrency = {};
   const totalsByCategory = {}; // { категория: { валюта: сумма } }
   
@@ -219,11 +233,11 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationServic
     // Формируем строку с экранированными полями
     csv += [
       escapeCSV(date),
-      escapeCSV(amount),
+      escapeCSV(formatNumber(amount), { text: false }),
       escapeCSV(currency),
       escapeCSV(category),
       escapeCSV(description)
-    ].join(',') + '\n';
+    ].join(SEP) + '\n';
 
     totalsByCurrency[currency] = (totalsByCurrency[currency] || 0) + Number(amount);
     totalsByCategory[category] = totalsByCategory[category] || {};
@@ -233,7 +247,7 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationServic
   // Итоги по категориям в основной валюте, от большей к меньшей
   const totalByCategoriesText = localizationService ?
     localizationService.getText(userLanguage, 'total_by_categories') : 'Total by categories:';
-  csv += escapeCSV(totalByCategoriesText) + ',,,,' + '\n';
+  csv += escapeCSV(totalByCategoriesText) + EMPTY_CELLS + '\n';
   const categoryTotals = [];
   for (const [category, currencies] of Object.entries(totalsByCategory)) {
     let total = 0;
@@ -244,16 +258,16 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationServic
   }
   categoryTotals.sort((a, b) => b.total - a.total);
   for (const { category, total } of categoryTotals) {
-    csv += escapeCSV(`${category}: ${this.formatAmount(total, userCurrency)}`) + ',,,,' + '\n';
+    csv += escapeCSV(`${category}: ${this.formatAmount(total, userCurrency)}`) + EMPTY_CELLS + '\n';
   }
   csv += '\n';
   // Итоги по валютам: добавляем заголовок отдельной строкой
   const totalByCurrenciesText = localizationService ? 
     localizationService.getText(userLanguage, 'total_by_currencies') : 'Total by currencies:';
-  csv += escapeCSV(totalByCurrenciesText) + ',,,,' + '\n';
+  csv += escapeCSV(totalByCurrenciesText) + EMPTY_CELLS + '\n';
   // Итоги по валютам: каждая валюта отдельной строкой (только в первой колонке)
   for (const [currency, total] of Object.entries(totalsByCurrency)) {
-    csv += escapeCSV(`${currency}: ${total}`) + ',,,,' + '\n';
+    csv += escapeCSV(`${currency}: ${this.formatAmount(total, currency)}`) + EMPTY_CELLS + '\n';
   }
   // Итоговая сумма в userCurrency отдельной строкой
   let totalInUserCurrency = 0;
@@ -262,7 +276,7 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationServic
   }
   const totalInCurrencyText = localizationService ? 
     localizationService.getText(userLanguage, 'total_in_currency', { currency: userCurrency }) : `Total in ${userCurrency}`;
-  csv += escapeCSV(`${totalInCurrencyText}: ${this.formatAmount(totalInUserCurrency, userCurrency)}`) + ',,,,' + '\n';
+  csv += escapeCSV(`${totalInCurrencyText}: ${this.formatAmount(totalInUserCurrency, userCurrency)}`) + EMPTY_CELLS + '\n';
 
   return csv;
 }

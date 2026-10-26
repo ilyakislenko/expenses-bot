@@ -35,7 +35,7 @@ describe('Premium Subscription Activation', () => {
       expect(result.daysAdded).toBe(30);
       expect(result.newExpiryDate.getTime()).toBeGreaterThanOrEqual(before + 30 * DAY_MS);
       expect(result.newExpiryDate.getTime()).toBeLessThanOrEqual(after + 30 * DAY_MS);
-      expect(mockUserRepository.query).toHaveBeenCalledWith(expect.any(String), [result.newExpiryDate, 123456]);
+      expect(mockUserRepository.query).toHaveBeenCalledWith(expect.any(String), [result.newExpiryDate, 123456, expect.any(Date)]);
     });
 
     it('adds the paid days on top of an active subscription', async () => {

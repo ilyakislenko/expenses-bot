@@ -9,13 +9,19 @@ class UserService {
     this.premiumTransactionRepository = premiumTransactionRepository;
   }
 
+  // Возвращает строку пользователя и:
+  // - isNew: true только для вызова, который действительно создал запись;
+  // - justCreated: запись создана несколько секунд назад (в т.ч. параллельным вызовом — дубль первого /start).
+  // Telegraf обрабатывает пачку обновлений параллельно, поэтому два /start приходят одновременно:
+  // признак «новый» берём из INSERT, а право на триал забираем атомарно.
   async registerUser(userId, username, firstName) {
     try {
-      const user = await this.userRepository.createUser(userId, username, firstName);
-      
-      // Выдаём триал, если он доступен (has_trial = TRUE) и премиум ещё никогда не активировался
-      if (!user.premium_activated_at && user.has_trial === true) {
-        // Даем пробный премиум на 14 дней только новым пользователям
+      const created = await this.userRepository.createUser(userId, username, firstName);
+      const isNew = Boolean(created && created.is_new);
+      const justCreated = isNew || Boolean(created && created.just_created);
+      if (isNew) newUsersTotal.inc({ source: 'telegram' });
+
+      if (await this.claimTrial(userId)) {
         const trialTransactionData = {
           stars: 0,
           usd: 0,
@@ -28,41 +34,37 @@ class UserService {
             type: TRIAL_PERIOD.TYPE
           })
         };
-        
-        await this.activatePremium(userId, TRIAL_PERIOD.DAYS, trialTransactionData);
-        // После выдачи — отключаем возможность триала навсегда
-        await this.userRepository.markTrialConsumed(userId);
-        
-        // Обновляем метрики
-        newUsersTotal.inc({ source: 'telegram' });
-        
-        logger.info('New user registered with trial premium', {
-          userId,
-          username,
-          firstName,
-          trialDays: TRIAL_PERIOD.DAYS,
-          timestamp: new Date().toISOString()
-        });
+        try {
+          await this.activatePremium(userId, TRIAL_PERIOD.DAYS, trialTransactionData);
+        } catch (error) {
+          // Триал не выдан — возвращаем право на него
+          await this.userRepository.query('UPDATE users SET has_trial = TRUE WHERE id = $1 AND premium_activated_at IS NULL', [userId]);
+          throw error;
+        }
+        logger.info('User registered with trial premium', { userId, isNew, trialDays: TRIAL_PERIOD.DAYS });
       } else {
-        logger.info('Existing user registered (no trial premium)', {
-          userId,
-          username,
-          firstName,
-          timestamp: new Date().toISOString()
-        });
+        logger.info('User registered (no trial premium)', { userId, isNew });
       }
-      
-      return user;
+
+      const user = created || await this.userRepository.getUserById(userId);
+      return { ...user, isNew, justCreated };
     } catch (error) {
       logger.error('Failed to register user', {
         userId,
-        username,
-        firstName,
         error: error.message
       });
       throw error;
     }
     // Категории уже есть в БД как системные (user_id = 0)
+  }
+
+  // true — право на триал было и теперь забрано этим вызовом (ровно один из параллельных вызовов)
+  async claimTrial(userId) {
+    const result = await this.userRepository.query(
+      'UPDATE users SET has_trial = FALSE WHERE id = $1 AND has_trial = TRUE AND premium_activated_at IS NULL RETURNING id',
+      [userId]
+    );
+    return result.rowCount > 0;
   }
 
   async setUserCurrency(userId, currency) {
@@ -81,9 +83,11 @@ class UserService {
     return this.userRepository.getUserPremium(userId);
   }
 
+  // Невалидный пояс в users.timezone ломает cron и `AT TIME ZONE` у всех пользователей — не пишем его
   async setUserTimezone(userId, timezone) {
-    const result = await this.userRepository.setUserTimezone(userId, timezone);
-    return result;
+    const { isValidTimezone } = require('../utils/timezoneCalculator');
+    if (!isValidTimezone(timezone)) throw new RangeError(`Invalid timezone: ${timezone}`);
+    return this.userRepository.setUserTimezone(userId, timezone);
   }
 
   async getUserTimezone(userId) {
@@ -235,18 +239,17 @@ class UserService {
         logger.info(`Activating new premium subscription for user ${userId} for ${daysToAdd} days`);
       }
       
+      // Даты премиума — TIMESTAMP без часового пояса, их пишет и читает Node в своём поясе:
+      // время берём из Node, а не NOW() сессии Postgres (UTC)
       const query = `
         UPDATE users 
         SET premium = true, 
             premium_expires_at = $1,
-            premium_activated_at = CASE 
-              WHEN premium_activated_at IS NULL THEN NOW()
-              ELSE premium_activated_at 
-            END
+            premium_activated_at = COALESCE(premium_activated_at, $3)
         WHERE id = $2
       `;
       
-      await this.userRepository.query(query, [newExpiryDate, userId]);
+      await this.userRepository.query(query, [newExpiryDate, userId, now]);
       
       // Записываем транзакцию, если предоставлены данные
       if (transactionData) {
@@ -325,9 +328,9 @@ class UserService {
     const query = `
       UPDATE users 
       SET premium = false
-      WHERE id = $1 AND premium = true AND premium_expires_at <= NOW()
+      WHERE id = $1 AND premium = true AND premium_expires_at <= $2
     `;
-    await this.userRepository.query(query, [userId]);
+    await this.userRepository.query(query, [userId, new Date()]);
   }
 
   async setPremiumExpiry(userId, expiryDate) {
@@ -373,14 +376,15 @@ class UserService {
     return expiry;
   }
 
+  // Cron: снимает флаг premium у всех, чей срок истёк (флаг читают семейные приглашения и админка)
   async disableAllExpiredPremium() {
     const query = `
       UPDATE users 
       SET premium = false
-      WHERE premium = true AND premium_expires_at <= NOW()
+      WHERE premium = true AND premium_expires_at <= $1
     `;
-    const result = await this.userRepository.query(query);
-    logger.info(`Disabled expired premium for ${result.rowCount} users`);
+    const result = await this.userRepository.query(query, [new Date()]);
+    if (result.rowCount > 0) logger.info(`Disabled expired premium for ${result.rowCount} users`);
     return result.rowCount;
   }
 
@@ -461,10 +465,6 @@ class UserService {
 
   async getUserById(userId) {
     return this.userRepository.getUserById(userId);
-  }
-
-  async getUserByUsername(username) {
-    return this.userRepository.getUserByUsername(username);
   }
 
   async getAllUsers(limit = 50, offset = 0) {

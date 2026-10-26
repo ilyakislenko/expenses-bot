@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS donations (
     stars INTEGER NOT NULL CHECK (stars >= 1 AND stars <= 2500),
     message TEXT,
     telegram_payment_id VARCHAR(255),
-    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','completed','failed','expired','cancelled')),
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','completed','failed','expired','cancelled','refunded')),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -157,6 +157,8 @@ END $$;
 -- Indexes for family system
 CREATE INDEX IF NOT EXISTS idx_families_owner_id ON families(owner_id);
 CREATE INDEX IF NOT EXISTS idx_family_user_user_id ON family_user(user_id);
+-- Один человек — одна семья
+CREATE UNIQUE INDEX IF NOT EXISTS idx_family_user_user_id_unique ON family_user(user_id);
 CREATE INDEX IF NOT EXISTS idx_family_user_family_id ON family_user(family_id);
 CREATE INDEX IF NOT EXISTS idx_family_invitations_invitee_id ON family_invitations(invitee_id);
 CREATE INDEX IF NOT EXISTS idx_family_invitations_family_id ON family_invitations(family_id);

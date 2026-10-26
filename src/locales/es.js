@@ -170,10 +170,10 @@ module.exports = {
     // Difusión admin
     admin_broadcast_prompt: '📢 *Difusión masiva*\n\nIntroduce el texto para todos los usuarios (máx. 3600 caracteres):',
     admin_broadcast_too_long: '❌ Mensaje demasiado largo!\n\n📏 Longitud actual: {current}\n📏 Máximo: {max}\n📏 Elimina: {excess} caracteres',
-    admin_broadcast_confirm: '📢 *Confirmar envío de difusión*\n\n📝 *Texto:*\n{message}\n\n📏 *Longitud:* {length} caracteres\n\n⚠️ Este mensaje será enviado a *TODOS* los usuarios del bot!',
+    admin_broadcast_confirm: '📢 Confirmar envío de difusión\n\n📝 Texto:\n{message}\n\n📏 Longitud: {length} caracteres\n\n⚠️ ¡Este mensaje será enviado a TODOS los usuarios del bot!',
     admin_broadcast_started: '📢 Difusión iniciada...',
     admin_broadcast_result: '📢 *Difusión completada!*\n\n📊 *Estadísticas:*\n• Total usuarios: {total}\n• Enviado: {sent}\n• Errores: {failed}',
-    admin_broadcast_header: '🔴🔴🔴 *¡Notificación!* 🔴🔴🔴',
+    admin_broadcast_header: '🔴🔴🔴 ¡Notificación! 🔴🔴🔴',
     
     // General
     error: 'Ocurrió un error 😞',
@@ -251,9 +251,9 @@ Selecciona tu hora actual:`,
     family_owner_label: '👑 *Propietario:*',
     family_info: '👨‍👩‍👧‍👦 Presupuesto familiar\n\nAquí puedes gestionar los gastos junto con familiares, colegas, amigos, etc.\n\n- \uD83D\uDC6A Se crea un grupo compartido para llevar el registro de los gastos conjuntos.\n- \u2795 Cada miembro puede agregar gastos.\n- \uD83D\uDDD1\uFE0F Puedes eliminar tus propios gastos si es necesario.\n- \uD83D\uDCCA Hay estadísticas compartidas disponibles para todos los miembros.\n- \uD83D\uDCE4 Exporta los datos de todo el grupo en un solo archivo.\n\nEl control compartido significa menos caos y más transparencia.',
     family_created: '✅ Familia "{name}" creada. Ahora puedes invitar miembros.',
-    family_left: '✅ Has salido de la familia "{name}".',
+    family_left: '✅ Has salido de la familia "{name}". Tus gastos en esta familia ahora son personales.',
     family_deleted: '✅ Familia "{name}" eliminada. Todos los gastos se han vuelto personales.',
-    family_member_removed_notification: '❌ Has sido eliminado de la familia «{familyName}».',
+    family_member_removed_notification: '❌ Has sido eliminado de la familia «{familyName}». Tus gastos en esta familia ahora son personales.',
     
     // Botones del menú familiar
     create_family: '🏠 Crear familia',
@@ -316,7 +316,7 @@ Selecciona tu hora actual:`,
     family_owner_role: 'propietario',
     family_member_role: 'miembro',
     remove_member: '❌ Eliminar',
-    confirm_remove_member: '⚠️ *Eliminar miembro*\n\n¿Seguro que deseas eliminar a {name} de la familia?',
+    confirm_remove_member: '⚠️ *Eliminar miembro*\n\n¿Seguro que quieres eliminar a {name} de la familia? Sus gastos en la familia pasarán a ser personales y la familia ya no los verá.',
     member_removed: '✅ {name} fue eliminado de la familia.',
     
     // Funciones premium
@@ -392,9 +392,8 @@ Tus gastos se mostrarán en hora local.`,
     // Errores de validación
     error_too_long_regular: '❌ Descripción demasiado larga! Máx. 80 caracteres para usuarios normales.',
     error_too_long_premium: '❌ Descripción demasiado larga! Máx. 160 caracteres para premium.',
-    error_amount: '❌ Cantidad inválida. Introduce entre 0.01 y 999999.',
+    error_amount: '❌ Cantidad no válida. Introduce un número de 0.01 a {max}.',
     error_format: '❌ No lo entendí. Empieza con una cantidad: `250 café`, `20 USD taxi` o solo `300`.',
-    error_forbidden_content: '❌ Contenido no permitido.',
     error_generic: '❌ Error. Intenta más tarde o contacta con admin.',
     
     // Botones
@@ -660,5 +659,16 @@ Tus gastos se mostrarán en hora local.`,
     command_paysupport: 'Soporte de pagos',
     command_terms: 'Términos del servicio',
     command_privacy: 'Política de privacidad',
-    payment_outdated: '⚠️ Esta factura está desactualizada: el precio ha cambiado. Abre los planes de nuevo — /limits'
+    payment_outdated: '⚠️ Esta factura está desactualizada: el precio ha cambiado. Abre los planes de nuevo — /limits',
+    security_validation_error: '⚠️ No se pudo procesar la solicitud. Inténtalo de nuevo o abre el menú con /start.',
+    expense_draft_outdated: '⌛ Este borrador está desactualizado. Envía el gasto de nuevo.',
+    family_invitation_hours_left: '⏰ Quedan {hours} h',
+    family_no_members: 'No hay miembros',
+    family_already_member: '❌ Ya estás en una familia.',
+    admin_bug_reports_all_title: '📝 Todos los reportes de errores (últimos {count})',
+    admin_bug_reports_new_title: '🆕 Reportes de errores nuevos (últimos {count})',
+    admin_bug_reports_empty: 'No hay reportes.',
+    payment_subscription_already_active: '🔁 Ya tienes una suscripción mensual activa, no necesitas otra. Para ampliar premium por adelantado, elige un plan de pago único: /limits',
+    payment_foreign_payer: '⚠️ Este enlace de pago se creó para otro usuario. Abre tú los planes en el bot — /limits',
+    premium_expired_granted: '🌙 Tu premium ha terminado. Registrar gastos e ingresos sigue siendo gratis; los presupuestos, el resumen completo, las categorías propias, la familia y la edición de registros vienen con premium. Puedes renovarlo cuando quieras.'
 };

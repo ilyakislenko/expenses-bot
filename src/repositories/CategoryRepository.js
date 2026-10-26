@@ -8,6 +8,15 @@ class CategoryRepository extends BaseRepository {
     const result = await this.query(query, [categoryId]);
     return result.rows[0];
   }
+
+  // Системная (user_id = 0) или собственная категория пользователя
+  async getAvailableCategoryById(userId, categoryId) {
+    const result = await this.query(
+      'SELECT * FROM categories WHERE id = $1 AND user_id IN (0, $2)',
+      [categoryId, userId]
+    );
+    return result.rows[0];
+  }
   async getCategories(userId) {
     // Получаем только системные категории (user_id = 0)
     const query = `
@@ -56,6 +65,27 @@ class CategoryRepository extends BaseRepository {
     `;
     const result = await this.query(query, [categoryId, userId]);
     return result.rows[0];
+  }
+
+  // Удаление своей категории: её траты переносятся в fallback, только если категория принадлежит пользователю.
+  // Перенос до удаления (FK expenses.category_id ON DELETE SET NULL), всё в одной транзакции.
+  async deleteUserCategoryMovingExpenses(userId, categoryId, fallbackCategoryId) {
+    return this.transaction(async (client) => {
+      const owned = await client.query(
+        'SELECT id FROM categories WHERE id = $1 AND user_id = $2 FOR UPDATE',
+        [categoryId, userId]
+      );
+      if (!owned.rows.length) return null;
+      await client.query(
+        'UPDATE expenses SET category_id = $3 WHERE user_id = $1 AND category_id = $2',
+        [userId, categoryId, fallbackCategoryId]
+      );
+      const deleted = await client.query(
+        'DELETE FROM categories WHERE id = $1 AND user_id = $2 RETURNING *',
+        [categoryId, userId]
+      );
+      return deleted.rows[0];
+    });
   }
 
   async updateUserCategory(userId, categoryId, { name, icon }) {

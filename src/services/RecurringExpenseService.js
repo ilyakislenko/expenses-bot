@@ -56,14 +56,20 @@ class RecurringExpenseService {
 
     const due = (await this.recurringExpenseRepository.getDueForUser(userId)).filter(r => r.id === id);
     let chargedNow = false;
+    const budgetWarnings = [];
     for (const recurring of due) {
-      chargedNow = !!(await this.processRecurring(recurring, { notify: false })) || chargedNow;
+      const charged = await this.processRecurring(recurring, { notify: false });
+      if (charged) {
+        chargedNow = true;
+        budgetWarnings.push(...charged.warnings);
+      }
     }
 
     return {
       id,
       currency: resolvedCurrency,
       chargedNow,
+      budgetWarnings,
       nextChargeDate: nextChargeDate(dayOfMonth, chargedNow ? thisMonth : lastChargedMonth, today)
     };
   }
@@ -103,6 +109,8 @@ class RecurringExpenseService {
     return charged;
   }
 
+  // Записывает трату за месяц и проверяет бюджет. null — за этот месяц уже записана.
+  // notify — сообщить пользователю (cron); при создании предупреждения показывает обработчик.
   async processRecurring(recurring, { notify }) {
     const lang = recurring.language || 'en';
     const amountText = this.formatter.formatAmount(Number(recurring.amount), recurring.currency);
@@ -115,16 +123,16 @@ class RecurringExpenseService {
     expensesAmountTotal.inc({ currency: recurring.currency }, Number(recurring.amount));
     logger.info('Recurring expense charged', { recurringId: recurring.id, userId: recurring.user_id, expenseId: expense.id, month: recurring.charge_month });
 
+    // Удалённая категория заменяется на системную «Другое» (см. chargeForMonth)
+    const warnings = await this.budgetService.checkAfterExpense(recurring.user_id, recurring.category_name || 'Другое');
     if (notify) {
       let text = this.localizationService.getText(lang, 'recurring_charged_notification', {
         icon: recurring.category_icon || '🔁', description: descriptionText, amount: amountText
       });
-      // Удалённая категория заменяется на системную «Другое» (см. chargeForMonth)
-      const warnings = await this.budgetService.checkAfterExpense(recurring.user_id, recurring.category_name || 'Другое');
       if (warnings.length) text += `\n\n${warnings.map(w => this.budgetService.warningText(lang, w)).join('\n')}`;
       await this.notify(recurring.user_id, text);
     }
-    return expense;
+    return { expense, warnings };
   }
 
   async notify(userId, text) {

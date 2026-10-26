@@ -67,13 +67,22 @@ function makeWorld({ premium = [OWNER, MEMBER, OUTSIDER, OTHER_OWNER] } = {}) {
     getInvitationByCode: jest.fn(async (code) => invitations.get(code)),
     hasPendingInvitation: jest.fn(async (inviteeId, familyId) => [...invitations.values()]
       .some(i => Number(i.invitee_id) === inviteeId && i.family_id === familyId && i.status === 'pending')),
+    expireOldInvitations: jest.fn(async () => {
+      for (const i of invitations.values()) {
+        if (i.status === 'pending' && new Date(i.expires_at_utc) <= new Date()) i.status = 'expired';
+      }
+    }),
     updateInvitationStatusByCode: jest.fn(async (code, status) => { invitations.get(code).status = status; })
   };
 
   const userRepository = {
     getUserById: jest.fn(async (id) => users.get(id)),
-    getUserByUsername: jest.fn(async (username) => [...users.values()].find(u => u.username === username)),
-    getUserPremium: jest.fn(async (id) => premium.includes(id))
+    findUsersByUsername: jest.fn(async (username) => [...users.values()]
+      .filter(u => u.username.toLowerCase() === username.toLowerCase()))
+  };
+
+  const premiumService = {
+    isPremiumUser: jest.fn(async (id) => premium.includes(id))
   };
 
   const notificationService = {
@@ -82,7 +91,7 @@ function makeWorld({ premium = [OWNER, MEMBER, OUTSIDER, OTHER_OWNER] } = {}) {
     sendInvitationCancelled: jest.fn(async () => {})
   };
 
-  const service = new FamilyService(familyRepository, familyInvitationRepository, userRepository, {}, notificationService);
+  const service = new FamilyService(familyRepository, familyInvitationRepository, userRepository, {}, notificationService, premiumService);
   return { service, families, members, invitations, expenses, notificationService };
 }
 
@@ -242,6 +251,7 @@ describe('FamilyService.acceptInvitation', () => {
     invitations.get(code).expires_at_utc = new Date(Date.now() - 1000).toISOString();
     await expect(service.acceptInvitation(OUTSIDER, code)).rejects.toThrow('Invitation has expired');
     expect(members.has(OUTSIDER)).toBe(false);
+    expect(invitations.get(code).status).toBe('expired');
   });
 
   test('rejected or cancelled invitation cannot be accepted', async () => {
@@ -310,7 +320,7 @@ describe('FamilyService.removeMemberFromFamily', () => {
     const { service, members, notificationService } = await withFamily();
     await service.removeMemberFromFamily(OWNER, MEMBER);
     expect(members.has(MEMBER)).toBe(false);
-    expect(notificationService.sendFamilyMemberRemoved).toHaveBeenCalledWith(MEMBER, 'Home', 'owner');
+    expect(notificationService.sendFamilyMemberRemoved).toHaveBeenCalledWith(MEMBER, 'Home');
   });
 
   test('a regular member cannot remove others', async () => {

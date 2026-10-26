@@ -2,27 +2,28 @@ const BaseRepository = require('./BaseRepository');
 const logger = require('../utils/logger');
 
 class FamilyRepository extends BaseRepository {
+  // Семья и членство владельца создаются вместе: если владелец уже состоит в семье
+  // (UNIQUE family_user.user_id, гонка с принятием приглашения), не остаётся семьи без участников
   async createFamily(ownerId, name) {
-    const query = `
-      INSERT INTO families (name, owner_id) 
-      VALUES ($1, $2) 
-      RETURNING *
-    `;
-    const result = await this.query(query, [name, ownerId]);
-    
-    // Приводим owner_id к числу для консистентности типов
-    result.rows[0].owner_id = Number(result.rows[0].owner_id);
-    
-    // Добавляем владельца как члена семьи
-    await this.addMemberToFamily(result.rows[0].id, ownerId);
-    
-    logger.info('Family created', {
-      familyId: result.rows[0].id,
-      name: result.rows[0].name,
-      ownerId: result.rows[0].owner_id
+    const family = await this.transaction(async (client) => {
+      const result = await client.query(
+        'INSERT INTO families (name, owner_id) VALUES ($1, $2) RETURNING *',
+        [name, ownerId]
+      );
+      await client.query('INSERT INTO family_user (family_id, user_id) VALUES ($1, $2)', [result.rows[0].id, ownerId]);
+      return result.rows[0];
     });
-    
-    return result.rows[0];
+
+    // Приводим owner_id к числу для консистентности типов
+    family.owner_id = Number(family.owner_id);
+
+    logger.info('Family created', {
+      familyId: family.id,
+      name: family.name,
+      ownerId: family.owner_id
+    });
+
+    return family;
   }
 
   async getFamilyById(familyId) {
@@ -94,22 +95,31 @@ class FamilyRepository extends BaseRepository {
     return result.rows[0];
   }
 
+  // Ушедший или исключённый участник забирает свои траты: в этой семье они становятся личными,
+  // и бывшая семья их больше не видит. Членство и траты меняются в одной транзакции.
   async removeMemberFromFamily(familyId, userId) {
-    const query = `
-      DELETE FROM family_user 
-      WHERE family_id = $1 AND user_id = $2
-      RETURNING *
-    `;
-    const result = await this.query(query, [familyId, userId]);
-    
-    if (result.rows[0]) {
+    const { member, detached } = await this.transaction(async (client) => {
+      const removed = await client.query(
+        'DELETE FROM family_user WHERE family_id = $1 AND user_id = $2 RETURNING *',
+        [familyId, userId]
+      );
+      if (!removed.rows[0]) return { member: undefined, detached: 0 };
+      const expenses = await client.query(
+        'UPDATE expenses SET family_id = NULL WHERE family_id = $1 AND user_id = $2',
+        [familyId, userId]
+      );
+      return { member: removed.rows[0], detached: expenses.rowCount };
+    });
+
+    if (member) {
       logger.info('Member removed from family', {
         familyId,
-        userId
+        userId,
+        detachedExpenses: detached
       });
     }
-    
-    return result.rows[0];
+
+    return member;
   }
 
   async getFamilyMembers(familyId) {

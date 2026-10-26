@@ -78,8 +78,8 @@ module.exports = function applyBotMiddleware(bot, errorHandler, callbackDeduplic
     });
   });
 
-  // Middleware для обработки ошибок
-  bot.catch((err, ctx) => {
+  // Единственный глобальный обработчик ошибок (ошибки вне обёртки errorHandler: middleware, маршруты без обёртки)
+  bot.catch(async (err, ctx) => {
     logger.error('Unhandled bot error:', {
       error: err.message,
       stack: err.stack,
@@ -87,10 +87,6 @@ module.exports = function applyBotMiddleware(bot, errorHandler, callbackDeduplic
       updateType: ctx.updateType,
       chatId: ctx.chat?.id
     });
-    
-    // Отправляем сообщение пользователю об ошибке
-    ctx.reply('Произошла ошибка. Попробуйте позже или обратитесь к администратору.').catch(() => {
-      // Игнорируем ошибки отправки сообщения об ошибке
-    });
+    await errorHandler.replyWithError(ctx);
   });
 }; 

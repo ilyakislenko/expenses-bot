@@ -92,46 +92,6 @@ describe('EnhancedValidator', () => {
     validator = new EnhancedValidator();
   });
 
-  describe('validateExpenseMessage', () => {
-    test('should validate correct expense message', () => {
-      const result = validator.validateExpenseMessage('200 продукты');
-      expect(result.isValid).toBe(true);
-      expect(result.amount).toBe(200);
-      expect(result.description).toBe('продукты');
-    });
-
-    test('should reject invalid format', () => {
-      const result = validator.validateExpenseMessage('неправильный формат');
-      expect(result.isValid).toBe(false);
-      expect(result.error).toBe('invalid_format');
-    });
-
-    test('should reject too large amount', () => {
-      const result = validator.validateExpenseMessage('1000000 продукты');
-      expect(result.isValid).toBe(false);
-      expect(result.error).toBe('amount_too_large');
-    });
-
-    test('should reject too small amount', () => {
-      const result = validator.validateExpenseMessage('0.001 продукты');
-      expect(result.isValid).toBe(false);
-      expect(result.error).toBe('amount_too_small');
-    });
-
-    test('should reject forbidden patterns', () => {
-      const result = validator.validateExpenseMessage('200 <script>alert("xss")</script>');
-      expect(result.isValid).toBe(false);
-      expect(result.error).toBe('forbidden_content');
-    });
-
-    test('should reject too long message', () => {
-      const longDescription = 'a'.repeat(150);
-      const result = validator.validateExpenseMessage(`200 ${longDescription}`);
-      expect(result.isValid).toBe(false);
-      expect(result.error).toBe('description_too_long');
-    });
-  });
-
   describe('validateCommand', () => {
     test('should validate correct command', () => {
       const result = validator.validateCommand('/start');
@@ -267,15 +227,15 @@ describe('EnhancedValidator', () => {
       expect(result.error).toBe('too_long');
     });
 
-    test('should reject forbidden patterns', () => {
+    test('should reject markup characters', () => {
       const result = validator.parseEditExpense('<script>alert("xss")</script>');
       expect(result.isValid).toBe(false);
-      expect(result.error).toBe('forbidden_content');
+      expect(result.error).toBe('invalid_description_format');
     });
   });
 
   describe('parseMoneyInput (ввод траты)', () => {
-    const expense = { maxAmount: 999999, maxDescriptionLength: 60, requireDescription: false };
+    const expense = { maxAmount: new EnhancedValidator().limits.maxAmount, maxDescriptionLength: 60, requireDescription: false };
 
     test('amount without description is accepted', () => {
       expect(validator.parseMoneyInput('500', expense)).toEqual({ isValid: true, amount: 500, currency: null, description: null });
@@ -287,39 +247,12 @@ describe('EnhancedValidator', () => {
     });
 
     test('should reject amount above the expense limit', () => {
-      expect(validator.parseMoneyInput('1000000 машина', expense)).toMatchObject({ isValid: false, error: 'amount' });
+      expect(validator.parseMoneyInput('100000000 машина', expense)).toMatchObject({ isValid: false, error: 'amount' });
     });
 
-    test('should reject forbidden patterns', () => {
+    test('should reject markup characters', () => {
       const result = validator.parseMoneyInput('500 <script>alert("xss")</script>', expense);
-      expect(result).toMatchObject({ isValid: false, error: 'forbidden_content' });
-    });
-  });
-
-  describe('validateUserData', () => {
-    test('should validate correct user data', () => {
-      const userData = {
-        id: 123456789,
-        username: 'testuser',
-        first_name: 'Test',
-        last_name: 'User'
-      };
-      const result = validator.validateUserData(userData);
-      expect(result.isValid).toBe(true);
-    });
-
-    test('should reject invalid user ID', () => {
-      const userData = { id: -1 };
-      const result = validator.validateUserData(userData);
-      expect(result.isValid).toBe(false);
-      expect(result.errors).toContain('invalid_user_id');
-    });
-
-    test('should reject invalid username', () => {
-      const userData = { id: 123, username: 'test@user' };
-      const result = validator.validateUserData(userData);
-      expect(result.isValid).toBe(false);
-      expect(result.errors).toContain('invalid_username_format');
+      expect(result).toMatchObject({ isValid: false, error: 'invalid_description_format' });
     });
   });
 
@@ -373,13 +306,13 @@ describe('SecurityMiddleware', () => {
       getStats: jest.fn()
     };
     mockEnhancedValidator = {
-      validateUserData: jest.fn(),
       validateCommand: jest.fn(),
-      validateExpenseMessage: jest.fn(),
       validateCallbackData: jest.fn(),
       getLimits: jest.fn()
     };
-    securityMiddleware = new SecurityMiddleware(mockRateLimiter, mockEnhancedValidator);
+    const localizationService = { getText: (lang, key) => `${lang}:${key}` };
+    const userService = { getUserLanguage: jest.fn().mockResolvedValue('en') };
+    securityMiddleware = new SecurityMiddleware(mockRateLimiter, mockEnhancedValidator, localizationService, userService);
   });
 
   test('should create middleware function', () => {
@@ -414,40 +347,30 @@ describe('SecurityMiddleware', () => {
     };
 
     await middleware(mockCtx, jest.fn());
-    expect(mockCtx.reply).toHaveBeenCalledWith(
-      expect.stringContaining('Слишком много запросов'),
-      expect.any(Object)
-    );
+    expect(mockCtx.reply).toHaveBeenCalledWith('en:security_rate_limit', expect.any(Object));
   });
 
   test('should handle validation errors', async () => {
     const middleware = securityMiddleware.middleware();
     mockRateLimiter.checkLimit.mockReturnValue({ allowed: true });
-    mockEnhancedValidator.validateUserData.mockReturnValue({
-      isValid: false,
-      errors: ['invalid_user_id']
-    });
+    mockEnhancedValidator.validateCommand.mockReturnValue({ isValid: false, error: 'forbidden_command' });
 
     const mockCtx = {
       from: { id: 123 },
       updateType: 'message',
+      message: { text: '/eval' },
       reply: jest.fn()
     };
 
-    await middleware(mockCtx, jest.fn());
-    expect(mockCtx.reply).toHaveBeenCalledWith(
-      expect.stringContaining('Ошибка валидации'),
-      expect.any(Object)
-    );
+    const next = jest.fn();
+    await middleware(mockCtx, next);
+    expect(next).not.toHaveBeenCalled();
+    expect(mockCtx.reply).toHaveBeenCalledWith('en:security_validation_error');
   });
 
   test('should allow valid requests', async () => {
     const middleware = securityMiddleware.middleware();
     mockRateLimiter.checkLimit.mockReturnValue({ allowed: true });
-    mockEnhancedValidator.validateUserData.mockReturnValue({
-      isValid: true,
-      sanitizedData: { id: 123 }
-    });
 
     const mockCtx = {
       from: { id: 123 },
@@ -461,16 +384,6 @@ describe('SecurityMiddleware', () => {
     expect(next).toHaveBeenCalled();
     expect(mockCtx.rateLimitInfo).toBeDefined();
     expect(mockCtx.validationInfo).toBeDefined();
-  });
-
-  test('should create admin middleware', () => {
-    const adminMiddleware = securityMiddleware.adminOnly();
-    expect(typeof adminMiddleware).toBe('function');
-  });
-
-  test('should create user block middleware', () => {
-    const blockMiddleware = securityMiddleware.checkUserBlock();
-    expect(typeof blockMiddleware).toBe('function');
   });
 
   test('should get security stats', () => {

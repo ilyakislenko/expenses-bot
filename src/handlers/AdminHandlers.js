@@ -19,6 +19,7 @@ class AdminHandlers {
     const isAdmin = await this.adminService.isUserAdmin(userId);
     
     if (!isAdmin) {
+      if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
       const userLanguage = await this.userService.getUserLanguage(userId);
       const accessDeniedText = this.localizationService.getText(userLanguage, 'admin_access_denied');
       await ctx.reply(accessDeniedText);
@@ -31,6 +32,7 @@ class AdminHandlers {
   // Главное меню админки
   async showAdminPanel(ctx) {
     if (!(await this.checkAdminAccess(ctx))) return;
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
 
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
@@ -70,6 +72,7 @@ class AdminHandlers {
   // Статистика
   async showStats(ctx) {
     if (!(await this.checkAdminAccess(ctx))) return;
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
 
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
@@ -168,6 +171,7 @@ class AdminHandlers {
   // Управление пользователями
   async showUsers(ctx, page = 1) {
     if (!(await this.checkAdminAccess(ctx))) return;
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
 
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
@@ -222,6 +226,7 @@ class AdminHandlers {
   // Показать баг-репорты
   async showBugReports(ctx) {
     if (!(await this.checkAdminAccess(ctx))) return;
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
 
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
@@ -270,9 +275,51 @@ class AdminHandlers {
     }
   }
 
+  // Список баг-репортов (status = 'new' — только новые). Простой текст: текст репорта — пользовательский ввод
+  async showBugReportList(ctx, status = null) {
+    if (!(await this.checkAdminAccess(ctx))) return;
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
+
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const t = (key, params) => this.localizationService.getText(userLanguage, key, params);
+
+    try {
+      const limit = 10;
+      const reports = await this.adminService.listBugReports(status, limit);
+      const timezone = await this.userService.getUserTimezone(userId);
+
+      let text = t(status === 'new' ? 'admin_bug_reports_new_title' : 'admin_bug_reports_all_title', { count: limit });
+      if (reports.length === 0) {
+        text += `\n\n${t('admin_bug_reports_empty')}`;
+      }
+      reports.forEach(report => {
+        const author = report.username ? `@${report.username}` : (report.first_name || '');
+        // До 300 символов на репорт: 10 репортов укладываются в лимит сообщения 4096
+        const chars = Array.from(report.report_text);
+        const body = chars.length > 300 ? `${chars.slice(0, 300).join('')}…` : report.report_text;
+        text += `\n\n#${report.id} · ${t(`bug_report_status_${report.status}`)} · ${this.formatter.formatDate(report.created_at, timezone)} · ${author} (${report.user_id})\n${body}`;
+      });
+
+      const keyboard = [
+        [
+          { text: '📝 Все репорты', callback_data: 'panel_all_bug_reports' },
+          { text: '🆕 Новые', callback_data: 'panel_new_bug_reports' }
+        ],
+        [{ text: '🔙 Назад', callback_data: 'panel_bug_reports' }]
+      ];
+
+      await ctx.reply(text, { reply_markup: { inline_keyboard: keyboard } });
+    } catch (error) {
+      logger.error('Error showing bug report list:', error);
+      await ctx.reply(t('admin_error'));
+    }
+  }
+
   // Показать статистику премиума
   async showPremiumStats(ctx) {
     if (!(await this.checkAdminAccess(ctx))) return;
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
 
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
@@ -306,6 +353,7 @@ class AdminHandlers {
   // Показать донаты
   async showDonations(ctx) {
     if (!(await this.checkAdminAccess(ctx))) return;
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
 
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
@@ -340,6 +388,7 @@ class AdminHandlers {
   // Показать админов
   async showAdmins(ctx) {
     if (!(await this.checkAdminAccess(ctx))) return;
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
 
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
@@ -376,6 +425,7 @@ class AdminHandlers {
   // Поиск пользователя
   async initiateSearch(ctx) {
     if (!(await this.checkAdminAccess(ctx))) return;
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
 
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
@@ -397,6 +447,7 @@ class AdminHandlers {
   // Поиск транзакции по хэшу для возврата
   async initiateRefundSearch(ctx, targetUserId) {
     if (!(await this.checkAdminAccess(ctx))) return;
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
     const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
     this.stateService.setUserState(ctx.from.id, `admin_refund_search:${targetUserId}`);
     const prompt = '🔎 Введи хэш (telegram_payment_id) транзакции для возврата:';
@@ -411,18 +462,17 @@ class AdminHandlers {
     const targetUserId = parseInt(state.split(':')[1], 10);
     this.stateService.deleteUserState(adminId);
     const userLanguage = await this.userService.getUserLanguage(adminId);
-    // Ищем транзакцию по хэшу
-    const repo = this.userService.premiumTransactionRepository || require('../repositories/PremiumTransactionRepository');
-    const premiumRepo = this.userService.premiumTransactionRepository || new repo();
-    const tx = await premiumRepo.getTransactionByTelegramPaymentId(text.trim());
-    if (!tx || Number(tx.user_id) !== targetUserId) {
+    // Ищем платёж по хэшу: покупка премиума или пожертвование
+    const payment = await this.paymentService.findPaymentByChargeId(text.trim());
+    if (!payment || payment.userId !== targetUserId) {
       await ctx.reply('❌ Транзакция не найдена у выбранного пользователя.');
       return;
     }
     // Ограничим callback_data до безопасной длины: передаем только индекс найденной транзакции во временном состоянии
-    this.stateService.setUserState(adminId, { type: 'admin_refund_confirm', data: { userId: targetUserId, paymentId: tx.telegram_payment_id } });
+    this.stateService.setUserState(adminId, { type: 'admin_refund_confirm', data: { userId: targetUserId, paymentId: payment.chargeId } });
     const kb = [[{ text: '↩️ Вернуть', callback_data: 'panel_refund_exec' }], [{ text: '🔙 Назад', callback_data: `panel_user_${targetUserId}` }]];
-    await ctx.reply(`Найдена транзакция:\nID: ${tx.id}\nHash: ${tx.telegram_payment_id}\nStars: ${tx.stars_amount}\nStatus: ${tx.status}`, { reply_markup: { inline_keyboard: kb } });
+    const kindLabel = payment.kind === 'donation' ? 'пожертвование' : 'премиум';
+    await ctx.reply(`Найдена транзакция (${kindLabel}):\nID: ${payment.id}\nHash: ${payment.chargeId}\nStars: ${payment.stars}\nStatus: ${payment.status}`, { reply_markup: { inline_keyboard: kb } });
   }
 
   // Звёзды возвращаются пользователю; премиум по этому платежу снимается, подписка (если платёж по ней) отменяется.
@@ -439,7 +489,8 @@ class AdminHandlers {
     try {
       await this.paymentService.refundStarsPayment(Number(targetUserId), paymentId);
       const result = await this.paymentService.revokeRefundedPayment(paymentId);
-      const until = result.premiumUntil ? `премиум до ${this.formatter.formatDate(result.premiumUntil)}` : 'премиум снят';
+      const until = result.type === 'donation' ? 'пожертвование помечено возвращённым'
+        : (result.premiumUntil ? `премиум до ${this.formatter.formatDate(result.premiumUntil)}` : 'премиум снят');
       await ctx.answerCbQuery(`✅ Возврат выполнен, ${until}`, { show_alert: true });
     } catch (error) {
       logger.error('Admin refund failed', { targetUserId, paymentId, error: error.message });
@@ -464,7 +515,7 @@ class AdminHandlers {
       }
 
       let resultsText = this.localizationService.getText(userLanguage, 'admin_search_results', {
-        query: searchQuery,
+        query: this.formatter.escapeMarkdown(searchQuery),
         count: users.length
       });
 
@@ -497,6 +548,7 @@ class AdminHandlers {
   // Показать детали пользователя
   async showUserDetails(ctx, targetUserId) {
     if (!(await this.checkAdminAccess(ctx))) return;
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
 
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
@@ -523,7 +575,9 @@ class AdminHandlers {
         language: user.language,
         currency: user.currency,
         timezone: this.formatter.escapeMarkdown(getTimezoneDisplayName(user.timezone)),
-        createdAt: user.created_at ? user.created_at.toLocaleDateString() : 'N/A',
+        createdAt: userDetails.registeredAt
+          ? this.formatter.formatDate(userDetails.registeredAt, await this.userService.getUserTimezone(userId))
+          : 'N/A',
         totalExpenses: userDetails.expenseStats.totalExpenses,
         totalAmount: this.formatter.formatAmount(userDetails.expenseStats.totalAmount),
         bugReportsCount: userDetails.recentBugReports.length,
@@ -630,6 +684,7 @@ class AdminHandlers {
   // Показать варианты премиум периодов
   async showGrantPremiumOptions(ctx, targetUserId) {
     if (!(await this.checkAdminAccess(ctx))) return;
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
 
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
@@ -698,6 +753,8 @@ class AdminHandlers {
 
     try {
       await this.adminService.revokePremium(targetUserId, userId);
+      // Иначе следующее продление подписки Stars снова включит премиум
+      await this.paymentService.cancelActiveSubscription(targetUserId);
       
       const successText = this.localizationService.getText(userLanguage, 'admin_revoke_premium_success', {
         userId: targetUserId
@@ -719,6 +776,7 @@ class AdminHandlers {
   // Инициировать массовое уведомление
   async initiateBroadcast(ctx) {
     if (!(await this.checkAdminAccess(ctx))) return;
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
 
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
@@ -762,9 +820,11 @@ class AdminHandlers {
         data: { message: messageText } 
       });
 
-      // Подтверждение отправки
+      // Подтверждение отправки — простым текстом, как уйдёт и сама рассылка:
+      // обрезка превью не может разорвать разметку, а «_» в тексте не ломает сообщение
+      const chars = Array.from(messageText);
       const confirmText = this.localizationService.getText(userLanguage, 'admin_broadcast_confirm', {
-        message: messageText.length > 200 ? messageText.substring(0, 200) + '...' : messageText,
+        message: chars.length > 200 ? chars.slice(0, 200).join('') + '...' : messageText,
         length: messageText.length
       });
 
@@ -776,7 +836,6 @@ class AdminHandlers {
       ];
 
       await ctx.reply(confirmText, {
-        parse_mode: 'Markdown',
         reply_markup: { inline_keyboard: keyboard }
       });
 

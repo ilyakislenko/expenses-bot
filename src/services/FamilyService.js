@@ -1,12 +1,17 @@
 const logger = require('../utils/logger');
 
+// Postgres unique_violation: family_user.user_id (человек уже в семье)
+// или idx_family_invitations_pending_unique (у приглашённого уже есть ожидающее приглашение)
+const isUniqueViolation = (error) => error && error.code === '23505';
+
 class FamilyService {
-  constructor(familyRepository, familyInvitationRepository, userRepository, expenseRepository, notificationService) {
+  constructor(familyRepository, familyInvitationRepository, userRepository, expenseRepository, notificationService, premiumService) {
     this.familyRepository = familyRepository;
     this.familyInvitationRepository = familyInvitationRepository;
     this.userRepository = userRepository;
     this.expenseRepository = expenseRepository;
     this.notificationService = notificationService;
+    this.premiumService = premiumService;
   }
 
   async createFamily(ownerId, name) {
@@ -23,7 +28,13 @@ class FamilyService {
         throw new Error('User is already a member of a family');
       }
 
-      const family = await this.familyRepository.createFamily(ownerId, name);
+      let family;
+      try {
+        family = await this.familyRepository.createFamily(ownerId, name);
+      } catch (error) {
+        if (isUniqueViolation(error)) throw new Error('User is already a member of a family');
+        throw error;
+      }
       
       logger.info('Family service: family created', {
         familyId: family.id,
@@ -77,6 +88,7 @@ class FamilyService {
         throw new Error('Family owner cannot leave family. Use delete family instead.');
       }
 
+      // Траты участника в этой семье становятся его личными
       await this.familyRepository.removeMemberFromFamily(userFamily.id, userId);
       
       logger.info('Family service: user left family', {
@@ -141,14 +153,23 @@ class FamilyService {
         throw new Error('Only family owner can invite members');
       }
 
-      // Находим пользователя по username
-      const invitee = await this.userRepository.getUserByUsername(inviteeUsername);
-      if (!invitee) {
+      // Username без учёта регистра; при нескольких совпадениях не угадываем, кому отправить приглашение
+      const candidates = await this.userRepository.findUsersByUsername(inviteeUsername);
+      if (candidates.length > 1) {
+        logger.warn('Family service: ambiguous username, invitation refused', {
+          inviterId,
+          inviteeUsername,
+          matches: candidates.length
+        });
+      }
+      if (candidates.length !== 1) {
         throw new Error('User not found');
       }
+      const invitee = candidates[0];
+      invitee.id = Number(invitee.id);
 
-      // Проверяем премиум-статус приглашаемого
-      const isPremium = await this.userRepository.getUserPremium(invitee.id);
+      // Проверяем премиум по сроку, а не по флагу users.premium (флаг снимается с опозданием)
+      const isPremium = await this.premiumService.isPremiumUser(invitee.id);
       if (!isPremium) {
         throw new Error('User does not have premium status');
       }
@@ -163,17 +184,28 @@ class FamilyService {
         }
       }
 
+      // Истёкшие приглашения переводим в expired: иначе уникальный индекс
+      // «одно ожидающее приглашение на человека» навсегда закрывает ему вход в любую семью
+      await this.familyInvitationRepository.expireOldInvitations();
+
       // Проверяем, нет ли уже активного приглашения
       const hasPending = await this.familyInvitationRepository.hasPendingInvitation(invitee.id, userFamily.id);
       if (hasPending) {
         throw new Error('User already has a pending invitation');
       }
 
-      const invitation = await this.familyInvitationRepository.createInvitation(
-        userFamily.id,
-        inviterId,
-        invitee.id
-      );
+      let invitation;
+      try {
+        invitation = await this.familyInvitationRepository.createInvitation(
+          userFamily.id,
+          inviterId,
+          invitee.id
+        );
+      } catch (error) {
+        // Ожидающее приглашение из другой семьи (уникальный индекс по invitee_id)
+        if (isUniqueViolation(error)) throw new Error('User already has a pending invitation');
+        throw error;
+      }
 
       // Отправляем уведомление приглашаемому
       const inviterName = await this.userRepository.getUserById(inviterId);
@@ -227,6 +259,8 @@ class FamilyService {
       }
 
       if (new Date() > new Date(invitation.expires_at_utc)) {
+        // Освобождаем уникальный индекс ожидающих приглашений: человека можно пригласить снова
+        await this.familyInvitationRepository.updateInvitationStatusByCode(inviteCode, 'expired');
         throw new Error('Invitation has expired');
       }
 
@@ -236,8 +270,13 @@ class FamilyService {
         throw new Error('User is already a member of a family');
       }
 
-      // Добавляем пользователя в семью
-      await this.familyRepository.addMemberToFamily(invitation.family_id, userId);
+      // Добавляем пользователя в семью (UNIQUE family_user.user_id ловит гонку с созданием своей семьи)
+      try {
+        await this.familyRepository.addMemberToFamily(invitation.family_id, userId);
+      } catch (error) {
+        if (isUniqueViolation(error)) throw new Error('User is already a member of a family');
+        throw error;
+      }
       
       // Обновляем статус приглашения
       await this.familyInvitationRepository.updateInvitationStatusByCode(inviteCode, 'accepted');
@@ -296,7 +335,23 @@ class FamilyService {
     }
   }
 
+  // Участник семьи владельца (не сам владелец) — для экрана подтверждения исключения.
+  // Профиль чужого человека по произвольному id из callback_data не раскрывается.
+  async getRemovableMember(ownerId, memberId) {
+    const id = Number(memberId);
+    if (id === ownerId) {
+      throw new Error('Cannot remove yourself from family');
+    }
+    const members = await this.getFamilyMembersForOwner(ownerId);
+    const member = members.find(m => m.id === id);
+    if (!member) {
+      throw new Error('User is not a member of this family');
+    }
+    return member;
+  }
+
   async removeMemberFromFamily(ownerId, memberId) {
+    memberId = Number(memberId); // из callback_data приходит строкой
     try {
       // Проверяем, что удаляющий является владельцем семьи
       const userFamily = await this.familyRepository.getUserFamily(ownerId);
@@ -308,29 +363,22 @@ class FamilyService {
         throw new Error('Only family owner can remove members');
       }
 
+      // Нельзя удалить самого себя: семья осталась бы без владельца
+      if (ownerId === memberId) {
+        throw new Error('Cannot remove yourself from family');
+      }
+
       // Проверяем, что удаляемый является членом семьи
       const isMember = await this.familyRepository.isUserInFamily(memberId, userFamily.id);
       if (!isMember) {
         throw new Error('User is not a member of this family');
       }
 
-      // Нельзя удалить самого себя
-      if (ownerId === memberId) {
-        throw new Error('Cannot remove yourself from family');
-      }
-
+      // Траты участника в этой семье становятся его личными
       await this.familyRepository.removeMemberFromFamily(userFamily.id, memberId);
 
-      // Отправляем уведомление удаляемому участнику
-      const ownerName = await this.userRepository.getUserById(ownerId);
-      const ownerDisplayName = ownerName.username || ownerName.first_name || 'Unknown';
-      
       if (this.notificationService) {
-        await this.notificationService.sendFamilyMemberRemoved(
-          memberId,
-          userFamily.name,
-          ownerDisplayName
-        );
+        await this.notificationService.sendFamilyMemberRemoved(memberId, userFamily.name);
       }
 
       logger.info('Family service: member removed from family', {
@@ -428,6 +476,7 @@ class FamilyService {
 
   async getActiveInvitations(familyId) {
     try {
+      await this.familyInvitationRepository.expireOldInvitations();
       const invitations = await this.familyInvitationRepository.getActiveInvitationsByFamily(familyId);
       
       logger.debug('Family service: active invitations retrieved', {

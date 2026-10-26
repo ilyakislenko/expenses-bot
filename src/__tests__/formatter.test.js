@@ -81,7 +81,7 @@ describe('Formatter CSV Localization', () => {
         'ru'
       );
 
-      expect(csv).toContain('Дата,Сумма,Валюта,Категория,Описание');
+      expect(csv).toContain('Дата;Сумма;Валюта;Категория;Описание');
       expect(csv).toContain('"Еда"'); // Переведенная категория
       expect(csv).toContain('"Транспорт"'); // Переведенная категория
       expect(csv).toContain('"Итого по валютам:"');
@@ -111,7 +111,7 @@ describe('Formatter CSV Localization', () => {
         'UTC'
       );
 
-      expect(csv).toContain('Date,Amount,Currency,Category,Description');
+      expect(csv).toContain('Date;Amount;Currency;Category;Description');
       expect(csv).toContain('"Еда"'); // Оригинальная категория
       expect(csv).toContain('"Transport"'); // Оригинальная категория
       expect(csv).toContain('"Total by currencies:"');
@@ -171,9 +171,9 @@ describe('Formatter CSV Localization', () => {
 
       const csv = await convertingFormatter.formatCSV(expenses, 'RUB', 'UTC');
 
-      const food = `"Food: ${convertingFormatter.formatAmount(1000, 'RUB')}",,,,`;
-      const transport = `"Transport: ${convertingFormatter.formatAmount(300, 'RUB')}",,,,`;
-      expect(csv).toContain(`"Total by categories:",,,,\n${food}\n${transport}\n`);
+      const food = `"Food: ${convertingFormatter.formatAmount(1000, 'RUB')}";;;;`;
+      const transport = `"Transport: ${convertingFormatter.formatAmount(300, 'RUB')}";;;;`;
+      expect(csv).toContain(`"Total by categories:";;;;\n${food}\n${transport}\n`);
       expect(csv.indexOf('"Total by categories:"')).toBeLessThan(csv.indexOf('"Total by currencies:"'));
     });
   });

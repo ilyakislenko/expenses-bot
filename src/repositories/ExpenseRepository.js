@@ -3,15 +3,6 @@ const periodsConfig = require('../config/periods');
 const currencyConfig = require('../config/currencies');
 
 class ExpenseRepository extends BaseRepository {
-  async reassignExpensesCategory(userId, fromCategoryId, toCategoryId) {
-    const query = `
-      UPDATE expenses
-      SET category_id = $3
-      WHERE user_id = $1 AND category_id = $2
-    `;
-    const result = await this.query(query, [userId, fromCategoryId, toCategoryId]);
-    return result.rowCount;
-  }
   async addExpense(userId, amount, description, categoryId, currency = currencyConfig.BASE_CURRENCY, userTimezone = 'UTC', familyId = null) {
     const query = `
       INSERT INTO expenses (user_id, amount, description, category_id, currency, family_id, created_at_utc) 
@@ -128,30 +119,6 @@ class ExpenseRepository extends BaseRepository {
       LIMIT 1
     `;
     const result = await this.query(query, [userId, userTimezone]);
-    return result.rows.length > 0;
-  }
-
-  async hasAnyExpenseBetweenLocal(userId, userTimezone = 'UTC', startHour = 0, endHour = 24) {
-    const query = `
-      WITH local_now AS (
-        SELECT (NOW() AT TIME ZONE $2) AS ln
-      ), day_start AS (
-        SELECT DATE_TRUNC('day', ln) AS ds FROM local_now
-      ), bounds AS (
-        SELECT 
-          (ds + make_interval(hours => $3)) AS start_date,
-          (ds + make_interval(hours => $4)) AS end_date
-        FROM day_start
-      )
-      SELECT 1
-      FROM expenses
-      WHERE user_id = $1
-        AND recurring_expense_id IS NULL -- автоматические регулярные траты не считаются ручной записью
-        AND (created_at_utc AT TIME ZONE $2) >= (SELECT start_date FROM bounds)
-        AND (created_at_utc AT TIME ZONE $2) < (SELECT end_date FROM bounds)
-      LIMIT 1
-    `;
-    const result = await this.query(query, [userId, userTimezone, startHour, endHour]);
     return result.rows.length > 0;
   }
 

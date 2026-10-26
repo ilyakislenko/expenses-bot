@@ -3,6 +3,7 @@ const respond = require('../utils/respond');
 
 const MAX_INCOME_AMOUNT = 9999999999; // incomes.amount DECIMAL(12,2)
 const MAX_LISTED_INCOMES = 30;
+const LIST_DESCRIPTION_LENGTH = 40;
 
 class IncomeHandlers {
   constructor({ incomeService, expenseService, userService, premiumService, localizationService, formatter, stateService, validator }) {
@@ -20,8 +21,10 @@ class IncomeHandlers {
     return this.localizationService.getText(lang, key, params);
   }
 
-  incomeLabel(income, lang) {
-    return this.formatter.escapeMarkdown(income.description || this.t(lang, 'income_default_description'));
+  // maxLength — для строк списка: 30 записей с длинными описаниями не влезут в сообщение
+  incomeLabel(income, lang, maxLength = Infinity) {
+    const label = income.description || this.t(lang, 'income_default_description');
+    return this.formatter.escapeMarkdown(this.formatter.shorten(label, maxLength));
   }
 
   async showMenu(ctx) {
@@ -46,7 +49,7 @@ class IncomeHandlers {
       const listed = incomes.slice(-MAX_LISTED_INCOMES);
       text += listed.map((income, i) => {
         const amount = this.formatter.formatAmount(Number(income.amount), income.currency);
-        return `${i + 1}. ${amount} — ${this.incomeLabel(income, lang)} · ${this.formatter.formatShortDateTime(income.created_at_utc, timezone)}`;
+        return `${i + 1}. ${amount} — ${this.incomeLabel(income, lang, LIST_DESCRIPTION_LENGTH)} · ${this.formatter.formatShortDateTime(income.created_at_utc, timezone)}`;
       }).join('\n');
       text += '\n\n' + await this.formatter.formatIncomeSummary(incomeTotals, expenseTotals, currency, this.localizationService, lang);
       for (let i = 0; i < listed.length; i += 5) {

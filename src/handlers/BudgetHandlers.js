@@ -158,6 +158,11 @@ class BudgetHandlers {
   // Ввод суммы: "10000" или "150 USD"
   async handleAmountInput(ctx, text, lang, target) {
     const userId = ctx.from.id;
+    // Премиум мог закончиться между нажатием кнопки и вводом суммы
+    if (!(await this.ensurePremium(ctx, lang))) {
+      this.stateService.deleteUserState(userId);
+      return;
+    }
     const parsed = this.validator.parseMoneyInput(text, { maxAmount: MAX_BUDGET_AMOUNT, maxDescriptionLength: 80, requireDescription: false });
     if (!parsed.isValid || parsed.description) {
       return ctx.reply(this.t(lang, 'budget_amount_invalid'), { parse_mode: 'Markdown' });

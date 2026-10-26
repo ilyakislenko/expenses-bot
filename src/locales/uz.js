@@ -152,10 +152,10 @@ module.exports = {
     // Xabarlarni ommaviy yuborish
     admin_broadcast_prompt: '📢 *Ommaviy xabar*\n\nBarcha foydalanuvchilarga yuborish uchun xabar matnini kiriting (maks. 3600 belgi):',
     admin_broadcast_too_long: '❌ Xabar juda uzun!\n\n📏 Joriy uzunlik: {current}\n📏 Maks.: {max}\n📏 Qisqartirish kerak: {excess} belgi',
-    admin_broadcast_confirm: '📢 *Ommaviy xabarni tasdiqlash*\n\n📝 *Xabar:*\n{message}\n\n📏 *Uzunlik:* {length} belgi\n\n⚠️ Ushbu xabar botning *barcha* foydalanuvchilariga yuboriladi!',
+    admin_broadcast_confirm: '📢 Ommaviy xabarni tasdiqlang\n\n📝 Xabar:\n{message}\n\n📏 Uzunlik: {length} belgi\n\n⚠️ Ushbu xabar botning BARCHA foydalanuvchilariga yuboriladi!',
     admin_broadcast_started: '📢 Xabar jo‘natish boshlandi...',
     admin_broadcast_result: '📢 *Xabar jo‘natildi!*\n\n📊 *Statistika:*\n• Umumiy: {total}\n• Yuborildi: {sent}\n• Xatolik: {failed}',
-    admin_broadcast_header: '🔴🔴🔴 *E’lon!* 🔴🔴🔴',
+    admin_broadcast_header: '🔴🔴🔴 E’lon! 🔴🔴🔴',
     
     // Umumiy xabarlar
     error: 'Xatolik yuz berdi 😞',
@@ -233,9 +233,9 @@ O‘z vaqtingizni tanlang:`,
     family_owner_label: '👑 *Egas:*',
     family_info: '👨‍👩‍👧‍👦 *Oila byudjeti*\n\nBu yerda siz oila a’zolari, hamkasblar, do‘stlar va h.k. bilan birga xarajatlarni birgalikda boshqarishingiz mumkin.\n\n- \uD83D\uDC6A Qo‘shma xarajatlarni hisobga olish uchun umumiy guruh yaratiladi.\n- \u2795 Har bir a’zo xarajat qo‘shishi mumkin.\n- \uD83D\uDDD1\uFE0F Zarur bo‘lsa, o‘z xarajatlaringizni o‘chirishingiz mumkin.\n- \uD83D\uDCCA Barcha a’zolar uchun umumiy statistika mavjud.\n- \uD83D\uDCE4 Butun guruh ma’lumotlarini yagona faylga eksport qilish mumkin.\n\nBirgalikda nazorat — kamroq tartibsizlik va ko‘proq oshkoralik demakdir.',
     family_created: '✅ "{name}" nomli oila yaratildi! Endi a’zolarni taklif qilishingiz mumkin.',
-    family_left: '✅ "{name}" oilasidan chiqdingiz.',
+    family_left: '✅ "{name}" oilasidan chiqdingiz. Bu oiladagi xarajatlaringiz endi shaxsiy.',
     family_deleted: '✅ "{name}" oilasi o‘chirildi. Barcha oilaviy xarajatlar shaxsiy xarajatlarga o‘tkazildi.',
-    family_member_removed_notification: '❌ Siz “{familyName}” oilasidan chiqarildingiz.',
+    family_member_removed_notification: '❌ Siz “{familyName}” oilasidan chiqarildingiz. Bu oiladagi xarajatlaringiz endi shaxsiy.',
     
     // Oila menyu tugmalari
     create_family: '🏠 Oila yaratish',
@@ -298,7 +298,7 @@ O‘z vaqtingizni tanlang:`,
     family_owner_role: 'Ega',
     family_member_role: 'A’zo',
     remove_member: '❌ O‘chirish',
-    confirm_remove_member: '⚠️ *A’zoni o‘chirish*\n\n{name} oiladan chiqarilsinmi?',
+    confirm_remove_member: '⚠️ *A’zoni o‘chirish*\n\n{name} oiladan chiqarilsinmi? Uning oilaviy xarajatlari shaxsiy bo‘ladi va oila ularni boshqa ko‘rmaydi.',
     member_removed: '✅ {name} oiladan chiqarildi.',
     
     // Premium funksiyalar
@@ -374,9 +374,8 @@ Xarajat va daromadlarni yozish bepul va cheklanmagan.`,
     // Tekshirish xatolari
     error_too_long_regular: '❌ Izoh juda uzun! Oddiy foydalanuvchilar uchun 80 belgi limit.',
     error_too_long_premium: '❌ Izoh juda uzun! Premium foydalanuvchilar uchun 160 belgi limit.',
-    error_amount: '❌ Noto‘g‘ri summa. 0,01 va 999999 oralig‘ida bo‘lishi kerak.',
+    error_amount: '❌ Noto‘g‘ri summa. 0.01 dan {max} gacha son kiriting.',
     error_format: '❌ Tushunmadim. Summadan boshlang: `250 qahva`, `20 USD taksi` yoki shunchaki `300`.',
-    error_forbidden_content: '❌ Ruxsat etilmagan kontent.',
     error_generic: '❌ Xatolik yuz berdi. Keyinroq urinib ko‘ring yoki administratorga murojaat qiling.',
     
     // Tugmalar
@@ -639,5 +638,16 @@ Xarajat va daromadlarni yozish bepul va cheklanmagan.`,
   command_paysupport: 'To‘lov yordami',
   command_terms: 'Foydalanish shartlari',
   command_privacy: 'Maxfiylik siyosati',
-  payment_outdated: '⚠️ Bu hisob eskirgan: narx o‘zgargan. Tariflarni qaytadan oching — /limits'
+  payment_outdated: '⚠️ Bu hisob eskirgan: narx o‘zgargan. Tariflarni qaytadan oching — /limits',
+  security_validation_error: '⚠️ So‘rovni qayta ishlab bo‘lmadi. Iltimos, qayta urinib ko‘ring yoki /start buyrug‘i bilan menyuni oching.',
+  expense_draft_outdated: '⌛ Bu qoralama eskirgan. Iltimos, xarajatni qaytadan yuboring.',
+  family_invitation_hours_left: '⏰ Qoldi: {hours} soat',
+  family_no_members: 'A’zolar yo‘q',
+  family_already_member: '❌ Siz allaqachon oiladasiz.',
+  admin_bug_reports_all_title: '📝 Barcha xato xabarlari (oxirgi {count})',
+  admin_bug_reports_new_title: '🆕 Yangi xato xabarlari (oxirgi {count})',
+  admin_bug_reports_empty: 'Xabarlar yo‘q.',
+  payment_subscription_already_active: '🔁 Sizda faol oylik obuna allaqachon bor — ikkinchisi kerak emas. Premiumni oldindan uzaytirish uchun bir martalik tarifni tanlang: /limits',
+  payment_foreign_payer: '⚠️ Bu to‘lov havolasi boshqa foydalanuvchi uchun yaratilgan. Tariflarni botda o‘zingiz oching — /limits',
+  premium_expired_granted: '🌙 Premium muddati tugadi. Xarajat va daromadlarni hisobga olish bepul qoladi; byudjetlar, to‘liq xulosa, maxsus kategoriyalar, oila va yozuvlarni tahrirlash — Premium bilan. Istalgan vaqtda uzaytirishingiz mumkin.'
 };

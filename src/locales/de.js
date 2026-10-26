@@ -170,10 +170,10 @@ module.exports = {
     // Massen-Nachricht
     admin_broadcast_prompt: '📢 *Massen-Nachricht*\n\nBitte Nachricht für alle Benutzer eingeben (max. 3600 Zeichen):',
     admin_broadcast_too_long: '❌ Nachricht zu lang!\n\n📏 Aktuelle Länge: {current}\n📏 Maximum: {max}\n📏 Kürzen um: {excess} Zeichen',
-    admin_broadcast_confirm: '📢 *Massen-Nachricht bestätigen*\n\n📝 *Nachricht:*\n{message}\n\n📏 *Länge:* {length} Zeichen\n\n⚠️ Diese Nachricht wird an *ALLE* Benutzer des Bots gesendet!',
+    admin_broadcast_confirm: '📢 Massen-Nachricht bestätigen\n\n📝 Nachricht:\n{message}\n\n📏 Länge: {length} Zeichen\n\n⚠️ Diese Nachricht wird an ALLE Benutzer des Bots gesendet!',
     admin_broadcast_started: '📢 Nachrichtensendung gestartet...',
     admin_broadcast_result: '📢 *Sendung abgeschlossen!*\n\n📊 *Statistik:*\n• Gesamt: {total}\n• Gesendet: {sent}\n• Fehlgeschlagen: {failed}',
-    admin_broadcast_header: '🔴🔴🔴 *Ankündigung!* 🔴🔴🔴',
+    admin_broadcast_header: '🔴🔴🔴 Ankündigung! 🔴🔴🔴',
     
     // Allgemeine Nachrichten
     error: 'Ein Fehler ist aufgetreten 😞',
@@ -253,9 +253,9 @@ Wähle deine lokale Zeit aus:`,
     family_owner_label: '👑 *Eigentümer:*',
     family_info: '👨‍👩‍👧‍👦 *Familienbudget*\n\nHier könnt ihr Ausgaben gemeinsam mit Familie, Kolleg:innen, Freund:innen usw. verwalten.\n\n- \uD83D\uDC6A Es wird eine gemeinsame Gruppe zur Erfassung gemeinsamer Ausgaben erstellt.\n- \u2795 Jedes Mitglied kann Ausgaben hinzufügen.\n- \uD83D\uDDD1\uFE0F Eigene Ausgaben können bei Bedarf gelöscht werden.\n- \uD83D\uDCCA Gemeinsame Statistiken sind für alle Mitglieder verfügbar.\n- \uD83D\uDCE4 Der gesamte Datensatz der Gruppe kann in eine Datei exportiert werden.\n\nGemeinsame Kontrolle bedeutet weniger Chaos und mehr Transparenz.',
     family_created: '✅ Familie "{name}" wurde erstellt! Du kannst nun Mitglieder einladen.',
-    family_left: '✅ Du hast die Familie "{name}" verlassen.',
+    family_left: '✅ Du hast die Familie "{name}" verlassen. Deine Ausgaben in dieser Familie sind jetzt privat.',
     family_deleted: '✅ Familie "{name}" wurde gelöscht. Alle Familienausgaben wurden in private Ausgaben umgewandelt.',
-    family_member_removed_notification: '❌ Du wurdest aus der Familie „{familyName}“ entfernt.',
+    family_member_removed_notification: '❌ Du wurdest aus der Familie „{familyName}“ entfernt. Deine Ausgaben in dieser Familie sind jetzt privat.',
     
     // Familienmenü-Buttons
     create_family: '🏠 Familie erstellen',
@@ -318,7 +318,7 @@ Wähle deine lokale Zeit aus:`,
     family_owner_role: 'Eigentümer',
     family_member_role: 'Mitglied',
     remove_member: '❌ Entfernen',
-    confirm_remove_member: '⚠️ *Mitglied entfernen*\n\nSoll {name} aus der Familie entfernt werden?',
+    confirm_remove_member: '⚠️ *Mitglied entfernen*\n\nSoll {name} aus der Familie entfernt werden? Die Familienausgaben dieser Person werden privat, und die Familie sieht sie nicht mehr.',
     member_removed: '✅ {name} wurde aus der Familie entfernt.',
     
     // Premium-Funktionen
@@ -394,9 +394,8 @@ Ab jetzt werden alle Ausgaben in deiner Ortszeit angezeigt.`,
     // Validierungsfehler
     error_too_long_regular: '❌ Beschreibung zu lang! Für Standardnutzer max. 80 Zeichen.',
     error_too_long_premium: '❌ Beschreibung zu lang! Für Premium max. 160 Zeichen.',
-    error_amount: '❌ Ungültiger Betrag. Bitte zwischen 0,01 und 999999 eingeben.',
+    error_amount: '❌ Ungültiger Betrag. Gib eine Zahl von 0.01 bis {max} ein.',
     error_format: '❌ Das habe ich nicht verstanden. Beginne mit einem Betrag: `250 Kaffee`, `20 USD Taxi` oder einfach `300`.',
-    error_forbidden_content: '❌ Unzulässiger Inhalt.',
     error_generic: '❌ Fehler. Versuche es später erneut oder kontaktiere den Admin.',
     
     // Buttons
@@ -662,5 +661,16 @@ Ab jetzt werden alle Ausgaben in deiner Ortszeit angezeigt.`,
     command_paysupport: 'Zahlungssupport',
     command_terms: 'Nutzungsbedingungen',
     command_privacy: 'Datenschutzerklärung',
-    payment_outdated: '⚠️ Diese Rechnung ist veraltet: Der Preis hat sich geändert. Öffne die Tarife erneut — /limits'
+    payment_outdated: '⚠️ Diese Rechnung ist veraltet: Der Preis hat sich geändert. Öffne die Tarife erneut — /limits',
+    security_validation_error: '⚠️ Die Anfrage konnte nicht verarbeitet werden. Versuch es noch mal oder öffne das Menü mit /start.',
+    expense_draft_outdated: '⌛ Dieser Entwurf ist veraltet. Sende die Ausgabe noch einmal.',
+    family_invitation_hours_left: '⏰ Noch {hours} Std.',
+    family_no_members: 'Keine Mitglieder',
+    family_already_member: '❌ Du bist bereits in einer Familie.',
+    admin_bug_reports_all_title: '📝 Alle Fehlerberichte (letzte {count})',
+    admin_bug_reports_new_title: '🆕 Neue Fehlerberichte (letzte {count})',
+    admin_bug_reports_empty: 'Keine Berichte.',
+    payment_subscription_already_active: '🔁 Du hast bereits ein aktives Monatsabo — ein zweites brauchst du nicht. Um Premium im Voraus zu verlängern, wähle einen Einmal-Tarif: /limits',
+    payment_foreign_payer: '⚠️ Dieser Zahlungslink wurde für einen anderen Benutzer erstellt. Öffne die Tarife selbst im Bot — /limits',
+    premium_expired_granted: '🌙 Dein Premium ist beendet. Ausgaben und Einnahmen erfassen bleibt kostenlos; Budgets, die vollständige Zusammenfassung, eigene Kategorien, Familie und das Bearbeiten von Einträgen gibt es mit Premium. Du kannst es jederzeit verlängern.'
 };

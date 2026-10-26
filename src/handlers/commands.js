@@ -68,32 +68,25 @@ class CommandHandlers {
 
   // afterOnboarding — первый показ после выбора языка/валюты/часового пояса: полное приветствие.
   // Вернувшемуся пользователю — коротко, без простыни текста.
+  // Шаг онбординга живёт в callback_data кнопок (`|ob`), а не в памяти, поэтому переживает рестарт процесса.
   async start(ctx, { afterOnboarding = false } = {}) {
     const user = ctx.from;
-    // Проверяем, существовал ли пользователь ранее (до регистрации)
-    const existedUser = await this.userService.getUserById(user.id);
-    await this.userService.registerUser(user.id, user.username, user.first_name);
+    // Новый пользователь — только тот, чей вызов создал строку (без гонки двух /start подряд)
+    const registered = await this.userService.registerUser(user.id, user.username, user.first_name);
 
-    // Если пользователь новый — запускаем одноразовый onboarding (язык → валюта)
-    if (!existedUser) {
+    // Новый пользователь: одноразовый onboarding (язык → валюта → часовой пояс)
+    if (registered && registered.isNew) {
       // Источник из ссылки t.me/<bot>?start=<код> и первый шаг воронки
       await this.funnelService.registerSource(user.id, FunnelService.parseStartSource(ctx.message && ctx.message.text));
       await this.funnelService.track(user.id, 'registered');
 
-      // Выбираем стартовый язык для показа клавиатуры (если язык Telegram поддерживается — используем его, иначе en)
-      const tgLang = (user && user.language_code) ? user.language_code : null;
-      const initialLanguage = (tgLang && this.localizationService.isLanguageSupported(tgLang)) ? tgLang : 'en';
-      this.stateService.setUserState(user.id, 'onboarding_language');
-
-      const languageSelectText = this.localizationService.getText(initialLanguage, 'language_select');
-      const keyboard = this.localizationService.getLanguageKeyboardLocalized(initialLanguage);
-      await ctx.reply(languageSelectText, {
-        reply_markup: {
-          inline_keyboard: keyboard
-        }
-      });
+      // Стартовый язык экрана — язык Telegram (ja → jp, pt-br → pt…), если бот его поддерживает, иначе en
+      const initialLanguage = this.localizationService.resolveTelegramLanguage(user && user.language_code) || 'en';
+      await this.onboardingLanguage(ctx, initialLanguage);
       return;
     }
+    // Дубль первого /start из той же пачки: экран выбора языка уже показан
+    if (registered && registered.justCreated && !afterOnboarding) return;
 
     const userLanguage = await this.userService.getUserLanguage(user.id);
     let message = this.localizationService.getText(userLanguage, 'start_returning');
@@ -171,11 +164,25 @@ class CommandHandlers {
   }
 
 
-  async currency(ctx) {
+  // Шаг онбординга «язык»; повторный показ — по «Назад» с шага валюты
+  async onboardingLanguage(ctx, language) {
+    const userLanguage = language || await this.userService.getUserLanguage(ctx.from.id);
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
+    await respond(ctx, this.localizationService.getText(userLanguage, 'language_select'), {
+      reply_markup: { inline_keyboard: this.localizationService.getLanguageKeyboardLocalized(userLanguage, { onboarding: true }) }
+    });
+  }
+
+  // onboarding: кнопки с признаком шага (`|ob`), «Назад» — к выбору языка
+  async currency(ctx, { onboarding = false } = {}) {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
     const message = this.localizationService.getText(userLanguage, 'currency_select');
-    const currencyKeyboard = require('../utils/constants').generateCurrencyKeyboard(this.localizationService, userLanguage, 'set_currency', 'settings_currencies');
+    const { generateCurrencyKeyboard } = require('../utils/constants');
+    const currencyKeyboard = onboarding
+      ? generateCurrencyKeyboard(this.localizationService, userLanguage, 'set_currency', 'ob_language', '|ob')
+      : generateCurrencyKeyboard(this.localizationService, userLanguage, 'set_currency', 'settings_currencies');
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
     await respond(ctx, message, { reply_markup: { inline_keyboard: currencyKeyboard } });
   }
 
@@ -257,12 +264,9 @@ class CommandHandlers {
   async language(ctx) {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
-    
-
-    
     const languageSelectText = this.localizationService.getText(userLanguage, 'language_select');
     const keyboard = this.localizationService.getLanguageKeyboardLocalized(userLanguage);
-    
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
     await respond(ctx, languageSelectText, {
       reply_markup: {
         inline_keyboard: keyboard
@@ -270,22 +274,17 @@ class CommandHandlers {
     });
   }
 
-  async timezone(ctx) {
+  // onboarding: кнопки с признаком шага (`|ob`), «Назад» — к выбору валюты
+  async timezone(ctx, { onboarding = false } = {}) {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
-    
-
-    
     const { generateTimeKeyboard } = require('../utils/constants');
-    const currentUtcTime = new Date();
-    const utcTimeString = currentUtcTime.toUTCString();
-    
-    const message = this.localizationService.getText(userLanguage, 'timezone_setup', { utcTime: utcTimeString });
-    
+    const message = this.localizationService.getText(userLanguage, 'timezone_setup', { utcTime: new Date().toUTCString() });
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
     await respond(ctx, message, {
       parse_mode: 'Markdown',
       reply_markup: {
-        inline_keyboard: generateTimeKeyboard(this.localizationService, userLanguage)
+        inline_keyboard: generateTimeKeyboard(this.localizationService, userLanguage, { onboarding })
       }
     });
   }

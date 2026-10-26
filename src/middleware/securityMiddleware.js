@@ -1,13 +1,20 @@
 const logger = require('../utils/logger');
-const { 
-  securityRateLimitExceeded, 
-  securityValidationErrors, 
-  securityForbiddenPatterns, 
-  securityUnauthorizedAccess 
+const {
+  securityRateLimitExceeded,
+  securityValidationErrors,
+  securityUnauthorizedAccess
 } = require('../utils/metrics');
 
+// Платёжные обновления нельзя терять: Telegram не присылает их повторно, а звёзды уже списаны
+// (или возвращены). Они не подчиняются лимитам и не проверяются как пользовательский ввод.
+function isPaymentUpdate(ctx) {
+  return ctx.updateType === 'pre_checkout_query'
+    || Boolean(ctx.message?.successful_payment)
+    || Boolean(ctx.message?.refunded_payment);
+}
+
 class SecurityMiddleware {
-  constructor(rateLimiter, enhancedValidator, localizationService = null, userService = null) {
+  constructor(rateLimiter, enhancedValidator, localizationService, userService) {
     this.rateLimiter = rateLimiter;
     this.enhancedValidator = enhancedValidator;
     this.localizationService = localizationService;
@@ -17,14 +24,18 @@ class SecurityMiddleware {
   // Основной middleware для безопасности
   middleware() {
     return async (ctx, next) => {
+      if (isPaymentUpdate(ctx)) {
+        return next();
+      }
+
       try {
         const userId = ctx.from?.id;
         const updateType = ctx.updateType;
 
         if (!userId) {
           logger.warn('Request without user ID', { updateType });
-          securityUnauthorizedAccess.inc({ access_type: 'no_user_id', user_id: 'unknown' });
-          return await this.sendErrorResponse(ctx, 'Unauthorized access');
+          securityUnauthorizedAccess.inc({ access_type: 'no_user_id' });
+          return await this.sendErrorResponse(ctx);
         }
 
         // 1. Rate limiting
@@ -42,20 +53,32 @@ class SecurityMiddleware {
         // 3. Добавляем информацию о лимитах в контекст
         ctx.rateLimitInfo = rateLimitResult;
         ctx.validationInfo = validationResult;
-
-        // 4. Продолжаем обработку
-        return await next();
-
       } catch (error) {
         logger.error('Security middleware error', {
           error: error.message,
           userId: ctx.from?.id,
           updateType: ctx.updateType
         });
-        
-        return await this.sendErrorResponse(ctx, 'Security check failed');
+
+        return await this.sendErrorResponse(ctx);
       }
+
+      // 4. Продолжаем обработку (ошибки обработчиков — не ошибки проверки безопасности)
+      return next();
     };
+  }
+
+  // Текст на языке пользователя; язык по умолчанию, если пользователь неизвестен или БД недоступна
+  async t(ctx, key, params) {
+    let language = 'en';
+    if (ctx.from?.id) {
+      try {
+        language = await this.userService.getUserLanguage(ctx.from.id);
+      } catch (error) {
+        logger.warn('Failed to get user language for security message', { userId: ctx.from.id, error: error.message });
+      }
+    }
+    return this.localizationService.getText(language, key, params);
   }
 
   // Проверка rate limit
@@ -96,22 +119,7 @@ class SecurityMiddleware {
 
   // Обработка превышения rate limit
   async handleRateLimitExceeded(ctx, rateLimitResult) {
-    const resetTime = rateLimitResult.resetTime;
-    const limit = rateLimitResult.limit;
-    
-    let message = `⚠️ *Слишком много запросов*\n\n` +
-      `Попробуйте через ${resetTime} секунд\n` +
-      `Лимит: ${limit} запросов в минуту`;
-
-    // Пытаемся получить локализованное сообщение
-    if (this.localizationService && this.userService) {
-      try {
-        const userLanguage = await this.userService.getUserLanguage(ctx.from?.id);
-        message = this.localizationService.getText(userLanguage, 'security_rate_limit', { resetTime, limit });
-      } catch (error) {
-        // Используем сообщение по умолчанию
-      }
-    }
+    const { resetTime, limit } = rateLimitResult;
 
     logger.warn('Rate limit exceeded', {
       userId: ctx.from?.id,
@@ -120,35 +128,32 @@ class SecurityMiddleware {
       limit
     });
 
-    // Обновляем метрики
-    securityRateLimitExceeded.inc({ 
-      user_id: ctx.from?.id?.toString() || 'unknown', 
-      limit_type: ctx.updateType 
-    });
+    securityRateLimitExceeded.inc({ limit_type: ctx.updateType });
 
     try {
+      const message = await this.t(ctx, 'security_rate_limit', { resetTime, limit });
       if (ctx.updateType === 'callback_query') {
-        await ctx.answerCbQuery(message, { show_alert: true });
+        // Всплывающее окно не поддерживает разметку
+        await ctx.answerCbQuery(message.replace(/\*/g, ''), { show_alert: true });
       } else {
         await ctx.reply(message, { parse_mode: 'Markdown' });
       }
     } catch (error) {
       logger.error('Failed to send rate limit message', { error: error.message });
     }
-
-    return;
   }
 
-  // Валидация входных данных
+  // Валидация входных данных. Профиль Telegram (имя, username) не проверяем: его проверяет Telegram,
+  // а в текстах бота он экранируется при выводе.
   async validateInput(ctx, updateType) {
     try {
       switch (updateType) {
         case 'message':
-          return await this.validateMessage(ctx);
+          return this.validateMessage(ctx);
         case 'callback_query':
-          return await this.validateCallback(ctx);
+          return this.validateCallback(ctx);
         case 'inline_query':
-          return await this.validateInlineQuery(ctx);
+          return this.validateInlineQuery(ctx);
         default:
           return { isValid: true };
       }
@@ -162,198 +167,84 @@ class SecurityMiddleware {
     }
   }
 
-  // Валидация сообщений
-  async validateMessage(ctx) {
+  // Валидация сообщений: проверяем только команды. Траты и прочий ввод проверяются в обработчиках
+  // с учётом состояния пользователя (редактирование vs создание).
+  validateMessage(ctx) {
     const text = ctx.message?.text;
-    const user = ctx.from;
-
-    // Валидация пользователя
-    const userValidation = this.enhancedValidator.validateUserData(user);
-    if (!userValidation.isValid) {
-      logger.warn('Invalid user data', {
-        userId: user?.id,
-        errors: userValidation.errors
-      });
-      return { isValid: false, error: 'invalid_user_data', details: userValidation.errors };
-    }
-
-    // Если это команда
     if (text?.startsWith('/')) {
       const commandValidation = this.enhancedValidator.validateCommand(text);
       if (!commandValidation.isValid) {
         logger.warn('Invalid command', {
-          userId: user?.id,
+          userId: ctx.from?.id,
           command: text,
           error: commandValidation.error
         });
         return { isValid: false, error: 'invalid_command', details: commandValidation.error };
       }
     }
-    // Если это сообщение с расходами (не команда) - валидация происходит в messageHandlers
-    // с учетом контекста (редактирование vs создание нового расхода)
-    else if (text && !text.startsWith('/')) {
-      // Пропускаем валидацию сообщений с расходами, так как она происходит в messageHandlers
-      // с учетом состояния пользователя (редактирование vs создание)
-    }
-
-    return { isValid: true, sanitizedUser: userValidation.sanitizedData };
+    return { isValid: true };
   }
 
   // Валидация callback запросов
-  async validateCallback(ctx) {
+  validateCallback(ctx) {
     const data = ctx.callbackQuery?.data;
-    const user = ctx.from;
-
-    // Валидация пользователя
-    const userValidation = this.enhancedValidator.validateUserData(user);
-    if (!userValidation.isValid) {
-      return { isValid: false, error: 'invalid_user_data', details: userValidation.errors };
-    }
-
-    // Валидация callback данных
     if (data) {
       const callbackValidation = this.enhancedValidator.validateCallbackData(data);
       if (!callbackValidation.isValid) {
         logger.warn('Invalid callback data', {
-          userId: user?.id,
+          userId: ctx.from?.id,
           data,
           error: callbackValidation.error
         });
         return { isValid: false, error: 'invalid_callback_data', details: callbackValidation.error };
       }
     }
-
-    return { isValid: true, sanitizedUser: userValidation.sanitizedData };
+    return { isValid: true };
   }
 
   // Валидация inline запросов
-  async validateInlineQuery(ctx) {
+  validateInlineQuery(ctx) {
     const query = ctx.inlineQuery?.query;
-    const user = ctx.from;
-
-    // Валидация пользователя
-    const userValidation = this.enhancedValidator.validateUserData(user);
-    if (!userValidation.isValid) {
-      return { isValid: false, error: 'invalid_user_data', details: userValidation.errors };
-    }
-
-    // Валидация inline запроса
     if (query && query.length > 100) {
       return { isValid: false, error: 'inline_query_too_long' };
     }
-
-    return { isValid: true, sanitizedUser: userValidation.sanitizedData };
+    return { isValid: true };
   }
 
   // Обработка ошибок валидации
   async handleValidationError(ctx, validationResult) {
-    let message = '⚠️ *Ошибка валидации*\n\n';
-
-    switch (validationResult.error) {
-      case 'invalid_user_data':
-        message += 'Некорректные данные пользователя';
-        break;
-      case 'invalid_command':
-        message += 'Недопустимая команда';
-        break;
-      case 'invalid_expense_message':
-        if (validationResult.details.message) {
-          message += validationResult.details.message;
-        } else {
-          message += 'Некорректный формат сообщения';
-        }
-        break;
-      case 'invalid_callback_data':
-        message += 'Некорректные данные callback';
-        break;
-      case 'inline_query_too_long':
-        message += 'Запрос слишком длинный';
-        break;
-      default:
-        message += 'Ошибка проверки данных';
-    }
-
     logger.warn('Validation error', {
       userId: ctx.from?.id,
       error: validationResult.error,
       details: validationResult.details
     });
 
-    // Обновляем метрики валидации
-    securityValidationErrors.inc({ 
-      error_type: validationResult.error, 
-      user_id: ctx.from?.id?.toString() || 'unknown' 
-    });
+    securityValidationErrors.inc({ error_type: validationResult.error });
 
     try {
+      const message = await this.t(ctx, 'security_validation_error');
       if (ctx.updateType === 'callback_query') {
         await ctx.answerCbQuery(message, { show_alert: true });
       } else {
-        await ctx.reply(message, { parse_mode: 'Markdown' });
+        await ctx.reply(message);
       }
     } catch (error) {
       logger.error('Failed to send validation error message', { error: error.message });
     }
-
-    return;
   }
 
   // Отправка общего сообщения об ошибке
-  async sendErrorResponse(ctx, errorMessage) {
-    let message = '❌ *Ошибка безопасности*\n\nПопробуйте позже или обратитесь к администратору.';
-    let shortMessage = '❌ Ошибка безопасности';
-
-    // Пытаемся получить локализованное сообщение
-    if (this.localizationService && this.userService) {
-      try {
-        const userLanguage = await this.userService.getUserLanguage(ctx.from?.id);
-        message = this.localizationService.getText(userLanguage, 'security_error');
-        shortMessage = this.localizationService.getText(userLanguage, 'security_error').split('\n')[0];
-      } catch (error) {
-        // Используем сообщение по умолчанию
-      }
-    }
-
+  async sendErrorResponse(ctx) {
     try {
+      const message = await this.t(ctx, 'security_error');
       if (ctx.updateType === 'callback_query') {
-        await ctx.answerCbQuery(shortMessage, { show_alert: true });
+        await ctx.answerCbQuery(message.split('\n')[0].replace(/\*/g, ''), { show_alert: true });
       } else {
-        await ctx.reply(message, {
-          parse_mode: 'Markdown'
-        });
+        await ctx.reply(message, { parse_mode: 'Markdown' });
       }
     } catch (error) {
       logger.error('Failed to send security error message', { error: error.message });
     }
-  }
-
-  // Middleware для административных команд
-  adminOnly() {
-    return async (ctx, next) => {
-      const userId = ctx.from?.id;
-      const adminIds = process.env.ADMIN_IDS?.split(',').map(id => parseInt(id.trim())) || [];
-
-      if (!adminIds.includes(userId)) {
-        logger.warn('Unauthorized admin access attempt', { userId });
-        securityUnauthorizedAccess.inc({ access_type: 'admin_access', user_id: userId?.toString() || 'unknown' });
-        await ctx.reply('❌ У вас нет прав для выполнения этой команды');
-        return;
-      }
-
-      return await next();
-    };
-  }
-
-  // Middleware для проверки блокировки пользователя
-  checkUserBlock() {
-    return async (ctx, next) => {
-      const userId = ctx.from?.id;
-      
-      // Здесь можно добавить проверку блокировки пользователя
-      // Например, через базу данных или Redis
-      
-      return await next();
-    };
   }
 
   // Получение статистики безопасности
@@ -365,4 +256,6 @@ class SecurityMiddleware {
   }
 }
 
-module.exports = SecurityMiddleware; 
+SecurityMiddleware.isPaymentUpdate = isPaymentUpdate;
+
+module.exports = SecurityMiddleware;

@@ -100,32 +100,25 @@ const cpuUsage = new promClient.Gauge({
   registers: [register]
 });
 
-// Метрики для безопасности
+// Метрики для безопасности (без user_id: Telegram ID пользователей не попадают в /metrics)
 const securityRateLimitExceeded = new promClient.Counter({
   name: 'security_rate_limit_exceeded_total',
   help: 'Total number of rate limit violations',
-  labelNames: ['user_id', 'limit_type'],
+  labelNames: ['limit_type'],
   registers: [register]
 });
 
 const securityValidationErrors = new promClient.Counter({
   name: 'security_validation_errors_total',
   help: 'Total number of validation errors',
-  labelNames: ['error_type', 'user_id'],
-  registers: [register]
-});
-
-const securityForbiddenPatterns = new promClient.Counter({
-  name: 'security_forbidden_patterns_total',
-  help: 'Total number of forbidden patterns detected',
-  labelNames: ['pattern_type', 'user_id'],
+  labelNames: ['error_type'],
   registers: [register]
 });
 
 const securityUnauthorizedAccess = new promClient.Counter({
   name: 'security_unauthorized_access_total',
   help: 'Total number of unauthorized access attempts',
-  labelNames: ['access_type', 'user_id'],
+  labelNames: ['access_type'],
   registers: [register]
 });
 
@@ -212,7 +205,6 @@ module.exports = {
   cpuUsage,
   securityRateLimitExceeded,
   securityValidationErrors,
-  securityForbiddenPatterns,
   securityUnauthorizedAccess,
   externalApiRequestsTotal,
   externalApiRequestDuration,

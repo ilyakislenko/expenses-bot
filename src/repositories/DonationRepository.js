@@ -33,6 +33,22 @@ class DonationRepository extends BaseRepository {
     return result.rows[0];
   }
 
+  async getDonationByTelegramPaymentId(telegramPaymentId) {
+    const result = await this.query('SELECT * FROM donations WHERE telegram_payment_id = $1', [telegramPaymentId]);
+    return result.rows[0] || null;
+  }
+
+  async markDonationRefunded(donationId) {
+    const query = `
+      UPDATE donations
+      SET status = 'refunded', updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `;
+    const result = await this.query(query, [donationId]);
+    return result.rows[0];
+  }
+
   async cleanupOldPendingDonations(hoursOld = 24) {
     const query = `
       UPDATE donations

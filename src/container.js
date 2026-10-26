@@ -19,7 +19,7 @@ const Formatter = require('./utils/formatter');
 const EnhancedValidator = require('./utils/enhancedValidator');
 const RateLimiter = require('./utils/rateLimiter');
 const SecurityMiddleware = require('./middleware/securityMiddleware');
-const errorHandler = require('./middleware/errorHandler');
+const createErrorHandler = require('./middleware/errorHandler');
 const MonitoringServer = require('./utils/monitoring');
 const CallbackDeduplicator = require('./utils/callbackDeduplicator');
 
@@ -149,7 +149,10 @@ class Container {
         );
 
       case 'errorHandler':
-        return errorHandler;
+        return createErrorHandler({
+          userService: this.get('userService'),
+          localizationService: this.get('localizationService')
+        });
 
       case 'logger':
         return logger;
@@ -265,14 +268,14 @@ class Container {
           this.get('familyInvitationRepository'),
           this.get('userRepository'),
           this.get('expenseRepository'),
-          this.get('notificationService')
+          this.get('notificationService'),
+          this.get('premiumService')
         );
 
       case 'categoryService':
         return new CategoryService(
           this.get('categoryRepository'),
           this.get('premiumService'),
-          this.get('expenseRepository'),
           this.get('budgetRepository')
         );
 
@@ -427,7 +430,8 @@ class Container {
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
           stateService: this.get('stateService'),
-          validator: this.get('enhancedValidator')
+          validator: this.get('enhancedValidator'),
+          budgetService: this.get('budgetService')
         });
 
       case 'bot':

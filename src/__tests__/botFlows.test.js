@@ -35,8 +35,7 @@ describe('CommandHandlers flows', () => {
   beforeEach(() => {
     localizationService = new LocalizationService();
     userService = {
-      getUserById: jest.fn().mockResolvedValue({ id: 1 }),
-      registerUser: jest.fn().mockResolvedValue({ id: 1 }),
+      registerUser: jest.fn().mockResolvedValue({ id: 1, isNew: false }),
       getUserLanguage: jest.fn().mockResolvedValue('en'),
       getUserCurrency: jest.fn().mockResolvedValue('USD'),
       // Без летнего времени (UTC-3) и с "_", который в Markdown нужно экранировать
@@ -68,7 +67,7 @@ describe('CommandHandlers flows', () => {
 
   describe('start', () => {
     test('new user: registers, records source and starts onboarding with language picker', async () => {
-      userService.getUserById.mockResolvedValue(undefined);
+      userService.registerUser.mockResolvedValue({ id: 1, isNew: true });
       const ctx = createCtx({ text: '/start ads_tg', languageCode: 'ru' });
 
       await handlers.start(ctx);
@@ -76,18 +75,18 @@ describe('CommandHandlers flows', () => {
       expect(userService.registerUser).toHaveBeenCalledWith(1, 'testuser', 'Test');
       expect(funnelService.registerSource).toHaveBeenCalledWith(1, 'ads_tg');
       expect(funnelService.track).toHaveBeenCalledWith(1, 'registered');
-      expect(stateService.setUserState).toHaveBeenCalledWith(1, 'onboarding_language');
+      // Шаг онбординга — в callback_data, а не в памяти
+      expect(stateService.setUserState).not.toHaveBeenCalled();
 
       const [text, extra] = ctx.reply.mock.calls[0];
       expect(text).toBe(t('ru', 'language_select'));
-      const languageButtons = buttons(extra.reply_markup.inline_keyboard).filter((b) => b.callback_data.startsWith('set_language|'));
-      expect(languageButtons.map((b) => b.callback_data)).toEqual(
-        expect.arrayContaining(['set_language|ru', 'set_language|en'])
-      );
+      const data = buttons(extra.reply_markup.inline_keyboard).map((b) => b.callback_data);
+      expect(data).toEqual(expect.arrayContaining(['set_language|ru|ob', 'set_language|en|ob']));
+      expect(data.every((d) => d.startsWith('set_language|') && d.endsWith('|ob'))).toBe(true);
     });
 
     test('new user with unsupported Telegram language gets English onboarding', async () => {
-      userService.getUserById.mockResolvedValue(undefined);
+      userService.registerUser.mockResolvedValue({ id: 1, isNew: true });
       const ctx = createCtx({ languageCode: 'xx' });
 
       await handlers.start(ctx);

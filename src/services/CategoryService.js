@@ -1,10 +1,9 @@
 const logger = require('../utils/logger');
 
 class CategoryService {
-  constructor(categoryRepository, premiumService, expenseRepository, budgetRepository) {
+  constructor(categoryRepository, premiumService, budgetRepository) {
     this.categoryRepository = categoryRepository;
     this.premiumService = premiumService;
-    this.expenseRepository = expenseRepository;
     this.budgetRepository = budgetRepository;
   }
 
@@ -73,17 +72,11 @@ class CategoryService {
       fallback = systemCategories[0];
     }
 
-    // Переназначаем все расходы пользователя с этой категории на "Другое"
-    await this.expenseRepository.reassignExpensesCategory(userId, categoryId, fallback.id);
-
-    // Удаляем категорию и её бюджет (если другой категории с таким именем нет)
-    const deleted = await this.categoryRepository.deleteUserCategory(userId, categoryId);
+    // Переносим траты пользователя в "Другое" и удаляем категорию — только если она его собственная;
+    // затем удаляем её бюджет (если другой категории с таким именем нет)
+    const deleted = await this.categoryRepository.deleteUserCategoryMovingExpenses(userId, categoryId, fallback.id);
     if (deleted) await this.budgetRepository.deleteOrphan(userId, deleted.name);
     return deleted;
-  }
-
-  async getCategoryById(categoryId) {
-    return this.categoryRepository.getCategoryById(categoryId);
   }
 
   async updateUserCategory(userId, categoryId, name, icon = '📦') {

@@ -170,10 +170,10 @@ module.exports = {
     // メッセージ一斉送信
     admin_broadcast_prompt: '📢 *一斉送信*\n\n全ユーザーに送信するメッセージを入力してください（最大3600文字）：',
     admin_broadcast_too_long: '❌ メッセージが長すぎます！\n\n📏 現在の長さ: {current}\n📏 最大: {max}\n📏 減らす必要: {excess}文字',
-    admin_broadcast_confirm: '📢 *一斉送信を確認*\n\n📝 *メッセージ内容:*\n{message}\n\n📏 *長さ:* {length} 文字\n\n⚠️ このメッセージは*全て*のユーザーに送信されます！',
+    admin_broadcast_confirm: '📢 一斉送信を確認\n\n📝 メッセージ内容:\n{message}\n\n📏 長さ: {length} 文字\n\n⚠️ このメッセージは全てのユーザーに送信されます！',
     admin_broadcast_started: '📢 送信を開始しました...',
     admin_broadcast_result: '📢 *送信完了！*\n\n📊 *統計:*\n• 総ユーザー数: {total}\n• 成功: {sent}\n• 失敗: {failed}',
-    admin_broadcast_header: '🔴🔴🔴 *通知！* 🔴🔴🔴',
+    admin_broadcast_header: '🔴🔴🔴 通知！ 🔴🔴🔴',
     
     // 一般メッセージ
     error: 'エラーが発生しました 😞',
@@ -250,9 +250,9 @@ module.exports = {
     family_owner_label: '👑 *所有者:*',
     family_info: '👨‍👩‍👧‍👦 *ファミリーバジェット*\n\nここでは家族や同僚、友人などと一緒に支出を管理できます。\n\n- \uD83D\uDC6A 共同の支出を記録するための共有グループが作成されます。\n- \u2795 各メンバーが支出を追加できます。\n- \uD83D\uDDD1\uFE0F 必要に応じて自分の支出を削除できます。\n- \uD83D\uDCCA すべてのメンバーが利用できる共有統計があります。\n- \uD83D\uDCE4 グループ全体のデータを1つのファイルにエクスポートできます。\n\n共同管理は、混乱を減らし、透明性を高めます。',
     family_created: '✅ 家族「{name}」を作成しました！メンバーを招待できます。',
-    family_left: '✅ 家族「{name}」から退出しました。',
+    family_left: '✅ 家族「{name}」から退出しました。この家族でのあなたの支出は個人の支出になりました。',
     family_deleted: '✅ 家族「{name}」を削除しました。全ての家族支出は個人支出に変わりました。',
-    family_member_removed_notification: '❌ あなたは「{familyName}」家族から削除されました。',
+    family_member_removed_notification: '❌ あなたは「{familyName}」家族から削除されました。この家族でのあなたの支出は個人の支出になりました。',
     
     // 家族メニューボタン
     create_family: '🏠 家族を作成',
@@ -315,7 +315,7 @@ module.exports = {
     family_owner_role: '所有者',
     family_member_role: 'メンバー',
     remove_member: '❌ 削除',
-    confirm_remove_member: '⚠️ *メンバー削除*\n\n{name} を家族から削除しますか？',
+    confirm_remove_member: '⚠️ *メンバー削除*\n\n{name} を家族から削除しますか？この人の家族での支出は個人の支出になり、家族からは見えなくなります。',
     member_removed: '✅ {name} を家族から削除しました。',
     
     // プレミアム機能
@@ -391,9 +391,8 @@ module.exports = {
     // バリデーションエラー
     error_too_long_regular: '❌ 説明が長すぎます！通常ユーザーは80文字までです。',
     error_too_long_premium: '❌ 説明が長すぎます！プレミアムは160文字までです。',
-    error_amount: '❌ 無効な金額です。0.01〜999999の数字を入力してください。',
+    error_amount: '❌ 無効な金額です。0.01から{max}までの数値を入力してください。',
     error_format: '❌ 認識できませんでした。金額から始めてください: `250 コーヒー`、`20 USD タクシー`、または `300` だけ。',
-    error_forbidden_content: '❌ 禁止されている内容が含まれています。',
     error_generic: '❌ エラーが発生しました。後でもう一度お試しください、または管理者に連絡してください。',
     
     // ボタン
@@ -657,5 +656,16 @@ module.exports = {
     command_paysupport: '支払いサポート',
     command_terms: '利用規約',
     command_privacy: 'プライバシーポリシー',
-    payment_outdated: '⚠️ この請求書は古くなっています。価格が変更されました。もう一度プランを開いてください — /limits'
+    payment_outdated: '⚠️ この請求書は古くなっています。価格が変更されました。もう一度プランを開いてください — /limits',
+    security_validation_error: '⚠️ リクエストを処理できませんでした。もう一度お試しいただくか、/start でメニューを開いてください。',
+    expense_draft_outdated: '⌛ この下書きは古くなっています。もう一度支出を送信してください。',
+    family_invitation_hours_left: '⏰ 残り {hours} 時間',
+    family_no_members: 'メンバーがいません',
+    family_already_member: '❌ すでに家族に参加しています。',
+    admin_bug_reports_all_title: '📝 すべてのバグ報告（最新 {count} 件）',
+    admin_bug_reports_new_title: '🆕 新しいバグ報告（最新 {count} 件）',
+    admin_bug_reports_empty: '報告はありません。',
+    payment_subscription_already_active: '🔁 月額サブスクリプションはすでに有効です。2つ目は不要です。プレミアムを前もって延長するには、一回払いのプランをお選びください: /limits',
+    payment_foreign_payer: '⚠️ この支払いリンクは別のユーザー向けに作成されたものです。ご自身でボットのプランを開いてください — /limits',
+    premium_expired_granted: '🌙 プレミアムの期間が終了しました。支出と収入の記録は引き続き無料です。予算、詳細サマリー、カスタムカテゴリー、家族、記録の編集はプレミアムで利用できます。いつでも延長できます。'
 };

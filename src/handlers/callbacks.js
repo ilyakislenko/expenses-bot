@@ -112,8 +112,10 @@ class CallbackHandlers {
   // Выбранный час сохраняется и включает сводку
   async handleSetDailySummaryHour(ctx) {
     const userId = ctx.from.id;
+    const hour = parseInt(ctx.callbackQuery.data.split('|')[1], 10);
+    if (!(hour >= 0 && hour <= 23)) return ctx.answerCbQuery().catch(() => {}); // подменённая кнопка
     const userLanguage = await this.userService.getUserLanguage(userId);
-    await this.userService.setDailySummaryHour(userId, parseInt(ctx.callbackQuery.data.split('|')[1], 10));
+    await this.userService.setDailySummaryHour(userId, hour);
     await ctx.answerCbQuery(this.localizationService.getText(userLanguage, 'daily_summary_hour_set'));
     await this.handleConfigureReminderHours(ctx);
   }
@@ -126,6 +128,7 @@ class CallbackHandlers {
       ? [...settings.reminder_hours]
       : [10, 14, 18];
     const hour = parseInt(ctx.callbackQuery.data.split('|')[1], 10);
+    if (!(hour >= 0 && hour <= 23)) return ctx.answerCbQuery().catch(() => {}); // подменённая кнопка
     const idx = hours.indexOf(hour);
     if (idx >= 0) {
       hours.splice(idx, 1);
@@ -224,17 +227,16 @@ class CallbackHandlers {
       keyboard.push([{ text: backText, callback_data: 'premium_subscription' }]);
 
       const body = text.trim();
-      if (ctx.updateType === 'callback_query') {
-        await ctx.editMessageText(body, { reply_markup: { inline_keyboard: keyboard } });
-        await ctx.answerCbQuery();
-      } else {
-        await ctx.reply(body, { reply_markup: { inline_keyboard: keyboard } });
-      }
+      if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
+      await respond(ctx, body, { reply_markup: { inline_keyboard: keyboard } });
     } catch (e) {
+      console.error('Error showing purchases:', e);
+      if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
       const errText = this.localizationService.getText(userLanguage, 'error');
       await ctx.reply(errText);
     }
   }
+
   async handleClearReminderHours(ctx) {
     const userId = ctx.from.id;
     const settings = await this.userService.getReminderSettings(userId);
@@ -274,9 +276,8 @@ class CallbackHandlers {
     try {
       const userId = ctx.from.id;
       userLanguage = await this.userService.getUserLanguage(userId);
-      
-
-      
+      // Черновик этой карточки больше не нужен — старые кнопки категорий его не запишут
+      this.stateService.deletePendingExpense(userId, ctx.callbackQuery.message?.message_id);
       const canceledText = this.localizationService.getText(userLanguage, 'callback_canceled');
       const expenseCanceledText = this.localizationService.getText(userLanguage, 'callback_expense_canceled');
       
@@ -287,42 +288,43 @@ class CallbackHandlers {
     }
   }
 
+  // time|<час>|<минуты>[|ob]: время пользователя на момент показа клавиатуры; `|ob` — последний шаг онбординга
   async handleTimezoneSelection(ctx) {
     const userId = ctx.from.id;
-    let userLanguage = 'en'; // fallback язык
-    userLanguage = await this.userService.getUserLanguage(userId);
-    const backText = this.localizationService.getText(userLanguage, 'button_back');
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const [, hourText, minuteText, onboardingFlag] = ctx.callbackQuery.data.split('|');
+    const hour = Number(hourText);
+    const minute = Number(minuteText);
+    const onboarding = onboardingFlag === 'ob';
     try {
-      // time|<часы>|<минуты> — текущее время пользователя, по нему вычисляем часовой пояс
-      const [, hour, minute] = ctx.callbackQuery.data.split('|');
       const { calculateTimezoneFromUserTime, getTimezoneDisplayName } = require('../utils/timezoneCalculator');
-      const timezone = calculateTimezoneFromUserTime(parseInt(hour, 10), parseInt(minute, 10), new Date(), { language: userLanguage });
-      const displayName = getTimezoneDisplayName(timezone);
-
+      // Минуты на кнопках — момент показа клавиатуры, поэтому и опорное время — дата сообщения, а не нажатия
+      const message = ctx.callbackQuery.message;
+      const shownAt = message && (message.edit_date || message.date);
+      const referenceTime = shownAt ? new Date(shownAt * 1000) : new Date();
+      // Бросает RangeError на нечисловых и выходящих за 0–23 / 0–59 значениях: подменённая кнопка ничего не сохраняет
+      const timezone = calculateTimezoneFromUserTime(hour, minute, referenceTime, { language: userLanguage });
       await this.userService.setUserTimezone(userId, timezone);
 
-      const timezoneSetText = this.localizationService.getText(userLanguage, 'timezone_set', { timezone: displayName });
+      const displayName = getTimezoneDisplayName(timezone);
       const timezoneUpdatedText = this.localizationService.getText(userLanguage, 'timezone_updated', {
-        time: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,
+        time: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
         timezone: displayName
       });
-
-      await ctx.answerCbQuery(timezoneSetText);
-      const currentState = this.stateService.getUserState(userId);
-      if (currentState === 'onboarding_timezone') {
-        // Завершаем онбординг и показываем главное меню
-        this.stateService.clearUserState(userId);
+      await ctx.answerCbQuery(this.localizationService.getText(userLanguage, 'timezone_set', { timezone: displayName }));
+      if (onboarding) {
+        // Убираем кнопки онбординга и завершаем его: приветствие с главной клавиатурой
+        await respond(ctx, timezoneUpdatedText, { parse_mode: 'Markdown' });
         await this.commandHandlers.start(ctx, { afterOnboarding: true });
       } else {
-        await ctx.editMessageText(timezoneUpdatedText, {
+        await respond(ctx, timezoneUpdatedText, {
           parse_mode: 'Markdown',
-          reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'back_to_settings' }]] }
+          reply_markup: { inline_keyboard: [[{ text: this.localizationService.getText(userLanguage, 'button_back'), callback_data: 'back_to_settings' }]] }
         });
       }
     } catch (error) {
       console.error('Error handling timezone selection:', error);
-      const timezoneErrorText = this.localizationService.getText(userLanguage, 'timezone_error');
-      await ctx.answerCbQuery(timezoneErrorText);
+      await ctx.answerCbQuery(this.localizationService.getText(userLanguage, 'timezone_error')).catch(() => {});
     }
   }
 
@@ -339,62 +341,52 @@ class CallbackHandlers {
     }
   }
 
+  // set_language|<код>[|ob]: `|ob` — первый шаг онбординга, после него выбор валюты
   async handleLanguageSelection(ctx) {
     const userId = ctx.from.id;
-    let userLanguage = 'en'; // fallback язык
-    userLanguage = await this.userService.getUserLanguage(userId);
-    const backText = this.localizationService.getText(userLanguage, 'button_back');
-    
+    const userLanguage = await this.userService.getUserLanguage(userId);
+
     // Автоматическая регистрация пользователя, если он еще не зарегистрирован
     await this.userService.registerUser(userId, ctx.from.username, ctx.from.first_name);
-    
+
     try {
-      const callbackData = ctx.callbackQuery.data;
-      const [, languageCode] = callbackData.split('|');
-      
+      const [, languageCode, onboardingFlag] = ctx.callbackQuery.data.split('|');
+
       // Проверяем, поддерживается ли язык
       if (!this.localizationService.isLanguageSupported(languageCode)) {
         const languageNotSupportedText = this.localizationService.getText(userLanguage, 'language_not_supported');
         await ctx.answerCbQuery(languageNotSupportedText);
         return;
       }
-      
-      // Устанавливаем язык пользователя
+
       await this.userService.setUserLanguage(userId, languageCode);
-      
-      // Если это шаг onboarding языка — сразу просим выбрать валюту
-      const currentState = this.stateService.getUserState(userId);
-      if (currentState === 'onboarding_language') {
-        this.stateService.setUserState(userId, 'onboarding_currency');
-        const currencyPrompt = this.localizationService.getText(languageCode, 'currency_select');
-        const currencyKeyboard = require('../utils/constants').generateCurrencyKeyboard(this.localizationService, languageCode);
-        await ctx.answerCbQuery(this.localizationService.getText(languageCode, 'language_set'));
-        await ctx.editMessageText(currencyPrompt, {
-          reply_markup: { inline_keyboard: currencyKeyboard }
-        });
+      const languageSetMessage = this.localizationService.getText(languageCode, 'language_set');
+      await ctx.answerCbQuery(languageSetMessage);
+
+      // Шаг онбординга — сразу просим выбрать валюту
+      if (onboardingFlag === 'ob') {
+        await this.commandHandlers.currency(ctx, { onboarding: true });
         return;
-      } else {
-        // Обычное изменение языка в настройках
-        const languageSetMessage = this.localizationService.getText(languageCode, 'language_set');
-        await ctx.answerCbQuery(languageSetMessage);
-        await ctx.editMessageText(languageSetMessage, {
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: backText, callback_data: 'back_to_settings' }]
-            ]
-          }
-        });
-        
-        // Обновляем reply-клавиатуру на новом языке
-        await ctx.telegram.sendMessage(ctx.chat.id,
-          this.localizationService.getText(languageCode, 'keyboard_updated'),
-          { reply_markup: await this.commandHandlers.mainKeyboardMarkup(userId, languageCode) }
-        );
       }
+
+      // Обычное изменение языка в настройках
+      await respond(ctx, languageSetMessage, {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: this.localizationService.getText(languageCode, 'button_back'), callback_data: 'back_to_settings' }]
+          ]
+        }
+      });
+
+      // Обновляем reply-клавиатуру на новом языке
+      await ctx.telegram.sendMessage(ctx.chat.id,
+        this.localizationService.getText(languageCode, 'keyboard_updated'),
+        { reply_markup: await this.commandHandlers.mainKeyboardMarkup(userId, languageCode) }
+      );
     } catch (error) {
       console.error('Error handling language selection:', error);
       const languageChangeErrorText = this.localizationService.getText(userLanguage, 'language_change_error');
-      await ctx.answerCbQuery(languageChangeErrorText);
+      await ctx.answerCbQuery(languageChangeErrorText).catch(() => {});
     }
   }
 
@@ -442,7 +434,7 @@ class CallbackHandlers {
       const cancelText = this.localizationService.getText(userLanguage, 'family_cancel');
       
       await ctx.answerCbQuery();
-      await ctx.editMessageText(enterFamilyNameText, {
+      await respond(ctx, enterFamilyNameText, {
         reply_markup: {
           inline_keyboard: [
             [{ text: cancelText, callback_data: 'family_cancel' }]
@@ -477,7 +469,7 @@ class CallbackHandlers {
       const cancelText = this.localizationService.getText(userLanguage, 'family_cancel');
       
       await ctx.answerCbQuery();
-      await ctx.editMessageText(enterInviteCodeText, {
+      await respond(ctx, enterInviteCodeText, {
         reply_markup: {
           inline_keyboard: [
             [{ text: cancelText, callback_data: 'family_cancel' }]
@@ -534,12 +526,11 @@ class CallbackHandlers {
         message = `${activeInvitationsText}\n\n`;
         
         invitations.forEach((invitation, index) => {
-          const inviteeName = invitation.invitee_username || invitation.invitee_first_name || 'Unknown';
-          const expiresAt = new Date(invitation.expires_at_utc);
-          const timeLeft = Math.ceil((expiresAt - new Date()) / (1000 * 60 * 60)); // часы
+          const inviteeName = invitation.invitee_username ? `@${invitation.invitee_username}` : (invitation.invitee_first_name || 'Unknown');
+          const hoursLeft = Math.max(1, Math.ceil((new Date(invitation.expires_at_utc) - new Date()) / (1000 * 60 * 60)));
           
-          message += `${index + 1}. @${inviteeName} (${invitation.invite_code})\n`;
-          message += `   ⏰ ${timeLeft} ч. осталось\n\n`;
+          message += `${index + 1}. ${inviteeName} (${invitation.invite_code})\n`;
+          message += `   ${this.localizationService.getText(userLanguage, 'family_invitation_hours_left', { hours: hoursLeft })}\n\n`;
           
           // Добавляем кнопку для отмены приглашения
           const cancelText = this.localizationService.getText(userLanguage, 'cancel_invitation');
@@ -554,7 +545,7 @@ class CallbackHandlers {
       keyboard.push([{ text: backText, callback_data: 'family_menu' }]);
       
       await ctx.answerCbQuery();
-      await ctx.editMessageText(message, {
+      await respond(ctx, message, {
         reply_markup: {
           inline_keyboard: keyboard
         }
@@ -602,7 +593,7 @@ class CallbackHandlers {
       const cancelText = this.localizationService.getText(userLanguage, 'family_cancel');
       
       await ctx.answerCbQuery();
-      await ctx.editMessageText(enterUsernameText, {
+      await respond(ctx, enterUsernameText, {
         reply_markup: {
           inline_keyboard: [
             [{ text: cancelText, callback_data: 'family_cancel' }]
@@ -655,14 +646,18 @@ class CallbackHandlers {
       let keyboard = [];
       
       if (members && members.length > 0) {
+        // Дата вступления — в языке и часовом поясе пользователя
+        const intlLocale = { jp: 'ja', kz: 'kk' }[userLanguage] || userLanguage;
+        const timezone = await this.userService.getUserTimezone(userId);
+        const dateFormat = new Intl.DateTimeFormat(intlLocale, { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: timezone });
         members.forEach(member => {
           const role = member.role === 'owner' ? 
             this.localizationService.getText(userLanguage, 'family_owner_role') : 
             this.localizationService.getText(userLanguage, 'family_member_role');
-          const name = member.username ? `@${member.username}` : member.first_name;
-          const date = new Date(member.joined_at_utc).toLocaleDateString('ru-RU');
+          const name = member.username ? `@${member.username}` : (member.first_name || 'Unknown');
+          const date = dateFormat.format(new Date(member.joined_at_utc));
           
-          message += `• ${name} (${role}) - ${date}\n`;
+          message += `• ${this.formatter.escapeMarkdown(name)} (${role}) - ${date}\n`;
           
           // Добавляем кнопку исключения только для участников (не для владельца)
           if (member.role !== 'owner') {
@@ -674,14 +669,16 @@ class CallbackHandlers {
           }
         });
       } else {
-        message += 'Нет участников';
+        message += this.localizationService.getText(userLanguage, 'family_no_members');
       }
       
       // Добавляем кнопку "Назад"
       keyboard.push([{ text: backText, callback_data: 'family_menu' }]);
       
       await ctx.answerCbQuery();
-      await ctx.editMessageText(message, {
+      // Заголовок family_members_title — жирный Markdown; имена экранированы
+      await respond(ctx, message, {
+        parse_mode: 'Markdown',
         reply_markup: {
           inline_keyboard: keyboard
         }
@@ -747,9 +744,9 @@ class CallbackHandlers {
         return;
       }
       
-      // Получаем информацию об удаляемом участнике
-      const memberInfo = await this.userService.getUserById(memberId);
-      const memberName = memberInfo.username || memberInfo.first_name || 'Unknown';
+      // Только участник семьи владельца и не сам владелец: по чужому id профиль не показываем
+      const member = await this.familyService.getRemovableMember(userId, memberId);
+      const memberName = member.username || member.first_name || 'Unknown';
       
       // Показываем подтверждение
       const confirmText = this.localizationService.getText(userLanguage, 'confirm_remove_member', { name: this.formatter.escapeMarkdown(memberName) });
@@ -757,12 +754,12 @@ class CallbackHandlers {
       const cancelText = this.localizationService.getText(userLanguage, 'family_cancel');
       
       await ctx.answerCbQuery();
-      await ctx.editMessageText(confirmText, {
+      await respond(ctx, confirmText, {
         parse_mode: 'Markdown',
         reply_markup: {
           inline_keyboard: [
             [
-              { text: confirmButtonText, callback_data: `confirm_remove_member|${memberId}` },
+              { text: confirmButtonText, callback_data: `confirm_remove_member|${member.id}` },
               { text: cancelText, callback_data: 'family_members' }
             ]
           ]
@@ -770,10 +767,20 @@ class CallbackHandlers {
       });
     } catch (error) {
       console.error('Error handling remove member:', error);
-      const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
-      const errorText = this.localizationService.getText(userLanguage, 'error');
-      await ctx.answerCbQuery(errorText);
+      await ctx.answerCbQuery(await this.removeMemberErrorText(ctx, error)).catch(() => {});
     }
+  }
+
+  // Себя исключить нельзя (кнопки нет — только подделанный callback), чужого — «не найден»
+  async removeMemberErrorText(ctx, error) {
+    const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
+    let key = 'error';
+    if (error.message.includes('Cannot remove yourself')) {
+      key = 'not_authorized';
+    } else if (error.message.includes('not a member of this family')) {
+      key = 'user_not_found';
+    }
+    return this.localizationService.getText(userLanguage, key);
   }
 
   async handleConfirmRemoveMember(ctx) {
@@ -805,19 +812,19 @@ class CallbackHandlers {
         return;
       }
       
-      // Исключаем участника
-      const result = await this.familyService.removeMemberFromFamily(userId, memberId);
+      // Имя берём до исключения: проверка членства — та же, что и на экране подтверждения
+      const member = await this.familyService.getRemovableMember(userId, memberId);
+      const memberName = member.username || member.first_name || 'Unknown';
       
-      // Получаем информацию об удаленном участнике для сообщения
-      const memberInfo = await this.userService.getUserById(memberId);
-      const memberName = memberInfo.username || memberInfo.first_name || 'Unknown';
+      // Исключаем участника; его траты в этой семье становятся личными
+      await this.familyService.removeMemberFromFamily(userId, member.id);
       
       // Показываем сообщение об успехе
       const successText = this.localizationService.getText(userLanguage, 'member_removed', { name: this.formatter.escapeMarkdown(memberName) });
       const backText = this.localizationService.getText(userLanguage, 'button_back');
       
       await ctx.answerCbQuery();
-      await ctx.editMessageText(successText, {
+      await respond(ctx, successText, {
         parse_mode: 'Markdown',
         reply_markup: {
           inline_keyboard: [
@@ -827,9 +834,7 @@ class CallbackHandlers {
       });
     } catch (error) {
       console.error('Error handling confirm remove member:', error);
-      const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
-      const errorText = this.localizationService.getText(userLanguage, 'error');
-      await ctx.answerCbQuery(errorText);
+      await ctx.answerCbQuery(await this.removeMemberErrorText(ctx, error)).catch(() => {});
     }
   }
 
@@ -968,7 +973,7 @@ class CallbackHandlers {
       const backText = this.localizationService.getText(userLanguage, 'button_back');
       
       await ctx.answerCbQuery();
-      await ctx.editMessageText(familyLeftText, {
+      await respond(ctx, familyLeftText, {
         parse_mode: 'Markdown',
         reply_markup: {
           inline_keyboard: [
@@ -1019,7 +1024,7 @@ class CallbackHandlers {
       } else if (error.message.includes('expired')) {
         errorText = this.localizationService.getText(userLanguage, 'invitation_expired');
       } else if (error.message.includes('already a member')) {
-        errorText = this.localizationService.getText(userLanguage, 'user_already_in_family');
+        errorText = this.localizationService.getText(userLanguage, 'family_already_member');
       } else {
         errorText = this.localizationService.getText(userLanguage, 'error');
       }
@@ -1139,76 +1144,67 @@ class CallbackHandlers {
   }
 
   async handlePremiumTariffs(ctx) {
+    // Ссылки на оплату создаются 3–4 запросами к Telegram — индикатор загрузки закрываем сразу
+    await ctx.answerCbQuery().catch(() => {});
     try {
       const userId = ctx.from.id;
       const userLanguage = await this.userService.getUserLanguage(userId);
       await this.funnelService.track(userId, 'tariffs_viewed');
       const subscription = await this.userService.getActiveRecurringSubscription(userId);
       
-      const { PREMIUM_TARIFFS, generatePremiumPaymentButtons } = require('../utils/constants');
+      const { PREMIUM_TARIFFS, tariffDiscount, generatePremiumPaymentButtons } = require('../utils/constants');
       
       const tariffsTitle = this.localizationService.getText(userLanguage, 'premium_tariffs_title');
       const paymentInfo = this.localizationService.getText(userLanguage, 'premium_payment_info');
       const renewalInfo = this.localizationService.getText(userLanguage, 'premium_renewal_info');
       const starsInfo = this.localizationService.getText(userLanguage, 'premium_stars_info');
+      const perMonth = this.localizationService.getText(userLanguage, 'per_month');
 
       const backButton = this.localizationService.getText(userLanguage, 'premium_back_button');
       
-      // Формируем строки тарифов: звезды + цена в базовой валюте пользователя
+      // Формируем строки тарифов: звезды + цена в базовой валюте пользователя.
+      // Зачёркнутая цена и скидка — относительно помесячной оплаты (месячный тариф × число месяцев).
       const user = await this.userService.getUserById(userId);
       const userCurrency = user.currency || 'RUB';
+      const month = PREMIUM_TARIFFS.MONTH_1;
+      let rate = 1;
+      let priceCurrency = 'USD';
+      try {
+        rate = (await this.formatter.currencyUtils.convert(month.usd, 'USD', userCurrency)) / month.usd;
+        priceCurrency = userCurrency;
+      } catch (e) {
+        // если нет курсов, показываем USD как запасной вариант
+      }
+      const formatPrice = (usd) => this.formatter.formatAmount(usd * rate, priceCurrency);
+      const intlLocale = { jp: 'ja', kz: 'kk' }[userLanguage] || userLanguage;
+      const formatStars = (value) => {
+        try {
+          return new Intl.NumberFormat(intlLocale, { maximumFractionDigits: 1 }).format(value);
+        } catch (e) {
+          return String(Math.round(value * 10) / 10);
+        }
+      };
+
       const linesArr = [];
       const tariffsArr = [PREMIUM_TARIFFS.MONTH_1, PREMIUM_TARIFFS.MONTH_3, PREMIUM_TARIFFS.MONTH_6, PREMIUM_TARIFFS.MONTH_12];
       for (const t of tariffsArr) {
         const durationKey = t.duration === 30 ? 'tariff_item_30' : t.duration === 90 ? 'tariff_item_90' : t.duration === 180 ? 'tariff_item_180' : 'tariff_item_365';
         const durationLabel = this.localizationService.getText(userLanguage, durationKey);
-        let priceFormatted = '';
-        try {
-          const priceInCurrency = await this.formatter.currencyUtils.convert(Number(t.usd), 'USD', userCurrency);
-          priceFormatted = this.formatter.formatAmount(priceInCurrency, userCurrency);
-        } catch (e) {
-          // если нет курсов, показываем USD как запасной вариант
-          priceFormatted = this.formatter.formatAmount(Number(t.usd), 'USD');
-        }
+        const discount = tariffDiscount(t);
         let line = `- ${durationLabel} — `;
-        // Stars part with original if exists
-        if (t.originalStars) {
-          line += `<s>${t.originalStars}</s> ${t.stars} ⭐`;
+        if (discount.percent > 0) {
+          const discountText = this.localizationService.getText(userLanguage, 'discount_save', { percent: discount.percent });
+          line += `<s>${discount.fullStars}</s> ${t.stars} ⭐ / <s>${formatPrice(discount.fullUsd)}</s> ${formatPrice(t.usd)} (${discountText})`;
         } else {
-          line += `${t.stars} ⭐`;
+          line += `${t.stars} ⭐ / ${formatPrice(t.usd)}`;
         }
-        // Currency part with possible discount/original
-        if (typeof t.discount === 'number' && t.discount > 0) {
-          let originalFormatted = '';
-          try {
-            const originalUsd = Number(t.usd) / (1 - t.discount / 100);
-            const originalInCurrency = await this.formatter.currencyUtils.convert(originalUsd, 'USD', userCurrency);
-            originalFormatted = this.formatter.formatAmount(originalInCurrency, userCurrency);
-          } catch (e) {
-            const originalUsd = Number(t.usd) / (1 - t.discount / 100);
-            originalFormatted = this.formatter.formatAmount(originalUsd, 'USD');
-          }
-          const discountText = this.localizationService.getText(userLanguage, 'discount_save', { percent: t.discount });
-          line += ` / <s>${originalFormatted}</s> ${priceFormatted} (${discountText})`;
-        } else {
-          line += ` / ${priceFormatted}`;
+        // Эффективная цена в месяц — только для многомесячных тарифов (у месячного она совпадает с ценой)
+        if (t.months > 1) {
+          line += `\n  <i>≈ ${formatStars(t.stars / t.months)} ⭐ ${perMonth} • ${formatPrice(t.usd / t.months)} ${perMonth}</i>`;
         }
         linesArr.push(line);
-        // Добавляем строку с эффективной ценой в месяц (звезды и валюта)
-        try {
-          const months = t.duration === 365 ? 12 : (t.duration === 180 ? 6 : (t.duration === 90 ? 3 : 1));
-          const priceInCurrency = await this.formatter.currencyUtils.convert(Number(t.usd), 'USD', userCurrency);
-          const monthlyCurrency = priceInCurrency / months;
-          const monthlyCurrencyFormatted = this.formatter.formatAmount(monthlyCurrency, userCurrency);
-          const monthlyStarsRaw = Number(t.stars) / months;
-          const monthlyStars = Number.isInteger(monthlyStarsRaw) ? `${monthlyStarsRaw}` : monthlyStarsRaw.toFixed(1);
-          const perMonth = this.localizationService.getText(userLanguage, 'per_month');
-          linesArr.push(`  <i>≈ ${monthlyStars} ⭐ ${perMonth} • ${monthlyCurrencyFormatted} ${perMonth}</i>\n`);
-        } catch (_) {
-          // ignore
-        }
       }
-      const lines = linesArr.join('\n').slice(0, -1);
+      const lines = linesArr.join('\n\n');
 
       let message = `${tariffsTitle}\n\n${lines}\n\n${paymentInfo}\n\n${renewalInfo}\n\n${starsInfo}`;
       if (subscription) {
@@ -1243,7 +1239,7 @@ class CallbackHandlers {
         [{ text: backButton, callback_data: 'premium_subscription' }]
       ];
       
-      await ctx.editMessageText(message, {
+      await respond(ctx, message, {
         parse_mode: 'HTML',
         reply_markup: {
           inline_keyboard: inlineKeyboard
@@ -1252,62 +1248,42 @@ class CallbackHandlers {
     } catch (error) {
       console.error('Error handling premium tariffs:', error);
       const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
-      const errorText = this.localizationService.getText(userLanguage, 'error');
-      await ctx.answerCbQuery(errorText);
+      await ctx.reply(this.localizationService.getText(userLanguage, 'error')).catch(() => {});
     }
   }
 
   async handlePremiumWhyPaid(ctx) {
-    try {
-      const userId = ctx.from.id;
-      const userLanguage = await this.userService.getUserLanguage(userId);
-      
-      const whyPaidTitle = this.localizationService.getText(userLanguage, 'premium_why_paid_title');
-      const whyPaidText = this.localizationService.getText(userLanguage, 'premium_why_paid_text');
-      const backButton = this.localizationService.getText(userLanguage, 'premium_back_button');
-      
-      const message = `${whyPaidTitle}\n\n${whyPaidText}`;
-      
-      const inlineKeyboard = [
-        [{ text: backButton, callback_data: 'premium_subscription' }]
-      ];
-      
-      await ctx.editMessageText(message, {
-        parse_mode: 'HTML',
-        reply_markup: {
-          inline_keyboard: inlineKeyboard
-        }
-      });
-    } catch (error) {
-      console.error('Error handling premium why paid:', error);
-      const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
-      const errorText = this.localizationService.getText(userLanguage, 'error');
-      await ctx.answerCbQuery(errorText);
-    }
+    await ctx.answerCbQuery().catch(() => {});
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+
+    const whyPaidTitle = this.localizationService.getText(userLanguage, 'premium_why_paid_title');
+    const whyPaidText = this.localizationService.getText(userLanguage, 'premium_why_paid_text');
+    const backButton = this.localizationService.getText(userLanguage, 'premium_back_button');
+
+    await respond(ctx, `${whyPaidTitle}\n\n${whyPaidText}`, {
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [[{ text: backButton, callback_data: 'premium_subscription' }]]
+      }
+    });
   }
 
   async handlePremiumDonate(ctx) {
-    try {
-      const userId = ctx.from.id;
-      const userLanguage = await this.userService.getUserLanguage(userId);
-      const title = this.localizationService.getText(userLanguage, 'donate_prompt_title');
-      const text = this.localizationService.getText(userLanguage, 'donate_prompt_text');
-      const backText = this.localizationService.getText(userLanguage, 'premium_back_button');
-      
-      // Ставим состояние ожидания доната
-      this.stateService.setUserState(userId, 'entering_donation');
-      
-      await ctx.answerCbQuery();
-      await ctx.editMessageText(`${title}\n\n${text}`, {
-        parse_mode: 'HTML',
-        reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'premium_subscription' }]] }
-      });
-    } catch (error) {
-      console.error('Error handling premium donate:', error);
-      const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
-      const errorText = this.localizationService.getText(userLanguage, 'error');
-      await ctx.answerCbQuery(errorText);
-    }
+    await ctx.answerCbQuery().catch(() => {});
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const title = this.localizationService.getText(userLanguage, 'donate_prompt_title');
+    const text = this.localizationService.getText(userLanguage, 'donate_prompt_text');
+    const backText = this.localizationService.getText(userLanguage, 'premium_back_button');
+
+    // Ставим состояние ожидания доната
+    this.stateService.setUserState(userId, 'entering_donation');
+
+    await respond(ctx, `${title}\n\n${text}`, {
+      parse_mode: 'HTML',
+      reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'premium_subscription' }]] }
+    });
   }
 
   async handlePremiumSubscription(ctx) {
@@ -1351,7 +1327,7 @@ class CallbackHandlers {
       ];
 
       await ctx.answerCbQuery();
-      await ctx.editMessageText(`${title}\n\n${info}\n\n${example}`, {
+      await respond(ctx, `${title}\n\n${info}\n\n${example}`, {
         reply_markup: { inline_keyboard: keyboard }
       });
     } catch (error) {
@@ -1378,7 +1354,7 @@ class CallbackHandlers {
       const backText = this.localizationService.getText(userLanguage, 'button_back');
 
       await ctx.answerCbQuery();
-      await ctx.editMessageText(`${enterName}\n\n${example}`, {
+      await respond(ctx, `${enterName}\n\n${example}`, {
         reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'custom_categories' }]] }
       });
     } catch (error) {
@@ -1419,7 +1395,7 @@ class CallbackHandlers {
       keyboard.push([{ text: backText, callback_data: 'custom_categories' }]);
 
       await ctx.answerCbQuery();
-      await ctx.editMessageText(message, { reply_markup: { inline_keyboard: keyboard } });
+      await respond(ctx, message, { reply_markup: { inline_keyboard: keyboard } });
     } catch (error) {
       console.error('Error opening manage custom categories:', error);
       await ctx.answerCbQuery(this.localizationService.getText(userLanguage, 'error'));
@@ -1432,10 +1408,13 @@ class CallbackHandlers {
     try {
       const [, idStr] = ctx.callbackQuery.data.split('|');
       const deleted = await this.categoryService.deleteUserCategory(userId, parseInt(idStr, 10));
+      if (!deleted) {
+        return ctx.answerCbQuery(this.localizationService.getText(userLanguage, 'callback_data_not_found'));
+      }
       const backText = this.localizationService.getText(userLanguage, 'button_back');
       const deletedText = this.localizationService.getText(userLanguage, 'custom_categories_deleted');
       await ctx.answerCbQuery(deletedText);
-      await ctx.editMessageText(deletedText, { reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'custom_categories_manage' }]] } });
+      await respond(ctx, deletedText, { reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'custom_categories_manage' }]] } });
     } catch (error) {
       console.error('Error deleting custom category:', error);
       await ctx.answerCbQuery(this.localizationService.getText(userLanguage, 'error'));
@@ -1460,7 +1439,7 @@ class CallbackHandlers {
       const example = this.localizationService.getText(userLanguage, 'custom_categories_example');
       const backText = this.localizationService.getText(userLanguage, 'button_back');
       await ctx.answerCbQuery();
-      await ctx.editMessageText(`${enterName}\n\n${example}`, { reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'custom_categories_manage' }]] } });
+      await respond(ctx, `${enterName}\n\n${example}`, { reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'custom_categories_manage' }]] } });
     } catch (error) {
       console.error('Error opening rename custom category:', error);
       await ctx.answerCbQuery(this.localizationService.getText(userLanguage, 'error'));

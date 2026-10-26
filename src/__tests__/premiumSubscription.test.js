@@ -212,8 +212,9 @@ describe('Premium Subscription Menu', () => {
     it('should display premium tariffs information', async () => {
       const mockCtx = {
         from: { id: 123456 },
-        editMessageText: jest.fn(),
-        answerCbQuery: jest.fn()
+        callbackQuery: { data: 'premium_tariffs', message: { message_id: 1 } },
+        editMessageText: jest.fn().mockResolvedValue(true),
+        answerCbQuery: jest.fn().mockResolvedValue(true)
       };
 
       // Mock PaymentService
@@ -255,7 +256,9 @@ describe('Premium Subscription Menu', () => {
     it('should display why service is paid information', async () => {
       const mockCtx = {
         from: { id: 123456 },
-        editMessageText: jest.fn()
+        callbackQuery: { data: 'premium_why_paid', message: { message_id: 1 } },
+        editMessageText: jest.fn().mockResolvedValue(true),
+        answerCbQuery: jest.fn().mockResolvedValue(true)
       };
 
       jest.spyOn(localizationService, 'getText').mockImplementation((lang, key) => {

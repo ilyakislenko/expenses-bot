@@ -139,6 +139,11 @@ constructor({ expenseService, userService, premiumService, familyService, catego
           return ctx.reply(editCanceledText);
         }
         const expenseId = this.stateService.getUserEditState(ctx.from.id);
+        // Изменение записей — премиум; он мог закончиться между нажатием кнопки и вводом
+        if (!(await this.premiumService.isPremiumUser(userId))) {
+          this.stateService.deleteUserEditState(ctx.from.id);
+          return ctx.reply(this.localizationService.getText(userLanguage, 'premium_required'));
+        }
         const userLimits = await this.premiumService.getUserLimits(userId);
         const parsed = this.validator.parseEditExpense(ctx.message.text, userLimits.MAX_DESCRIPTION_LENGTH);
         if (!parsed.isValid) {
@@ -273,7 +278,9 @@ constructor({ expenseService, userService, premiumService, familyService, catego
       });
     } catch (error) {
       console.error('Error creating family:', error);
-      const errorText = this.localizationService.getText(userLanguage, 'error');
+      // Уже владелец или участник семьи (в том числе гонка с принятием приглашения)
+      const key = /already (owns|a member)/.test(error.message) ? 'family_already_member' : 'error';
+      const errorText = this.localizationService.getText(userLanguage, key);
       await ctx.reply(errorText);
     }
   }
@@ -300,10 +307,14 @@ constructor({ expenseService, userService, premiumService, familyService, catego
       console.error('Error joining family:', error);
       let errorText;
       
-      if (error.message.includes('not found')) {
+      if (error.message.includes('not found') || error.message.includes('Invalid invitation code')) {
         errorText = this.localizationService.getText(userLanguage, 'invitation_not_found');
+      } else if (error.message.includes('not pending')) {
+        errorText = this.localizationService.getText(userLanguage, 'invitation_not_pending');
       } else if (error.message.includes('expired')) {
         errorText = this.localizationService.getText(userLanguage, 'invitation_expired');
+      } else if (error.message.includes('already a member')) {
+        errorText = this.localizationService.getText(userLanguage, 'family_already_member');
       } else {
         errorText = this.localizationService.getText(userLanguage, 'error');
       }

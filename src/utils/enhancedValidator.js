@@ -1,40 +1,42 @@
 const logger = require('./logger');
 const currencyConfig = require('../config/currencies');
 
+// Сумма в начале ввода: «1500», «1500,5», «1 500», «1 000,50» — пробел (в т.ч. неразрывный) отделяет тысячи.
+// Группа 1 — целая часть, 2 — дробная, 3 — остаток строки.
+const MONEY_PREFIX = /^(\d{1,3}(?:[ \u00a0\u202f]\d{3})+|\d+)([.,]\d{1,2})?(?=$|\s|[$€₽₸₾₺₹฿])\s*(.*)$/su;
+// Правка записи: сумма отделена от описания пробелом, знаков после запятой сколько угодно
+const EDIT_PREFIX = /^(\d{1,3}(?:[ \u00a0\u202f]\d{3})+|\d+)([.,]\d+)?(?=$|\s)\s*(.*)$/su;
+
+function toAmount(integerPart, fraction) {
+  return parseFloat(integerPart.replace(/[ \u00a0\u202f]/g, '') + (fraction || '').replace(',', '.'));
+}
+
 class EnhancedValidator {
   constructor() {
     // Конфигурация лимитов
     this.limits = {
-      maxAmount: 999999,
+      // Предел колонки expenses.amount DECIMAL(10,2)
+      maxAmount: 99999999,
       minAmount: 0.01,
       maxDescriptionLength: 100,
       minDescriptionLength: 1,
-      maxCategoryNameLength: 30,
-      maxUsernameLength: 32,
-      maxFirstNameLength: 64,
-      maxLastNameLength: 64
+      maxCategoryNameLength: 30
     };
 
     // Паттерны для валидации
     this.patterns = {
-      amount: /^[0-9]+([.,][0-9]{1,2})?$/,
       // Разрешаем любые символы, кроме явно запрещенных
       description: /^[^\x00-\x1F\x7F<>]+$/,
       // Разрешаем любые символы, кроме явно запрещенных
       categoryName: /^[^\x00-\x1F\x7F<>]+$/,
-      username: /^[a-zA-Z0-9_]{5,32}$/,
-      // Разрешаем любые символы, кроме явно запрещенных
-      firstName: /^[^\x00-\x1F\x7F<>]+$/,
-      lastName: /^[^\x00-\x1F\x7F<>]+$/,
       currency: /^[A-Z]{3}$/,
       // Разрешаем пробелы в callback_data, так как кнопки могут содержать названия с пробелами
       callbackData: /^[^\x00-\x1F\x7F<>]+$/,
       command: /^\/[a-zA-Z0-9_]+$/
     };
 
-    // Запрещенные слова и паттерны
+    // Запрещенные паттерны (разметка/скрипты) — только для callback data
     this.forbidden = {
-      words: ['spam', 'bot', 'admin', 'root', 'system'],
       patterns: [
         /<script/i,
         /javascript:/i,
@@ -43,56 +45,6 @@ class EnhancedValidator {
         /vbscript:/i
       ]
     };
-  }
-
-  // Основная валидация сообщения с расходами
-  validateExpenseMessage(text) {
-    try {
-      // Базовая проверка
-      if (!text || typeof text !== 'string') {
-        return { isValid: false, error: 'invalid_input', message: 'Некорректный ввод' };
-      }
-
-      // Проверка длины
-      if (text.length > 200) {
-        return { isValid: false, error: 'too_long', message: 'Сообщение слишком длинное' };
-      }
-
-      // Проверка на запрещенные паттерны
-      if (this.containsForbiddenPatterns(text)) {
-        logger.warn('Forbidden pattern detected in expense message', { text: text.substring(0, 50) });
-        return { isValid: false, error: 'forbidden_content', message: 'Недопустимое содержимое' };
-      }
-
-      // Парсинг суммы и описания
-      const parsed = this.parseExpenseText(text);
-      if (!parsed.isValid) {
-        return parsed;
-      }
-
-      // Дополнительная валидация суммы
-      const amountValidation = this.validateAmount(parsed.amount);
-      if (!amountValidation.isValid) {
-        return amountValidation;
-      }
-
-      // Дополнительная валидация описания
-      const descriptionValidation = this.validateDescription(parsed.description);
-      if (!descriptionValidation.isValid) {
-        return descriptionValidation;
-      }
-
-      return {
-        isValid: true,
-        amount: parsed.amount,
-        description: parsed.description,
-        sanitizedDescription: this.sanitizeText(parsed.description)
-      };
-
-    } catch (error) {
-      logger.error('Error in validateExpenseMessage', { error: error.message, text });
-      return { isValid: false, error: 'validation_error', message: 'Ошибка валидации' };
-    }
   }
 
   // Валидация команды. Аргумент допускается только у /start — это код из ссылки t.me/<bot>?start=<код>
@@ -145,50 +97,6 @@ class EnhancedValidator {
     return { isValid: true, data: this.sanitizeText(data) };
   }
 
-  // Валидация данных пользователя
-  validateUserData(userData) {
-    const errors = [];
-
-    if (userData.id) {
-      const idValidation = this.validateUserId(userData.id);
-      if (!idValidation.isValid) {
-        errors.push(idValidation.error);
-      }
-    }
-
-    if (userData.username) {
-      const usernameValidation = this.validateUsername(userData.username);
-      if (!usernameValidation.isValid) {
-        errors.push(usernameValidation.error);
-      }
-    }
-
-    if (userData.first_name) {
-      const firstNameValidation = this.validateFirstName(userData.first_name);
-      if (!firstNameValidation.isValid) {
-        errors.push(firstNameValidation.error);
-      }
-    }
-
-    if (userData.last_name) {
-      const lastNameValidation = this.validateLastName(userData.last_name);
-      if (!lastNameValidation.isValid) {
-        errors.push(lastNameValidation.error);
-      }
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-      sanitizedData: {
-        id: userData.id,
-        username: userData.username ? this.sanitizeText(userData.username) : null,
-        first_name: userData.first_name ? this.sanitizeText(userData.first_name) : null,
-        last_name: userData.last_name ? this.sanitizeText(userData.last_name) : null
-      }
-    };
-  }
-
   // Валидация валюты
   validateCurrency(currency) {
     if (!currency || typeof currency !== 'string') {
@@ -208,22 +116,6 @@ class EnhancedValidator {
   }
 
   // Приватные методы валидации
-
-  validateAmount(amount) {
-    if (typeof amount !== 'number' || isNaN(amount)) {
-      return { isValid: false, error: 'invalid_amount_type' };
-    }
-
-    if (amount < this.limits.minAmount) {
-      return { isValid: false, error: 'amount_too_small', message: 'Сумма слишком мала' };
-    }
-
-    if (amount > this.limits.maxAmount) {
-      return { isValid: false, error: 'amount_too_large', message: 'Сумма слишком велика' };
-    }
-
-    return { isValid: true };
-  }
 
   validateDescription(description, maxLen = this.limits.maxDescriptionLength) {
     if (!description || typeof description !== 'string') {
@@ -245,128 +137,24 @@ class EnhancedValidator {
     return { isValid: true };
   }
 
-  validateUserId(id) {
-    if (!id || typeof id !== 'number' || id <= 0 || !Number.isInteger(id)) {
-      return { isValid: false, error: 'invalid_user_id' };
-    }
-
-    if (id > 999999999999) { // Telegram ID ограничение
-      return { isValid: false, error: 'user_id_too_large' };
-    }
-
-    return { isValid: true };
-  }
-
-  validateUsername(username) {
-    if (!username || typeof username !== 'string') {
-      return { isValid: false, error: 'invalid_username' };
-    }
-
-    if (username.length > this.limits.maxUsernameLength) {
-      return { isValid: false, error: 'username_too_long' };
-    }
-
-    if (!this.patterns.username.test(username)) {
-      return { isValid: false, error: 'invalid_username_format' };
-    }
-
-    return { isValid: true };
-  }
-
-  validateFirstName(firstName) {
-    if (!firstName || typeof firstName !== 'string') {
-      return { isValid: false, error: 'invalid_first_name' };
-    }
-
-    if (firstName.length > this.limits.maxFirstNameLength) {
-      return { isValid: false, error: 'first_name_too_long' };
-    }
-
-    if (!this.patterns.firstName.test(firstName)) {
-      return { isValid: false, error: 'invalid_first_name_format' };
-    }
-
-    return { isValid: true };
-  }
-
-  validateLastName(lastName) {
-    if (!lastName || typeof lastName !== 'string') {
-      return { isValid: false, error: 'invalid_last_name' };
-    }
-
-    if (lastName.length > this.limits.maxLastNameLength) {
-      return { isValid: false, error: 'last_name_too_long' };
-    }
-
-    if (!this.patterns.lastName.test(lastName)) {
-      return { isValid: false, error: 'invalid_last_name_format' };
-    }
-
-    return { isValid: true };
-  }
-
-  // Парсинг текста с расходами (для обычных сообщений)
-  parseExpenseText(text) {
-    const trimmedText = text.trim();
-    
-    // Паттерн: число + описание
-    const match = trimmedText.match(/^(\d+[.,]?\d*)\s+(.+)$/);
-    if (!match) {
-      return { isValid: false, error: 'invalid_format', message: 'Формат: сумма описание' };
-    }
-
-    const amountStr = match[1].replace(',', '.');
-    const description = match[2].trim();
-
-    const amount = parseFloat(amountStr);
-    if (isNaN(amount)) {
-      return { isValid: false, error: 'invalid_amount', message: 'Некорректная сумма' };
-    }
-
-    // Валидация описания
-    const descriptionValidation = this.validateDescription(description);
-    if (!descriptionValidation.isValid) {
-      return descriptionValidation;
-    }
-
-    return {
-      isValid: true,
-      amount,
-      description
-    };
-  }
-
   // Парсинг для редактирования расходов (более гибкий)
   parseEditExpense(text, maxDescriptionLength = 60) {
     const input = text.trim();
-    let amount = null;
-    let description = null;
+    let amount;
+    let description = input;
 
-    // Проверка на запрещенные паттерны
-    if (this.containsForbiddenPatterns(input)) {
-      logger.warn('Forbidden pattern detected in edit expense', { text: input.substring(0, 50) });
-      return { isValid: false, error: 'forbidden_content', message: 'Недопустимое содержимое' };
+    // "1 000" — только сумма, "1 000 обед" — сумма и описание, иначе весь текст — описание
+    const match = input.match(EDIT_PREFIX);
+    if (match) {
+      amount = toAmount(match[1], match[2]);
+      description = match[3].trim();
     }
 
-    // Если только число (положительное)
-    const amountMatch = input.match(/^([0-9]+([.,][0-9]+)?)$/);
-    if (amountMatch) {
-      amount = amountMatch[1].replace(',', '.');
-    } else if (/^[0-9]+([.,][0-9]+)?\s+/.test(input)) {
-      // число + текст
-      const [amt, ...descArr] = input.split(' ');
-      amount = amt.replace(',', '.');
-      description = descArr.join(' ').trim();
-    } else {
-      // только текст
-      description = input;
-    }
-
-    if (!amount && !description) {
+    if (amount === undefined && !description) {
       return { isValid: false, error: 'empty', message: 'Введите новую сумму, описание или оба значения' };
     }
 
-    if (amount && (isNaN(Number(amount)) || Number(amount) <= 0 || Number(amount) > this.limits.maxAmount)) {
+    if (amount !== undefined && (isNaN(amount) || amount <= 0 || amount > this.limits.maxAmount)) {
       return { isValid: false, error: 'amount', message: 'Некорректная сумма' };
     }
 
@@ -384,7 +172,7 @@ class EnhancedValidator {
 
     return {
       isValid: true,
-      amount: amount ? Number(amount) : undefined,
+      amount,
       description: description ? this.sanitizeText(description, maxDescriptionLength) : undefined
     };
   }
@@ -395,22 +183,17 @@ class EnhancedValidator {
   parseMoneyInput(text, { maxAmount, maxDescriptionLength, requireDescription }) {
     const input = (text || '').trim();
 
-    if (this.containsForbiddenPatterns(input)) {
-      logger.warn('Forbidden pattern detected in money input', { text: input.substring(0, 50) });
-      return { isValid: false, error: 'forbidden_content' };
-    }
-
-    const match = input.match(/^(\d+(?:[.,]\d{1,2})?)(?=$|\s|[$€₽₸₾₺₹฿])\s*(.*)$/su);
+    const match = input.match(MONEY_PREFIX);
     if (!match) {
       return { isValid: false, error: 'format' };
     }
 
-    const amount = parseFloat(match[1].replace(',', '.'));
+    const amount = toAmount(match[1], match[2]);
     if (isNaN(amount) || amount < this.limits.minAmount || amount > maxAmount) {
       return { isValid: false, error: 'amount' };
     }
 
-    let rest = match[2].trim();
+    let rest = match[3].trim();
     let currency = null;
     const [firstToken, ...otherTokens] = rest.split(/\s+/);
     const tokenCurrency = this.resolveCurrencyToken(firstToken);
@@ -444,27 +227,6 @@ class EnhancedValidator {
     if (symbols[token]) return symbols[token];
     const code = token.toUpperCase();
     return currencyConfig.SUPPORTED_CURRENCIES.includes(code) ? code : null;
-  }
-
-  // Проверка на запрещенные паттерны
-  containsForbiddenPatterns(text) {
-    const lowerText = text.toLowerCase();
-    
-    // Проверка запрещенных слов
-    for (const word of this.forbidden.words) {
-      if (lowerText.includes(word)) {
-        return true;
-      }
-    }
-
-    // Проверка запрещенных паттернов
-    for (const pattern of this.forbidden.patterns) {
-      if (pattern.test(text)) {
-        return true;
-      }
-    }
-
-    return false;
   }
 
   // Санитизация текста

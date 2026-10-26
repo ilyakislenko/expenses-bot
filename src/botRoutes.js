@@ -8,6 +8,10 @@ module.exports = function registerBotRoutes(bot, handlers) {
   // Регистрируем глобальный middleware для автоматической очистки состояний
   bot.use(stateCleanupMiddleware(handlers));
 
+  // username/first_name из ctx.from — в БД при каждом изменении (поиск приглашаемых по username)
+  const profileRefreshMiddleware = require('./middleware/profileRefreshMiddleware');
+  bot.use(profileRefreshMiddleware(handlers.userService.userRepository));
+
   // Команды
   bot.command('start', errorHandler((ctx) => commandHandlers.start(ctx))); // приветствие и главная клавиатура
   bot.command('help', errorHandler((ctx) => commandHandlers.help(ctx))); // короткая справка
@@ -120,38 +124,28 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('settings', errorHandler((ctx) => commandHandlers.settings(ctx)));
   bot.action('back_to_settings', errorHandler((ctx) => commandHandlers.settings(ctx)));
   bot.action('settings_currencies', errorHandler((ctx) => commandHandlers.settingsCurrencies(ctx)));
-  bot.action(/^set_currency\|/, errorHandler(async (ctx) => {
+  // set_currency|<код>[|ob]: `|ob` — шаг онбординга, после него выбор часового пояса
+  bot.action(/^set_currency\|([A-Z]{3})(\|ob)?$/, errorHandler(async (ctx) => {
     const userId = ctx.from.id;
-    const currency = ctx.callbackQuery.data.split('|')[1];
+    const currency = ctx.match[1];
+    const onboarding = !!ctx.match[2];
     const validation = handlers.enhancedValidator.validateCurrency(currency);
     if (!validation.isValid) return ctx.answerCbQuery();
     await handlers.userService.setUserCurrency(userId, currency);
     const userLanguage = await handlers.userService.getUserLanguage(userId);
-    const currencySetText = handlers.localizationService.getText(userLanguage, 'currency_set', { currency });
-
-    // Если это шаг onboarding валюты — переходим к выбору часового пояса
-    if (stateService.getUserState(userId) === 'onboarding_currency') {
-      stateService.setUserState(userId, 'onboarding_timezone');
-      await ctx.answerCbQuery(currencySetText);
-      await commandHandlers.timezone(ctx);
+    await ctx.answerCbQuery(handlers.localizationService.getText(userLanguage, 'currency_set', { currency }));
+    if (onboarding) {
+      await commandHandlers.timezone(ctx, { onboarding: true });
       return;
     }
-
-    await ctx.answerCbQuery(currencySetText);
     await commandHandlers.settingsCurrencies(ctx);
   })); // установка основной валюты
-  bot.action('change_currency', errorHandler(async (ctx) => {
-    await ctx.answerCbQuery();
-    await commandHandlers.currency(ctx);
-  }));
-  bot.action('change_timezone', errorHandler(async (ctx) => {
-    await ctx.answerCbQuery();
-    await commandHandlers.timezone(ctx);
-  }));
-  bot.action('change_language', errorHandler(async (ctx) => {
-    await ctx.answerCbQuery();
-    await commandHandlers.language(ctx);
-  }));
+  bot.action('change_currency', errorHandler((ctx) => commandHandlers.currency(ctx)));
+  // «Назад» на шагах онбординга — к предыдущему шагу, а не в Настройки
+  bot.action('ob_language', errorHandler((ctx) => commandHandlers.onboardingLanguage(ctx)));
+  bot.action('ob_currency', errorHandler((ctx) => commandHandlers.currency(ctx, { onboarding: true })));
+  bot.action('change_timezone', errorHandler((ctx) => commandHandlers.timezone(ctx)));
+  bot.action('change_language', errorHandler((ctx) => commandHandlers.language(ctx)));
   bot.action('change_period_start', errorHandler((ctx) => callbackHandlers.handleChangePeriodStart(ctx)));
   bot.action('toggle_reminders', errorHandler((ctx) => callbackHandlers.handleToggleReminders(ctx)));
   bot.action('configure_reminder_hours', errorHandler((ctx) => callbackHandlers.handleConfigureReminderHours(ctx)));
@@ -162,8 +156,9 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('daily_summary_hour', errorHandler((ctx) => callbackHandlers.handleDailySummaryHour(ctx)));
   bot.action(/^set_daily_summary_hour\|(\d{1,2})$/, errorHandler((ctx) => callbackHandlers.handleSetDailySummaryHour(ctx)));
   bot.action('bug_report', errorHandler((ctx) => callbackHandlers.handleBugReport(ctx)));
-  bot.action(/^time\|/, errorHandler((ctx) => callbackHandlers.handleTimezoneSelection(ctx)));
-  bot.action(/^set_language\|/, errorHandler((ctx) => callbackHandlers.handleLanguageSelection(ctx)));
+  // time|<час>|<минуты>[|ob] и set_language|<код>[|ob]: `|ob` — шаг онбординга
+  bot.action(/^time\|(\d{1,2})\|(\d{1,2})(\|ob)?$/, errorHandler((ctx) => callbackHandlers.handleTimezoneSelection(ctx)));
+  bot.action(/^set_language\|([a-z]{2})(\|ob)?$/, errorHandler((ctx) => callbackHandlers.handleLanguageSelection(ctx)));
 
   // Отмена ввода новой суммы/описания
   bot.action('cancel_edit', errorHandler(async (ctx) => {
@@ -214,16 +209,22 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^premium_purchases(?:\|(\d+))?$/, errorHandler((ctx) => callbackHandlers.handlePremiumPurchases(ctx)));
   bot.action('premium_subscription', errorHandler((ctx) => callbackHandlers.handlePremiumSubscription(ctx)));
 
-  // Перед оплатой: сумма должна совпадать с текущим тарифом (старые ссылки на оплату не истекают)
+  // Перед оплатой: сумма должна совпадать с текущим тарифом (старые ссылки на оплату не истекают),
+  // платит тот, для кого создана ссылка, и вторая месячная подписка не оформляется
+  const preCheckoutRejectionKeys = {
+    foreign_payer: 'payment_foreign_payer',
+    subscription_active: 'payment_subscription_already_active'
+  };
   bot.on('pre_checkout_query', errorHandler(async (ctx) => {
-    const check = handlers.paymentService.validatePreCheckout(ctx.preCheckoutQuery);
+    const check = await handlers.paymentService.checkPreCheckout(ctx.preCheckoutQuery, ctx.from.id);
     if (check.ok) {
       await ctx.answerPreCheckoutQuery(true);
       return;
     }
     handlers.logger.warn('Pre-checkout rejected', { userId: ctx.from.id, reason: check.reason, payload: ctx.preCheckoutQuery.invoice_payload });
     const userLanguage = await handlers.userService.getUserLanguage(ctx.from.id);
-    await ctx.answerPreCheckoutQuery(false, handlers.localizationService.getText(userLanguage, 'payment_outdated'));
+    const textKey = preCheckoutRejectionKeys[check.reason] || 'payment_outdated';
+    await ctx.answerPreCheckoutQuery(false, handlers.localizationService.getText(userLanguage, textKey));
   }));
 
   // Возврат звёзд (из админки или со стороны Telegram): снимаем премиум по этому платежу и отменяем подписку.
@@ -290,6 +291,8 @@ module.exports = function registerBotRoutes(bot, handlers) {
 
   // Баг-репорты
   bot.action('panel_bug_reports', errorHandler((ctx) => adminHandlers.showBugReports(ctx)));
+  bot.action('panel_all_bug_reports', errorHandler((ctx) => adminHandlers.showBugReportList(ctx)));
+  bot.action('panel_new_bug_reports', errorHandler((ctx) => adminHandlers.showBugReportList(ctx, 'new')));
 
   // Донаты
   bot.action('panel_donations', errorHandler((ctx) => adminHandlers.showDonations(ctx)));
@@ -356,10 +359,4 @@ module.exports = function registerBotRoutes(bot, handlers) {
     const userLanguage = await handlers.userService.getUserLanguage(ctx.from.id);
     await ctx.answerCbQuery(handlers.localizationService.getText(userLanguage, 'button_outdated'), { show_alert: true });
   }));
-
-  // Глобальный обработчик ошибок
-  bot.catch((error, ctx) => {
-    console.error('Bot error:', error);
-    ctx.reply('An unexpected error occurred. Please try again later.');
-  }); // обработка глобальных ошибок бота
 };

@@ -16,10 +16,6 @@ class ExpenseService {
     return this.expenseRepository.hasAnyExpenseToday(userId, userTimezone);
   }
 
-  async hasAnyExpenseBetweenLocal(userId, userTimezone, startHour, endHour) {
-    return this.expenseRepository.hasAnyExpenseBetweenLocal(userId, userTimezone, startHour, endHour);
-  }
-
   // Контекст периода пользователя: kind 'month' — пользовательский месяц (period_start_day), 'day' — сутки.
   // offset: 0 — текущий, -1 — предыдущий и т.д.
   async getPeriodContext(userId, kind = 'month', offset = 0) {
@@ -46,8 +42,9 @@ class ExpenseService {
     return this.expenseRepository.getExpensesBetween(userId, timezone, period.start, period.end, categoryName);
   }
 
-  async getCategoryById(categoryId) {
-    return this.categoryRepository.getCategoryById(categoryId);
+  // Только системная или своя категория — чужие пользовательские категории не раскрываем
+  async getCategoryById(userId, categoryId) {
+    return this.categoryRepository.getAvailableCategoryById(userId, categoryId);
   }
 
   // Категория, в которую пользователь последний раз записывал трату с таким же описанием,

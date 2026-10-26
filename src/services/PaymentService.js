@@ -154,9 +154,12 @@ class PaymentService {
   /**
    * Проверка перед оплатой (pre_checkout_query). Ссылки на оплату не истекают, поэтому старый счёт
    * после смены цен отклоняем: сумма должна совпадать с текущим тарифом.
+   * Ссылку могли переслать: платить должен тот, для кого она создана (премиум и донат записываются на него).
+   * @param {Object} query - pre_checkout_query
+   * @param {number} payerId - ctx.from.id
    * @returns {{ ok: boolean, reason?: string }}
    */
-  validatePreCheckout({ currency, total_amount: totalAmount, invoice_payload: invoicePayload }) {
+  validatePreCheckout({ currency, total_amount: totalAmount, invoice_payload: invoicePayload }, payerId) {
     let payload;
     try {
       payload = JSON.parse(invoicePayload);
@@ -164,6 +167,7 @@ class PaymentService {
       return { ok: false, reason: 'bad_payload' };
     }
     if (currency !== 'XTR') return { ok: false, reason: 'currency' };
+    if (!payload || Number(payload.user_id) !== Number(payerId)) return { ok: false, reason: 'foreign_payer' };
     if (payload.type === 'donation') {
       return payload.donation_id && totalAmount > 0 ? { ok: true } : { ok: false, reason: 'donation' };
     }
@@ -176,16 +180,45 @@ class PaymentService {
   }
 
   /**
+   * validatePreCheckout + вторая месячная подписка: Telegram допускает несколько одновременных подписок,
+   * а кнопка 🔁 в старом сообщении с тарифами остаётся рабочей.
+   */
+  async checkPreCheckout(query, payerId) {
+    const check = this.validatePreCheckout(query, payerId);
+    if (!check.ok) return check;
+    const payload = JSON.parse(query.invoice_payload);
+    if (payload.type === 'premium_subscription' && payload.tariff === SUBSCRIPTION_TARIFF_DAYS
+      && await this.premiumTransactionRepository.getActiveRecurringSubscription(payerId)) {
+      return { ok: false, reason: 'subscription_active' };
+    }
+    return check;
+  }
+
+  /**
+   * Платёж для возврата из админки: премиум или пожертвование с этим telegram_payment_charge_id.
+   * @returns {Promise<{ kind: 'premium'|'donation', id: number, userId: number, stars: number, status: string, chargeId: string }|null>}
+   */
+  async findPaymentByChargeId(chargeId) {
+    const transaction = await this.premiumTransactionRepository.getTransactionByTelegramPaymentId(chargeId);
+    if (transaction) {
+      return { kind: 'premium', id: transaction.id, userId: Number(transaction.user_id), stars: transaction.stars_amount, status: transaction.status, chargeId };
+    }
+    const donation = this.donationRepository ? await this.donationRepository.getDonationByTelegramPaymentId(chargeId) : null;
+    if (donation) {
+      return { kind: 'donation', id: donation.id, userId: Number(donation.user_id), stars: donation.stars, status: donation.status, chargeId };
+    }
+    return null;
+  }
+
+  /**
    * Возврат платежа (из админки или refunded_payment от Telegram): снимает премиум, выданный этим платежом,
-   * и отменяет подписку, если платёж был по ней. Повторный вызов для того же платежа ничего не меняет.
+   * и отменяет подписку, если платёж был по ней; пожертвование помечается возвращённым.
+   * Повторный вызов для того же платежа ничего не меняет.
    * @param {string} chargeId - telegram_payment_charge_id
    */
   async revokeRefundedPayment(chargeId) {
     const transaction = await this.premiumTransactionRepository.getTransactionByTelegramPaymentId(chargeId);
-    if (!transaction) {
-      logger.warn('Refund for an unknown payment', { chargeId });
-      return { status: 'unknown' };
-    }
+    if (!transaction) return this.revokeRefundedDonation(chargeId);
     if (transaction.status === 'refunded') return { status: 'already_refunded' };
     await this.premiumTransactionRepository.updateTransactionStatus(transaction.id, 'refunded', null);
 
@@ -203,7 +236,29 @@ class PaymentService {
     if (transaction.is_recurring) await this.cancelStarsSubscription(userId, chargeId);
 
     logger.info('Payment refunded, premium revoked', { userId, chargeId, premiumUntil: stillPremium ? newExpiry : null });
-    return { status: 'refunded', userId, premiumUntil: stillPremium ? newExpiry : null };
+    return { status: 'refunded', type: 'premium_subscription', userId, premiumUntil: stillPremium ? newExpiry : null };
+  }
+
+  async revokeRefundedDonation(chargeId) {
+    const donation = this.donationRepository ? await this.donationRepository.getDonationByTelegramPaymentId(chargeId) : null;
+    if (!donation) {
+      logger.warn('Refund for an unknown payment', { chargeId });
+      return { status: 'unknown' };
+    }
+    if (donation.status === 'refunded') return { status: 'already_refunded' };
+    await this.donationRepository.markDonationRefunded(donation.id);
+    logger.info('Donation refunded', { userId: Number(donation.user_id), chargeId });
+    return { status: 'refunded', type: 'donation', userId: Number(donation.user_id), premiumUntil: null };
+  }
+
+  // Админ снял премиум: иначе следующее продление подписки Stars включит его снова
+  async cancelActiveSubscription(userId) {
+    const subscription = await this.premiumTransactionRepository.getActiveRecurringSubscription(userId);
+    if (!subscription) return false;
+    await this.cancelStarsSubscription(userId, subscription.telegram_payment_id);
+    await this.premiumTransactionRepository.endActiveRecurringSubscriptions(userId);
+    logger.info('Stars subscription canceled with premium revoke', { userId, chargeId: subscription.telegram_payment_id });
+    return true;
   }
 
   async cancelStarsSubscription(userId, chargeId) {

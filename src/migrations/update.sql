@@ -148,9 +148,6 @@ CREATE TABLE IF NOT EXISTS family_user (
     UNIQUE(family_id, user_id)
 );
 
--- Drop existing family_invitations table if it exists (to recreate with correct structure)
-DROP TABLE IF EXISTS family_invitations CASCADE;
-
 -- Create family_invitations table
 CREATE TABLE IF NOT EXISTS family_invitations (
     id SERIAL PRIMARY KEY,
@@ -327,10 +324,11 @@ CREATE TABLE IF NOT EXISTS donations (
 CREATE INDEX IF NOT EXISTS idx_donations_user_id ON donations(user_id);
 CREATE INDEX IF NOT EXISTS idx_donations_status ON donations(status);
 
--- Update donations status constraint to include new statuses
+-- Update donations status constraint to include new statuses ('refunded' — возврат пожертвования)
+-- Блок выполняется при каждой миграции: список статусов должен включать все, что пишет код
 ALTER TABLE donations DROP CONSTRAINT IF EXISTS donations_status_check;
 ALTER TABLE donations ADD CONSTRAINT donations_status_check 
-  CHECK (status IN ('pending', 'completed', 'failed', 'expired', 'cancelled'));
+  CHECK (status IN ('pending', 'completed', 'failed', 'expired', 'cancelled', 'refunded'));
 
 -- Ensure constraint 1..31 exists
 DO $$
@@ -512,3 +510,11 @@ BEGIN
     ALTER TABLE users ADD CONSTRAINT users_daily_summary_hour_check CHECK (daily_summary_hour BETWEEN 0 AND 23);
   END IF;
 END $$;
+
+-- ========================================
+-- FAMILY: один человек — одна семья
+-- ========================================
+
+-- Гонка «создать семью / принять приглашение» не должна оставлять человека в двух семьях
+-- (getUserFamily вернул бы случайную). Дубликатов в данных нет (проверено).
+CREATE UNIQUE INDEX IF NOT EXISTS idx_family_user_user_id_unique ON family_user(user_id);

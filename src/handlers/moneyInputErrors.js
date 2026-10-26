@@ -8,9 +8,6 @@ async function moneyInputErrorText({ localizationService, premiumService }, user
     const isPremium = await premiumService.isPremiumUser(userId);
     return localizationService.getText(lang, isPremium ? 'error_too_long_premium' : 'error_too_long_regular');
   }
-  if (error === 'forbidden_content') {
-    return localizationService.getText(lang, 'error_forbidden_content');
-  }
   return localizationService.getText(lang, `${kind}_error_format`);
 }
 
