@@ -655,5 +655,6 @@ module.exports = {
   command_cancel: 'შეყვანის გაუქმება',
   command_paysupport: 'გადახდის მხარდაჭერა',
   command_terms: 'მომსახურების პირობები',
-  command_privacy: 'კონფიდენციალურობის პოლიტიკა'
+  command_privacy: 'კონფიდენციალურობის პოლიტიკა',
+  payment_outdated: '⚠️ ეს ინვოისი მოძველებულია: ფასი შეიცვალა. გახსენით ტარიფები ხელახლა — /limits'
 };

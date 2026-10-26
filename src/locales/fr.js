@@ -658,5 +658,6 @@ Toutes tes dépenses seront désormais affichées à ton heure locale.`,
     command_cancel: 'Annuler la saisie',
     command_paysupport: 'Support paiement',
     command_terms: 'Conditions d\'utilisation',
-    command_privacy: 'Politique de confidentialité'
+    command_privacy: 'Politique de confidentialité',
+    payment_outdated: '⚠️ Cette facture est obsolète : le prix a changé. Ouvre à nouveau les tarifs — /limits'
 };

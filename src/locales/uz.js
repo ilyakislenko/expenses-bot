@@ -638,5 +638,6 @@ Xarajat va daromadlarni yozish bepul va cheklanmagan.`,
   command_cancel: 'Kiritishni bekor qilish',
   command_paysupport: 'To‘lov yordami',
   command_terms: 'Foydalanish shartlari',
-  command_privacy: 'Maxfiylik siyosati'
+  command_privacy: 'Maxfiylik siyosati',
+  payment_outdated: '⚠️ Bu hisob eskirgan: narx o‘zgargan. Tariflarni qaytadan oching — /limits'
 };

@@ -236,7 +236,13 @@ class Container {
 
       case 'paymentService':
         // Создаем PaymentService с отложенной инициализацией бота
-        const paymentService = new PaymentService(this.get('donationRepository'), this.get('localizationService'), this.get('funnelService'));
+        const paymentService = new PaymentService(
+          this.get('donationRepository'),
+          this.get('localizationService'),
+          this.get('funnelService'),
+          this.get('premiumTransactionRepository'),
+          this.get('userRepository')
+        );
         // Устанавливаем бота позже, когда он будет создан
         if (this.instances.has('bot')) {
           paymentService.setBot(this.get('bot'));
@@ -359,7 +365,8 @@ class Container {
           this.get('localizationService'),
           this.get('formatter'),
           this.get('stateService'),
-          this.get('funnelService')
+          this.get('funnelService'),
+          this.get('paymentService')
         );
 
       case 'expenseHandlers':

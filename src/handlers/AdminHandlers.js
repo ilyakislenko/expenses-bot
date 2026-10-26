@@ -3,13 +3,14 @@ const respond = require('../utils/respond');
 const { getTimezoneDisplayName } = require('../utils/timezoneCalculator');
 
 class AdminHandlers {
-  constructor(adminService, userService, localizationService, formatter, stateService, funnelService) {
+  constructor(adminService, userService, localizationService, formatter, stateService, funnelService, paymentService) {
     this.adminService = adminService;
     this.userService = userService;
     this.localizationService = localizationService;
     this.formatter = formatter;
     this.stateService = stateService;
     this.funnelService = funnelService;
+    this.paymentService = paymentService;
   }
 
   // Проверка прав администратора
@@ -424,52 +425,25 @@ class AdminHandlers {
     await ctx.reply(`Найдена транзакция:\nID: ${tx.id}\nHash: ${tx.telegram_payment_id}\nStars: ${tx.stars_amount}\nStatus: ${tx.status}`, { reply_markup: { inline_keyboard: kb } });
   }
 
-  async executeRefund(ctx, userId, paymentHash) {
+  // Звёзды возвращаются пользователю; премиум по этому платежу снимается, подписка (если платёж по ней) отменяется.
+  // Telegram затем пришлёт refunded_payment — повторный revokeRefundedPayment ничего не изменит.
+  async executeRefund(ctx) {
     if (!(await this.checkAdminAccess(ctx))) return;
-    const adminLang = await this.userService.getUserLanguage(ctx.from.id);
-    const paymentService = this.adminService.paymentService || null;
-    const premiumRepo = this.adminService.premiumTransactionRepository;
+    const state = this.stateService.getUserState(ctx.from.id);
+    if (!state || state.type !== 'admin_refund_confirm') {
+      await ctx.answerCbQuery('Нет данных для возврата');
+      return;
+    }
+    const { userId: targetUserId, paymentId } = state.data;
+    this.stateService.deleteUserState(ctx.from.id);
     try {
-      const state = this.stateService.getUserState(ctx.from.id);
-      if (!state || state.type !== 'admin_refund_confirm') {
-        await ctx.answerCbQuery('Нет данных для возврата');
-        return;
-      }
-      const { userId: targetUserId, paymentId } = state.data;
-      this.stateService.deleteUserState(ctx.from.id);
-      await this.adminService.bot.telegram.callApi('refundStarPayment', {
-        user_id: Number(targetUserId),
-        telegram_payment_charge_id: paymentId
-      });
-      // Обновим статус транзакции
-      const tx = await premiumRepo.getTransactionByTelegramPaymentId(paymentId);
-      if (tx) await premiumRepo.updateTransactionStatus(tx.id, 'refunded', null);
-      // Простой и надежный вариант: вычитаем длительность рефанднутой покупки из текущей даты истечения
-      try {
-        const user = await this.userService.getUserById(tx.user_id);
-        const now = new Date();
-        const currentExpiry = user.premium_expires_at ? new Date(user.premium_expires_at) : null;
-        const days = parseInt(tx.tariff_duration, 10) || 0;
-        const msToSubtract = days * 24 * 60 * 60 * 1000;
-        let newExpiry;
-        if (!currentExpiry || currentExpiry <= now) {
-          // Премиума фактически нет — зафиксируем прошедшую дату и выключим флаг
-          newExpiry = now;
-          await this.userService.userRepository.updateUser(tx.user_id, { premium: false, premium_expires_at: newExpiry });
-        } else {
-          newExpiry = new Date(currentExpiry.getTime() - msToSubtract);
-          if (newExpiry <= now) {
-            // Подписка полностью снята
-            newExpiry = now;
-            await this.userService.userRepository.updateUser(tx.user_id, { premium: false, premium_expires_at: newExpiry });
-          } else {
-            await this.userService.userRepository.updateUser(tx.user_id, { premium: true, premium_expires_at: newExpiry });
-          }
-        }
-      } catch (_) {}
-      await ctx.answerCbQuery('✅ Возврат выполнен');
-    } catch (e) {
-      await ctx.answerCbQuery('❌ Ошибка возврата');
+      await this.paymentService.refundStarsPayment(Number(targetUserId), paymentId);
+      const result = await this.paymentService.revokeRefundedPayment(paymentId);
+      const until = result.premiumUntil ? `премиум до ${this.formatter.formatDate(result.premiumUntil)}` : 'премиум снят';
+      await ctx.answerCbQuery(`✅ Возврат выполнен, ${until}`, { show_alert: true });
+    } catch (error) {
+      logger.error('Admin refund failed', { targetUserId, paymentId, error: error.message });
+      await ctx.answerCbQuery(`❌ Ошибка возврата: ${error.message}`.slice(0, 190), { show_alert: true });
     }
   }
 

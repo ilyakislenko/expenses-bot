@@ -659,5 +659,6 @@ module.exports = {
     command_cancel: 'इनपुट रद्द करें',
     command_paysupport: 'भुगतान सहायता',
     command_terms: 'सेवा की शर्तें',
-    command_privacy: 'गोपनीयता नीति'
+    command_privacy: 'गोपनीयता नीति',
+    payment_outdated: '⚠️ यह बिल पुराना हो गया है: कीमत बदल गई है। कृपया टैरिफ़ फिर से खोलें — /limits'
 };

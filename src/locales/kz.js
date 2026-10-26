@@ -636,5 +636,6 @@ module.exports = {
   command_cancel: 'Енгізуді болдырмау',
   command_paysupport: 'Төлем қолдауы',
   command_terms: 'Қызмет көрсету шарттары',
-  command_privacy: 'Құпиялық саясаты'
+  command_privacy: 'Құпиялық саясаты',
+  payment_outdated: '⚠️ Бұл шот ескірген: баға өзгерді. Тарифтерді қайта ашыңыз — /limits'
 };

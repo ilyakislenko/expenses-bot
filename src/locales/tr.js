@@ -656,5 +656,6 @@ Gider ve gelir kaydı ücretsiz ve sınırsızdır.`,
   command_cancel: 'Girişi iptal et',
   command_paysupport: 'Ödeme desteği',
   command_terms: 'Kullanım koşulları',
-  command_privacy: 'Gizlilik politikası'
+  command_privacy: 'Gizlilik politikası',
+  payment_outdated: '⚠️ Bu fatura güncel değil: fiyat değişti. Tarifeleri yeniden açın — /limits'
 };

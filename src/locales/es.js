@@ -659,5 +659,6 @@ Tus gastos se mostrarán en hora local.`,
     command_cancel: 'Cancelar entrada',
     command_paysupport: 'Soporte de pagos',
     command_terms: 'Términos del servicio',
-    command_privacy: 'Política de privacidad'
+    command_privacy: 'Política de privacidad',
+    payment_outdated: '⚠️ Esta factura está desactualizada: el precio ha cambiado. Abre los planes de nuevo — /limits'
 };

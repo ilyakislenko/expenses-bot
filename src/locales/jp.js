@@ -656,5 +656,6 @@ module.exports = {
     command_cancel: '入力をキャンセル',
     command_paysupport: '支払いサポート',
     command_terms: '利用規約',
-    command_privacy: 'プライバシーポリシー'
+    command_privacy: 'プライバシーポリシー',
+    payment_outdated: '⚠️ この請求書は古くなっています。価格が変更されました。もう一度プランを開いてください — /limits'
 };

@@ -678,5 +678,6 @@ module.exports = {
   command_cancel: 'Отменить ввод',
   command_paysupport: 'Поддержка по оплатам',
   command_terms: 'Условия использования',
-  command_privacy: 'Политика конфиденциальности'
+  command_privacy: 'Политика конфиденциальности',
+  payment_outdated: '⚠️ Этот счёт устарел: цена изменилась. Открой тарифы заново — /limits'
 }; 

@@ -661,5 +661,6 @@ Ab jetzt werden alle Ausgaben in deiner Ortszeit angezeigt.`,
     command_cancel: 'Eingabe abbrechen',
     command_paysupport: 'Zahlungssupport',
     command_terms: 'Nutzungsbedingungen',
-    command_privacy: 'Datenschutzerklärung'
+    command_privacy: 'Datenschutzerklärung',
+    payment_outdated: '⚠️ Diese Rechnung ist veraltet: Der Preis hat sich geändert. Öffne die Tarife erneut — /limits'
 };

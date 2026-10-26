@@ -657,5 +657,6 @@ module.exports = {
     command_cancel: '取消输入',
     command_paysupport: '支付支持',
     command_terms: '服务条款',
-    command_privacy: '隐私政策'
+    command_privacy: '隐私政策',
+    payment_outdated: '⚠️ 此账单已过期：价格已变更。请重新打开套餐 — /limits'
 };

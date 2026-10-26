@@ -676,5 +676,6 @@ Recording expenses and income is free and unlimited.`,
   command_cancel: 'Cancel input',
   command_paysupport: 'Payment support',
   command_terms: 'Terms of Service',
-  command_privacy: 'Privacy Policy'
+  command_privacy: 'Privacy Policy',
+  payment_outdated: '⚠️ This invoice is outdated: the price has changed. Open the plans again — /limits'
 }; 

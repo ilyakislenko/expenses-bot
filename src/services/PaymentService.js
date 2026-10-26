@@ -3,13 +3,16 @@ const logger = require('../utils/logger');
 // Месячный тариф продаётся как подписка Telegram Stars с автопродлением (Telegram допускает только 30 дней)
 const STARS_SUBSCRIPTION_PERIOD_SECONDS = 2592000;
 const SUBSCRIPTION_TARIFF_DAYS = 30;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 class PaymentService {
-  constructor(donationRepository, localizationService, funnelService) {
+  constructor(donationRepository, localizationService, funnelService, premiumTransactionRepository, userRepository) {
     this.bot = null;
     this.donationRepository = donationRepository;
     this.localizationService = localizationService;
     this.funnelService = funnelService;
+    this.premiumTransactionRepository = premiumTransactionRepository;
+    this.userRepository = userRepository;
   }
 
   setBot(bot) {
@@ -146,6 +149,74 @@ class PaymentService {
     
     // Возвращаем дефолтные значения, если тариф не найден
     return { usd: 0, rub: 0 };
+  }
+
+  /**
+   * Проверка перед оплатой (pre_checkout_query). Ссылки на оплату не истекают, поэтому старый счёт
+   * после смены цен отклоняем: сумма должна совпадать с текущим тарифом.
+   * @returns {{ ok: boolean, reason?: string }}
+   */
+  validatePreCheckout({ currency, total_amount: totalAmount, invoice_payload: invoicePayload }) {
+    let payload;
+    try {
+      payload = JSON.parse(invoicePayload);
+    } catch (error) {
+      return { ok: false, reason: 'bad_payload' };
+    }
+    if (currency !== 'XTR') return { ok: false, reason: 'currency' };
+    if (payload.type === 'donation') {
+      return payload.donation_id && totalAmount > 0 ? { ok: true } : { ok: false, reason: 'donation' };
+    }
+    if (payload.type === 'premium_subscription') {
+      const tariff = this.getTariffData(payload.tariff);
+      if (!tariff.stars) return { ok: false, reason: 'unknown_tariff' };
+      return tariff.stars === totalAmount ? { ok: true } : { ok: false, reason: 'price_changed' };
+    }
+    return { ok: false, reason: 'unknown_type' };
+  }
+
+  /**
+   * Возврат платежа (из админки или refunded_payment от Telegram): снимает премиум, выданный этим платежом,
+   * и отменяет подписку, если платёж был по ней. Повторный вызов для того же платежа ничего не меняет.
+   * @param {string} chargeId - telegram_payment_charge_id
+   */
+  async revokeRefundedPayment(chargeId) {
+    const transaction = await this.premiumTransactionRepository.getTransactionByTelegramPaymentId(chargeId);
+    if (!transaction) {
+      logger.warn('Refund for an unknown payment', { chargeId });
+      return { status: 'unknown' };
+    }
+    if (transaction.status === 'refunded') return { status: 'already_refunded' };
+    await this.premiumTransactionRepository.updateTransactionStatus(transaction.id, 'refunded', null);
+
+    // Вычитаем срок этой покупки из текущей даты окончания премиума
+    const userId = Number(transaction.user_id);
+    const user = await this.userRepository.getUserById(userId);
+    const now = new Date();
+    const currentExpiry = user && user.premium_expires_at ? new Date(user.premium_expires_at) : null;
+    const days = parseInt(transaction.tariff_duration, 10) || 0;
+    const newExpiry = currentExpiry && currentExpiry > now ? new Date(currentExpiry.getTime() - days * DAY_MS) : now;
+    const stillPremium = newExpiry > now;
+    await this.userRepository.updateUser(userId, { premium: stillPremium, premium_expires_at: stillPremium ? newExpiry : now });
+
+    // Иначе Telegram продолжит списывать подписку и премиум включится снова
+    if (transaction.is_recurring) await this.cancelStarsSubscription(userId, chargeId);
+
+    logger.info('Payment refunded, premium revoked', { userId, chargeId, premiumUntil: stillPremium ? newExpiry : null });
+    return { status: 'refunded', userId, premiumUntil: stillPremium ? newExpiry : null };
+  }
+
+  async cancelStarsSubscription(userId, chargeId) {
+    try {
+      await this.bot.telegram.callApi('editUserStarSubscription', {
+        user_id: userId,
+        telegram_payment_charge_id: chargeId,
+        is_canceled: true
+      });
+    } catch (error) {
+      // Подписка могла быть уже отменена пользователем
+      logger.warn('Stars subscription not canceled', { userId, chargeId, error: error.message });
+    }
   }
 
   /**

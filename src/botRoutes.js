@@ -214,9 +214,24 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^premium_purchases(?:\|(\d+))?$/, errorHandler((ctx) => callbackHandlers.handlePremiumPurchases(ctx)));
   bot.action('premium_subscription', errorHandler((ctx) => callbackHandlers.handlePremiumSubscription(ctx)));
 
-  // Обработчик успешных платежей
+  // Перед оплатой: сумма должна совпадать с текущим тарифом (старые ссылки на оплату не истекают)
   bot.on('pre_checkout_query', errorHandler(async (ctx) => {
-    await ctx.answerPreCheckoutQuery(true);
+    const check = handlers.paymentService.validatePreCheckout(ctx.preCheckoutQuery);
+    if (check.ok) {
+      await ctx.answerPreCheckoutQuery(true);
+      return;
+    }
+    handlers.logger.warn('Pre-checkout rejected', { userId: ctx.from.id, reason: check.reason, payload: ctx.preCheckoutQuery.invoice_payload });
+    const userLanguage = await handlers.userService.getUserLanguage(ctx.from.id);
+    await ctx.answerPreCheckoutQuery(false, handlers.localizationService.getText(userLanguage, 'payment_outdated'));
+  }));
+
+  // Возврат звёзд (из админки или со стороны Telegram): снимаем премиум по этому платежу и отменяем подписку.
+  // Пользователю Telegram сам показывает сообщение о возврате.
+  bot.on('message', errorHandler(async (ctx, next) => {
+    const refund = ctx.message.refunded_payment;
+    if (!refund) return next();
+    await handlers.paymentService.revokeRefundedPayment(refund.telegram_payment_charge_id);
   }));
 
   bot.on('successful_payment', errorHandler(async (ctx) => {
