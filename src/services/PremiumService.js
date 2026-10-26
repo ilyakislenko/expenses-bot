@@ -2,9 +2,8 @@ const { USER_LIMITS } = require('../utils/constants');
 const logger = require('../utils/logger');
 
 class PremiumService {
-  constructor(userRepository, expenseRepository, userService) {
+  constructor(userRepository, userService) {
     this.userRepository = userRepository;
-    this.expenseRepository = expenseRepository;
     this.userService = userService;
   }
 
@@ -48,55 +47,20 @@ class PremiumService {
   }
 
   /**
-   * Проверяет лимит количества записей
-   */
-  async validateExpenseCount(userId) {
-    try {
-      const limits = await this.getUserLimits(userId);
-      const currentCount = await this.expenseRepository.getExpenseCount(userId);
-      
-      if (currentCount >= limits.MAX_NOTES_COUNT) {
-        return {
-          isValid: false,
-          error: 'limit_reached',
-          currentCount,
-          maxCount: limits.MAX_NOTES_COUNT
-        };
-      }
-      
-      return { 
-        isValid: true, 
-        currentCount, 
-        maxCount: limits.MAX_NOTES_COUNT,
-        remaining: limits.MAX_NOTES_COUNT - currentCount
-      };
-    } catch (error) {
-      logger.error('Error validating expense count:', error);
-      return { isValid: false, error: 'database_error' };
-    }
-  }
-
-  /**
    * Получает информацию о лимитах пользователя
    */
   async getLimitsInfo(userId) {
     const isPremium = await this.isPremiumUser(userId);
     const limits = await this.getUserLimits(userId);
-    const currentCount = await this.expenseRepository.getExpenseCount(userId);
     const user = await this.userRepository.getUserById(userId);
-    
+
     return {
       isPremium,
-      currentCount,
-      maxCount: limits.MAX_NOTES_COUNT,
-      remaining: limits.MAX_NOTES_COUNT - currentCount,
       maxDescriptionLength: limits.MAX_DESCRIPTION_LENGTH,
       allowCustomCategories: limits.ALLOW_CUSTOM_CATEGORIES,
       maxCustomCategories: limits.MAX_CUSTOM_CATEGORIES,
-      noteRetentionDays: limits.NOTE_RETENTION_DAYS,
-      percentage: Math.round((currentCount / limits.MAX_NOTES_COUNT) * 100),
       premiumExpiresAt: user.premium_expires_at,
-      daysRemaining: user.premium_expires_at ? 
+      daysRemaining: user.premium_expires_at ?
         Math.ceil((user.premium_expires_at - new Date()) / (1000 * 60 * 60 * 24)) : 0
     };
   }
@@ -113,21 +77,6 @@ class PremiumService {
       logger.error('Error setting premium status:', error);
       return false;
     }
-  }
-
-  /**
-   * Получает статистику использования лимитов
-   */
-  async getUsageStats(userId) {
-    const limits = await this.getLimitsInfo(userId);
-    const usagePercentage = Math.round((limits.currentCount / limits.maxCount) * 100);
-    
-    return {
-      ...limits,
-      usagePercentage,
-      isNearLimit: usagePercentage >= 80,
-      isAtLimit: usagePercentage >= 100
-    };
   }
 }
 

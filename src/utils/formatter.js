@@ -64,21 +64,26 @@ class Formatter {
     }
   }
 
-  formatExpenseList(expenses, userTimezone = 'UTC', localizationService = null, userLanguage = 'ru') {
-    if (!expenses.length) {
-      return localizationService ? 
-        localizationService.getText(userLanguage, 'no_expenses_period') : 
-        'Расходов пока нет 📝';
-    }
-    return expenses.map((expense, index) => {
-      const icon = expense.category_icon || '📦';
-      const amount = this.formatAmount(expense.amount, expense.currency || 'RUB');
-      const description = expense.description || (localizationService ? 
-        localizationService.getText(userLanguage, 'not_found') : 
-        'Без описания');
-      const date = this.formatDate(expense.created_at_utc, userTimezone);
-      return `${icon} ${amount} - ${description}\n📅 ${date}`;
-    }).join('\n\n');
+  // Подпись записи: описание (экранированное для Markdown) или название категории, если описания нет
+  expenseLabel(expense, localizationService, userLanguage) {
+    if (expense.description) return this.escapeMarkdown(expense.description);
+    if (expense.category_name) return this.escapeMarkdown(this.translateCategoryName(expense.category_name, localizationService, userLanguage));
+    return '—';
+  }
+
+  formatTime(date, timezone = 'UTC') {
+    return new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: timezone }).format(new Date(date));
+  }
+
+  formatShortDateTime(date, timezone = 'UTC') {
+    return new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: timezone }).format(new Date(date));
+  }
+
+  // { start, last } из utils/period → '05.10 – 04.11.2026'
+  formatPeriodRange(period) {
+    const [sy, sm, sd] = period.start.split('-');
+    const [ly, lm, ld] = period.last.split('-');
+    return sy === ly ? `${sd}.${sm} – ${ld}.${lm}.${ly}` : `${sd}.${sm}.${sy} – ${ld}.${lm}.${ly}`;
   }
 
   async formatStats(total, categoryStats, userCurrency = 'RUB', period = periodsConfig.LABELS.month, localizationService = null, userLanguage = 'ru') {
@@ -141,6 +146,40 @@ class Formatter {
       }
     }
     return message;
+  }
+
+  // Экранирование пользовательского текста для parse_mode: 'Markdown'
+  escapeMarkdown(text) {
+    return String(text ?? '').replace(/([_*`\[])/g, '\\$1');
+  }
+
+  // 'YYYY-MM-DD' → 'DD.MM.YYYY'
+  formatLocalDate(ymd) {
+    const [y, m, d] = ymd.split('-');
+    return `${d}.${m}.${y}`;
+  }
+
+  async sumInCurrency(byCurrency, targetCurrency) {
+    let sum = 0;
+    for (const { currency, total } of byCurrency) {
+      sum += await this.currencyUtils.convert(Number(total), currency, targetCurrency);
+    }
+    return sum;
+  }
+
+  // Блок "доход / остаток" для статистики за период. Пусто, если доходов за период нет.
+  async formatIncomeSummary(incomeTotals, expenseTotal, userCurrency, localizationService, userLanguage) {
+    if (!incomeTotals || !incomeTotals.count) return '';
+    const incomeSum = await this.sumInCurrency(incomeTotals.byCurrency, userCurrency);
+    const expenseSum = await this.sumInCurrency(expenseTotal.byCurrency || [], userCurrency);
+
+    let text = localizationService.getText(userLanguage, 'income_total', { amount: this.formatAmount(incomeSum, userCurrency) });
+    const hasForeign = incomeTotals.byCurrency.some(({ currency }) => currency !== userCurrency);
+    if (hasForeign) {
+      text += `\n(${incomeTotals.byCurrency.map(({ currency, total }) => this.formatAmount(total, currency)).join(' + ')})`;
+    }
+    text += '\n' + localizationService.getText(userLanguage, 'balance_label', { amount: this.formatAmount(incomeSum - expenseSum, userCurrency) });
+    return text;
   }
 
 
@@ -247,82 +286,6 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationServic
     }
     
     return categoryName; // Возвращаем оригинальное название, если перевод не найден
-  }
-
-  formatExpenseWithActions(
-    expense,
-    userTimezone = 'UTC',
-    localizationService = null,
-    userLanguage = 'ru',
-    showEdit = true,
-    showDelete = true,
-    showMarkFamily = false,
-    currentUserId = null
-  ) {
-    const icon = expense.category_icon || '📦';
-    const amount = this.formatAmount(expense.amount, expense.currency || 'RUB');
-    const description = expense.description || (localizationService ? 
-      localizationService.getText(userLanguage, 'not_found') : 
-      'Без описания');
-    const date = this.formatDate(expense.created_at_utc, userTimezone);
-    
-    // Добавляем информацию о пользователе, если это семейная трата
-    let userInfo = '';
-    if (expense.user_username || expense.user_first_name) {
-      const userName = expense.user_username || expense.user_first_name;
-      userInfo = `\n👤 ${userName}`;
-    }
-    
-    const editText = localizationService ? 
-      localizationService.getText(userLanguage, 'button_edit') : 
-      '✏️ Редактировать';
-    const deleteText = localizationService ? 
-      localizationService.getText(userLanguage, 'button_delete') : 
-      '🗑️ Удалить';
-    const markFamilyText = localizationService ?
-      localizationService.getText(userLanguage, 'button_mark_as_family') :
-      '👨‍👩‍👧‍👦 В семью';
-    const removeFromFamilyText = localizationService ?
-      localizationService.getText(userLanguage, 'button_remove_from_family') :
-      '🚫 Из семейного бюджета';
-    
-    const text = `${icon} ${amount} - ${description}\n📅 ${date}${userInfo}`;
-    
-    if (!showEdit && !showDelete) {
-      return {
-        text,
-        reply_markup: { inline_keyboard: [] }
-      };
-    }
-    
-    const buttons = [];
-    
-    // Проверяем, является ли текущий пользователь автором траты
-    const isOwner = currentUserId && Number(expense.user_id) === currentUserId;
-    
-    if (showEdit && isOwner) {
-      buttons.push({ text: editText, callback_data: `edit_expense|${expense.id}` });
-    }
-    if (showDelete && isOwner) {
-      buttons.push({ text: deleteText, callback_data: `delete_expense|${expense.id}` });
-    }
-    
-    // Кнопка "Пометить как семейную" только для личных трат
-    if (showMarkFamily && !expense.family_id) {
-      buttons.push({ text: markFamilyText, callback_data: `mark_as_family|${expense.id}` });
-    }
-    
-    // Кнопка "Вычеркнуть из семейного бюджета" только для семейных трат и только для автора
-    if (expense.family_id && isOwner) {
-      buttons.push({ text: removeFromFamilyText, callback_data: `remove_from_family|${expense.id}` });
-    }
-    
-    return {
-      text,
-      reply_markup: {
-        inline_keyboard: [buttons]
-      }
-    };
   }
 }
 

@@ -1,6 +1,6 @@
 module.exports = {
     button_reminders: '🔔 提醒我',
-    reminders_enabled: '提醒已开启。如果你在18:00前没有记录任何内容，我会用点幽默来提醒你 😉',
+    reminders_enabled: '🔔 提醒已开启',
     reminders_disabled: '提醒已关闭。完全静音 🤐',
     reminder_sample_variants: [
       '👋 嘿！就算钱包很安静，也不代表它开心。记录一下花销吧 😉',
@@ -192,96 +192,28 @@ module.exports = {
     save: '保存',
     
     // 启动消息
-    start_message: `你好！👋 我可以帮你记录支出并管理预算。
-  
-  *如何添加支出：*
-  直接输入金额和描述：
-  -  \`200 超市购物\`
-  -  \`1500 餐厅午餐\`
-  -  \`50 交通\`
-  -  \`150.50 咖啡\`
-  
-  然后会弹出分类菜单 — 请选择合适的类别 🏷️
-  
-  *主要命令：*
-  /start - 重启机器人
-  /menu - 打开交互菜单
-  /history - 查看今天的记录
-  /stats - 按分类查看本月统计
-  
-  /export - 下载CSV格式数据
-  /undo - 删除最后一条记录
-  
-  *设置：*
-  /settings - 打开设置菜单
-  /currency - 设置默认货币
-  /timezone - 设置时区
-  /categories - 管理分类
-  
-  *其他功能：*
-  /family - 家庭预算
-  /limits - 限制和高级功能
-  /help - 详细帮助
-  
-  立即开始记录你的支出吧！💰`,
-  help_message: `📋 *命令详细帮助*
-  
-  *添加支出：*
-  在金额和描述之间添加空格：
-  \`200 购物\` — 会显示类别菜单
-  \`150.50 咖啡\` — 支持小数
-  
-  *主要命令：*
-  /start - 重启机器人并显示欢迎信息
-  /menu - 打开所有功能的互动菜单
-  /history - 查看今日记录
-  /stats - 本月按类别的统计
-  
-  /export - 下载全部数据CSV
-  /undo - 撤销最后一条记录
-  
-  *设置与管理：*
-  /settings - 打开设置主菜单
-  /currency - 修改默认货币 (RUB, USD, EUR, KZT, CNY, THB)
-  /timezone - 设置时区以保证时间准确
-  /categories - 管理自定义类别（高级）
-  
-  *家庭预算：*
-  /family - 管理家庭组和共享支出
-  - 创建家庭，邀请成员
-  - 查看家庭支出统计
-  - 导出家庭数据
-  
-  *高级功能：*
-  /limits - 查看限制和高级信息
-  - 自定义类别
-  - 高级统计
-  - 家庭预算
-  - 优先支持
-  
-  *使用建议：*
-  • 在支出中添加描述方便分析
-  • 用 /stats 定期查看统计
-  • 设置正确的时区确保数据准确
-  • 用 /menu 快速访问功能
-  • 用 /export 导出数据进行分析
-  
-  *修改支出：*
-  • 在 /history 中删除或编辑记录
-  • “👨‍👩‍👧‍👦 添加到家庭” 按钮可将支出转为家庭预算
-  • “🚫 从家庭预算移除” 按钮可恢复为个人支出
-  • 只能编辑/删除自己的记录
-  
-  *提醒：*
-  • 机器人会在当地时间18:00提醒你记录支出
-  • 仅在当天未添加任意记录时提醒
-  • 可在设置中开启/关闭提醒
-  • 每天最多一次提醒
-  
-  *支持：*
-  若有疑问，可用 /start 回到主菜单。
-  
-  祝你预算管理顺利！💰📊`,
+    start_message: `你好！👋 我会帮你记录支出和收入。
+
+*支出* — 只需写金额和描述：\`250 咖啡\`、\`1500 午餐\`。
+其他货币也可以：\`20 USD 出租车\`，或只写金额：\`300\`。
+*收入* — 加上加号：\`+50000 工资\`。
+
+类别只需选一次 — 下次我会记住。
+菜单在下方：月度概览、今日记录、收入、定期支出（房租、订阅）和「☰ 更多」。`,
+
+  start_returning: '👋 欢迎回来！直接发送支出消息 — `250 咖啡`。菜单在下方键盘上。',
+  help_message: `❓ *使用方法*
+
+• \`250 咖啡\` — 支出。类别选一次，我会记住
+• \`20 USD 出租车\` — 其他货币的支出，\`300\` — 不带描述
+• \`+50000 工资\` — 收入（\`+1000 USD\` — 其他货币）
+• 新记录下方：↩️ 撤销，🏷 更改类别
+• 📊 *月度概览* — 支出、收入、余额、类别；◀️ — 以前的周期
+• 📅 *今天* — 当天的记录；点击编号可编辑或删除记录
+• 🔁 *定期支出* — 房租和订阅每月自动记录
+• 货币、提醒（每天最多3次）和周期起始日 — 在 ☰ 更多 → ⚙️ 设置
+
+命令：/stats /history /income /recurring /export /settings /menu`,
   
     // 支出
     expense_added: '✅ 已记录: {amount} - {description}',
@@ -443,18 +375,14 @@ module.exports = {
     status_regular: '👤 普通',
     status_premium: '💎 高级',
     status_label: '*状态:* {status}',
-    records_usage: '<b>记录数:</b> {current}/{max} ({percentage}%)',
-    records_remaining: '<b>剩余:</b> {remaining} 条记录',
     max_description_length: '<b>描述最大长度:</b> {length} 个字符',
-    near_limit_warning: '⚠️ *注意:* 你接近记录上限！',
-    limit_reached: '❌ *已达到记录上限!*',
     premium_benefits: `💎 <b>高级用户优势:</b>
-  • 描述可达160字符（普通80）
-  • 记录数300条（普通100）
-  • 最多5个自定义类别
-  • 高级统计
-  • 家庭预算
-  • 可修改和删除任意记录（不限于最后一条）`,
+• 描述160字符（而非80）
+• 最多5个自定义类别
+• 家庭预算
+• 编辑任意记录的金额和描述
+
+记录支出和收入免费且不限次数。`,
     
     // 高级订阅
     premium_subscription_title: '⭐️ 订阅',
@@ -468,7 +396,7 @@ module.exports = {
     premium_back_button: '⬅️ 返回',
     premium_tariffs_title: '⭐️ 套餐 (Telegram Stars)',
     per_month: '每月',
-    premium_payment_info: '💳 通过 Telegram Stars 支付。<b>不自动续费。</b>',
+    premium_payment_info: '💳 通过 Telegram 的内部货币 Telegram Stars 支付。🔁 月度方案自动续费；可在 Telegram 中取消：设置 → 我的星星 → 我的订阅（英文界面：Settings → My Stars → My subscriptions）。3、6 和 12 个月方案为一次性付款。',
     premium_renewal_info: '📅 可随时续费，时长将累加。',
     premium_stars_info: '💡 可通过官方 [@PremiumBot] 无手续费购买星星。',
     premium_why_paid_title: '👀 为什么收费？',
@@ -512,10 +440,9 @@ module.exports = {
     error_too_long_premium: '❌ 描述过长！高级用户最多160字符。',
     error_no_description: '❌ 金额后必须提供描述。',
     error_amount: '❌ 金额无效。请输入0.01到999999之间的数字。',
-    error_format: '❌ 格式无效。请输入金额和描述。\n示例: `200 购物` 或 `1500 在咖啡馆午餐`',
+    error_format: '❌ 没看懂。请以金额开头：`250 咖啡`、`20 USD 出租车` 或只写 `300`。',
     error_forbidden_content: '❌ 含有不允许的内容。',
-    error_limit_reached: '❌ 已达到上限！\n普通: 100 条记录\n高级: 300 条记录\n\n💎 升级为高级用户以提高上限！',
-    error_premium_required: '💎 此功能仅限高级用户！\n\n优势:\n• 描述160字符\n• 300条记录\n• 自定义类别\n• 高级统计',
+    error_premium_required: '💎 此功能仅限高级用户。\n\n高级版提供:\n• 描述160字符（而非80）\n• 自定义类别\n• 家庭预算\n• 编辑记录',
     error_generic: '❌ 出错了，请稍后再试或联系管理员。',
     
     // 按钮
@@ -565,7 +492,6 @@ module.exports = {
     edit_format_error: '格式错误。',
     
     // 回调响应
-    callback_limit_reached: '❌ 已达到记录上限',
     callback_button_not_found: '❌ 错误：未找到按钮',
     callback_data_not_found: '❌ 错误：未找到数据',
     callback_expense_added: '✅ 已添加到 "{category}" 类别',
@@ -605,5 +531,103 @@ module.exports = {
     custom_categories_list_title: '你的自定义类别：',
     custom_categories_delete: '🗑️ 删除',
     custom_categories_deleted: '✅ 类别已删除。',
-    custom_categories_premium_required: '�� 此功能仅对高级用户开放。'
+    custom_categories_premium_required: '�� 此功能仅对高级用户开放。',
+
+    // Income
+    button_income: '💵 收入',
+    button_add_income: '➕ 添加收入',
+    button_income_currency: '💱 收入货币',
+    income_menu_title: '💵 *本期收入*',
+    income_menu_empty: '本期暂无收入。',
+    income_currency_label: '默认收入货币：*{currency}*',
+    income_hint: '💡 快捷方式：发送以加号开头的消息 — `+50000 工资` 或 `+1000 USD 兼职`',
+    income_enter_prompt: '请输入收入金额和描述 👇\n\n示例：`50000 工资`\n默认货币 — *{currency}*。可在金额后加代码指定其他货币：`1000 USD 兼职`',
+    income_added: '✅ 已记录收入：*{amount}* — {description}',
+    income_default_description: '收入',
+    income_deleted: '✅ 收入已删除',
+    income_not_found: '❌ 未找到收入',
+    income_currency_select: '请选择您通常收款的货币。支出仍使用主货币：',
+    income_currency_set: '✅ 收入货币：{currency}',
+    income_total: '💵 收入：*{amount}*',
+    balance_label: '⚖️ 结余（收入 − 支出）：*{amount}*',
+    income_error_format: '❌ 无法识别。请发送金额和可选描述：`50000 工资` 或 `1000 USD 兼职`',
+    income_error_amount: '❌ 金额无效。请输入0.01到{max}之间的数字。',
+
+    // Recurring expenses
+    button_recurring: '🔁 定期支出',
+    button_add_recurring: '➕ 添加定期支出',
+    recurring_menu_title: '🔁 *定期支出*',
+    recurring_menu_info: '每月付款（房租、订阅、贷款）会在选定的日期自动记录为支出。',
+    recurring_menu_empty: '暂无定期支出。',
+    recurring_item: '{icon} {description} — *{amount}*，每月{day}日\n    下次记录：{next}',
+    recurring_monthly_total: '每月合计：*{amount}*',
+    recurring_enter_prompt: '请输入定期支出的金额和描述 👇\n\n示例：`50000 房租`\n可在金额后指定货币：`500 USD 房租`',
+    recurring_day_prompt: '每月哪一天记录这笔支出？请输入1到31之间的数字。\n\n如果当月天数不足，我会在当月最后一天记录。',
+    recurring_day_invalid: '❌ 请输入1到31之间的整数。',
+    recurring_select_category: '请选择定期支出的类别：',
+    recurring_added: '✅ 已添加定期支出\n\n{description} — *{amount}*，每月{day}日\n首次记录：{next}',
+    recurring_added_charged_now: '✅ 已添加定期支出，本月已记录\n\n{description} — *{amount}*，每月{day}日\n下次记录：{next}',
+    recurring_deleted: '✅ 定期支出已删除。已记录的支出保留在历史中。',
+    recurring_not_found: '❌ 未找到定期支出',
+    recurring_limit: '❌ 最多只能有{max}笔定期支出',
+    recurring_charged_notification: '🔁 已记录定期支出：{icon} {description} — *{amount}*',
+    recurring_error_format: '❌ 格式无法识别。请发送金额和描述：`50000 房租` 或 `500 USD 房租`',
+    recurring_error_amount: '❌ 金额无效。请输入0.01到{max}之间的数字。',
+
+  button_overview: '📊 月度概览',
+  button_today: '📅 今天',
+  button_more: '☰ 更多',
+  more_menu_title: '☰ *更多*',
+  button_export: '📤 导出CSV',
+  keyboard_refreshed: '✅ 菜单已更新 — 现在更简洁了 👇',
+  button_outdated: '此按钮已过期。请从下方菜单重新打开该部分。',
+  overview_title: '概览：{range}',
+  overview_spent: '💸 支出：*{amount}* · 记录：{count}',
+  overview_upcoming: '即将到来的定期支出：',
+  overview_income_hint: '💡 用加号记录收入：`+50000 工资`',
+  button_prev_period: '◀️ 更早',
+  button_next_period: '更晚 ▶️',
+  button_back_to_overview: '⬅️ 返回概览',
+  day_title_today: '今天，{date}',
+  day_title_yesterday: '昨天，{date}',
+  day_title: '{date}',
+  day_entry_hint: '直接发送支出消息：`250 咖啡`',
+  button_prev_day: '◀️ 前一天',
+  button_next_day: '后一天 ▶️',
+  list_tap_number: '点击编号打开记录。',
+  family_today_title: '家庭：今日记录',
+  button_undo: '↩️ 撤销',
+  button_delete_record: '🗑 删除',
+  button_change_category: '🏷 类别',
+  button_edit_record: '✏️ 编辑',
+  expense_family_label: '计入家庭预算',
+  expense_recurring_label: '自动记录（定期支出）',
+  expense_category_remembered: '🏷 类别取自你之前相同描述的记录 — 可用下方按钮更改。',
+  category_will_be_remembered: '💡 我会记住你的选择：下次类似记录会直接归入此类别。',
+  expense_category_changed: '类别：{category}',
+  settings_header: '设置',
+  settings_currency_line: '💱 货币：*{currency}* · 收入：*{incomeCurrency}*',
+  settings_timezone_line: '🌍 时区：{timezone}',
+  settings_language_line: '🌐 语言：{language}',
+  settings_period_line: '📅 周期从每月{day}日开始',
+  settings_reminders_on_line: '🔔 提醒：开启（{hours}）',
+  settings_reminders_off_line: '🔔 提醒：关闭',
+  button_currencies: '💱 货币',
+  settings_currencies_text: '💱 *货币*\n\n主货币 — 支出和所有合计都以此计算：*{currency}*\n默认收入货币：*{incomeCurrency}*\n\n任何记录都可以使用其他货币 — 在金额后加上代码：`20 USD 出租车`。',
+  reminders_title: '提醒',
+  reminders_info: '如果到所选时间你还没有任何记录，我会提醒你。每天最多3次。',
+  button_reminders_on: '🟢 开启 — 点击关闭',
+  button_reminders_off: '⚫ 关闭 — 点击开启',
+  family_teaser: '👨‍👩‍👧‍👦 *家庭预算*\n\n与亲人的共同支出集中一处：每人记录自己的，统计和导出共享。\n\n高级版可用。',
+  button_try_premium: '⭐️ 试用高级版',
+    // Subscription and premium ending
+    subscription_active_info: '🔁 月度订阅已支付至 {date}，并将自动续费。取消方式：Telegram → 设置 → 我的星星 → 我的订阅（英文界面：Settings → My Stars → My subscriptions）。',
+    subscription_renewed: '🔁 订阅已续费。高级版有效期至 {date}。',
+    button_view_tariffs: '⭐️ 方案',
+    premium_expiring_trial: '⏳ 你的高级版试用将于 {date} 结束。\n\n之后自定义类别、家庭预算和编辑记录将无法使用。你记录的所有内容都会保留，记录支出仍然免费。',
+    premium_expiring_paid: '⏳ 高级版将于 {date} 结束。你可以提前续费 — 剩余天数会保留。',
+    premium_expired_trial: '🌙 你的高级版试用已结束。记录支出和收入仍然免费；自定义类别、家庭和编辑记录需要高级版。',
+    premium_expired_paid: '🌙 高级版已结束。感谢你对项目的支持！你可以随时续费。',
+    premium_winback: '👋 你的高级版已结束一周。如果想重新使用自定义类别、家庭预算和编辑记录 — 请查看下方方案。',
+    start_reminders_note: '🔔 如果你一天内没有任何记录，我会提醒你（每天最多3次）。更改时间或关闭：☰ 更多 → ⚙️ 设置 → 🔔。'
 };

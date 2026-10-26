@@ -216,3 +216,91 @@ INSERT INTO categories (user_id, name, icon) VALUES
 (0, 'Здоровье', '💊'),
 (0, 'Другое', '📦')
 ON CONFLICT DO NOTHING;
+
+-- ========================================
+-- INCOMES & RECURRING EXPENSES
+-- ========================================
+
+-- Валюта дохода по умолчанию (NULL = основная валюта пользователя)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS income_currency VARCHAR(3) NULL;
+COMMENT ON COLUMN users.income_currency IS 'Валюта дохода по умолчанию (NULL = основная валюта пользователя)';
+
+CREATE TABLE IF NOT EXISTS incomes (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    amount DECIMAL(12,2) NOT NULL CHECK (amount > 0),
+    currency VARCHAR(3) NOT NULL,
+    description TEXT,
+    created_at_utc TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_incomes_user_created ON incomes(user_id, created_at_utc);
+
+-- Ежемесячные регулярные траты (аренда, подписки и т.п.)
+CREATE TABLE IF NOT EXISTS recurring_expenses (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    amount DECIMAL(10,2) NOT NULL CHECK (amount > 0),
+    currency VARCHAR(3) NOT NULL,
+    category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+    description TEXT NOT NULL,
+    day_of_month INTEGER NOT NULL CHECK (day_of_month >= 1 AND day_of_month <= 31),
+    last_charged_month DATE NULL,
+    created_at_utc TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON COLUMN recurring_expenses.day_of_month IS 'Число месяца списания (1-31), в месяцах короче используется последний день';
+COMMENT ON COLUMN recurring_expenses.last_charged_month IS 'Первый день локального месяца, за который трата уже записана';
+
+CREATE INDEX IF NOT EXISTS idx_recurring_expenses_user_id ON recurring_expenses(user_id);
+
+-- Связь автоматически созданной траты с регулярной
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS recurring_expense_id INTEGER REFERENCES recurring_expenses(id) ON DELETE SET NULL;
+
+-- ========================================
+-- ATTRIBUTION, FUNNEL, PREMIUM LIFECYCLE
+-- ========================================
+
+-- Источник пользователя: код из ссылки t.me/<bot>?start=<код>
+ALTER TABLE users ADD COLUMN IF NOT EXISTS source VARCHAR(64) NULL;
+COMMENT ON COLUMN users.source IS 'Код источника из deep link /start <код> (реклама, канал, реферал)';
+
+-- Новым пользователям напоминания включены по умолчанию (отключаются в настройках)
+ALTER TABLE users ALTER COLUMN reminder_enabled SET DEFAULT TRUE;
+
+-- Шаги воронки: первое наступление события для пользователя
+CREATE TABLE IF NOT EXISTS user_funnel_events (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    event VARCHAR(40) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, event)
+);
+CREATE INDEX IF NOT EXISTS idx_user_funnel_events_event_created ON user_funnel_events(event, created_at);
+
+-- Отправленные служебные уведомления (идемпотентность: одно уведомление на пользователя/вид/ключ)
+CREATE TABLE IF NOT EXISTS user_notifications (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind VARCHAR(40) NOT NULL,
+    ref_key VARCHAR(64) NOT NULL,
+    sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, kind, ref_key)
+);
+
+-- Подписка Telegram Stars с автопродлением
+ALTER TABLE premium_transactions ADD COLUMN IF NOT EXISTS is_recurring BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE premium_transactions ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMPTZ NULL;
+
+-- Восстанавливаем воронку для уже существующих пользователей
+INSERT INTO user_funnel_events (user_id, event, created_at)
+SELECT id, 'registered', COALESCE(created_at::timestamptz, NOW()) FROM users WHERE id > 0
+ON CONFLICT DO NOTHING;
+
+INSERT INTO user_funnel_events (user_id, event, created_at)
+SELECT user_id, 'first_expense', MIN(created_at_utc) FROM expenses WHERE recurring_expense_id IS NULL GROUP BY user_id
+ON CONFLICT DO NOTHING;
+
+INSERT INTO user_funnel_events (user_id, event, created_at)
+SELECT user_id, 'paid', MIN(created_at) FROM premium_transactions
+WHERE status = 'completed' AND stars_amount > 0 AND transaction_type IN ('purchase', 'activation', 'extension')
+GROUP BY user_id
+ON CONFLICT DO NOTHING;

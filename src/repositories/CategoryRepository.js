@@ -69,18 +69,6 @@ class CategoryRepository extends BaseRepository {
     return result.rows[0];
   }
 
-  async getOrCreateCategory(userId, categoryName) {
-    // Сначала ищем в системных категориях
-    let category = await this.getCategoryByName(0, categoryName);
-    
-    if (!category) {
-      // Затем ищем в пользовательских категориях
-      category = await this.getCategoryByName(userId, categoryName);
-    }
-    
-    return category;
-  }
-
   // Метод для получения всех категорий (системных + пользовательских)
   async getAllCategories(userId) {
     const query = `

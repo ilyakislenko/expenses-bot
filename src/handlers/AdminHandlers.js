@@ -1,4 +1,5 @@
 const logger = require('../utils/logger');
+const respond = require('../utils/respond');
 
 // Функция для экранирования символов Markdown
 function escapeMarkdown(text) {
@@ -7,12 +8,13 @@ function escapeMarkdown(text) {
 }
 
 class AdminHandlers {
-  constructor(adminService, userService, localizationService, formatter, stateService) {
+  constructor(adminService, userService, localizationService, formatter, stateService, funnelService) {
     this.adminService = adminService;
     this.userService = userService;
     this.localizationService = localizationService;
     this.formatter = formatter;
     this.stateService = stateService;
+    this.funnelService = funnelService;
   }
 
   // Проверка прав администратора
@@ -40,6 +42,9 @@ class AdminHandlers {
     const keyboard = [
       [
         { text: '📊 Статистика', callback_data: 'panel_stats' },
+        { text: '📈 Воронка', callback_data: 'panel_funnel_30' }
+      ],
+      [
         { text: '👥 Пользователи', callback_data: 'panel_users' }
       ],
       [
@@ -110,6 +115,58 @@ class AdminHandlers {
       const errorText = this.localizationService.getText(userLanguage, 'admin_error');
       await ctx.reply(errorText);
     }
+  }
+
+  // Воронка по источникам (код из t.me/<bot>?start=<код>). days = 0 — за всё время
+  async showFunnel(ctx, days) {
+    if (!(await this.checkAdminAccess(ctx))) return;
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
+
+    const rows = await this.funnelService.getReport(days > 0 ? days : null);
+    const pct = (value, total) => (total > 0 ? `${Math.round(value / total * 100)}%` : '0%');
+    const block = (title, r) => [
+      `${title} — ${r.registered} чел.`,
+      `  онбординг ${r.onboarded} (${pct(r.onboarded, r.registered)}) · 1-я трата ${r.first_expense} (${pct(r.first_expense, r.registered)}) · вернулись через неделю ${r.returned_week2} (${pct(r.returned_week2, r.registered)})`,
+      `  смотрели премиум ${r.paywall_viewed} · тарифы ${r.tariffs_viewed} · оплатили ${r.paid} (${pct(r.paid, r.registered)}) · ${r.stars} ⭐`
+    ].join('\n');
+
+    const total = rows.reduce((acc, r) => {
+      for (const key of ['registered', 'onboarded', 'first_expense', 'returned_week2', 'paywall_viewed', 'tariffs_viewed', 'paid', 'stars']) {
+        acc[key] = (acc[key] || 0) + r[key];
+      }
+      return acc;
+    }, {});
+
+    const period = days > 0 ? `за ${days} дней` : 'за всё время';
+    const lines = [`📈 Воронка — ${period} (по дате регистрации)`, ''];
+    if (!rows.length) {
+      lines.push('Регистраций за период нет.');
+    } else {
+      lines.push(block('Все источники', total));
+      for (const r of rows.slice(0, 15)) {
+        lines.push('', block(`▫️ ${r.source || 'без источника'}`, r));
+      }
+    }
+    const botUsername = ctx.botInfo && ctx.botInfo.username ? ctx.botInfo.username : '<бот>';
+    lines.push(
+      '',
+      `Ссылка для рекламы: https://t.me/${botUsername}?start=<код>`,
+      'Код — латиница, цифры, _ и -, до 64 символов. Источник запоминается при первом /start.'
+    );
+
+    await respond(ctx, lines.join('\n'), {
+      disable_web_page_preview: true,
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: '30 дней', callback_data: 'panel_funnel_30' },
+            { text: '90 дней', callback_data: 'panel_funnel_90' },
+            { text: 'Всё время', callback_data: 'panel_funnel_0' }
+          ],
+          [{ text: '🔙 Назад', callback_data: 'panel_main' }]
+        ]
+      }
+    });
   }
 
   // Управление пользователями

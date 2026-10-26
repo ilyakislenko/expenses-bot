@@ -22,22 +22,26 @@ class PremiumTransactionRepository extends BaseRepository {
       previous_expiry_date = null,
       new_expiry_date = null,
       status = 'completed',
-      error_message = null
+      error_message = null,
+      is_recurring = false,
+      subscription_expires_at = null
     } = transactionData;
 
     const query = `
       INSERT INTO premium_transactions (
-        user_id, transaction_type, tariff_duration, stars_amount, 
+        user_id, transaction_type, tariff_duration, stars_amount,
         usd_amount, rub_amount, telegram_payment_id, invoice_payload,
-        previous_expiry_date, new_expiry_date, status, error_message
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        previous_expiry_date, new_expiry_date, status, error_message,
+        is_recurring, subscription_expires_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING *
     `;
 
     const values = [
       user_id, transaction_type, tariff_duration, stars_amount,
       usd_amount, rub_amount, telegram_payment_id, invoice_payload,
-      previous_expiry_date, new_expiry_date, status, error_message
+      previous_expiry_date, new_expiry_date, status, error_message,
+      is_recurring, subscription_expires_at
     ];
 
     try {
@@ -260,6 +264,21 @@ class PremiumTransactionRepository extends BaseRepository {
       logger.error('Failed to check transaction existence:', error);
       throw error;
     }
+  }
+
+  /**
+   * Действующая подписка Telegram Stars с автопродлением (последний платёж по ней ещё не истёк)
+   */
+  async getActiveRecurringSubscription(userId) {
+    const query = `
+      SELECT subscription_expires_at
+      FROM premium_transactions
+      WHERE user_id = $1 AND is_recurring = true AND status = 'completed' AND subscription_expires_at > NOW()
+      ORDER BY subscription_expires_at DESC
+      LIMIT 1
+    `;
+    const result = await this.query(query, [userId]);
+    return result.rows[0] || null;
   }
 }
 

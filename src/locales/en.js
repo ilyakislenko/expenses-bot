@@ -1,6 +1,6 @@
 module.exports = {
   button_reminders: '🔔 Remind me',
-  reminders_enabled: 'Reminders are ON. If you haven’t recorded anything by 18:00 — I’ll poke you with some humor 😉',
+  reminders_enabled: '🔔 Reminders are on',
   reminders_disabled: 'Reminders are OFF. I’ll be quiet 🤐',
   button_configure_reminder_hours: '⏰ Configure reminder hours',
   reminder_hours_info: 'Select up to 3 hours for reminders (your local timezone). Current:',
@@ -187,97 +187,29 @@ module.exports = {
   save: 'Save',
   
   // Commands
-  start_message: `Hello! 👋 I'll help you track your expenses and control your budget.
+  start_message: `Hello! 👋 I'll help you track your expenses and income.
 
-*How to add an expense:*
-Just write the amount and description separated by a space:
--  \`200 groceries at the store\`
--  \`1500 lunch at restaurant\`
--  \`50 transportation\`
--  \`150.50 coffee\`
+*Expense* — just write the amount and description: \`250 coffee\`, \`1500 lunch\`.
+Another currency works too: \`20 USD taxi\`, or just an amount: \`300\`.
+*Income* — with a plus: \`+50000 salary\`.
 
-After entering, a menu with category buttons will appear - choose the appropriate one! 🏷️
+Pick a category once — I'll remember it next time.
+The menu is at the bottom: month overview, today's records, income, recurring expenses (rent, subscriptions) and «☰ More».`,
 
-*Main commands:*
-/start - restart the bot
-/menu - open interactive menu (Recommended)
-/history - recent entries for the day
-/stats - detailed statistics by categories
+  start_returning: '👋 Welcome back! Send an expense as a message — `250 coffee`. The menu is on the keyboard below.',
 
-/export - download data in CSV
-/undo - cancel last entry
+  help_message: `❓ *How to use*
 
-*Settings:*
-/settings - open settings
-/currency - set base currency
-/timezone - configure timezone
-/categories - manage categories
+• \`250 coffee\` — expense. Pick a category once, I'll remember it
+• \`20 USD taxi\` — expense in another currency, \`300\` — without description
+• \`+50000 salary\` — income (\`+1000 USD\` — in another currency)
+• Under a new record: ↩️ undo, 🏷 change category
+• 📊 *Month overview* — expenses, income, balance, categories; ◀️ — previous periods
+• 📅 *Today* — records for the day; tap a number to edit or delete a record
+• 🔁 *Recurring expenses* — rent and subscriptions are recorded automatically every month
+• Currencies, reminders (up to 3 a day) and period start — in ☰ More → ⚙️ Settings
 
-*Additional features:*
-/family - manage family budget
-/limits - limits and premium features
-/help - show detailed help
-
-Start entering your expenses! 💰`,
-
-  help_message: `📋 *Detailed Command Help*
-
-*Adding expenses:*
-Write amount and description separated by a space:
-\`200 groceries\` - a menu with category buttons will appear
-\`150.50 coffee\` - decimal numbers are supported
-
-*Main commands:*
-/start - restart the bot and show welcome message
-/menu - open interactive menu with all functions
-/history - show recent entries for today
-/stats - detailed statistics by categories for the month
-
-/export - download all data in CSV format
-/undo - cancel last added entry
-
-*Settings and management:*
-/settings - open main settings menu
-/currency - change base currency (RUB, USD, EUR, KZT, CNY, THB)
-/timezone - configure timezone for accurate tracking
-/categories - manage custom categories (premium)
-
-*Family budget:*
-/family - manage family groups and shared expenses
-- Create family, invite members
-- Shared expenses and statistics
-- Export family data
-
-*Premium features:*
-/limits - information about limits and premium capabilities
-- Custom categories
-- Extended statistics
-- Family budget
-- Priority support
-
-*Usage tips:*
-• Use descriptions for better expense understanding
-• Regularly check statistics via /stats
-• Set timezone for accurate tracking
-• Use /menu for quick access to functions
-• Export data via /export for analysis
-
-*Editing expenses:*
-• In edit mode (/history) you can delete and edit entries
-• Button "👨‍👩‍👧‍👦 To Family" allows moving personal expenses to family budget
-• Button "🚫 From Family Budget" returns family expenses to personal
-• You can only edit and delete your own expenses
-
-*Reminders:*
-• Bot automatically reminds you to record expenses at 18:00 your local time
-• Reminders are sent only if you haven't recorded expenses for the day
-• Reminders can be enabled/disabled in settings
-• Maximum one reminder is sent per day
-
-*Support:*
-If you have questions or issues, use /start to return to the main menu.
-
-Happy expense tracking! 💰📊`,
+Commands: /stats /history /income /recurring /export /settings /menu`,
 
   // Expenses
   expense_added: '✅ Recorded: {amount} - {description}',
@@ -338,28 +270,23 @@ Now all your expenses will be correctly displayed in your local time.`,
   status_regular: '👤 Standard',
   status_premium: '💎 Premium',
   status_label: '*Status:* {status}',
-  records_usage: '<b>Records:</b> {current}/{max} ({percentage}%)',
-  records_remaining: '<b>Remaining:</b> {remaining} records',
   max_description_length: '<b>Max description length:</b> {length} characters',
-  near_limit_warning: '⚠️ *Warning:* You are close to the record limit!',
-  limit_reached: '❌ *Record limit reached!*',
   premium_benefits: `💎 <b>Premium benefits:</b>
 • 160 characters in description (instead of 80)
-• 300 records (instead of 100)
- • Up to 5 custom categories
-• Extended statistics
+• Up to 5 custom categories
 • Family budget
-• Ability to edit and delete expenses(not only the last one)`,
+• Editing the amount and description of any record
+
+Recording expenses and income is free and unlimited.`,
   
   // Validation errors
   error_too_long_regular: '❌ Description is too long!\nMaximum 80 characters for regular users.',
   error_too_long_premium: '❌ Description is too long!\nMaximum 160 characters for premium users.',
   error_no_description: '❌ You need to specify a description after the amount.',
   error_amount: '❌ Invalid amount. Enter a number from 0.01 to 999999.',
-  error_format: '❌ I don\'t understand the format. Write the amount and description separated by a space.\nFor example: `200 groceries` or `1500 lunch at cafe`',
+  error_format: '❌ I did not get it. Start with an amount: `250 coffee`, `20 USD taxi` or just `300`.',
   error_forbidden_content: '❌ Forbidden content.',
-  error_limit_reached: '❌ Record limit reached!\nRegular users: 100 records\nPremium users: 300 records\n\n💎 Upgrade to premium to increase limits!',
-  error_premium_required: '💎 This feature is only available for premium users!\n\nPremium benefits:\n• 160 characters in description (instead of 80)\n• 300 records (instead of 100)\n• Custom categories\n• Extended statistics',
+  error_premium_required: '💎 This feature is available with premium only.\n\nPremium gives you:\n• 160 characters in description (instead of 80)\n• Custom categories\n• Family budget\n• Editing records',
   error_generic: '❌ An error occurred. Please try again later or contact the administrator.',
   
   // Buttons
@@ -413,7 +340,6 @@ Now all your expenses will be correctly displayed in your local time.`,
   edit_format_error: 'Format error.',
   
   // Callback responses
-  callback_limit_reached: '❌ Record limit reached',
   callback_button_not_found: '❌ Error: button not found',
   callback_data_not_found: '❌ Error: data not found',
   callback_expense_added: '✅ Added to category "{category}"',
@@ -562,7 +488,7 @@ Now all your expenses will be correctly displayed in your local time.`,
   premium_back_button: '⬅️ Back',
   premium_tariffs_title: '⭐️ Tariffs (Telegram Stars)',
   per_month: '/ month',
-  premium_payment_info: '💳 Payment is made using Telegram Stars — Telegram\'s internal currency for convenient and secure payment within the messenger. <b>No automatic renewal.</b>',
+  premium_payment_info: '💳 Payment is made with Telegram Stars, Telegram\'s internal currency. 🔁 The monthly plan renews automatically; cancel it in Telegram: Settings → My Stars → My subscriptions. The 3, 6 and 12 month plans are one-time payments.',
   premium_renewal_info: '📅 You can renew your subscription at any time. The corresponding number of days will be added to the remaining period.',
   premium_stars_info: '💡 You can purchase stars without Apple / Google commission in the official bot [@PremiumBot].',
   premium_why_paid_title: '👀 Why is the service paid?',
@@ -620,5 +546,113 @@ Now all your expenses will be correctly displayed in your local time.`,
   custom_categories_list_title: 'Your custom categories:',
   custom_categories_delete: '🗑️ Delete',
   custom_categories_deleted: '✅ Category deleted.',
-  custom_categories_premium_required: '💎 This feature is only available for premium users.'
+  custom_categories_premium_required: '💎 This feature is only available for premium users.',
+
+  // Income
+  button_income: '💵 Income',
+  button_add_income: '➕ Add income',
+  button_income_currency: '💱 Income currency',
+  income_menu_title: '💵 *Income for the current period*',
+  income_menu_empty: 'No income for this period yet.',
+  income_currency_label: 'Default income currency: *{currency}*',
+  income_hint: '💡 Quick way: send a message starting with plus — `+50000 salary` or `+1000 USD freelance`',
+  income_enter_prompt: 'Enter the income amount and description 👇\n\nExample: `50000 salary`\nDefault currency — *{currency}*. Another one can be set with a code after the amount: `1000 USD freelance`',
+  income_added: '✅ Income recorded: *{amount}* — {description}',
+  income_default_description: 'Income',
+  income_deleted: '✅ Income deleted',
+  income_not_found: '❌ Income not found',
+  income_currency_select: 'Choose the currency you usually get paid in. Expenses stay in your main currency:',
+  income_currency_set: '✅ Income currency: {currency}',
+  income_total: '💵 Income: *{amount}*',
+  balance_label: '⚖️ Balance (income − expenses): *{amount}*',
+  income_error_format: '❌ I did not get it. Send an amount and an optional description: `50000 salary` or `1000 USD freelance`',
+  income_error_amount: '❌ Invalid amount. Enter a number from 0.01 to {max}.',
+
+  // Recurring expenses
+  button_recurring: '🔁 Recurring expenses',
+  button_add_recurring: '➕ Add recurring expense',
+  recurring_menu_title: '🔁 *Recurring expenses*',
+  recurring_menu_info: 'Monthly payments (rent, subscriptions, loans) are recorded as expenses automatically on the chosen day of the month.',
+  recurring_menu_empty: 'No recurring expenses yet.',
+  recurring_item: '{icon} {description} — *{amount}*, on day {day} of every month\n    Next record: {next}',
+  recurring_monthly_total: 'Total per month: *{amount}*',
+  recurring_enter_prompt: 'Enter the amount and description of the recurring expense 👇\n\nExample: `50000 rent`\nYou can set a currency after the amount: `500 USD rent`',
+  recurring_day_prompt: 'On which day of every month should I record this expense? Enter a number from 1 to 31.\n\nIf a month is shorter, I will record it on the last day of the month.',
+  recurring_day_invalid: '❌ Enter a whole number from 1 to 31.',
+  recurring_select_category: 'Choose a category for the recurring expense:',
+  recurring_added: '✅ Recurring expense added\n\n{description} — *{amount}*, on day {day} of every month\nFirst record: {next}',
+  recurring_added_charged_now: '✅ Recurring expense added and already recorded for this month\n\n{description} — *{amount}*, on day {day} of every month\nNext record: {next}',
+  recurring_deleted: '✅ Recurring expense deleted. Already recorded expenses stay in history.',
+  recurring_not_found: '❌ Recurring expense not found',
+  recurring_limit: '❌ You can have at most {max} recurring expenses',
+  recurring_charged_notification: '🔁 Recorded a recurring expense: {icon} {description} — *{amount}*',
+  recurring_error_format: '❌ Unrecognized format. Send an amount and a description: `50000 rent` or `500 USD rent`',
+  recurring_error_amount: '❌ Invalid amount. Enter a number from 0.01 to {max}.',
+
+  // Main menu and «More»
+  button_overview: '📊 Month overview',
+  button_today: '📅 Today',
+  button_more: '☰ More',
+  more_menu_title: '☰ *More*',
+  button_export: '📤 Export CSV',
+  keyboard_refreshed: '✅ The menu is updated — it is more compact now 👇',
+  button_outdated: 'This button is outdated. Open the section again from the menu below.',
+
+  // Period overview and record lists
+  overview_title: 'Overview: {range}',
+  overview_spent: '💸 Expenses: *{amount}* · records: {count}',
+  overview_upcoming: 'Upcoming recurring:',
+  overview_income_hint: '💡 Record income with a plus: `+50000 salary`',
+  button_prev_period: '◀️ Earlier',
+  button_next_period: 'Later ▶️',
+  button_back_to_overview: '⬅️ To overview',
+  day_title_today: 'Today, {date}',
+  day_title_yesterday: 'Yesterday, {date}',
+  day_title: '{date}',
+  day_entry_hint: 'Send an expense as a message: `250 coffee`',
+  button_prev_day: '◀️ Previous day',
+  button_next_day: 'Next day ▶️',
+  list_tap_number: 'Tap a number to open the record.',
+  family_today_title: 'Family: today\'s records',
+
+  // Record card
+  button_undo: '↩️ Undo',
+  button_delete_record: '🗑 Delete',
+  button_change_category: '🏷 Category',
+  button_edit_record: '✏️ Edit',
+  expense_family_label: 'in the family budget',
+  expense_recurring_label: 'recorded automatically (recurring expense)',
+  expense_category_remembered: '🏷 The category was picked from your previous record with the same description — change it with the button below.',
+  category_will_be_remembered: '💡 I will remember your choice: next time such a record goes to this category right away.',
+  expense_category_changed: 'Category: {category}',
+
+  // Settings
+  settings_header: 'Settings',
+  settings_currency_line: '💱 Currency: *{currency}* · income: *{incomeCurrency}*',
+  settings_timezone_line: '🌍 Time zone: {timezone}',
+  settings_language_line: '🌐 Language: {language}',
+  settings_period_line: '📅 The period starts on day {day}',
+  settings_reminders_on_line: '🔔 Reminders: on ({hours})',
+  settings_reminders_off_line: '🔔 Reminders: off',
+  button_currencies: '💱 Currencies',
+  settings_currencies_text: '💱 *Currencies*\n\nMain — expenses and all totals are counted in it: *{currency}*\nDefault income currency: *{incomeCurrency}*\n\nAny record can be in another currency — put the code after the amount: `20 USD taxi`.',
+  reminders_title: 'Reminders',
+  reminders_info: 'If you have not recorded anything by the chosen hour, I will remind you. At most 3 times a day.',
+  button_reminders_on: '🟢 On — tap to turn off',
+  button_reminders_off: '⚫ Off — tap to turn on',
+
+  // Family without premium
+  family_teaser: '👨‍👩‍👧‍👦 *Family budget*\n\nShared expenses with your close ones in one place: everyone records their own, statistics and export are shared.\n\nAvailable with premium.',
+  button_try_premium: '⭐️ Try premium',
+
+  // Subscription and premium ending
+  subscription_active_info: '🔁 The monthly subscription is paid until {date} and renews automatically. To cancel: Telegram → Settings → My Stars → My subscriptions.',
+  subscription_renewed: '🔁 Subscription renewed. Premium is active until {date}.',
+  button_view_tariffs: '⭐️ Plans',
+  premium_expiring_trial: '⏳ Your premium trial ends on {date}.\n\nAfter that custom categories, the family budget and editing records will stop working. Everything you recorded stays, and expense tracking is free.',
+  premium_expiring_paid: '⏳ Premium ends on {date}. You can renew in advance — the remaining days are kept.',
+  premium_expired_trial: '🌙 Your premium trial has ended. Tracking expenses and income stays free; custom categories, family and editing records come with premium.',
+  premium_expired_paid: '🌙 Premium has ended. Thank you for supporting the project! You can renew any time.',
+  premium_winback: '👋 Your premium ended a week ago. If you want custom categories, the family budget and editing records back — see the plans below.',
+  start_reminders_note: '🔔 If you record nothing during the day, I will remind you (up to 3 times a day). Change hours or turn off: ☰ More → ⚙️ Settings → 🔔.'
 }; 

@@ -1,6 +1,6 @@
 module.exports = {
     button_reminders: '🔔 Lembrar-me',
-    reminders_enabled: 'Lembretes ativados. Se não registrar nada até às 18:00, vou lembrar com um toque de humor 😉',
+    reminders_enabled: '🔔 Lembretes ativados',
     reminders_disabled: 'Lembretes desativados. Silêncio total 🤐',
     reminder_sample_variants: [
       '👋 Ei! Se a sua carteira está silenciosa, não quer dizer que esteja feliz. Registre seus gastos 😉',
@@ -192,96 +192,28 @@ module.exports = {
     save: 'Salvar',
     
     // Mensagem de início
-    start_message: `Olá! 👋 Vou te ajudar a registrar suas despesas e controlar seu orçamento.
-  
-  *Como adicionar uma despesa:*
-  Basta escrever o valor e a descrição:
-  -  \`200 compras no supermercado\`
-  -  \`1500 almoço no restaurante\`
-  -  \`50 transporte\`
-  -  \`150,50 café\`
-  
-  Depois, aparecerá um menu de categorias — escolha a adequada 🏷️
-  
-  *Comandos principais:*
-  /start - reiniciar o bot
-  /menu - abrir menu interativo
-  /history - últimas entradas do dia
-  /stats - estatísticas detalhadas por categoria
-  
-  /export - baixar dados em CSV
-  /undo - desfazer última entrada
-  
-  *Configurações:*
-  /settings - abrir configurações
-  /currency - definir moeda padrão
-  /timezone - definir fuso horário
-  /categories - gerenciar categorias
-  
-  *Funções extras:*
-  /family - orçamento familiar
-  /limits - limites e recursos premium
-  /help - ajuda detalhada
-  
-  Comece a registrar suas despesas agora! 💰`,
-  help_message: `📋 *Ajuda detalhada de comandos*
-  
-  *Adicionar despesas:*
-  Escreva o valor e a descrição separados por espaço:
-  \`200 compras\` - aparecerá um menu de categorias
-  \`150,50 café\` - suporta números decimais
-  
-  *Comandos principais:*
-  /start - reinicia o bot e mostra a mensagem de boas-vindas
-  /menu - abre o menu interativo com todas as funções
-  /history - mostra os registros de hoje
-  /stats - estatísticas detalhadas do mês por categoria
-  
-  /export - baixa todos os dados em formato CSV
-  /undo - desfaz o último registro
-  
-  *Configurações e gestão:*
-  /settings - abre o menu principal de configurações
-  /currency - altera a moeda padrão (RUB, USD, EUR, KZT, CNY, THB)
-  /timezone - ajusta o fuso horário para registro correto
-  /categories - gerenciar categorias personalizadas (premium)
-  
-  *Orçamento familiar:*
-  /family - gerenciar grupos familiares e despesas compartilhadas
-  - Criar família, convidar membros
-  - Despesas e estatísticas comuns
-  - Exportar dados familiares
-  
-  *Recursos premium:*
-  /limits - informações sobre limites e premium
-  - Categorias personalizadas
-  - Estatísticas avançadas
-  - Orçamento familiar
-  - Suporte prioritário
-  
-  *Dicas de uso:*
-  • Use descrições para melhor compreensão das despesas
-  • Confira regularmente as estatísticas com /stats
-  • Ajuste o fuso horário
-  • Use /menu para acesso rápido
-  • Exporte dados com /export para análise
-  
-  *Edição de despesas:*
-  • No /history você pode excluir ou editar registros
-  • Botão "👨‍👩‍👧‍👦 Para família" move a despesa para o orçamento familiar
-  • Botão "🚫 Do orçamento familiar" retorna para despesas pessoais
-  • Só pode editar/excluir as suas próprias despesas
-  
-  *Lembretes:*
-  • O bot lembra de registrar despesas às 18:00 no horário local
-  • Somente se não tiver registrado nada no dia
-  • Podem ser ativados/desativados nas configurações
-  • Máximo de um lembrete por dia
-  
-  *Suporte:*
-  Use /start para voltar ao menu principal, caso precise.
-  
-  Boa gestão de orçamento! 💰📊`,
+    start_message: `Olá! 👋 Vou te ajudar a registrar suas despesas e receitas.
+
+*Despesa* — basta escrever o valor e a descrição: \`250 café\`, \`1500 almoço\`.
+Outra moeda também funciona: \`20 USD táxi\`, ou só um valor: \`300\`.
+*Receita* — com um mais: \`+50000 salário\`.
+
+Escolha uma categoria uma vez — vou lembrar dela na próxima.
+O menu fica embaixo: resumo do mês, registros de hoje, receitas, despesas recorrentes (aluguel, assinaturas) e «☰ Mais».`,
+
+    start_returning: '👋 Bem-vindo de volta! Envie uma despesa como mensagem — `250 café`. O menu está no teclado abaixo.',
+  help_message: `❓ *Como usar*
+
+• \`250 café\` — despesa. Escolha uma categoria uma vez, eu vou lembrar
+• \`20 USD táxi\` — despesa em outra moeda, \`300\` — sem descrição
+• \`+50000 salário\` — receita (\`+1000 USD\` — em outra moeda)
+• Abaixo de um novo registro: ↩️ desfazer, 🏷 mudar categoria
+• 📊 *Resumo do mês* — despesas, receitas, saldo, categorias; ◀️ — períodos anteriores
+• 📅 *Hoje* — registros do dia; toque em um número para editar ou excluir um registro
+• 🔁 *Despesas recorrentes* — aluguel e assinaturas são registrados automaticamente todo mês
+• Moedas, lembretes (até 3 por dia) e início do período — em ☰ Mais → ⚙️ Configurações
+
+Comandos: /stats /history /income /recurring /export /settings /menu`,
   
     // Despesas
     expense_added: '✅ Registrado: {amount} - {description}',
@@ -443,18 +375,14 @@ module.exports = {
     status_regular: '👤 Padrão',
     status_premium: '💎 Premium',
     status_label: '*Status:* {status}',
-    records_usage: '<b>Registros:</b> {current}/{max} ({percentage}%)',
-    records_remaining: '<b>Restantes:</b> {remaining} registros',
     max_description_length: '<b>Comprimento máx. da descrição:</b> {length} caracteres',
-    near_limit_warning: '⚠️ *Atenção:* Você está próximo do limite de registros!',
-    limit_reached: '❌ *Limite de registros atingido!*',
     premium_benefits: `💎 <b>Vantagens premium:</b>
   • 160 caracteres na descrição (em vez de 80)
-  • 300 registros (em vez de 100)
   • Até 5 categorias próprias
-  • Estatísticas avançadas
   • Orçamento familiar
-  • Possibilidade de editar e excluir quaisquer registros (não apenas o último)`,
+  • Editar o valor e a descrição de qualquer registro
+
+  Registrar despesas e receitas é gratuito e ilimitado.`,
     
     // Assinatura premium
     premium_subscription_title: '⭐️ Assinatura',
@@ -468,7 +396,7 @@ module.exports = {
     premium_back_button: '⬅️ Voltar',
     premium_tariffs_title: '⭐️ Tarifas (Telegram Stars)',
     per_month: 'por mês',
-    premium_payment_info: '💳 Pagamento via Telegram Stars — a moeda interna do Telegram. <b>Sem renovação automática.</b>',
+    premium_payment_info: '💳 Pagamento via Telegram Stars — a moeda interna do Telegram. 🔁 O plano mensal é renovado automaticamente; cancele no Telegram: Configurações → Minhas Estrelas → Minhas assinaturas. Os planos de 3, 6 e 12 meses são pagamentos únicos.',
     premium_renewal_info: '📅 Pode renovar a qualquer momento. O tempo será somado ao restante.',
     premium_stars_info: '💡 Compre estrelas sem taxa pelo bot oficial [@PremiumBot].',
     premium_why_paid_title: '👀 Por que é pago?',
@@ -516,10 +444,9 @@ module.exports = {
     error_too_long_premium: '❌ Descrição muito longa! Máx. 160 caracteres para premium.',
     error_no_description: '❌ É necessário informar uma descrição após o valor.',
     error_amount: '❌ Valor inválido. Digite um número entre 0.01 e 999999.',
-    error_format: '❌ Formato não reconhecido. Escreva valor e descrição.\nEx.: `200 compras` ou `1500 almoço no café`',
+    error_format: '❌ Não entendi. Comece com um valor: `250 café`, `20 USD táxi` ou só `300`.',
     error_forbidden_content: '❌ Conteúdo não permitido.',
-    error_limit_reached: '❌ Limite atingido!\nUsuários padrão: 100 registros\nPremium: 300 registros\n\n💎 Atualize para premium para aumentar o limite!',
-    error_premium_required: '💎 Este recurso é apenas para usuários premium!\n\nVantagens:\n• 160 caracteres na descrição\n• 300 registros\n• Categorias personalizadas\n• Estatísticas avançadas',
+    error_premium_required: '💎 Este recurso está disponível apenas com premium.\n\nO premium oferece:\n• 160 caracteres na descrição (em vez de 80)\n• Categorias personalizadas\n• Orçamento familiar\n• Edição de registros',
     error_generic: '❌ Ocorreu um erro. Tente mais tarde ou contate o administrador.',
     
     // Botões
@@ -569,7 +496,6 @@ module.exports = {
     edit_format_error: 'Formato inválido.',
     
     // Respostas de callback
-    callback_limit_reached: '❌ Limite de registros atingido',
     callback_button_not_found: '❌ Erro: botão não encontrado',
     callback_data_not_found: '❌ Erro: dados não encontrados',
     callback_expense_added: '✅ Adicionado à categoria "{category}"',
@@ -609,5 +535,105 @@ module.exports = {
     custom_categories_list_title: 'Suas categorias personalizadas:',
     custom_categories_delete: '🗑️ Excluir',
     custom_categories_deleted: '✅ Categoria excluída.',
-    custom_categories_premium_required: '💎 Este recurso está disponível apenas para usuários premium.'
+    custom_categories_premium_required: '💎 Este recurso está disponível apenas para usuários premium.',
+
+    // Income
+    button_income: '💵 Receitas',
+    button_add_income: '➕ Adicionar receita',
+    button_income_currency: '💱 Moeda das receitas',
+    income_menu_title: '💵 *Receitas do período atual*',
+    income_menu_empty: 'Ainda não há receitas neste período.',
+    income_currency_label: 'Moeda padrão das receitas: *{currency}*',
+    income_hint: '💡 Jeito rápido: envie uma mensagem começando com mais — `+50000 salário` ou `+1000 USD freelance`',
+    income_enter_prompt: 'Digite o valor e a descrição da receita 👇\n\nExemplo: `50000 salário`\nMoeda padrão — *{currency}*. Outra pode ser definida com um código após o valor: `1000 USD freelance`',
+    income_added: '✅ Receita registrada: *{amount}* — {description}',
+    income_default_description: 'Receita',
+    income_deleted: '✅ Receita excluída',
+    income_not_found: '❌ Receita não encontrada',
+    income_currency_select: 'Escolha a moeda em que você normalmente recebe. As despesas continuam na sua moeda principal:',
+    income_currency_set: '✅ Moeda das receitas: {currency}',
+    income_total: '💵 Receitas: *{amount}*',
+    balance_label: '⚖️ Saldo (receitas − despesas): *{amount}*',
+    income_error_format: '❌ Não entendi. Envie um valor e uma descrição opcional: `50000 salário` ou `1000 USD freelance`',
+    income_error_amount: '❌ Valor inválido. Digite um número de 0.01 a {max}.',
+
+    // Recurring expenses
+    button_recurring: '🔁 Despesas recorrentes',
+    button_add_recurring: '➕ Adicionar despesa recorrente',
+    recurring_menu_title: '🔁 *Despesas recorrentes*',
+    recurring_menu_info: 'Pagamentos mensais (aluguel, assinaturas, empréstimos) são registrados automaticamente como despesas no dia do mês escolhido.',
+    recurring_menu_empty: 'Ainda não há despesas recorrentes.',
+    recurring_item: '{icon} {description} — *{amount}*, no dia {day} de cada mês\n    Próximo registro: {next}',
+    recurring_monthly_total: 'Total por mês: *{amount}*',
+    recurring_enter_prompt: 'Digite o valor e a descrição da despesa recorrente 👇\n\nExemplo: `50000 aluguel`\nVocê pode definir uma moeda após o valor: `500 USD aluguel`',
+    recurring_day_prompt: 'Em que dia de cada mês devo registrar esta despesa? Digite um número de 1 a 31.\n\nSe o mês for mais curto, vou registrá-la no último dia do mês.',
+    recurring_day_invalid: '❌ Digite um número inteiro de 1 a 31.',
+    recurring_select_category: 'Escolha uma categoria para a despesa recorrente:',
+    recurring_added: '✅ Despesa recorrente adicionada\n\n{description} — *{amount}*, no dia {day} de cada mês\nPrimeiro registro: {next}',
+    recurring_added_charged_now: '✅ Despesa recorrente adicionada e já registrada neste mês\n\n{description} — *{amount}*, no dia {day} de cada mês\nPróximo registro: {next}',
+    recurring_deleted: '✅ Despesa recorrente excluída. As despesas já registradas permanecem no histórico.',
+    recurring_not_found: '❌ Despesa recorrente não encontrada',
+    recurring_limit: '❌ Você pode ter no máximo {max} despesas recorrentes',
+    recurring_charged_notification: '🔁 Despesa recorrente registrada: {icon} {description} — *{amount}*',
+    recurring_error_format: '❌ Formato não reconhecido. Envie um valor e uma descrição: `50000 aluguel` ou `500 USD aluguel`',
+    recurring_error_amount: '❌ Valor inválido. Digite um número de 0.01 a {max}.',
+
+    // Main menu and «More»
+    button_overview: '📊 Resumo do mês',
+    button_today: '📅 Hoje',
+    button_more: '☰ Mais',
+    more_menu_title: '☰ *Mais*',
+    button_export: '📤 Exportar CSV',
+    keyboard_refreshed: '✅ O menu foi atualizado — agora está mais compacto 👇',
+    button_outdated: 'Este botão está desatualizado. Abra a seção novamente pelo menu abaixo.',
+    overview_title: 'Resumo: {range}',
+    overview_spent: '💸 Despesas: *{amount}* · registros: {count}',
+    overview_upcoming: 'Próximas recorrentes:',
+    overview_income_hint: '💡 Registre receitas com um mais: `+50000 salário`',
+    button_prev_period: '◀️ Antes',
+    button_next_period: 'Depois ▶️',
+    button_back_to_overview: '⬅️ Ao resumo',
+    day_title_today: 'Hoje, {date}',
+    day_title_yesterday: 'Ontem, {date}',
+    day_title: '{date}',
+    day_entry_hint: 'Envie uma despesa como mensagem: `250 café`',
+    button_prev_day: '◀️ Dia anterior',
+    button_next_day: 'Próximo dia ▶️',
+    list_tap_number: 'Toque em um número para abrir o registro.',
+    family_today_title: 'Família: registros de hoje',
+    button_undo: '↩️ Desfazer',
+    button_delete_record: '🗑 Excluir',
+    button_change_category: '🏷 Categoria',
+    button_edit_record: '✏️ Editar',
+    expense_family_label: 'no orçamento familiar',
+    expense_recurring_label: 'registrado automaticamente (despesa recorrente)',
+    expense_category_remembered: '🏷 A categoria foi escolhida a partir do seu registro anterior com a mesma descrição — altere-a com o botão abaixo.',
+    category_will_be_remembered: '💡 Vou lembrar sua escolha: da próxima vez, um registro assim irá direto para esta categoria.',
+    expense_category_changed: 'Categoria: {category}',
+    settings_header: 'Configurações',
+    settings_currency_line: '💱 Moeda: *{currency}* · receitas: *{incomeCurrency}*',
+    settings_timezone_line: '🌍 Fuso horário: {timezone}',
+    settings_language_line: '🌐 Idioma: {language}',
+    settings_period_line: '📅 O período começa no dia {day}',
+    settings_reminders_on_line: '🔔 Lembretes: ativados ({hours})',
+    settings_reminders_off_line: '🔔 Lembretes: desativados',
+    button_currencies: '💱 Moedas',
+    settings_currencies_text: '💱 *Moedas*\n\nPrincipal — as despesas e todos os totais são calculados nela: *{currency}*\nMoeda padrão das receitas: *{incomeCurrency}*\n\nQualquer registro pode estar em outra moeda — coloque o código depois do valor: `20 USD táxi`.',
+    reminders_title: 'Lembretes',
+    reminders_info: 'Se você não registrar nada até a hora escolhida, vou te lembrar. No máximo 3 vezes por dia.',
+    button_reminders_on: '🟢 Ativado — toque para desativar',
+    button_reminders_off: '⚫ Desativado — toque para ativar',
+    family_teaser: '👨‍👩‍👧‍👦 *Orçamento familiar*\n\nDespesas compartilhadas com quem você ama em um só lugar: cada um registra as suas, as estatísticas e a exportação são comuns.\n\nDisponível com premium.',
+    button_try_premium: '⭐️ Testar premium',
+
+    // Subscription and premium ending
+    subscription_active_info: '🔁 A assinatura mensal está paga até {date} e é renovada automaticamente. Para cancelar: Telegram → Configurações → Minhas Estrelas → Minhas assinaturas.',
+    subscription_renewed: '🔁 Assinatura renovada. Premium ativo até {date}.',
+    button_view_tariffs: '⭐️ Planos',
+    premium_expiring_trial: '⏳ Seu teste premium termina em {date}.\n\nDepois disso, categorias próprias, o orçamento familiar e a edição de registros deixarão de funcionar. Tudo o que você registrou continua salvo, e o controle de despesas é gratuito.',
+    premium_expiring_paid: '⏳ O premium termina em {date}. Você pode renovar com antecedência — os dias restantes são mantidos.',
+    premium_expired_trial: '🌙 Seu teste premium terminou. Registrar despesas e receitas continua gratuito; categorias próprias, família e edição de registros vêm com o premium.',
+    premium_expired_paid: '🌙 O premium terminou. Obrigado por apoiar o projeto! Você pode renovar a qualquer momento.',
+    premium_winback: '👋 Seu premium terminou há uma semana. Se quiser de volta as categorias próprias, o orçamento familiar e a edição de registros — veja os planos abaixo.',
+    start_reminders_note: '🔔 Se você não registrar nada durante o dia, vou te lembrar (até 3 vezes por dia). Alterar horários ou desativar: ☰ Mais → ⚙️ Configurações → 🔔.'
 };

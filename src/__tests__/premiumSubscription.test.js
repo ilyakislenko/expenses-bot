@@ -11,8 +11,18 @@ jest.mock('../repositories/UserRepository', () => {
 });
 
 jest.mock('../repositories/ExpenseRepository', () => {
+  return jest.fn().mockImplementation(() => ({}));
+});
+
+jest.mock('../repositories/PremiumTransactionRepository', () => {
   return jest.fn().mockImplementation(() => ({
-    getExpenseCount: jest.fn().mockResolvedValue(45)
+    getActiveRecurringSubscription: jest.fn().mockResolvedValue(null)
+  }));
+});
+
+jest.mock('../repositories/FunnelRepository', () => {
+  return jest.fn().mockImplementation(() => ({
+    track: jest.fn().mockResolvedValue(undefined)
   }));
 });
 
@@ -32,32 +42,21 @@ describe('Premium Subscription Menu', () => {
     keyboardGenerators = container.get('keyboardGenerators');
   });
 
-  describe('Inline Menu Integration', () => {
-    it('should include premium subscription button in inline main menu', () => {
+  describe('More Menu Integration', () => {
+    it('should include premium subscription button in the «Ещё» menu', () => {
       jest.spyOn(localizationService, 'getText').mockImplementation((lang, key) => {
-        const texts = {
-          'premium_subscription_title': '⭐️ Подписка',
-          'button_help': '❓ Справка',
-          'button_expenses_month': '💰 Траты за месяц',
-          'button_expenses_day': '💰 Траты за день',
-          'button_expenses_categories': '💰 Траты по категориям',
-          'button_family': '👨‍👩‍👧‍👦 Семья',
-          'button_settings': '⚙️ Настройки',
-          'button_delete_last': '🗑️ Удалить последнюю запись'
-        };
+        const texts = { 'premium_subscription_title': '⭐️ Подписка' };
         return texts[key] || key;
       });
 
-      const inlineMenu = keyboardGenerators.generateInlineMainMenu('ru');
+      const moreMenu = keyboardGenerators.generateMoreMenu('ru');
 
-      // Проверяем, что кнопка премиум подписки присутствует в меню
-      const premiumButton = inlineMenu.flat().find(button => 
+      const premiumButton = moreMenu.flat().find(button =>
         button.callback_data === 'premium_subscription'
       );
 
       expect(premiumButton).toBeDefined();
       expect(premiumButton.text).toBe('⭐️ Подписка');
-      expect(premiumButton.callback_data).toBe('premium_subscription');
     });
 
     it('should display premium subscription button in /menu command', async () => {
@@ -68,23 +67,18 @@ describe('Premium Subscription Menu', () => {
 
       jest.spyOn(localizationService, 'getText').mockImplementation((lang, key) => {
         const texts = {
-          'main_menu_title': '🏠 *Главное меню*\n\nВыберите действие:',
-          'premium_subscription_title': '⭐️ Подписка',
-          'button_help': '❓ Справка',
-          'button_expenses_month': '💰 Траты за месяц',
-          'button_expenses_day': '💰 Траты за день',
-          'button_expenses_categories': '💰 Траты по категориям',
-          'button_family': '👨‍👩‍👧‍👦 Семья',
-          'button_settings': '⚙️ Настройки',
-          'button_delete_last': '🗑️ Удалить последнюю запись'
+          'more_menu_title': '☰ *Ещё*',
+          'premium_subscription_title': '⭐️ Подписка'
         };
         return texts[key] || key;
       });
+      jest.spyOn(commandHandlers.userService, 'getUserLanguage').mockResolvedValue('ru');
+      jest.spyOn(commandHandlers.userService, 'isUserAdmin').mockResolvedValue(false);
 
       await commandHandlers.mainMenu(mockCtx);
 
       expect(mockCtx.reply).toHaveBeenCalledWith(
-        expect.stringContaining('🏠 *Главное меню*'),
+        expect.stringContaining('☰ *Ещё*'),
         expect.objectContaining({
           parse_mode: 'Markdown',
           reply_markup: expect.objectContaining({
@@ -110,11 +104,7 @@ describe('Premium Subscription Menu', () => {
       // Mock premium service
       const mockLimitsInfo = {
         isPremium: false,
-        currentCount: 45,
-        maxCount: 100,
-        remaining: 55,
-        maxDescriptionLength: 80,
-        percentage: 45
+        maxDescriptionLength: 80
       };
 
       jest.spyOn(premiumService, 'getLimitsInfo').mockResolvedValue(mockLimitsInfo);
@@ -124,8 +114,6 @@ describe('Premium Subscription Menu', () => {
           'premium_status_header': '<b>Ваш статус:</b>',
           'status_regular': '👤 Стандарт',
           'premium_privileges': `Привилегии: ${params?.status || '👤 Обычный'}`,
-          'records_usage': `<b>Записей:</b> ${params?.current || 0}/${params?.max || 0} (${params?.percentage || 0}%)`,
-          'records_remaining': `<b>Осталось:</b> ${params?.remaining || 0} записей`,
           'max_description_length': `<b>Макс. длина описания:</b> ${params?.length || 0} символов`,
           'premium_menu_title': '<b>Меню:</b>',
           'premium_tariff_button': '⭐️ Тариф',
@@ -168,11 +156,7 @@ describe('Premium Subscription Menu', () => {
       // Mock premium service with premium user
       const mockLimitsInfo = {
         isPremium: true,
-        currentCount: 45,
-        maxCount: 1000,
-        remaining: 955,
         maxDescriptionLength: 200,
-        percentage: 4.5,
         premiumExpiresAt: new Date('2025-12-31T23:59:59.000Z'),
         daysRemaining: 145
       };
@@ -184,8 +168,6 @@ describe('Premium Subscription Menu', () => {
           'premium_status_header': '<b>Ваш статус:</b>',
           'status_premium': '⭐️ Премиум',
           'premium_privileges': `Привилегии: ${params?.status || '👤 Обычный'}`,
-          'records_usage': `<b>Записей:</b> ${params?.current || 0}/${params?.max || 0} (${params?.percentage || 0}%)`,
-          'records_remaining': `<b>Осталось:</b> ${params?.remaining || 0} записей`,
           'max_description_length': `<b>Макс. длина описания:</b> ${params?.length || 0} символов`,
           'premium_expires': `📅 Премиум подписка действительна до: <b>${params?.date || 'Unknown'}</b>\n⏰ Осталось дней: <b>${params?.days || 0}</b>`,
           'premium_menu_title': '<b>Меню:</b>',

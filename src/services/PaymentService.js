@@ -1,10 +1,15 @@
 const logger = require('../utils/logger');
 
+// Месячный тариф продаётся как подписка Telegram Stars с автопродлением (Telegram допускает только 30 дней)
+const STARS_SUBSCRIPTION_PERIOD_SECONDS = 2592000;
+const SUBSCRIPTION_TARIFF_DAYS = 30;
+
 class PaymentService {
-  constructor(donationRepository, localizationService) {
+  constructor(donationRepository, localizationService, funnelService) {
     this.bot = null;
     this.donationRepository = donationRepository;
     this.localizationService = localizationService;
+    this.funnelService = funnelService;
   }
 
   setBot(bot) {
@@ -78,7 +83,7 @@ class PaymentService {
    */
   async handleSuccessfulPayment(payment, userService) {
     try {
-      const { invoice_payload, total_amount, telegram_payment_charge_id } = payment;
+      const { invoice_payload, total_amount, telegram_payment_charge_id, is_recurring, is_first_recurring, subscription_expiration_date } = payment;
       const payload = JSON.parse(invoice_payload);
       
       logger.info(`Successful payment received: ${JSON.stringify(payload)}`);
@@ -94,18 +99,27 @@ class PaymentService {
         logger.info(`Donation completed for user ${user_id}, stars: ${stars}`);
         return { type: 'donation', status: 'completed' };
       } else if (type === 'premium_subscription') {
-        // Премиум подписка
+        // Telegram может прислать то же обновление повторно — один платёж засчитываем один раз
+        if (telegram_payment_charge_id && await userService.transactionExists(telegram_payment_charge_id)) {
+          logger.warn('Duplicate successful_payment ignored', { user_id, telegram_payment_charge_id });
+          return { type: 'premium_subscription', status: 'duplicate' };
+        }
+        // Премиум подписка (для автопродления каждый месяц приходит новый платёж с тем же payload)
         const tariffData = this.getTariffData(tariff);
         const transactionData = {
           stars: stars,
           usd: tariffData.usd,
           rub: tariffData.rub,
           telegram_payment_id: telegram_payment_charge_id || null,
-          invoice_payload: invoice_payload
+          invoice_payload: invoice_payload,
+          is_recurring: is_recurring === true,
+          subscription_expires_at: subscription_expiration_date ? new Date(subscription_expiration_date * 1000) : null
         };
         const result = await userService.activatePremium(user_id, tariff, transactionData);
-        logger.info(`Premium subscription ${result.isNewActivation ? 'activated' : 'extended'} for user ${user_id}, expires at ${result.newExpiryDate}`);
-        return { type: 'premium_subscription', ...result };
+        if (this.funnelService) await this.funnelService.track(user_id, 'paid');
+        const isRenewal = is_recurring === true && is_first_recurring !== true;
+        logger.info(`Premium subscription ${isRenewal ? 'renewed' : (result.isNewActivation ? 'activated' : 'extended')} for user ${user_id}, expires at ${result.newExpiryDate}`);
+        return { type: 'premium_subscription', isRenewal, ...result };
       } else {
         // Неизвестный тип платежа
         logger.warn(`Unknown payment type: ${type}, payload: ${JSON.stringify(payload)}`);
@@ -170,14 +184,18 @@ class PaymentService {
       amount: stars
     }]);
     
-    const params = new URLSearchParams({
+    const invoiceParams = {
       title: title,
       description: description,
       payload: payload,
-      provider_token: '', // Тестовый токен, нужно заменить на реальный
+      provider_token: '', // Для Telegram Stars токен провайдера не нужен
       currency: 'XTR',
       prices: prices
-    }).toString();
+    };
+    if (duration === SUBSCRIPTION_TARIFF_DAYS) {
+      invoiceParams.subscription_period = String(STARS_SUBSCRIPTION_PERIOD_SECONDS);
+    }
+    const params = new URLSearchParams(invoiceParams).toString();
     
     const url = `https://api.telegram.org/bot${this.bot.token}/createInvoiceLink?${params}`;
     

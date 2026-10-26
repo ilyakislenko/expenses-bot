@@ -1,6 +1,6 @@
 module.exports = {
     button_reminders: '🔔 Eslatmalar',
-    reminders_enabled: 'Eslatmalar yoqilgan. Agar soat 18:00 gacha hech narsa yozmasangiz — biroz hazil bilan eslatib qo‘yaman 😉',
+    reminders_enabled: '🔔 Eslatmalar yoqilgan',
     reminders_disabled: 'Eslatmalar o‘chirilgan. To‘liq jimlik 🤐',
     reminder_sample_variants: [
       '👋 Hey! Hamyoning jim bo‘lsa ham, bu uning baxtli ekanini anglatmaydi. Xarajatlaringni yozib qo‘y 😉',
@@ -174,96 +174,28 @@ module.exports = {
     save: 'Saqlash',
     
     // Boshlang‘ich xabar
-    start_message: `Salom! 👋 Men sizga xarajatlaringizni yozib borishda va byudjetingizni boshqarishda yordam beraman.
-  
-  *Xarajat qo‘shish:*
-  Summani va izohni kiriting:
-  -  \`200 bozor\`
-  -  \`1500 restoranda tushlik\`
-  -  \`50 avtobus\`
-  -  \`150.50 qahva\`
-  
-  Shundan so‘ng kategoriya tanlash oynasi chiqadi — mosini tanlang 🏷️
-  
-  *Asosiy buyruqlar:*
-  /start - Botni qayta ishga tushirish
-  /menu - Interaktiv menyuni ochish
-  /history - Bugungi yozuvlar
-  /stats - Oylik kategoriya bo‘yicha statistika
-  
-  /export - CSV formatida eksport qilish
-  /undo - Oxirgi yozuvni o‘chirish
-  
-  *Sozlamalar:*
-  /settings - Sozlamalar
-  /currency - Valyutani o‘zgartirish
-  /timezone - Vaqt zonasini sozlash
-  /categories - Kategoriyalarni boshqarish
-  
-  *Qo‘shimcha imkoniyatlar:*
-  /family - Oilaviy byudjet
-  /limits - Limitlar va premium imkoniyatlar
-  /help - Yordam
-  
-  Yozishni boshlang va xarajatlaringizni nazorat qiling! 💰`,
-  help_message: `📋 *Buyruqlar bo‘yicha batafsil yordam*
-  
-  *Xarajat qo‘shish:*
-  Summani va izohni bo‘sh joy bilan yozing:
-  \`200 xarid\` — kategoriya menyusi chiqadi
-  \`150.50 qahva\` — kasr sonlarni ham qabul qiladi
-  
-  *Asosiy buyruqlar:*
-  /start - Botni qayta ishga tushirish va kutib olish xabarini ko‘rsatish
-  /menu - Barcha funksiyalar bilan interaktiv menyuni ochish
-  /history - Bugungi yozuvlarni ko‘rish
-  /stats - Bu oyning kategoriya bo‘yicha statistikasi
-  
-  /export - Barcha ma’lumotlarni CSV’da yuklab olish
-  /undo - Oxirgi qo‘shilgan yozuvni o‘chirish
-  
-  *Sozlamalar va boshqaruv:*
-  /settings - Asosiy sozlamalar menyusini ochish
-  /currency - Standart valyutani o‘zgartirish (RUB, USD, EUR, KZT, CNY, THB)
-  /timezone - Vaqt zonasini sozlash
-  /categories - Maxsus kategoriyalarni boshqarish (Premium)
-  
-  *Oilaviy byudjet:*
-  /family - Oilaviy guruh va umumiy xarajatlarni boshqarish
-  - Oila yaratish, a’zolarni taklif qilish
-  - Umumiy xarajatlar va statistika
-  - Oila ma’lumotlarini eksport qilish
-  
-  *Premium xususiyatlar:*
-  /limits - Limitlar va Premium haqida
-  - Maxsus kategoriyalar
-  - Batafsil statistika
-  - Oilaviy byudjet
-  - Ustuvor texnik yordam
-  
-  *Foydali maslahatlar:*
-  • Xarajatlaringizga izoh qo‘shing — tahlil qilish oson bo‘ladi
-  • /stats bilan muntazam statistikani tekshiring
-  • Vaqt zonasini to‘g‘ri sozlang
-  • /menu tezkor yondashuv uchun ishlating
-  • /export orqali tahlilga mo‘ljallangan fayl oling
-  
-  *Xarajatni tahrirlash:*
-  • /history orqali yozuvni o‘chirish yoki tahrirlash
-  • "👨‍👩‍👧‍👦 Oilaga qo‘shish" tugmasi xarajatni oilaviy byudjetga o‘tkazadi
-  • "🚫 Oilaviy byudjetdan chiqarish" tugmasi uni shaxsiy byudjetga qaytaradi
-  • Faqat o‘z yozuvlaringizni o‘zgartirishingiz mumkin
-  
-  *Eslatmalar:*
-  • Bot har kuni soat 18:00’da eslatma yuboradi
-  • Faqat o‘sha kuni birorta xarajat kiritilmagan bo‘lsa
-  • Sozlamalardan yoqish/o‘chirish mumkin
-  • Kuniga 1 martadan ortiq eslatma yo‘q
-  
-  *Yordam:*
-  /start orqali har doim asosiy menyuga qaytishingiz mumkin.
-  
-  Byudjetingizni yaxshi boshqaring! 💰📊`,
+    start_message: `Salom! 👋 Men xarajat va daromadlaringizni hisobga olishda yordam beraman.
+
+*Xarajat* — summa va izohni yozing: \`250 qahva\`, \`1500 tushlik\`.
+Boshqa valyuta ham bo‘ladi: \`20 USD taksi\`, yoki faqat summa: \`300\`.
+*Daromad* — plyus bilan: \`+50000 maosh\`.
+
+Kategoriyani bir marta tanlang — keyingi safar eslab qolaman.
+Menyu pastda: oy sharhi, bugungi yozuvlar, daromad, doimiy xarajatlar (ijara, obunalar) va «☰ Yana».`,
+
+    start_returning: '👋 Xush kelibsiz! Xarajatni xabar sifatida yuboring — `250 qahva`. Menyu pastdagi klaviaturada.',
+  help_message: `❓ *Qanday foydalaniladi*
+
+• \`250 qahva\` — xarajat. Kategoriyani bir marta tanlang, eslab qolaman
+• \`20 USD taksi\` — boshqa valyutadagi xarajat, \`300\` — izohsiz
+• \`+50000 maosh\` — daromad (\`+1000 USD\` — boshqa valyutada)
+• Yangi yozuv ostida: ↩️ bekor qilish, 🏷 kategoriyani o‘zgartirish
+• 📊 *Oy sharhi* — xarajatlar, daromad, balans, kategoriyalar; ◀️ — oldingi davrlar
+• 📅 *Bugun* — kun yozuvlari; yozuvni tahrirlash yoki o‘chirish uchun raqamni bosing
+• 🔁 *Doimiy xarajatlar* — ijara va obunalar har oy avtomatik yoziladi
+• Valyutalar, eslatmalar (kuniga 3 tagacha) va davr boshi — ☰ Yana → ⚙️ Sozlamalar
+
+Buyruqlar: /stats /history /income /recurring /export /settings /menu`,
   
     // Xarajatlar
     expense_added: '✅ Yozildi: {amount} - {description}',
@@ -425,18 +357,14 @@ module.exports = {
     status_regular: '👤 Oddiy',
     status_premium: '💎 Premium',
     status_label: '*Holat:* {status}',
-    records_usage: '<b>Yozuvlar:</b> {current}/{max} ({percentage}%)',
-    records_remaining: '<b>Qolgan:</b> {remaining} yozuv',
     max_description_length: '<b>Izoh uzunligi limiti:</b> {length} belgi',
-    near_limit_warning: '⚠️ *Diqqat:* Siz yozuvlar limitiga yaqin qoldingiz!',
-    limit_reached: '❌ *Yozuvlar limiti tugadi!*',
     premium_benefits: `💎 <b>Premium afzalliklari:</b>
   • Izoh 160 belgi (oddiyda 80 belgi)
-  • 300 ta yozuv (oddiyda 100 ta)
   • 5 tagacha maxsus kategoriya
-  • Kengaytirilgan statistika
   • Oilaviy byudjet
-  • Har qanday yozuvni (faqat oxirgini emas) tahrirlash yoki o‘chirish`,
+  • Har qanday yozuvning summasi va izohini tahrirlash
+
+Xarajat va daromadlarni yozish bepul va cheklanmagan.`,
     
     // Premium obuna
     premium_subscription_title: '⭐️ Obuna',
@@ -450,7 +378,7 @@ module.exports = {
     premium_back_button: '⬅️ Orqaga',
     premium_tariffs_title: '⭐️ Tariflar (Telegram Stars)',
     per_month: 'oyiga',
-    premium_payment_info: '💳 To‘lov Telegram Stars orqali amalga oshiriladi. <b>Avtomatik uzaytirilmaydi.</b>',
+    premium_payment_info: '💳 To‘lov Telegram’ning ichki valyutasi Telegram Stars orqali amalga oshiriladi. 🔁 Oylik tarif avtomatik uzaytiriladi; uni Telegram’da bekor qilish mumkin: Sozlamalar → Yulduzlarim → Obunalarim. 3, 6 va 12 oylik tariflar bir martalik to‘lovdir.',
     premium_renewal_info: '📅 Istalgan vaqtda yangilash mumkin. Vaqt ustiga qo‘shiladi.',
     premium_stars_info: '💡 Yulduzlarni komissiyasiz [@PremiumBot] orqali sotib olish mumkin.',
     premium_why_paid_title: '👀 Nega pullik?',
@@ -494,10 +422,9 @@ module.exports = {
     error_too_long_premium: '❌ Izoh juda uzun! Premium foydalanuvchilar uchun 160 belgi limit.',
     error_no_description: '❌ Summadan keyin izoh kiritilish kerak.',
     error_amount: '❌ Noto‘g‘ri summa. 0,01 va 999999 oralig‘ida bo‘lishi kerak.',
-    error_format: '❌ Noto‘g‘ri format. Summani va izohni kiriting.\nMisol: `200 bozor` yoki `1500 kofe`',
+    error_format: '❌ Tushunmadim. Summadan boshlang: `250 qahva`, `20 USD taksi` yoki shunchaki `300`.',
     error_forbidden_content: '❌ Ruxsat etilmagan kontent.',
-    error_limit_reached: '❌ Limit tugadi!\nOddiy: 100 yozuv\nPremium: 300 yozuv\n\n💎 Premiumga o‘ting va limitni oshiring!',
-    error_premium_required: '💎 Bu funksiya faqat Premium foydalanuvchilar uchun!\n\nAfzalliklar:\n• 160 belgi izoh\n• 300 yozuv\n• Maxsus kategoriyalar\n• Kengaytirilgan statistika',
+    error_premium_required: '💎 Bu funksiya faqat Premium bilan mavjud.\n\nPremium beradi:\n• Izoh 160 belgi (80 o‘rniga)\n• Maxsus kategoriyalar\n• Oilaviy byudjet\n• Yozuvlarni tahrirlash',
     error_generic: '❌ Xatolik yuz berdi. Keyinroq urinib ko‘ring yoki administratorga murojaat qiling.',
     
     // Tugmalar
@@ -547,7 +474,6 @@ module.exports = {
     edit_format_error: 'Format xatosi.',
     
     // Callback javoblari
-    callback_limit_reached: '❌ Yozuvlar limiti tugadi',
     callback_button_not_found: '❌ Xato: Tugma topilmadi',
     callback_data_not_found: '❌ Xato: Ma’lumot topilmadi',
     callback_expense_added: '✅ "{category}" kategoriyasiga qo‘shildi',
@@ -589,5 +515,102 @@ module.exports = {
     custom_categories_premium_required: '💎 Ushbu funksiya faqat Premium foydalanuvchilar uchun.',
     
     // Maxsus kategoriya misollari
-    custom_categories_example: '💡 Misol: "🌍 Sayohat" yoki "🎮 O\'yinlar"'
+    custom_categories_example: '💡 Misol: "🌍 Sayohat" yoki "🎮 O\'yinlar"',
+
+    button_income: '💵 Daromad',
+    button_add_income: '➕ Daromad qo‘shish',
+    button_income_currency: '💱 Daromad valyutasi',
+    income_menu_title: '💵 *Joriy davr daromadi*',
+    income_menu_empty: 'Bu davr uchun hali daromad yo‘q.',
+    income_currency_label: 'Standart daromad valyutasi: *{currency}*',
+    income_hint: '💡 Tezkor usul: plyus bilan boshlanadigan xabar yuboring — `+50000 maosh` yoki `+1000 USD frilans`',
+    income_enter_prompt: 'Daromad summasi va izohini kiriting 👇\n\nMisol: `50000 maosh`\nStandart valyuta — *{currency}*. Boshqasini summadan keyin kod bilan ko‘rsatish mumkin: `1000 USD frilans`',
+    income_added: '✅ Daromad yozildi: *{amount}* — {description}',
+    income_default_description: 'Daromad',
+    income_deleted: '✅ Daromad o‘chirildi',
+    income_not_found: '❌ Daromad topilmadi',
+    income_currency_select: 'Odatda maosh oladigan valyutani tanlang. Xarajatlar asosiy valyutada qoladi:',
+    income_currency_set: '✅ Daromad valyutasi: {currency}',
+    income_total: '💵 Daromad: *{amount}*',
+    balance_label: '⚖️ Balans (daromad − xarajat): *{amount}*',
+    income_error_format: '❌ Tushunmadim. Summa va ixtiyoriy izoh yuboring: `50000 maosh` yoki `1000 USD frilans`',
+    income_error_amount: '❌ Noto‘g‘ri summa. 0.01 dan {max} gacha son kiriting.',
+    button_recurring: '🔁 Doimiy xarajatlar',
+    button_add_recurring: '➕ Doimiy xarajat qo‘shish',
+    recurring_menu_title: '🔁 *Doimiy xarajatlar*',
+    recurring_menu_info: 'Oylik to‘lovlar (ijara, obunalar, kreditlar) oyning tanlangan kunida avtomatik ravishda xarajat sifatida yoziladi.',
+    recurring_menu_empty: 'Hali doimiy xarajatlar yo‘q.',
+    recurring_item: '{icon} {description} — *{amount}*, har oyning {day}-kuni\n    Keyingi yozuv: {next}',
+    recurring_monthly_total: 'Oyiga jami: *{amount}*',
+    recurring_enter_prompt: 'Doimiy xarajat summasi va izohini kiriting 👇\n\nMisol: `50000 ijara`\nSummadan keyin valyutani ko‘rsatish mumkin: `500 USD ijara`',
+    recurring_day_prompt: 'Bu xarajatni har oyning qaysi kunida yozay? 1 dan 31 gacha son kiriting.\n\nAgar oy qisqaroq bo‘lsa, oyning oxirgi kunida yozaman.',
+    recurring_day_invalid: '❌ 1 dan 31 gacha butun son kiriting.',
+    recurring_select_category: 'Doimiy xarajat uchun kategoriyani tanlang:',
+    recurring_added: '✅ Doimiy xarajat qo‘shildi\n\n{description} — *{amount}*, har oyning {day}-kuni\nBirinchi yozuv: {next}',
+    recurring_added_charged_now: '✅ Doimiy xarajat qo‘shildi va bu oy uchun allaqachon yozildi\n\n{description} — *{amount}*, har oyning {day}-kuni\nKeyingi yozuv: {next}',
+    recurring_deleted: '✅ Doimiy xarajat o‘chirildi. Avval yozilgan xarajatlar tarixda qoladi.',
+    recurring_not_found: '❌ Doimiy xarajat topilmadi',
+    recurring_limit: '❌ Ko‘pi bilan {max} ta doimiy xarajat bo‘lishi mumkin',
+    recurring_charged_notification: '🔁 Doimiy xarajat yozildi: {icon} {description} — *{amount}*',
+    recurring_error_format: '❌ Format tanilmadi. Summa va izoh yuboring: `50000 ijara` yoki `500 USD ijara`',
+    recurring_error_amount: '❌ Noto‘g‘ri summa. 0.01 dan {max} gacha son kiriting.',
+
+  // Main menu and «More»
+  button_overview: '📊 Oy sharhi',
+  button_today: '📅 Bugun',
+  button_more: '☰ Yana',
+  more_menu_title: '☰ *Yana*',
+  button_export: '📤 CSV eksport',
+  keyboard_refreshed: '✅ Menyu yangilandi — endi ixchamroq 👇',
+  button_outdated: 'Bu tugma eskirgan. Bo‘limni pastdagi menyudan qayta oching.',
+  overview_title: 'Sharh: {range}',
+  overview_spent: '💸 Xarajatlar: *{amount}* · yozuvlar: {count}',
+  overview_upcoming: 'Yaqinlashayotgan doimiy xarajatlar:',
+  overview_income_hint: '💡 Daromadni plyus bilan yozing: `+50000 maosh`',
+  button_prev_period: '◀️ Oldinroq',
+  button_next_period: 'Keyinroq ▶️',
+  button_back_to_overview: '⬅️ Sharhga',
+  day_title_today: 'Bugun, {date}',
+  day_title_yesterday: 'Kecha, {date}',
+  day_title: '{date}',
+  day_entry_hint: 'Xarajatni xabar sifatida yuboring: `250 qahva`',
+  button_prev_day: '◀️ Oldingi kun',
+  button_next_day: 'Keyingi kun ▶️',
+  list_tap_number: 'Yozuvni ochish uchun raqamni bosing.',
+  family_today_title: 'Oila: bugungi yozuvlar',
+  button_undo: '↩️ Bekor qilish',
+  button_delete_record: '🗑 O‘chirish',
+  button_change_category: '🏷 Kategoriya',
+  button_edit_record: '✏️ Tahrirlash',
+  expense_family_label: 'oila byudjetida',
+  expense_recurring_label: 'avtomatik yozildi (doimiy xarajat)',
+  expense_category_remembered: '🏷 Kategoriya xuddi shu izohli oldingi yozuvingizdan olindi — pastdagi tugma bilan o‘zgartiring.',
+  category_will_be_remembered: '💡 Tanlovingizni eslab qolaman: keyingi safar bunday yozuv darhol shu kategoriyaga tushadi.',
+  expense_category_changed: 'Kategoriya: {category}',
+  settings_header: 'Sozlamalar',
+  settings_currency_line: '💱 Valyuta: *{currency}* · daromad: *{incomeCurrency}*',
+  settings_timezone_line: '🌍 Vaqt mintaqasi: {timezone}',
+  settings_language_line: '🌐 Til: {language}',
+  settings_period_line: '📅 Davr oyning {day}-kunidan boshlanadi',
+  settings_reminders_on_line: '🔔 Eslatmalar: yoqilgan ({hours})',
+  settings_reminders_off_line: '🔔 Eslatmalar: o‘chirilgan',
+  button_currencies: '💱 Valyutalar',
+  settings_currencies_text: '💱 *Valyutalar*\n\nAsosiy — xarajatlar va barcha jamlar shu valyutada hisoblanadi: *{currency}*\nDaromadning standart valyutasi: *{incomeCurrency}*\n\nHar qanday yozuv boshqa valyutada bo‘lishi mumkin — kodni summadan keyin yozing: `20 USD taksi`.',
+  reminders_title: 'Eslatmalar',
+  reminders_info: 'Tanlangan soatgacha hech narsa yozmagan bo‘lsangiz, eslataman. Kuniga ko‘pi bilan 3 marta.',
+  button_reminders_on: '🟢 Yoniq — o‘chirish uchun bosing',
+  button_reminders_off: '⚫ O‘chiq — yoqish uchun bosing',
+  family_teaser: '👨‍👩‍👧‍👦 *Oila byudjeti*\n\nYaqinlaringiz bilan umumiy xarajatlar bir joyda: har kim o‘zinikini yozadi, statistika va eksport umumiy.\n\nPremium bilan mavjud.',
+  button_try_premium: '⭐️ Premiumni sinab ko‘ring',
+
+  // Subscription and premium ending
+  subscription_active_info: '🔁 Oylik obuna {date} gacha to‘langan va avtomatik uzaytiriladi. Bekor qilish: Telegram → Sozlamalar → Yulduzlarim → Obunalarim.',
+  subscription_renewed: '🔁 Obuna uzaytirildi. Premium {date} gacha faol.',
+  button_view_tariffs: '⭐️ Tariflar',
+  premium_expiring_trial: '⏳ Premium sinov muddati {date} da tugaydi.\n\nShundan so‘ng maxsus kategoriyalar, oilaviy byudjet va yozuvlarni tahrirlash ishlamaydi. Barcha yozuvlaringiz saqlanadi, xarajatlarni hisobga olish esa bepul.',
+  premium_expiring_paid: '⏳ Premium {date} da tugaydi. Oldindan uzaytirishingiz mumkin — qolgan kunlar saqlanadi.',
+  premium_expired_trial: '🌙 Premium sinov muddati tugadi. Xarajat va daromadlarni hisobga olish bepul qoladi; maxsus kategoriyalar, oila va yozuvlarni tahrirlash — Premium bilan.',
+  premium_expired_paid: '🌙 Premium tugadi. Loyihani qo‘llab-quvvatlaganingiz uchun rahmat! Istalgan vaqtda uzaytirishingiz mumkin.',
+  premium_winback: '👋 Premium bir hafta oldin tugadi. Maxsus kategoriyalar, oilaviy byudjet va yozuvlarni tahrirlashni qaytarmoqchi bo‘lsangiz — quyidagi tariflarni ko‘ring.',
+  start_reminders_note: '🔔 Kun davomida hech narsa yozmasangiz, eslatib qo‘yaman (kuniga 3 martagacha). Soatlarni o‘zgartirish yoki o‘chirish: ☰ Yana → ⚙️ Sozlamalar → 🔔.'
 };

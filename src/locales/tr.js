@@ -1,6 +1,6 @@
 module.exports = {
     button_reminders: '🔔 Hatırlat',
-    reminders_enabled: 'Hatırlatıcılar açık. 18:00’e kadar hiçbir şey kaydetmezsen seni küçük bir espriyle hatırlatırım 😉',
+    reminders_enabled: '🔔 Hatırlatıcılar açık',
     reminders_disabled: 'Hatırlatıcılar kapalı. Tam sessizlik 🤐',
     reminder_sample_variants: [
       '👋 Hey! Cüzdanın sessizse bu, onun mutlu olduğu anlamına gelmez. Harcamalarını kaydet 😉',
@@ -191,96 +191,28 @@ module.exports = {
         save: 'Kaydet',
         
         // Başlangıç mesajı
-        start_message: `Merhaba! 👋 Harcamalarını kaydetmene ve bütçeni yönetmene yardımcı olurum.
-      
-      *Harcama nasıl eklenir:*
-      Tutar ve açıklamayı yaz:
-      -  \`200 market\`
-      -  \`1500 restoranda öğle yemeği\`
-      -  \`50 otobüs\`
-      -  \`150,50 kahve\`
-      
-      Sonrasında kategoriler menüsü çıkar — uygun olanı seç 🏷️
-      
-      *Temel komutlar:*
-      /start - Botu yeniden başlat
-      /menu - Etkileşimli menüyü aç
-      /history - Bugünün kayıtları
-      /stats - Aylık kategori istatistikleri
-      
-      /export - Verileri CSV olarak indir
-      /undo - Son kaydı sil
-      
-      *Ayarlar:*
-      /settings - Ayarları aç
-      /currency - Varsayılan para birimini değiştir
-      /timezone - Zaman dilimini ayarla
-      /categories - Kategorileri yönet
-      
-      *Ek özellikler:*
-      /family - Aile bütçesi
-      /limits - Limitler ve premium özellikler
-      /help - Detaylı yardım
-      
-      Hadi harcamalarını kaydetmeye başla! 💰`,
-      help_message: `📋 *Komutların detaylı açıklaması*
-  
-      *Harcama ekleme:*
-      Tutar ve açıklama arasına boşluk koyarak yaz:
-      \`200 alışveriş\` — kategori menüsü çıkar
-      \`150,50 kahve\` — ondalıklı sayılar da geçerli
-      
-      *Temel komutlar:*
-      /start - Botu yeniden başlat ve karşılama mesajını göster
-      /menu - Tüm özelliklerin olduğu etkileşimli menüyü aç
-      /history - Bugünkü kayıtları göster
-      /stats - Bu ayın kategorilere göre istatistikleri
-      
-      /export - Tüm verileri CSV olarak indir
-      /undo - Son eklenen kaydı sil
-      
-      *Ayarlar ve yönetim:*
-      /settings - Ana ayar menüsünü aç
-      /currency - Varsayılan para birimini değiştir (RUB, USD, EUR, KZT, CNY, THB)
-      /timezone - Doğru zaman kaydı için zaman dilimini ayarla
-      /categories - Özel kategorileri yönet (Premium)
-      
-      *Aile bütçesi:*
-      /family - Aile grubu ve ortak harcamaları yönet
-      - Aile oluştur, üyeleri davet et
-      - Ortak harcamalar ve istatistik
-      - Aile verilerini dışa aktar
-      
-      *Premium özellikler:*
-      /limits - Limitler ve premium hakkında bilgi
-      - Özel kategoriler
-      - Detaylı istatistikler
-      - Aile bütçesi
-      - Öncelikli destek
-      
-      *Kullanım ipuçları:*
-      • Daha iyi anlamak için açıklama ekle  
-      • /stats ile düzenli olarak istatistikleri kontrol et  
-      • Doğru zaman için zaman dilimini ayarla  
-      • Hızlı erişim için /menu komutunu kullan  
-      • Veri analizi için /export komutunu kullan
-      
-      *Harcama düzenleme:*
-      • /history içinde kaydı sil veya düzenle  
-      • "👨‍👩‍👧‍👦 Aileye ekle" butonu harcamayı aile bütçesine taşır  
-      • "🚫 Aile bütçesinden çıkar" butonu tekrar kişisel bütçeye alır  
-      • Sadece kendi kayıtlarını düzenleyebilir/silebilirsin  
-      
-      *Hatırlatıcılar:*
-      • Bot her gün 18:00’de harcama girmeyi hatırlatır  
-      • Sadece o gün hiç kayıt girmediysen hatırlatır  
-      • Ayarlardan açıp kapatabilirsin  
-      • Günde en fazla 1 hatırlatma
-      
-      *Destek:*
-      /start komutuyla ana menüye dönebilirsin.
-      
-      Bütçeni yönetmede başarılar! 💰📊`,
+        start_message: `Merhaba! 👋 Harcamalarını ve gelirlerini takip etmene yardımcı olurum.
+
+*Harcama* — tutarı ve açıklamayı yaz: \`250 kahve\`, \`1500 öğle yemeği\`.
+Başka para birimi de olur: \`20 USD taksi\` ya da sadece tutar: \`300\`.
+*Gelir* — artı ile: \`+50000 maaş\`.
+
+Kategoriyi bir kez seç — bir dahaki sefere hatırlarım.
+Menü aşağıda: ay özeti, bugünkü kayıtlar, gelir, düzenli harcamalar (kira, abonelikler) ve «☰ Daha fazla».`,
+
+        start_returning: '👋 Tekrar hoş geldin! Harcamayı mesaj olarak gönder — `250 kahve`. Menü aşağıdaki klavyede.',
+      help_message: `❓ *Nasıl kullanılır*
+
+• \`250 kahve\` — harcama. Kategoriyi bir kez seç, hatırlarım
+• \`20 USD taksi\` — başka para biriminde harcama, \`300\` — açıklamasız
+• \`+50000 maaş\` — gelir (\`+1000 USD\` — başka para biriminde)
+• Yeni kaydın altında: ↩️ geri al, 🏷 kategoriyi değiştir
+• 📊 *Ay özeti* — harcamalar, gelir, bakiye, kategoriler; ◀️ — önceki dönemler
+• 📅 *Bugün* — günün kayıtları; düzenlemek veya silmek için numaraya dokun
+• 🔁 *Düzenli harcamalar* — kira ve abonelikler her ay otomatik kaydedilir
+• Para birimleri, hatırlatıcılar (günde en fazla 3) ve dönem başlangıcı — ☰ Daha fazla → ⚙️ Ayarlar
+
+Komutlar: /stats /history /income /recurring /export /settings /menu`,
       
         // Harcamalar
         expense_added: '✅ Kaydedildi: {amount} - {description}',
@@ -444,18 +376,14 @@ module.exports = {
     status_regular: '👤 Standart',
     status_premium: '💎 Premium',
     status_label: '*Durum:* {status}',
-    records_usage: '<b>Kayıt:</b> {current}/{max} ({percentage}%)',
-    records_remaining: '<b>Kalan:</b> {remaining} kayıt',
     max_description_length: '<b>Maks açıklama uzunluğu:</b> {length} karakter',
-    near_limit_warning: '⚠️ *Dikkat:* Kayıt limitine yaklaşıyorsunuz!',
-    limit_reached: '❌ *Kayıt limiti doldu!*',
     premium_benefits: `💎 <b>Premium avantajları:</b>
   • 160 karakter açıklama (80 yerine)
-  • 300 kayıt (100 yerine)
   • 5 adede kadar özel kategori
-  • Detaylı istatistikler
   • Aile bütçesi
-  • İstediğiniz kaydı düzenleme/silme imkânı (sadece son değil)`,
+  • Herhangi bir kaydın tutarını ve açıklamasını düzenleme
+
+Gider ve gelir kaydı ücretsiz ve sınırsızdır.`,
     
     // Premium abonelik
     premium_subscription_title: '⭐️ Abonelik',
@@ -469,7 +397,7 @@ module.exports = {
     premium_back_button: '⬅️ Geri',
     premium_tariffs_title: '⭐️ Tarifeler (Telegram Stars)',
     per_month: 'aylık',
-    premium_payment_info: '💳 Ödeme Telegram Stars ile yapılır. <bOtomatik yenileme yok.</b>',
+    premium_payment_info: '💳 Ödeme, Telegram’ın dahili para birimi Telegram Stars ile yapılır. 🔁 Aylık plan otomatik olarak yenilenir; Telegram’da iptal edebilirsiniz: Ayarlar → Yıldızlarım → Aboneliklerim. 3, 6 ve 12 aylık planlar tek seferlik ödemedir.',
     premium_renewal_info: '📅 İstediğiniz zaman yenileyebilirsiniz. Süre kalan zamana eklenir.',
     premium_stars_info: '💡 Yıldızları komisyonsuz olarak [@PremiumBot] üzerinden satın alabilirsiniz.',
     premium_why_paid_title: '👀 Neden ücretli?',
@@ -513,10 +441,9 @@ module.exports = {
     error_too_long_premium: '❌ Açıklama çok uzun! Premium için en fazla 160 karakter.',
     error_no_description: '❌ Tutarın ardından açıklama yazmalısınız.',
     error_amount: '❌ Geçersiz tutar. 0,01 ile 999999 arasında girin.',
-    error_format: '❌ Geçersiz format. Tutar ve açıklama yazın.\nÖrnek: `200 market` veya `1500 kahve`',
+    error_format: '❌ Anlayamadım. Tutarla başlayın: `250 kahve`, `20 USD taksi` veya sadece `300`.',
     error_forbidden_content: '❌ Yasaklı içerik.',
-    error_limit_reached: '❌ Limit doldu!\nStandart: 100 kayıt\nPremium: 300 kayıt\n\n💎 Limiti artırmak için Premium alın!',
-    error_premium_required: '💎 Bu özellik yalnızca Premium içindir!\n\nAvantajlar:\n• 160 karakter açıklama\n• 300 kayıt\n• Özel kategoriler\n• Detaylı istatistikler',
+    error_premium_required: '💎 Bu özellik yalnızca Premium ile kullanılabilir.\n\nPremium ile:\n• 160 karakter açıklama (80 yerine)\n• Özel kategoriler\n• Aile bütçesi\n• Kayıtları düzenleme',
     error_generic: '❌ Bir hata oluştu. Daha sonra tekrar deneyin veya yöneticiyle iletişime geçin.',
     
     // Düğmeler
@@ -566,7 +493,6 @@ module.exports = {
     edit_format_error: 'Format hatası.',
     
     // Geri bildirimler
-    callback_limit_reached: '❌ Kayıt limiti doldu',
     callback_button_not_found: '❌ Hata: Düğme bulunamadı',
     callback_data_not_found: '❌ Hata: Veri bulunamadı',
     callback_expense_added: '✅ "{category}" kategorisine eklendi',
@@ -606,6 +532,103 @@ module.exports = {
     custom_categories_list_title: 'Özel kategorileriniz:',
     custom_categories_delete: '🗑️ Sil',
     custom_categories_deleted: '✅ Kategori silindi.',
-    custom_categories_premium_required: '💎 Bu özellik yalnızca Premium kullanıcılar içindir.'
+    custom_categories_premium_required: '💎 Bu özellik yalnızca Premium kullanıcılar içindir.',
+
+    button_income: '💵 Gelir',
+    button_add_income: '➕ Gelir ekle',
+    button_income_currency: '💱 Gelir para birimi',
+    income_menu_title: '💵 *Bu dönemin gelirleri*',
+    income_menu_empty: 'Bu dönem için henüz gelir yok.',
+    income_currency_label: 'Varsayılan gelir para birimi: *{currency}*',
+    income_hint: '💡 Hızlı yol: artı ile başlayan bir mesaj gönderin — `+50000 maaş` veya `+1000 USD serbest`',
+    income_enter_prompt: 'Gelir tutarını ve açıklamasını girin 👇\n\nÖrnek: `50000 maaş`\nVarsayılan para birimi — *{currency}*. Tutardan sonra kodla başka biri belirtilebilir: `1000 USD serbest`',
+    income_added: '✅ Gelir kaydedildi: *{amount}* — {description}',
+    income_default_description: 'Gelir',
+    income_deleted: '✅ Gelir silindi',
+    income_not_found: '❌ Gelir bulunamadı',
+    income_currency_select: 'Genellikle ödeme aldığınız para birimini seçin. Giderler ana para biriminizde kalır:',
+    income_currency_set: '✅ Gelir para birimi: {currency}',
+    income_total: '💵 Gelir: *{amount}*',
+    balance_label: '⚖️ Bakiye (gelir − gider): *{amount}*',
+    income_error_format: '❌ Anlayamadım. Bir tutar ve isteğe bağlı açıklama gönderin: `50000 maaş` veya `1000 USD serbest`',
+    income_error_amount: '❌ Geçersiz tutar. 0.01 ile {max} arasında bir sayı girin.',
+    button_recurring: '🔁 Düzenli giderler',
+    button_add_recurring: '➕ Düzenli gider ekle',
+    recurring_menu_title: '🔁 *Düzenli giderler*',
+    recurring_menu_info: 'Aylık ödemeler (kira, abonelikler, krediler) ayın seçilen gününde otomatik olarak gider olarak kaydedilir.',
+    recurring_menu_empty: 'Henüz düzenli gider yok.',
+    recurring_item: '{icon} {description} — *{amount}*, her ayın {day}. günü\n    Sonraki kayıt: {next}',
+    recurring_monthly_total: 'Aylık toplam: *{amount}*',
+    recurring_enter_prompt: 'Düzenli giderin tutarını ve açıklamasını girin 👇\n\nÖrnek: `50000 kira`\nTutardan sonra para birimi belirtebilirsiniz: `500 USD kira`',
+    recurring_day_prompt: 'Bu gideri her ayın hangi gününde kaydedeyim? 1 ile 31 arasında bir sayı girin.\n\nAy daha kısaysa ayın son gününde kaydederim.',
+    recurring_day_invalid: '❌ 1 ile 31 arasında bir tam sayı girin.',
+    recurring_select_category: 'Düzenli gider için bir kategori seçin:',
+    recurring_added: '✅ Düzenli gider eklendi\n\n{description} — *{amount}*, her ayın {day}. günü\nİlk kayıt: {next}',
+    recurring_added_charged_now: '✅ Düzenli gider eklendi ve bu ay için zaten kaydedildi\n\n{description} — *{amount}*, her ayın {day}. günü\nSonraki kayıt: {next}',
+    recurring_deleted: '✅ Düzenli gider silindi. Önceden kaydedilen giderler geçmişte kalır.',
+    recurring_not_found: '❌ Düzenli gider bulunamadı',
+    recurring_limit: '❌ En fazla {max} düzenli gideriniz olabilir',
+    recurring_charged_notification: '🔁 Düzenli gider kaydedildi: {icon} {description} — *{amount}*',
+    recurring_error_format: '❌ Tanınmayan biçim. Tutar ve açıklama gönderin: `50000 kira` veya `500 USD kira`',
+    recurring_error_amount: '❌ Geçersiz tutar. 0.01 ile {max} arasında bir sayı girin.',
+
+  // Main menu and «More»
+  button_overview: '📊 Ay özeti',
+  button_today: '📅 Bugün',
+  button_more: '☰ Daha fazla',
+  more_menu_title: '☰ *Daha fazla*',
+  button_export: '📤 CSV dışa aktar',
+  keyboard_refreshed: '✅ Menü güncellendi — artık daha kompakt 👇',
+  button_outdated: 'Bu düğme eskidi. Bölümü aşağıdaki menüden tekrar açın.',
+  overview_title: 'Özet: {range}',
+  overview_spent: '💸 Harcamalar: *{amount}* · kayıt: {count}',
+  overview_upcoming: 'Yaklaşan düzenli harcamalar:',
+  overview_income_hint: '💡 Geliri artı ile kaydedin: `+50000 maaş`',
+  button_prev_period: '◀️ Önceki',
+  button_next_period: 'Sonraki ▶️',
+  button_back_to_overview: '⬅️ Özete dön',
+  day_title_today: 'Bugün, {date}',
+  day_title_yesterday: 'Dün, {date}',
+  day_title: '{date}',
+  day_entry_hint: 'Harcamayı mesaj olarak gönderin: `250 kahve`',
+  button_prev_day: '◀️ Önceki gün',
+  button_next_day: 'Sonraki gün ▶️',
+  list_tap_number: 'Kaydı açmak için numaraya dokunun.',
+  family_today_title: 'Aile: bugünkü kayıtlar',
+  button_undo: '↩️ Geri al',
+  button_delete_record: '🗑 Sil',
+  button_change_category: '🏷 Kategori',
+  button_edit_record: '✏️ Düzenle',
+  expense_family_label: 'aile bütçesinde',
+  expense_recurring_label: 'otomatik kaydedildi (düzenli harcama)',
+  expense_category_remembered: '🏷 Kategori, aynı açıklamalı önceki kaydınızdan seçildi — aşağıdaki düğmeyle değiştirebilirsiniz.',
+  category_will_be_remembered: '💡 Seçiminizi hatırlayacağım: bir dahaki sefere böyle bir kayıt doğrudan bu kategoriye gider.',
+  expense_category_changed: 'Kategori: {category}',
+  settings_header: 'Ayarlar',
+  settings_currency_line: '💱 Para birimi: *{currency}* · gelir: *{incomeCurrency}*',
+  settings_timezone_line: '🌍 Saat dilimi: {timezone}',
+  settings_language_line: '🌐 Dil: {language}',
+  settings_period_line: '📅 Dönem ayın {day}. günü başlar',
+  settings_reminders_on_line: '🔔 Hatırlatıcılar: açık ({hours})',
+  settings_reminders_off_line: '🔔 Hatırlatıcılar: kapalı',
+  button_currencies: '💱 Para birimleri',
+  settings_currencies_text: '💱 *Para birimleri*\n\nAna para birimi — harcamalar ve tüm toplamlar bununla hesaplanır: *{currency}*\nVarsayılan gelir para birimi: *{incomeCurrency}*\n\nHer kayıt başka para biriminde olabilir — kodu tutardan sonra yazın: `20 USD taksi`.',
+  reminders_title: 'Hatırlatıcılar',
+  reminders_info: 'Seçilen saate kadar hiçbir şey kaydetmediyseniz size hatırlatırım. Günde en fazla 3 kez.',
+  button_reminders_on: '🟢 Açık — kapatmak için dokun',
+  button_reminders_off: '⚫ Kapalı — açmak için dokun',
+  family_teaser: '👨‍👩‍👧‍👦 *Aile bütçesi*\n\nYakınlarınızla ortak harcamalar tek yerde: herkes kendi kaydını yapar, istatistik ve dışa aktarma ortaktır.\n\nPremium ile kullanılabilir.',
+  button_try_premium: '⭐️ Premium’u dene',
+
+  // Subscription and premium ending
+  subscription_active_info: '🔁 Aylık abonelik {date} tarihine kadar ödendi ve otomatik olarak yenilenir. İptal etmek için: Telegram → Ayarlar → Yıldızlarım → Aboneliklerim.',
+  subscription_renewed: '🔁 Abonelik yenilendi. Premium {date} tarihine kadar aktif.',
+  button_view_tariffs: '⭐️ Planlar',
+  premium_expiring_trial: '⏳ Premium deneme süreniz {date} tarihinde bitiyor.\n\nBundan sonra özel kategoriler, aile bütçesi ve kayıt düzenleme çalışmayacak. Kaydettiğiniz her şey kalır, harcama takibi ücretsizdir.',
+  premium_expiring_paid: '⏳ Premium {date} tarihinde bitiyor. Önceden yenileyebilirsiniz — kalan günler korunur.',
+  premium_expired_trial: '🌙 Premium deneme süreniz sona erdi. Gider ve gelir takibi ücretsiz kalır; özel kategoriler, aile bütçesi ve kayıt düzenleme Premium ile kullanılabilir.',
+  premium_expired_paid: '🌙 Premium sona erdi. Projeyi desteklediğiniz için teşekkürler! İstediğiniz zaman yenileyebilirsiniz.',
+  premium_winback: '👋 Premium’unuz bir hafta önce sona erdi. Özel kategorileri, aile bütçesini ve kayıt düzenlemeyi geri istiyorsanız aşağıdaki planlara göz atın.',
+  start_reminders_note: '🔔 Gün içinde hiçbir şey kaydetmezseniz size hatırlatırım (günde en fazla 3 kez). Saatleri değiştirmek veya kapatmak için: ☰ Daha fazla → ⚙️ Ayarlar → 🔔.',
+  bug_report_suspicious: '⚠️ Mesaj yasaklı karakterler veya şüpheli içerik içeriyor'
 };
-        

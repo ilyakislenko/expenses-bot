@@ -32,7 +32,9 @@ async function startApplication() {
       handlers.donationRepository,
       handlers.userService,
       handlers.expenseService,
-      handlers.notificationService
+      handlers.notificationService,
+      handlers.recurringExpenseService,
+      handlers.premiumLifecycleService
     );
     logger.startup('Cron jobs configured');
 
@@ -49,6 +51,8 @@ async function startApplication() {
       { command: 'history', description: 'Today history' },
       { command: 'stats', description: 'Monthly by categories' },
       { command: 'export', description: 'Export CSV' },
+      { command: 'income', description: 'Income & balance' },
+      { command: 'recurring', description: 'Monthly recurring expenses' },
       { command: 'limits', description: 'Limits & premium' },
       { command: 'paysupport', description: 'Payment support (Telegram Stars)' },
       { command: 'terms', description: 'Terms of Service' },

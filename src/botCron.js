@@ -1,6 +1,6 @@
 const currencyConfig = require('./config/currencies');
 
-module.exports = function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, supportedCurrencies = currencyConfig.SUPPORTED_CURRENCIES) {
+module.exports = function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, recurringExpenseService, premiumLifecycleService, supportedCurrencies = currencyConfig.SUPPORTED_CURRENCIES) {
   // Проверяем, нужно ли обновлять курсы при запуске
   (async () => {
     try {
@@ -29,6 +29,33 @@ module.exports = function setupBotCron(cron, currencyUtils, donationRepository, 
       }
     } catch (err) {
       console.error('Ошибка при очистке pending donations:', err);
+    }
+  });
+
+  // Регулярные (ежемесячные) траты: каждые 15 минут записываем те, у которых наступило число списания
+  // в локальном дне пользователя. Повторная запись за месяц исключена (last_charged_month).
+  const processRecurringExpenses = async () => {
+    try {
+      const charged = await recurringExpenseService.processDue();
+      if (charged > 0) {
+        console.log(`Регулярные траты: записано ${charged}`);
+      }
+    } catch (err) {
+      console.error('Ошибка при обработке регулярных трат:', err);
+    }
+  };
+  processRecurringExpenses();
+  cron.schedule('*/15 * * * *', processRecurringExpenses);
+
+  // Окончание премиума: за 2 дня, в день окончания и через неделю (днём по местному времени, по разу на срок)
+  cron.schedule('25 * * * *', async () => {
+    try {
+      const sent = await premiumLifecycleService.processDue();
+      if (sent > 0) {
+        console.log(`Уведомления об окончании премиума: отправлено ${sent}`);
+      }
+    } catch (err) {
+      console.error('Ошибка при отправке уведомлений о премиуме:', err);
     }
   });
 

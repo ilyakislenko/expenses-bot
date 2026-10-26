@@ -1,12 +1,14 @@
 const logger = require('../utils/logger');
-const { expensesTotal, expensesAmountTotal, newUsersTotal } = require('../utils/metrics');
+const { expensesTotal, expensesAmountTotal } = require('../utils/metrics');
+const { localToday, customPeriod, dayPeriod } = require('../utils/period');
 
 class ExpenseService {
-  constructor(expenseRepository, userRepository, categoryRepository, premiumService) {
+  constructor(expenseRepository, userRepository, categoryRepository, premiumService, funnelService) {
     this.expenseRepository = expenseRepository;
     this.userRepository = userRepository;
     this.categoryRepository = categoryRepository;
     this.premiumService = premiumService;
+    this.funnelService = funnelService;
   }
 
   async hasAnyExpenseToday(userId, userTimezone) {
@@ -18,103 +20,71 @@ class ExpenseService {
     return this.expenseRepository.hasAnyExpenseBetweenLocal(userId, userTimezone, startHour, endHour);
   }
 
-  async getMonthlyStats(userId) {
-    const userCurrency = await this.userRepository.getUserCurrency(userId);
-    const userTimezone = await this.userRepository.getUserTimezone(userId);
-    const startDay = await this.userRepository.getUserPeriodStartDay(userId);
-    const total = await this.expenseRepository.getTotalExpensesForCustomMonth(userId, userTimezone, startDay);
-    const categoryStats = await this.expenseRepository.getExpensesByCategoryForCustomMonth(userId, userTimezone, startDay);
-    return { total, categoryStats, userCurrency };
+  // Контекст периода пользователя: kind 'month' — пользовательский месяц (period_start_day), 'day' — сутки.
+  // offset: 0 — текущий, -1 — предыдущий и т.д.
+  async getPeriodContext(userId, kind = 'month', offset = 0) {
+    const [timezone, currency, startDay] = await Promise.all([
+      this.userRepository.getUserTimezone(userId),
+      this.userRepository.getUserCurrency(userId),
+      this.userRepository.getUserPeriodStartDay(userId)
+    ]);
+    const today = localToday(timezone);
+    const period = kind === 'day' ? dayPeriod(today, offset) : customPeriod(today, startDay, offset);
+    return { timezone, currency, startDay, today, period };
   }
 
-  async getDailyStats(userId) {
-    const userCurrency = await this.userRepository.getUserCurrency(userId);
-    const userTimezone = await this.userRepository.getUserTimezone(userId);
-    const expenses = await this.expenseRepository.getDailyExpenses(userId, userTimezone);
-    const total = await this.expenseRepository.getTotalExpenses(userId, 'day', userTimezone);
-    return { total, expenses, userCurrency };
+  // { byCurrency: [{ currency, total }], count }
+  async getTotals(userId, timezone, period) {
+    return this.expenseRepository.getTotalsBetween(userId, timezone, period.start, period.end);
   }
 
-  async addExpense(userId, amount, description, categoryName, familyId = null) {
+  async getCategoryTotals(userId, timezone, period) {
+    return this.expenseRepository.getCategoryTotalsBetween(userId, timezone, period.start, period.end);
+  }
+
+  async getExpenses(userId, timezone, period, categoryName = null) {
+    return this.expenseRepository.getExpensesBetween(userId, timezone, period.start, period.end, categoryName);
+  }
+
+  async getCategoryById(categoryId) {
+    return this.categoryRepository.getCategoryById(categoryId);
+  }
+
+  // Категория, в которую пользователь последний раз записывал трату с таким же описанием,
+  // если она всё ещё ему доступна (например, кастомная категория после окончания премиума — нет)
+  async getRememberedCategory(userId, description, availableCategories) {
+    if (!description) return null;
+    const categoryId = await this.expenseRepository.getLastCategoryIdForDescription(userId, description);
+    return availableCategories.find(category => category.id === categoryId) || null;
+  }
+
+  async getDefaultCategory() {
+    const other = await this.categoryRepository.getCategoryByName(0, 'Другое');
+    if (other) return other;
+    const categories = await this.categoryRepository.getCategories(0);
+    if (!categories.length) throw new Error('No categories available');
+    return categories[0];
+  }
+
+  // currency = null → основная валюта пользователя
+  async addExpense(userId, { amount, currency = null, description = null, categoryId, familyId = null }) {
     try {
-      const userCurrency = await this.userRepository.getUserCurrency(userId);
-      const userTimezone = await this.userRepository.getUserTimezone(userId);
-      
-      // Ищем категорию в системных и пользовательских
-      const category = await this.categoryRepository.getOrCreateCategory(userId, categoryName);
-      if (!category) {
-        // Если категория не найдена, используем "Другое"
-        let defaultCategory = await this.categoryRepository.getCategoryByName(0, 'Другое');
-        if (!defaultCategory) {
-          // Если "Другое" не найдена, берем первую доступную категорию
-          const categories = await this.categoryRepository.getCategories(0);
-          if (categories.length === 0) {
-            throw new Error('No categories available');
-          }
-          defaultCategory = categories[0];
-        }
-        
-        const expense = await this.expenseRepository.addExpense(
-          userId, 
-          amount, 
-          description, 
-          defaultCategory.id, 
-          userCurrency,
-          userTimezone,
-          familyId
-        );
-        
-        // Обновляем метрики
-        expensesTotal.inc({ currency: userCurrency });
-        expensesAmountTotal.inc({ currency: userCurrency }, amount);
-        
-        logger.info('Expense added with default category', {
-          userId,
-          amount,
-          currency: userCurrency,
-          category: defaultCategory.name,
-          expenseId: expense.id,
-          familyId
-        });
-        
-        return expense;
-      }
-      
-      const expense = await this.expenseRepository.addExpense(
-        userId, 
-        amount, 
-        description, 
-        category.id, 
-        userCurrency,
-        userTimezone,
-        familyId
-      );
-      
-      // Обновляем метрики
-      expensesTotal.inc({ currency: userCurrency });
-      expensesAmountTotal.inc({ currency: userCurrency }, amount);
-      
-      logger.info('Expense added successfully', {
-        userId,
-        amount,
-        currency: userCurrency,
-        category: category.name,
-        expenseId: expense.id,
-        familyId
-      });
-      
+      const expenseCurrency = currency || await this.userRepository.getUserCurrency(userId);
+      const expense = await this.expenseRepository.addExpense(userId, amount, description, categoryId, expenseCurrency, null, familyId);
+
+      expensesTotal.inc({ currency: expenseCurrency });
+      expensesAmountTotal.inc({ currency: expenseCurrency }, amount);
+      logger.info('Expense added successfully', { userId, amount, currency: expenseCurrency, categoryId, expenseId: expense.id, familyId });
+      await this.funnelService.track(userId, 'first_expense');
       return expense;
     } catch (error) {
-      logger.error('Failed to add expense', {
-        userId,
-        amount,
-        description,
-        categoryName,
-        familyId,
-        error: error.message
-      });
+      logger.error('Failed to add expense', { userId, amount, description, categoryId, familyId, error: error.message });
       throw error;
     }
+  }
+
+  async updateExpenseCategory(userId, expenseId, categoryId) {
+    return this.expenseRepository.updateExpenseCategory(userId, expenseId, categoryId);
   }
 
   async deleteLastExpense(userId) {
@@ -160,24 +130,6 @@ class ExpenseService {
     }
     
     return categoryName; // Возвращаем оригинальное название, если перевод не найден
-  }
-
-  async getMonthlyExpenses(userId) {
-    return this.expenseRepository.getUserExpenses(userId, 1000);
-  }
-
-  async getExpensesByCategoryId(userId, categoryId, period = 'month') {
-    const userTimezone = await this.userRepository.getUserTimezone(userId);
-    if (period === 'month') {
-      const startDay = await this.userRepository.getUserPeriodStartDay(userId);
-      return this.expenseRepository.getExpensesByCategoryIdForCustomMonth(userId, categoryId, userTimezone, startDay);
-    }
-    return this.expenseRepository.getExpensesByCategoryId(userId, categoryId, period, userTimezone);
-  }
-
-  async getDailyExpenses(userId) {
-    const userTimezone = await this.userRepository.getUserTimezone(userId);
-    return this.expenseRepository.getDailyExpenses(userId, userTimezone);
   }
 
   async getExpenseById(userId, expenseId) {
@@ -266,10 +218,6 @@ class ExpenseService {
       });
       throw error;
     }
-  }
-
-  async addFamilyExpense(userId, amount, description, categoryName, familyId) {
-    return this.addExpense(userId, amount, description, categoryName, familyId);
   }
 
   async getFamilyMonthlyStats(familyId, userTimezone = 'UTC') {

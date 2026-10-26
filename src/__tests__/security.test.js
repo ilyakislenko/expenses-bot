@@ -150,6 +150,16 @@ describe('EnhancedValidator', () => {
       expect(result.isValid).toBe(false);
       expect(result.error).toBe('forbidden_command');
     });
+
+    test('should accept /start with a deep link code', () => {
+      expect(validator.validateCommand('/start ads_tg-1')).toEqual({ isValid: true, command: '/start' });
+    });
+
+    test('should reject arguments for other commands and malformed start codes', () => {
+      expect(validator.validateCommand('/stats extra').isValid).toBe(false);
+      expect(validator.validateCommand('/start <script>').isValid).toBe(false);
+      expect(validator.validateCommand('/start a b').isValid).toBe(false);
+    });
   });
 
   describe('validateCallbackData', () => {
@@ -246,49 +256,25 @@ describe('EnhancedValidator', () => {
     });
   });
 
-  describe('parseExpense', () => {
-    test('should parse valid expense format', () => {
-      const result = validator.parseExpense('500 продукты');
-      expect(result.isValid).toBe(true);
-      expect(result.amount).toBe(500);
-      expect(result.description).toBe('продукты');
-    });
+  describe('parseMoneyInput (ввод траты)', () => {
+    const expense = { maxAmount: 999999, maxDescriptionLength: 60, requireDescription: false };
 
-    test('should reject format without description', () => {
-      const result = validator.parseExpense('500');
-      expect(result.isValid).toBe(false);
-      expect(result.error).toBe('format');
-    });
-
-    test('should reject format without amount', () => {
-      const result = validator.parseExpense('продукты');
-      expect(result.isValid).toBe(false);
-      expect(result.error).toBe('format');
-    });
-
-    test('should reject empty description', () => {
-      const result = validator.parseExpense('500  ');
-      expect(result.isValid).toBe(false);
-      expect(result.error).toBe('format');
+    test('amount without description is accepted', () => {
+      expect(validator.parseMoneyInput('500', expense)).toEqual({ isValid: true, amount: 500, currency: null, description: null });
     });
 
     test('should reject too long description', () => {
-      const longDesc = 'a'.repeat(61);
-      const result = validator.parseExpense(`500 ${longDesc}`);
-      expect(result.isValid).toBe(false);
-      expect(result.error).toBe('too_long');
+      const result = validator.parseMoneyInput(`500 ${'a'.repeat(61)}`, expense);
+      expect(result).toMatchObject({ isValid: false, error: 'too_long' });
     });
 
-    test('should reject invalid amount', () => {
-      const result = validator.parseExpense('0 продукты');
-      expect(result.isValid).toBe(false);
-      expect(result.error).toBe('amount');
+    test('should reject amount above the expense limit', () => {
+      expect(validator.parseMoneyInput('1000000 машина', expense)).toMatchObject({ isValid: false, error: 'amount' });
     });
 
     test('should reject forbidden patterns', () => {
-      const result = validator.parseExpense('500 <script>alert("xss")</script>');
-      expect(result.isValid).toBe(false);
-      expect(result.error).toBe('forbidden_content');
+      const result = validator.parseMoneyInput('500 <script>alert("xss")</script>', expense);
+      expect(result).toMatchObject({ isValid: false, error: 'forbidden_content' });
     });
   });
 

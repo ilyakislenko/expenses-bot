@@ -1,6 +1,6 @@
-
+const respond = require('../utils/respond');
 class CallbackHandlers {
-  constructor({ expenseService, premiumService, paymentService, familyService, categoryService, localizationService, formatter, stateService, userService, commandHandlers, keyboardGenerators, donationRepository }) {
+  constructor({ expenseService, premiumService, paymentService, familyService, categoryService, localizationService, formatter, stateService, userService, commandHandlers, keyboardGenerators, donationRepository, funnelService }) {
     this.expenseService = expenseService;
     this.premiumService = premiumService;
     this.paymentService = paymentService;
@@ -13,43 +13,37 @@ class CallbackHandlers {
     this.commandHandlers = commandHandlers;
     this.keyboardGenerators = keyboardGenerators;
     this.donationRepository = donationRepository;
+    this.funnelService = funnelService;
   }
 
   async handleToggleReminders(ctx) {
     const userId = ctx.from.id;
-    let userLanguage = await this.userService.getUserLanguage(userId);
+    const userLanguage = await this.userService.getUserLanguage(userId);
     const settings = await this.userService.getReminderSettings(userId);
     const newValue = !settings.reminder_enabled;
     await this.userService.setReminderEnabled(userId, newValue);
-    
-    const text = this.localizationService.getText(userLanguage, newValue ? 'reminders_enabled' : 'reminders_disabled');
-    
-    // Отправляем сообщение в чат
-    await ctx.reply(text);
-    
-    // Обновляем клавиатуру с новым состоянием
-    const keyboard = this.keyboardGenerators.generateSettingsKeyboard(userLanguage, newValue);
-    await ctx.editMessageReplyMarkup({ inline_keyboard: keyboard });
-    
-    // Простое подтверждение в callback
-    await ctx.answerCbQuery();
+    await ctx.answerCbQuery(this.localizationService.getText(userLanguage, newValue ? 'reminders_enabled' : 'reminders_disabled'));
+    await this.handleConfigureReminderHours(ctx);
   }
 
+  // Экран «🔔 Напоминания»: включение и часы на одном экране
   async handleConfigureReminderHours(ctx) {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
+    const t = (key) => this.localizationService.getText(userLanguage, key);
     const settings = await this.userService.getReminderSettings(userId);
     const current = Array.isArray(settings.reminder_hours)
       ? [...settings.reminder_hours].sort((a,b)=>a-b)
       : [10,14,18];
-    const infoText = this.localizationService.getText(userLanguage, 'reminder_hours_info')
-      || 'Выберите до 3 часов (локальное время вашего часового пояса). Текущие:';
-    const backText = this.localizationService.getText(userLanguage, 'button_back');
-    const saveText = this.localizationService.getText(userLanguage, 'button_save') || 'Сохранить';
-    const clearText = this.localizationService.getText(userLanguage, 'button_clear') || 'Сбросить';
+    const backText = t('button_back');
+    const saveText = t('button_save');
+    const clearText = t('button_clear');
 
-    // Генерируем сетку времени по часам 0..23, отметим выбранные галочкой
-    const keyboard = [];
+    const keyboard = [[{
+      text: t(settings.reminder_enabled ? 'button_reminders_on' : 'button_reminders_off'),
+      callback_data: 'toggle_reminders'
+    }]];
+    // Сетка часов 0..23, выбранные отмечены галочкой
     for (let row = 0; row < 6; row++) {
       const rowButtons = [];
       for (let col = 0; col < 4; col++) {
@@ -69,21 +63,9 @@ class CallbackHandlers {
     keyboard.push([{ text: backText, callback_data: 'back_to_settings' }]);
 
     const list = current.map(h => `${h.toString().padStart(2,'0')}:00`).join(', ');
-    const newText = `${infoText} ${list || '-'}`;
-    try {
-      await ctx.editMessageText(newText, {
-        reply_markup: { inline_keyboard: keyboard },
-        parse_mode: 'Markdown'
-      });
-    } catch (e) {
-      const desc = e?.response?.description || e?.description || '';
-      if (desc.includes('message is not modified')) {
-        await ctx.answerCbQuery();
-        return;
-      }
-      throw e;
-    }
-    await ctx.answerCbQuery();
+    const newText = `🔔 *${t('reminders_title')}*\n\n${t('reminders_info')}\n\n${t('reminder_hours_info')} ${list || '-'}`;
+    await ctx.answerCbQuery().catch(() => {});
+    await respond(ctx, newText, { reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown' });
   }
 
   async handleToggleReminderHour(ctx) {
@@ -221,118 +203,15 @@ class CallbackHandlers {
     const prompt = this.localizationService.getText(userLanguage, 'bug_report_prompt');
     const backText = this.localizationService.getText(userLanguage, 'button_back');
     
-    await ctx.reply(prompt, {
+    await ctx.answerCbQuery();
+    await respond(ctx, prompt, {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
-          [{ text: backText, callback_data: 'back_to_settings' }]
+          [{ text: backText, callback_data: 'help' }]
         ]
       }
     });
-    
-    await ctx.answerCbQuery();
-  }
-
-  async handleCategorySelection(ctx) {
-    const userId = ctx.from.id;
-    let userLanguage = 'en'; // fallback язык
-    
-    // Автоматическая регистрация пользователя, если он еще не зарегистрирован
-    await this.userService.registerUser(userId, ctx.from.username, ctx.from.first_name);
-    
-    // Получаем язык пользователя для локализации
-    userLanguage = await this.userService.getUserLanguage(userId);
-    
-    try {
-      const callbackData = ctx.callbackQuery.data;
-      const [, categoryPart] = callbackData.split('|');
-      const pending = this.stateService.getPendingExpense(userId);
-      if (!pending) {
-        const dataNotFoundText = this.localizationService.getText(userLanguage, 'callback_data_not_found');
-        return await ctx.answerCbQuery(dataNotFoundText);
-      }
-      const { amount, description, familyId } = pending;
-      
-      // Проверяем лимит количества записей
-      const expenseCountValidation = await this.premiumService.validateExpenseCount(userId);
-      if (!expenseCountValidation.isValid) {
-        const limitReachedText = this.localizationService.getText(userLanguage, 'callback_limit_reached');
-        const errorLimitReachedText = this.localizationService.getText(userLanguage, 'error_limit_reached');
-        await ctx.answerCbQuery(limitReachedText);
-        await ctx.editMessageText(errorLimitReachedText, { parse_mode: 'Markdown' });
-        return;
-      }
-      
-      // Получаем название категории из кнопки
-      const button = ctx.callbackQuery.message.reply_markup.inline_keyboard
-        .flat()
-        .find(btn => btn.callback_data === callbackData);
-      if (!button) {
-        const buttonNotFoundText = this.localizationService.getText(userLanguage, 'callback_button_not_found');
-        return await ctx.answerCbQuery(buttonNotFoundText);
-      }
-      // Определяем категорию: по id (предпочтительно) или по имени (совместимость)
-      let resolvedCategoryName = null;
-      if (/^\d+$/.test(categoryPart)) {
-        const category = await this.categoryService.getCategoryById(Number(categoryPart));
-        if (!category) {
-          const notFound = this.localizationService.getText(userLanguage, 'callback_data_not_found');
-          await ctx.answerCbQuery(notFound);
-          return;
-        }
-        resolvedCategoryName = category.name;
-      } else {
-        resolvedCategoryName = categoryPart;
-      }
-
-      // Добавляем расход через сервис (по имени категории)
-      const expense = await this.expenseService.addExpense(
-        userId,
-        parseFloat(amount),
-        description,
-        resolvedCategoryName,
-        familyId
-      );
-      const formattedAmount = this.formatter.formatAmount(expense.amount, expense.currency);
-      const formattedDescription = expense.description || this.localizationService.getText(userLanguage, 'not_found');
-      
-      // Локализуем название категории
-      const localizedCategoryName = this.formatter.translateCategoryName(resolvedCategoryName, this.localizationService, userLanguage);
-      const expenseAddedText = this.localizationService.getText(userLanguage, 'callback_expense_added', { category: localizedCategoryName });
-      const backText = this.localizationService.getText(userLanguage, 'button_back');
-      
-      await ctx.answerCbQuery(expenseAddedText);
-      const expenseAddedTitleText = this.localizationService.getText(userLanguage, 'expense_added_title');
-      const amountLabelText = this.localizationService.getText(userLanguage, 'amount_label');
-      const descriptionLabelText = this.localizationService.getText(userLanguage, 'description_label');
-      const categoryLabelText = this.localizationService.getText(userLanguage, 'category_label');
-      
-      // Клавиатура: для семейных трат добавляем кнопку "Добавить ещё"
-      let keyboard = [];
-      if (familyId) {
-        const addAnotherText = this.localizationService.getText(userLanguage, 'family_add_expense');
-        keyboard = [[
-          { text: addAnotherText, callback_data: 'family_add_expense' },
-          { text: backText, callback_data: 'family_menu' }
-        ]];
-      } else {
-        keyboard = [[{ text: backText, callback_data: 'back_to_menu' }]];
-      }
-      
-      await ctx.editMessageText(
-        `✅ *${expenseAddedTitleText}*\n\n` +
-        `💰 ${amountLabelText}: *${formattedAmount}*\n` +
-        `📝 ${descriptionLabelText}: ${formattedDescription}\n` +
-        `🏷️ ${categoryLabelText}: ${localizedCategoryName}`,
-        { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } }
-      );
-    } catch (error) {
-      console.error('Error handling category selection:', error);
-      const expenseSavedErrorText = this.localizationService.getText(userLanguage, 'callback_expense_saved');
-      await ctx.answerCbQuery(expenseSavedErrorText);
-    } finally {
-      this.stateService.deletePendingExpense(userId);
-    }
   }
 
   async handleCancel(ctx) {
@@ -388,7 +267,7 @@ class CallbackHandlers {
         if (currentState === 'onboarding_timezone') {
           // Завершаем онбординг и показываем главное меню
           this.stateService.clearUserState(userId);
-          await this.commandHandlers.start(ctx);
+          await this.commandHandlers.start(ctx, { afterOnboarding: true });
         } else {
           await ctx.editMessageText(timezoneUpdatedText,
             { parse_mode: 'Markdown', reply_markup: {
@@ -436,7 +315,7 @@ class CallbackHandlers {
         const currentState2 = this.stateService.getUserState(userId);
         if (currentState2 === 'onboarding_timezone') {
           this.stateService.clearUserState(userId);
-          await this.commandHandlers.start(ctx);
+          await this.commandHandlers.start(ctx, { afterOnboarding: true });
         } else {
           await ctx.editMessageText(timezoneUpdatedText,
             { parse_mode: 'Markdown', reply_markup: {
@@ -513,34 +392,10 @@ class CallbackHandlers {
           }
         });
         
-        // Проверяем статус админа для корректного отображения клавиатуры
-        const isAdmin = await this.userService.isUserAdmin(userId);
-        
         // Обновляем reply-клавиатуру на новом языке
-        // Проверяем, есть ли у пользователя семья и премиум для показа кнопки "добавить семейную трату"
-        let hasFamily = false;
-        let isPremium = false;
-        try {
-          isPremium = await this.premiumService.isPremiumUser(userId);
-          if (isPremium) {
-            hasFamily = await this.familyService.getUserFamily(userId);
-            hasFamily = !!hasFamily; // преобразуем в boolean
-          }
-        } catch (error) {
-          // В случае ошибки просто показываем базовое меню
-        }
-        
-        const newMainMenuKeyboard = this.keyboardGenerators.generateMainMenuKeyboard(languageCode, isAdmin, hasFamily, isPremium);
-        
-        await ctx.telegram.sendMessage(ctx.chat.id, 
-          this.localizationService.getText(languageCode, 'keyboard_updated'), 
-          {
-            reply_markup: {
-              keyboard: newMainMenuKeyboard,
-              resize_keyboard: true,
-              one_time_keyboard: false
-            }
-          }
+        await ctx.telegram.sendMessage(ctx.chat.id,
+          this.localizationService.getText(languageCode, 'keyboard_updated'),
+          { reply_markup: await this.commandHandlers.mainKeyboardMarkup(userId, languageCode) }
         );
       }
     } catch (error) {
@@ -852,18 +707,6 @@ class CallbackHandlers {
       await this.commandHandlers.familyStats(ctx);
     } catch (error) {
       console.error('Error handling family stats:', error);
-      const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
-      const errorText = this.localizationService.getText(userLanguage, 'error');
-      await ctx.answerCbQuery(errorText);
-    }
-  }
-
-  async handleFamilyDailyHistory(ctx) {
-    try {
-      await ctx.answerCbQuery();
-      await this.commandHandlers.familyDailyHistory(ctx);
-    } catch (error) {
-      console.error('Error handling family daily history:', error);
       const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
       const errorText = this.localizationService.getText(userLanguage, 'error');
       await ctx.answerCbQuery(errorText);
@@ -1312,6 +1155,8 @@ class CallbackHandlers {
     try {
       const userId = ctx.from.id;
       const userLanguage = await this.userService.getUserLanguage(userId);
+      await this.funnelService.track(userId, 'tariffs_viewed');
+      const subscription = await this.userService.getActiveRecurringSubscription(userId);
       
       const { PREMIUM_TARIFFS, generatePremiumPaymentButtons } = require('../utils/constants');
       
@@ -1378,24 +1223,32 @@ class CallbackHandlers {
       }
       const lines = linesArr.join('\n').slice(0, -1);
 
-      const message = `${tariffsTitle}\n\n${lines}\n\n${paymentInfo}\n\n${renewalInfo}\n\n${starsInfo}`;
+      let message = `${tariffsTitle}\n\n${lines}\n\n${paymentInfo}\n\n${renewalInfo}\n\n${starsInfo}`;
+      if (subscription) {
+        message += `\n\n${this.localizationService.getText(userLanguage, 'subscription_active_info', {
+          date: this.formatter.formatDate(subscription.subscription_expires_at, user.timezone || 'UTC')
+        })}`;
+      }
       
       // Генерируем кнопки оплаты
       const paymentButtons = generatePremiumPaymentButtons(PREMIUM_TARIFFS, this.localizationService, userLanguage);
       
-      // Создаем кнопки с прямыми ссылками на оплату
+      // Создаем кнопки с прямыми ссылками на оплату.
+      // Месячный тариф — подписка с автопродлением (🔁); при уже действующей подписке второй раз её не предлагаем.
       const buttonsWithLinks = [];
       for (const row of paymentButtons) {
         const newRow = [];
         for (const button of row) {
           const tariff = PREMIUM_TARIFFS[button.tariffKey.toUpperCase()];
+          const isSubscription = tariff.duration === 30;
+          if (isSubscription && subscription) continue;
           const paymentLink = await this.paymentService.createInvoiceLink(userId, tariff, userLanguage);
           newRow.push({
-            text: button.text,
+            text: isSubscription ? `🔁 ${button.text}` : button.text,
             url: paymentLink
           });
         }
-        buttonsWithLinks.push(newRow);
+        if (newRow.length) buttonsWithLinks.push(newRow);
       }
       
       const inlineKeyboard = [

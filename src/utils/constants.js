@@ -1,17 +1,14 @@
 // Константы для бота
 
+// Количество записей не ограничено ни для кого: премиум даёт возможности, а не снимает блокировки
 const USER_LIMITS = {
   regular: {
     MAX_DESCRIPTION_LENGTH: 80,
-    MAX_NOTES_COUNT: 100,
-    NOTE_RETENTION_DAYS: 90,
     ALLOW_CUSTOM_CATEGORIES: false,
     MAX_CUSTOM_CATEGORIES: 0,
   },
   premium: {
     MAX_DESCRIPTION_LENGTH: 160,
-    MAX_NOTES_COUNT: 300,
-    NOTE_RETENTION_DAYS: null, // null = неограниченно
     ALLOW_CUSTOM_CATEGORIES: true,
     MAX_CUSTOM_CATEGORIES: 5,
   }
@@ -68,103 +65,88 @@ const PREMIUM_TARIFFS = {
 };
 
 
-// Функция для генерации главного меню (reply-клавиатура)
-function generateMainMenuKeyboard(localizationService, userLanguage, isAdmin = false, hasFamily = false, isPremium = false) {
+// Главная reply-клавиатура: только частые разделы, остальное — в «☰ Ещё».
+// showFamilyExpense — у пользователя премиум и семья (быстрая кнопка семейной траты)
+function generateMainMenuKeyboard(localizationService, userLanguage, showFamilyExpense = false) {
+  const t = (key) => localizationService.getText(userLanguage, key);
   const keyboard = [
-    [{ text: localizationService.getText(userLanguage, 'button_help') }],
-    [
-      { text: localizationService.getText(userLanguage, 'button_expenses_month') }, 
-      { text: localizationService.getText(userLanguage, 'button_expenses_day') }
-    ],
-    [{ text: localizationService.getText(userLanguage, 'button_expenses_categories') }],
-    [{ text: localizationService.getText(userLanguage, 'button_family') }]
+    [{ text: t('button_overview') }, { text: t('button_today') }],
+    [{ text: t('button_income') }, { text: t('button_recurring') }]
   ];
-
-  // Добавляем кнопку "добавить семейную трату" только если у пользователя есть семья и премиум
-  if (hasFamily && isPremium) {
-    keyboard.push([{ text: localizationService.getText(userLanguage, 'family_add_expense') }]);
+  if (showFamilyExpense) {
+    keyboard.push([{ text: t('family_add_expense') }, { text: t('button_more') }]);
+  } else {
+    keyboard.push([{ text: t('button_more') }]);
   }
-
-  keyboard.push(
-    [{ text: localizationService.getText(userLanguage, 'button_settings') }],
-    [{ text: localizationService.getText(userLanguage, 'button_delete_last') }],
-    [{ text: localizationService.getText(userLanguage, 'premium_subscription_title') }]
-  );
-
-  // Добавляем кнопку админки только для администраторов
-  if (isAdmin) {
-    keyboard.push([{ text: localizationService.getText(userLanguage, 'button_admin') }]);
-  }
-
   return keyboard;
 }
 
-// Функция для генерации inline-меню
-function generateInlineMainMenu(localizationService, userLanguage, isAdmin = false) {
+// Ключи кнопок старой reply-клавиатуры: у пользователей она остаётся в клиенте до первой отправки новой
+const LEGACY_MENU_BUTTON_KEYS = [
+  'button_expenses_month',
+  'button_expenses_day',
+  'button_expenses_categories',
+  'button_delete_last',
+  'button_settings',
+  'button_help',
+  'button_family',
+  'button_menu',
+  'premium_subscription_title',
+  'button_admin'
+];
+
+// Меню «☰ Ещё» (inline)
+function generateMoreMenu(localizationService, userLanguage, isAdmin = false) {
+  const t = (key) => localizationService.getText(userLanguage, key);
   const keyboard = [
-    [{ text: localizationService.getText(userLanguage, 'button_help'), callback_data: 'help' }],
-    [
-      { text: localizationService.getText(userLanguage, 'button_expenses_month'), callback_data: 'stats' }, 
-      { text: localizationService.getText(userLanguage, 'button_expenses_day'), callback_data: 'history' }
-    ],
-    [{ text: localizationService.getText(userLanguage, 'button_expenses_categories'), callback_data: 'categories' }],
-    [{ text: localizationService.getText(userLanguage, 'button_family'), callback_data: 'family' }],
-    [{ text: localizationService.getText(userLanguage, 'button_settings'), callback_data: 'settings' }],
-    [{ text: localizationService.getText(userLanguage, 'button_delete_last'), callback_data: 'undo' }],
-    [{ text: localizationService.getText(userLanguage, 'premium_subscription_title'), callback_data: 'premium_subscription' }]
+    [{ text: t('button_family'), callback_data: 'family' }, { text: t('premium_subscription_title'), callback_data: 'premium_subscription' }],
+    [{ text: t('button_export'), callback_data: 'export' }, { text: t('button_settings'), callback_data: 'settings' }],
+    [{ text: t('button_help'), callback_data: 'help' }]
   ];
-
-  // Добавляем кнопку админки только для администраторов
   if (isAdmin) {
-    keyboard.push([{ text: localizationService.getText(userLanguage, 'button_admin'), callback_data: 'panel_main' }]);
+    keyboard.push([{ text: t('button_admin'), callback_data: 'panel_main' }]);
   }
-
   return keyboard;
 }
 
 // Функция для генерации клавиатуры выбора валюты
-function generateCurrencyKeyboard(localizationService, userLanguage) {
+// callbackPrefix/backCallback позволяют переиспользовать клавиатуру (например, для валюты дохода)
+function generateCurrencyKeyboard(localizationService, userLanguage, callbackPrefix = 'set_currency', backCallback = 'back_to_settings', callbackSuffix = '') {
+  const button = (text, code) => ({ text, callback_data: `${callbackPrefix}|${code}${callbackSuffix}` });
   return [
     [
-      { text: '₽ RUB', callback_data: 'set_currency|RUB' },
-      { text: '$ USD', callback_data: 'set_currency|USD' },
-      { text: '€ EUR', callback_data: 'set_currency|EUR' }
+      button('₽ RUB', 'RUB'),
+      button('$ USD', 'USD'),
+      button('€ EUR', 'EUR')
     ],
     [
-      { text: '₸ KZT', callback_data: 'set_currency|KZT' },
-      { text: '¥ CNY', callback_data: 'set_currency|CNY' },
-      { text: '¥ JPY', callback_data: 'set_currency|JPY' }
+      button('₸ KZT', 'KZT'),
+      button('¥ CNY', 'CNY'),
+      button('¥ JPY', 'JPY')
     ],
     [
-      { text: '₹ INR', callback_data: 'set_currency|INR' },
-      { text: '₺ TRY', callback_data: 'set_currency|TRY' },
-      { text: '₾ GEL', callback_data: 'set_currency|GEL' }
+      button('₹ INR', 'INR'),
+      button('₺ TRY', 'TRY'),
+      button('₾ GEL', 'GEL')
     ],
     [
-      { text: 'сум UZS', callback_data: 'set_currency|UZS' },
-      { text: '฿ THB', callback_data: 'set_currency|THB' }
+      button('сум UZS', 'UZS'),
+      button('฿ THB', 'THB')
     ],
     [
-      { text: localizationService.getText(userLanguage, 'button_back'), callback_data: 'back_to_settings' }
+      { text: localizationService.getText(userLanguage, 'button_back'), callback_data: backCallback }
     ]
   ];
 }
 
-// Функция для генерации клавиатуры настроек
-function generateSettingsKeyboard(localizationService, userLanguage, reminderEnabled = false) {
-  const reminderIcon = reminderEnabled ? '🟢' : '⚫';
-  const reminderText = `${reminderIcon} ${localizationService.getText(userLanguage, 'button_reminders')}`;
-  
+// Клавиатура настроек: значения показываются в тексте экрана, кнопки — короткие
+function generateSettingsKeyboard(localizationService, userLanguage) {
+  const t = (key) => localizationService.getText(userLanguage, key);
   return [
-    [{ text: localizationService.getText(userLanguage, 'button_change_currency'), callback_data: 'change_currency' }],
-    [{ text: localizationService.getText(userLanguage, 'button_change_timezone'), callback_data: 'change_timezone' }],
-    [{ text: localizationService.getText(userLanguage, 'button_change_language'), callback_data: 'change_language' }],
-    [{ text: localizationService.getText(userLanguage, 'button_change_period_start'), callback_data: 'change_period_start' }],
-    [{ text: reminderText, callback_data: 'toggle_reminders' }],
-    [{ text: localizationService.getText(userLanguage, 'button_configure_reminder_hours'), callback_data: 'configure_reminder_hours' }],
-    [{ text: localizationService.getText(userLanguage, 'button_custom_categories'), callback_data: 'custom_categories' }],
-    [{ text: localizationService.getText(userLanguage, 'button_bug_report'), callback_data: 'bug_report' }],
-    [{ text: localizationService.getText(userLanguage, 'button_back'), callback_data: 'back_to_menu' }]
+    [{ text: t('button_currencies'), callback_data: 'settings_currencies' }, { text: t('button_change_timezone'), callback_data: 'change_timezone' }],
+    [{ text: t('button_change_language'), callback_data: 'change_language' }, { text: t('button_change_period_start'), callback_data: 'change_period_start' }],
+    [{ text: t('button_reminders'), callback_data: 'configure_reminder_hours' }, { text: t('button_custom_categories'), callback_data: 'custom_categories' }],
+    [{ text: t('button_back'), callback_data: 'back_to_menu' }]
   ];
 }
 
@@ -247,7 +229,8 @@ module.exports = {
   PREMIUM_TARIFFS,
   TRIAL_PERIOD,
   generateMainMenuKeyboard,
-  generateInlineMainMenu,
+  generateMoreMenu,
+  LEGACY_MENU_BUTTON_KEYS,
   generateCurrencyKeyboard,
   generateSettingsKeyboard,
   generateTimeKeyboard,

@@ -95,24 +95,29 @@ class EnhancedValidator {
     }
   }
 
-  // Валидация команды
+  // Валидация команды. Аргумент допускается только у /start — это код из ссылки t.me/<bot>?start=<код>
+  // (Telegram разрешает в нём A-Z, a-z, 0-9, "_" и "-", до 64 символов).
   validateCommand(command) {
     if (!command || typeof command !== 'string') {
       return { isValid: false, error: 'invalid_command' };
     }
 
-    if (!this.patterns.command.test(command)) {
+    const [name, ...args] = command.trim().split(/\s+/);
+    if (!this.patterns.command.test(name)) {
+      return { isValid: false, error: 'invalid_command_format' };
+    }
+    if (args.length && !(name.toLowerCase() === '/start' && args.length === 1 && /^[A-Za-z0-9_-]{1,64}$/.test(args[0]))) {
       return { isValid: false, error: 'invalid_command_format' };
     }
 
     // Проверка на запрещенные команды
     const forbiddenCommands = ['/eval', '/exec', '/system', '/admin'];
-    if (forbiddenCommands.includes(command.toLowerCase())) {
+    if (forbiddenCommands.includes(name.toLowerCase())) {
       logger.warn('Forbidden command attempted', { command });
       return { isValid: false, error: 'forbidden_command' };
     }
 
-    return { isValid: true, command: command.toLowerCase() };
+    return { isValid: true, command: name.toLowerCase() };
   }
 
   // Валидация callback данных
@@ -329,51 +334,6 @@ class EnhancedValidator {
     };
   }
 
-  // Совместимость со старым интерфейсом (для обычных сообщений)
-  parseExpense(text, maxDescriptionLength = 60) {
-    const trimmedText = text.trim();
-    
-    // Проверка на запрещенные паттерны
-    if (this.containsForbiddenPatterns(trimmedText)) {
-      logger.warn('Forbidden pattern detected in expense message', { text: trimmedText.substring(0, 50) });
-      return { isValid: false, error: 'forbidden_content' };
-    }
-
-    // Паттерн: число + описание
-    const match = trimmedText.match(/^(\d+[.,]?\d*)\s+(.+)$/);
-    if (!match) {
-      return { isValid: false, error: 'format' };
-    }
-
-    const amountStr = match[1].replace(',', '.');
-    const description = match[2].trim();
-
-    if (!description || description.length === 0) {
-      return { isValid: false, error: 'no_description' };
-    }
-
-    if (description.length > maxDescriptionLength) {
-      return { isValid: false, error: 'too_long' };
-    }
-
-    const amount = parseFloat(amountStr);
-    if (isNaN(amount) || amount <= 0 || amount > this.limits.maxAmount) {
-      return { isValid: false, error: 'amount' };
-    }
-
-    // Валидация описания
-    const descriptionValidation = this.validateDescription(description, maxDescriptionLength);
-    if (!descriptionValidation.isValid) {
-      return descriptionValidation;
-    }
-
-    return {
-      isValid: true,
-      amount,
-      description: this.sanitizeText(description, maxDescriptionLength)
-    };
-  }
-
   // Парсинг для редактирования расходов (более гибкий)
   parseEditExpense(text, maxDescriptionLength = 60) {
     const input = text.trim();
@@ -425,6 +385,63 @@ class EnhancedValidator {
       amount: amount ? Number(amount) : undefined,
       description: description ? this.sanitizeText(description, maxDescriptionLength) : undefined
     };
+  }
+
+  // Парсинг "сумма [валюта] [описание]" для доходов и регулярных трат.
+  // Валюта — код из SUPPORTED_CURRENCIES (регистр не важен) или символ ($, €, ₽ …), сразу после суммы.
+  // Возвращает currency = null, если валюта не указана.
+  parseMoneyInput(text, { maxAmount, maxDescriptionLength, requireDescription }) {
+    const input = (text || '').trim();
+
+    if (this.containsForbiddenPatterns(input)) {
+      logger.warn('Forbidden pattern detected in money input', { text: input.substring(0, 50) });
+      return { isValid: false, error: 'forbidden_content' };
+    }
+
+    const match = input.match(/^(\d+(?:[.,]\d{1,2})?)(?=$|\s|[$€₽₸₾₺₹฿])\s*(.*)$/su);
+    if (!match) {
+      return { isValid: false, error: 'format' };
+    }
+
+    const amount = parseFloat(match[1].replace(',', '.'));
+    if (isNaN(amount) || amount < this.limits.minAmount || amount > maxAmount) {
+      return { isValid: false, error: 'amount' };
+    }
+
+    let rest = match[2].trim();
+    let currency = null;
+    const [firstToken, ...otherTokens] = rest.split(/\s+/);
+    const tokenCurrency = this.resolveCurrencyToken(firstToken);
+    if (tokenCurrency) {
+      currency = tokenCurrency;
+      rest = otherTokens.join(' ');
+    }
+
+    if (!rest) {
+      if (requireDescription) {
+        return { isValid: false, error: 'no_description' };
+      }
+      return { isValid: true, amount, currency, description: null };
+    }
+
+    if (rest.length > maxDescriptionLength) {
+      return { isValid: false, error: 'too_long' };
+    }
+
+    const descriptionValidation = this.validateDescription(rest, maxDescriptionLength);
+    if (!descriptionValidation.isValid) {
+      return descriptionValidation;
+    }
+
+    return { isValid: true, amount, currency, description: this.sanitizeText(rest, maxDescriptionLength) };
+  }
+
+  resolveCurrencyToken(token) {
+    if (!token) return null;
+    const symbols = { '$': 'USD', '€': 'EUR', '₽': 'RUB', '₸': 'KZT', '₾': 'GEL', '₺': 'TRY', '₹': 'INR', '฿': 'THB' };
+    if (symbols[token]) return symbols[token];
+    const code = token.toUpperCase();
+    return currencyConfig.SUPPORTED_CURRENCIES.includes(code) ? code : null;
   }
 
   // Проверка на запрещенные паттерны

@@ -20,7 +20,10 @@ function stateCleanupMiddleware(handlers) {
         'creating_family',
         'joining_family',
         'adding_family_expense',
-        'inviting_member'
+        'inviting_member',
+        'adding_income',
+        'adding_recurring',
+        'adding_recurring_day'
       ];
       
       // Сбрасываем состояния при любых действиях пользователя (кроме текстовых сообщений)

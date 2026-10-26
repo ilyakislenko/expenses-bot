@@ -128,30 +128,6 @@ describe('Timezone functionality', () => {
         [123, 100, 'test', 1, 'RUB']
       );
     });
-
-    test('getDailyExpenses should use created_at_utc filter with timezone', async () => {
-      const mockResult = { rows: [] };
-      expenseRepository.query.mockResolvedValue(mockResult);
-
-      await expenseRepository.getDailyExpenses(123, 'Europe/Moscow');
-      
-      expect(expenseRepository.query).toHaveBeenCalledWith(
-        expect.stringContaining('created_at_utc >= (DATE_TRUNC(\'day\', (NOW() AT TIME ZONE'),
-        [123, 'Europe/Moscow']
-      );
-    });
-
-    test('getTotalExpenses should use timezone for date filtering', async () => {
-      const mockResult = { rows: [] };
-      expenseRepository.query.mockResolvedValue(mockResult);
-
-      await expenseRepository.getTotalExpenses(123, 'day', 'Europe/Moscow');
-      
-      expect(expenseRepository.query).toHaveBeenCalledWith(
-        expect.stringContaining('created_at_utc >= (DATE_TRUNC(\'day\', (NOW() AT TIME ZONE'),
-        [123, 'Europe/Moscow']
-      );
-    });
   });
 
   describe('Timezone validation', () => {

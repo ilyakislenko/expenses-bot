@@ -1,6 +1,6 @@
 module.exports = {
     button_reminders: '🔔 Erinnerung',
-    reminders_enabled: 'Erinnerungen sind aktiviert. Wenn du bis 18:00 Uhr nichts einträgst, erinnere ich dich mit einem kleinen Scherz 😉',
+    reminders_enabled: '🔔 Erinnerungen sind an',
     reminders_disabled: 'Erinnerungen sind deaktiviert. Absolute Stille 🤐',
     reminder_sample_variants: [
      '👋 Hey! Wenn dein Geldbeutel schweigt, heißt das noch nicht, dass er glücklich ist. Notiere deine Ausgaben 😉',
@@ -192,96 +192,28 @@ module.exports = {
     save: 'Speichern',
     
     // Start-Nachricht
-    start_message: `Hallo! 👋 Ich helfe dir, deine Ausgaben zu erfassen und dein Budget zu kontrollieren.
-  
-  *So fügst du eine Ausgabe hinzu:*
-  Einfach Betrag und Beschreibung eingeben:
-  -  \`200 Lebensmittel\`
-  -  \`1500 Mittagessen im Restaurant\`
-  -  \`50 Fahrkarte\`
-  -  \`150,50 Kaffee\`
-  
-  Danach erscheint ein Kategorienmenü – wähle passend aus 🏷️
-  
-  *Hauptbefehle:*
-  /start - Bot neu starten
-  /menu - Interaktives Menü öffnen
-  /history - Einträge von heute anzeigen
-  /stats - Monatliche Statistik nach Kategorien
-  
-  /export - CSV-Datei herunterladen
-  /undo - Letzten Eintrag löschen
-  
-  *Einstellungen:*
-  /settings - Einstellungen
-  /currency - Standardwährung ändern
-  /timezone - Zeitzone festlegen
-  /categories - Kategorien verwalten
-  
-  *Zusatzfunktionen:*
-  /family - Familienbudget
-  /limits - Limits und Premium-Features
-  /help - Hilfetext anzeigen
-  
-  Fang an, deine Ausgaben zu erfassen! 💰`,
-  help_message: `📋 *Detaillierte Befehlsübersicht*
-  
-  *Ausgabe hinzufügen:*
-  Betrag und Beschreibung mit Leerzeichen eingeben:
-  \`200 Einkaufen\` – zeigt das Kategorienmenü
-  \`150,50 Kaffee\` – Dezimalzahlen werden unterstützt
-  
-  *Hauptbefehle:*
-  /start - Bot neu starten und Begrüßungsnachricht anzeigen
-  /menu - Interaktives Hauptmenü öffnen
-  /history - Heutige Einträge anzeigen
-  /stats - Monatliche Statistik nach Kategorien
-  
-  /export - Alle Daten als CSV herunterladen
-  /undo - Letzten Eintrag löschen
-  
-  *Einstellungen und Verwaltung:*
-  /settings - Haupt-Einstellungsmenü öffnen
-  /currency - Standardwährung ändern (RUB, USD, EUR, KZT, CNY, THB)
-  /timezone - Zeitzone festlegen
-  /categories - Eigene Kategorien verwalten (Premium)
-  
-  *Familienbudget:*
-  /family - Familiengruppen und gemeinsame Ausgaben verwalten
-  - Familie erstellen, Mitglieder einladen
-  - Gemeinsame Ausgaben und Statistik
-  - Familiendaten exportieren
-  
-  *Premium-Features:*
-  /limits - Übersicht Limits & Premium
-  - Eigene Kategorien
-  - Erweiterte Statistik
-  - Familienbudget
-  - Priorisierter Support
-  
-  *Tipps zur Nutzung:*
-  • Beschreibung hinzufügen für bessere Nachvollziehbarkeit
-  • Statistik regelmäßig mit /stats prüfen
-  • Korrekte Zeitzone einstellen
-  • /menu für schnellen Zugriff nutzen
-  • /export zum Datenexport und Analyse verwenden
-  
-  *Ausgaben bearbeiten:*
-  • In /history Einträge bearbeiten oder löschen
-  • „👨‍👩‍👧‍👦 Zur Familie“ verschiebt Ausgabe ins Familienbudget
-  • „🚫 Aus Familienbudget entfernen“ macht es wieder privat
-  • Nur eigene Einträge bearbeitbar
-  
-  *Erinnerungen:*
-  • Bot erinnert täglich um 18:00 Uhr
-  • Nur wenn an dem Tag keine Ausgabe erfasst wurde
-  • In Einstellungen ein-/ausschaltbar
-  • Max. eine Erinnerung pro Tag
-  
-  *Support:*
-  Mit /start kommst du jederzeit ins Hauptmenü zurück.
-  
-  Viel Erfolg beim Haushaltsbuch! 💰📊`,
+    start_message: `Hallo! 👋 Ich helfe dir, deine Ausgaben und Einnahmen zu erfassen.
+
+*Ausgabe* — schreib einfach Betrag und Beschreibung: \`250 Kaffee\`, \`1500 Mittagessen\`.
+Andere Währungen gehen auch: \`20 USD Taxi\`, oder nur ein Betrag: \`300\`.
+*Einnahme* — mit Plus: \`+50000 Gehalt\`.
+
+Wähle einmal eine Kategorie — beim nächsten Mal merke ich sie mir.
+Das Menü ist unten: Monatsübersicht, heutige Einträge, Einnahmen, wiederkehrende Ausgaben (Miete, Abos) und «☰ Mehr».`,
+
+    start_returning: '👋 Willkommen zurück! Sende eine Ausgabe als Nachricht — `250 Kaffee`. Das Menü ist auf der Tastatur unten.',
+  help_message: `❓ *So funktioniert's*
+
+• \`250 Kaffee\` — Ausgabe. Wähle einmal eine Kategorie, ich merke sie mir
+• \`20 USD Taxi\` — Ausgabe in anderer Währung, \`300\` — ohne Beschreibung
+• \`+50000 Gehalt\` — Einnahme (\`+1000 USD\` — in anderer Währung)
+• Unter einem neuen Eintrag: ↩️ rückgängig, 🏷 Kategorie ändern
+• 📊 *Monatsübersicht* — Ausgaben, Einnahmen, Saldo, Kategorien; ◀️ — frühere Zeiträume
+• 📅 *Heute* — Einträge des Tages; tippe auf eine Nummer, um einen Eintrag zu bearbeiten oder zu löschen
+• 🔁 *Wiederkehrende Ausgaben* — Miete und Abos werden jeden Monat automatisch erfasst
+• Währungen, Erinnerungen (bis zu 3 pro Tag) und Periodenbeginn — unter ☰ Mehr → ⚙️ Einstellungen
+
+Befehle: /stats /history /income /recurring /export /settings /menu`,
   
     // Ausgaben
     expense_added: '✅ Erfasst: {amount} – {description}',
@@ -445,18 +377,14 @@ module.exports = {
     status_regular: '👤 Standard',
     status_premium: '💎 Premium',
     status_label: '*Status:* {status}',
-    records_usage: '<b>Einträge:</b> {current}/{max} ({percentage}%)',
-    records_remaining: '<b>Verbleibend:</b> {remaining} Einträge',
     max_description_length: '<b>Maximale Beschreibungslänge:</b> {length} Zeichen',
-    near_limit_warning: '⚠️ *Achtung:* Du näherst dich dem Eintragslimit!',
-    limit_reached: '❌ *Eintragslimit erreicht!*',
     premium_benefits: `💎 <b>Premium-Vorteile:</b>
   • Beschreibung bis zu 160 Zeichen (statt 80)
-  • 300 Einträge (statt 100)
   • Bis zu 5 eigene Kategorien
-  • Erweiterte Statistiken
   • Familienbudget
-  • Beliebige Einträge (nicht nur den letzten) ändern oder löschen`,
+  • Betrag und Beschreibung jedes Eintrags bearbeiten
+
+  Das Erfassen von Ausgaben und Einnahmen ist kostenlos und unbegrenzt.`,
     
     // Premium-Abonnement
     premium_subscription_title: '⭐️ Abonnement',
@@ -470,7 +398,7 @@ module.exports = {
     premium_back_button: '⬅️ Zurück',
     premium_tariffs_title: '⭐️ Tarife (Telegram Stars)',
     per_month: 'pro Monat',
-    premium_payment_info: '💳 Bezahlung erfolgt über Telegram Stars. <b>Keine automatische Verlängerung.</b>',
+    premium_payment_info: '💳 Bezahlung erfolgt über Telegram Stars, die interne Währung von Telegram. 🔁 Der Monatstarif verlängert sich automatisch; kündigen kannst du ihn in Telegram: Einstellungen → Meine Sterne → Meine Abos. Die Tarife für 3, 6 und 12 Monate sind Einmalzahlungen.',
     premium_renewal_info: '📅 Kann jederzeit verlängert werden. Die Zeit wird hinzugefügt.',
     premium_stars_info: '💡 Sterne können gebührenfrei über [@PremiumBot] gekauft werden.',
     premium_why_paid_title: '👀 Warum kostenpflichtig?',
@@ -514,10 +442,9 @@ module.exports = {
     error_too_long_premium: '❌ Beschreibung zu lang! Für Premium max. 160 Zeichen.',
     error_no_description: '❌ Nach dem Betrag muss eine Beschreibung folgen.',
     error_amount: '❌ Ungültiger Betrag. Bitte zwischen 0,01 und 999999 eingeben.',
-    error_format: '❌ Unklarer Aufbau. Betrag und Beschreibung angeben.\nBeispiel: `200 Lebensmittel` oder `1500 Mittagessen`',
+    error_format: '❌ Das habe ich nicht verstanden. Beginne mit einem Betrag: `250 Kaffee`, `20 USD Taxi` oder einfach `300`.',
     error_forbidden_content: '❌ Unzulässiger Inhalt.',
-    error_limit_reached: '❌ Limit erreicht!\nStandard: 100 Einträge\nPremium: 300 Einträge\n\n💎 Hol dir Premium für mehr Platz.',
-    error_premium_required: '💎 Diese Funktion ist nur für Premium!\n\nVorteile:\n• Beschreibung bis 160 Zeichen\n• 300 Einträge\n• Eigene Kategorien\n• Erweiterte Statistik',
+    error_premium_required: '💎 Diese Funktion ist nur mit Premium verfügbar.\n\nPremium bietet dir:\n• Beschreibung bis 160 Zeichen (statt 80)\n• Eigene Kategorien\n• Familienbudget\n• Einträge bearbeiten',
     error_generic: '❌ Fehler. Versuche es später erneut oder kontaktiere den Admin.',
     
     // Buttons
@@ -567,7 +494,6 @@ module.exports = {
     edit_format_error: 'Formatfehler.',
     
     // Callback-Antworten
-    callback_limit_reached: '❌ Limit erreicht',
     callback_button_not_found: '❌ Fehler: Button nicht gefunden',
     callback_data_not_found: '❌ Fehler: Daten nicht gefunden',
     callback_expense_added: '✅ Hinzugefügt zur Kategorie "{category}"',
@@ -607,5 +533,105 @@ module.exports = {
     custom_categories_list_title: 'Deine eigenen Kategorien:',
     custom_categories_delete: '🗑️ Löschen',
     custom_categories_deleted: '✅ Kategorie gelöscht.',
-    custom_categories_premium_required: '💎 Diese Funktion ist nur für Premium verfügbar.'
+    custom_categories_premium_required: '💎 Diese Funktion ist nur für Premium verfügbar.',
+
+    // Income
+    button_income: '💵 Einnahmen',
+    button_add_income: '➕ Einnahme hinzufügen',
+    button_income_currency: '💱 Einnahmewährung',
+    income_menu_title: '💵 *Einnahmen im aktuellen Zeitraum*',
+    income_menu_empty: 'Noch keine Einnahmen in diesem Zeitraum.',
+    income_currency_label: 'Standard-Einnahmewährung: *{currency}*',
+    income_hint: '💡 Schneller Weg: Sende eine Nachricht mit Plus am Anfang — `+50000 Gehalt` oder `+1000 USD Freelance`',
+    income_enter_prompt: 'Gib Betrag und Beschreibung der Einnahme ein 👇\n\nBeispiel: `50000 Gehalt`\nStandardwährung — *{currency}*. Eine andere kannst du mit einem Code nach dem Betrag angeben: `1000 USD Freelance`',
+    income_added: '✅ Einnahme erfasst: *{amount}* — {description}',
+    income_default_description: 'Einnahme',
+    income_deleted: '✅ Einnahme gelöscht',
+    income_not_found: '❌ Einnahme nicht gefunden',
+    income_currency_select: 'Wähle die Währung, in der du normalerweise bezahlt wirst. Ausgaben bleiben in deiner Hauptwährung:',
+    income_currency_set: '✅ Einnahmewährung: {currency}',
+    income_total: '💵 Einnahmen: *{amount}*',
+    balance_label: '⚖️ Bilanz (Einnahmen − Ausgaben): *{amount}*',
+    income_error_format: '❌ Das habe ich nicht verstanden. Sende einen Betrag und optional eine Beschreibung: `50000 Gehalt` oder `1000 USD Freelance`',
+    income_error_amount: '❌ Ungültiger Betrag. Gib eine Zahl von 0.01 bis {max} ein.',
+
+    // Recurring expenses
+    button_recurring: '🔁 Wiederkehrende Ausgaben',
+    button_add_recurring: '➕ Wiederkehrende Ausgabe hinzufügen',
+    recurring_menu_title: '🔁 *Wiederkehrende Ausgaben*',
+    recurring_menu_info: 'Monatliche Zahlungen (Miete, Abos, Kredite) werden am gewählten Tag des Monats automatisch als Ausgaben erfasst.',
+    recurring_menu_empty: 'Noch keine wiederkehrenden Ausgaben.',
+    recurring_item: '{icon} {description} — *{amount}*, am {day}. jedes Monats\n    Nächste Erfassung: {next}',
+    recurring_monthly_total: 'Summe pro Monat: *{amount}*',
+    recurring_enter_prompt: 'Gib Betrag und Beschreibung der wiederkehrenden Ausgabe ein 👇\n\nBeispiel: `50000 Miete`\nDu kannst nach dem Betrag eine Währung angeben: `500 USD Miete`',
+    recurring_day_prompt: 'An welchem Tag jedes Monats soll ich diese Ausgabe erfassen? Gib eine Zahl von 1 bis 31 ein.\n\nIst ein Monat kürzer, erfasse ich sie am letzten Tag des Monats.',
+    recurring_day_invalid: '❌ Gib eine ganze Zahl von 1 bis 31 ein.',
+    recurring_select_category: 'Wähle eine Kategorie für die wiederkehrende Ausgabe:',
+    recurring_added: '✅ Wiederkehrende Ausgabe hinzugefügt\n\n{description} — *{amount}*, am {day}. jedes Monats\nErste Erfassung: {next}',
+    recurring_added_charged_now: '✅ Wiederkehrende Ausgabe hinzugefügt und für diesen Monat bereits erfasst\n\n{description} — *{amount}*, am {day}. jedes Monats\nNächste Erfassung: {next}',
+    recurring_deleted: '✅ Wiederkehrende Ausgabe gelöscht. Bereits erfasste Ausgaben bleiben im Verlauf.',
+    recurring_not_found: '❌ Wiederkehrende Ausgabe nicht gefunden',
+    recurring_limit: '❌ Du kannst höchstens {max} wiederkehrende Ausgaben haben',
+    recurring_charged_notification: '🔁 Wiederkehrende Ausgabe erfasst: {icon} {description} — *{amount}*',
+    recurring_error_format: '❌ Unbekanntes Format. Sende einen Betrag und eine Beschreibung: `50000 Miete` oder `500 USD Miete`',
+    recurring_error_amount: '❌ Ungültiger Betrag. Gib eine Zahl von 0.01 bis {max} ein.',
+
+    // Main menu and «More»
+    button_overview: '📊 Monatsübersicht',
+    button_today: '📅 Heute',
+    button_more: '☰ Mehr',
+    more_menu_title: '☰ *Mehr*',
+    button_export: '📤 CSV-Export',
+    keyboard_refreshed: '✅ Das Menü ist aktualisiert — jetzt kompakter 👇',
+    button_outdated: 'Diese Schaltfläche ist veraltet. Öffne den Bereich erneut über das Menü unten.',
+    overview_title: 'Übersicht: {range}',
+    overview_spent: '💸 Ausgaben: *{amount}* · Einträge: {count}',
+    overview_upcoming: 'Anstehende wiederkehrende:',
+    overview_income_hint: '💡 Einnahmen mit Plus erfassen: `+50000 Gehalt`',
+    button_prev_period: '◀️ Früher',
+    button_next_period: 'Später ▶️',
+    button_back_to_overview: '⬅️ Zur Übersicht',
+    day_title_today: 'Heute, {date}',
+    day_title_yesterday: 'Gestern, {date}',
+    day_title: '{date}',
+    day_entry_hint: 'Sende eine Ausgabe als Nachricht: `250 Kaffee`',
+    button_prev_day: '◀️ Vortag',
+    button_next_day: 'Nächster Tag ▶️',
+    list_tap_number: 'Tippe auf eine Nummer, um den Eintrag zu öffnen.',
+    family_today_title: 'Familie: heutige Einträge',
+    button_undo: '↩️ Rückgängig',
+    button_delete_record: '🗑 Löschen',
+    button_change_category: '🏷 Kategorie',
+    button_edit_record: '✏️ Bearbeiten',
+    expense_family_label: 'im Familienbudget',
+    expense_recurring_label: 'automatisch erfasst (wiederkehrende Ausgabe)',
+    expense_category_remembered: '🏷 Die Kategorie stammt aus deinem vorherigen Eintrag mit derselben Beschreibung — ändere sie mit der Schaltfläche unten.',
+    category_will_be_remembered: '💡 Ich merke mir deine Wahl: Beim nächsten Mal landet so ein Eintrag direkt in dieser Kategorie.',
+    expense_category_changed: 'Kategorie: {category}',
+    settings_header: 'Einstellungen',
+    settings_currency_line: '💱 Währung: *{currency}* · Einnahmen: *{incomeCurrency}*',
+    settings_timezone_line: '🌍 Zeitzone: {timezone}',
+    settings_language_line: '🌐 Sprache: {language}',
+    settings_period_line: '📅 Die Periode beginnt am Tag {day}',
+    settings_reminders_on_line: '🔔 Erinnerungen: an ({hours})',
+    settings_reminders_off_line: '🔔 Erinnerungen: aus',
+    button_currencies: '💱 Währungen',
+    settings_currencies_text: '💱 *Währungen*\n\nHauptwährung — Ausgaben und alle Summen werden darin berechnet: *{currency}*\nStandardwährung für Einnahmen: *{incomeCurrency}*\n\nJeder Eintrag kann in einer anderen Währung sein — schreib den Code nach dem Betrag: `20 USD Taxi`.',
+    reminders_title: 'Erinnerungen',
+    reminders_info: 'Wenn du bis zur gewählten Stunde nichts erfasst hast, erinnere ich dich. Höchstens 3 Mal am Tag.',
+    button_reminders_on: '🟢 An — tippen zum Ausschalten',
+    button_reminders_off: '⚫ Aus — tippen zum Einschalten',
+    family_teaser: '👨‍👩‍👧‍👦 *Familienbudget*\n\nGemeinsame Ausgaben mit deinen Liebsten an einem Ort: Jeder erfasst seine eigenen, Statistik und Export sind gemeinsam.\n\nMit Premium verfügbar.',
+    button_try_premium: '⭐️ Premium testen',
+
+    // Subscription and premium ending
+    subscription_active_info: '🔁 Das Monatsabo ist bis {date} bezahlt und verlängert sich automatisch. Kündigen: Telegram → Einstellungen → Meine Sterne → Meine Abos.',
+    subscription_renewed: '🔁 Abo verlängert. Premium ist aktiv bis {date}.',
+    button_view_tariffs: '⭐️ Tarife',
+    premium_expiring_trial: '⏳ Deine Premium-Testphase endet am {date}.\n\nDanach funktionieren eigene Kategorien, das Familienbudget und das Bearbeiten von Einträgen nicht mehr. Alle Einträge bleiben erhalten, und das Erfassen von Ausgaben ist kostenlos.',
+    premium_expiring_paid: '⏳ Premium endet am {date}. Du kannst im Voraus verlängern — die verbleibenden Tage bleiben erhalten.',
+    premium_expired_trial: '🌙 Deine Premium-Testphase ist beendet. Ausgaben und Einnahmen erfassen bleibt kostenlos; eigene Kategorien, Familie und das Bearbeiten von Einträgen gibt es mit Premium.',
+    premium_expired_paid: '🌙 Premium ist abgelaufen. Danke, dass du das Projekt unterstützt! Du kannst jederzeit verlängern.',
+    premium_winback: '👋 Dein Premium ist vor einer Woche abgelaufen. Wenn du eigene Kategorien, das Familienbudget und das Bearbeiten von Einträgen zurückhaben möchtest — sieh dir die Tarife unten an.',
+    start_reminders_note: '🔔 Wenn du tagsüber nichts erfasst, erinnere ich dich (bis zu 3 Mal am Tag). Uhrzeiten ändern oder ausschalten: ☰ Mehr → ⚙️ Einstellungen → 🔔.'
 };

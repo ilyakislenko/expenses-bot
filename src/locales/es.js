@@ -1,6 +1,6 @@
 module.exports = {
     button_reminders: '🔔 Recordarme',
-    reminders_enabled: 'Recordatorios activados. Si no registras nada antes de las 18:00, te lo recordaré con humor 😉',
+    reminders_enabled: '🔔 Recordatorios activados',
     reminders_disabled: 'Recordatorios desactivados. Silencio total 🤐',
     reminder_sample_variants: [
       '👋 ¡Hey! Si tu cartera está en silencio, no significa que sea feliz. Registra tus gastos 😉',
@@ -192,96 +192,28 @@ module.exports = {
     save: 'Guardar',
     
     // Comando inicio
-    start_message: `¡Hola! 👋 Te ayudaré a llevar el control de tus gastos y presupuesto.
-  
-  *Cómo añadir un gasto:*
-  Simplemente escribe la cantidad y la descripción:
-  -  \`200 compras en supermercado\`
-  -  \`1500 comida en restaurante\`
-  -  \`50 transporte\`
-  -  \`150,50 café\`
-  
-  Después aparecerá un menú con categorías - selecciona la adecuada 🏷️
-  
-  *Comandos principales:*
-  /start - reiniciar el bot
-  /menu - abrir menú interactivo
-  /history - últimos registros del día
-  /stats - estadísticas por categoría
-  
-  /export - descargar datos en CSV
-  /undo - cancelar último registro
-  
-  *Ajustes:*
-  /settings - abrir ajustes
-  /currency - moneda base
-  /timezone - zona horaria
-  /categories - gestionar categorías
-  
-  *Funciones extra:*
-  /family - presupuesto familiar
-  /limits - límites y funciones premium
-  /help - ayuda detallada
-  
-  ¡Empieza a registrar tus gastos! 💰`,
-  help_message: `📋 *Ayuda detallada de comandos*
-  
-  *Agregar gastos:*
-  Escribe cantidad y descripción separados por un espacio:
-  \`200 compras\` - aparecerá un menú de categorías
-  \`150,50 café\` - se admiten decimales
-  
-  *Comandos principales:*
-  /start - reinicia el bot y muestra el mensaje de bienvenida
-  /menu - abre el menú interactivo con todas las funciones
-  /history - muestra los registros de hoy
-  /stats - estadísticas detalladas del mes por categorías
-  
-  /export - descarga todos los datos en formato CSV
-  /undo - elimina el último registro añadido
-  
-  *Ajustes y gestión:*
-  /settings - abre el menú principal de ajustes
-  /currency - cambia la moneda base (RUB, USD, EUR, KZT, CNY, THB)
-  /timezone - ajusta la zona horaria para un registro correcto
-  /categories - gestionar categorías personalizadas (premium)
-  
-  *Presupuesto familiar:*
-  /family - gestionar grupos familiares y gastos compartidos
-  - Crear familia, invitar miembros
-  - Gastos y estadísticas comunes
-  - Exportar datos familiares
-  
-  *Funciones Premium:*
-  /limits - información sobre límites y premium
-  - Categorías personalizadas
-  - Estadísticas avanzadas
-  - Presupuesto familiar
-  - Soporte prioritario
-  
-  *Consejos de uso:*
-  • Usa descripciones para mayor claridad
-  • Revisa estadísticas con /stats
-  • Ajusta la zona horaria
-  • Usa /menu para acceder rápido
-  • Exporta datos con /export
-  
-  *Edición de gastos:*
-  • En /history puedes borrar o editar registros
-  • Botón "👨‍👩‍👧‍👦 A familia" mueve gasto a presupuesto familiar
-  • Botón "🚫 Del presupuesto familiar" lo devuelve a personal
-  • Solo puedes editar/eliminar tus gastos
-  
-  *Recordatorios:*
-  • El bot recuerda registrar gastos a las 18:00 hora local
-  • Solo si no registraste gastos ese día
-  • Se pueden activar/desactivar en ajustes
-  • Máximo un recordatorio por día
-  
-  *Soporte:*
-  Usa /start para volver al menú principal si tienes dudas.
-  
-  ¡Feliz control de gastos! 💰📊`,
+    start_message: `¡Hola! 👋 Te ayudaré a registrar tus gastos e ingresos.
+
+*Gasto* — solo escribe la cantidad y la descripción: \`250 café\`, \`1500 almuerzo\`.
+También sirve otra moneda: \`20 USD taxi\`, o solo una cantidad: \`300\`.
+*Ingreso* — con un más: \`+50000 salario\`.
+
+Elige una categoría una vez — la recordaré la próxima vez.
+El menú está abajo: resumen del mes, registros de hoy, ingresos, gastos recurrentes (alquiler, suscripciones) y «☰ Más».`,
+
+    start_returning: '👋 ¡Bienvenido de nuevo! Envía un gasto como mensaje — `250 café`. El menú está en el teclado de abajo.',
+  help_message: `❓ *Cómo usarlo*
+
+• \`250 café\` — gasto. Elige una categoría una vez, la recordaré
+• \`20 USD taxi\` — gasto en otra moneda, \`300\` — sin descripción
+• \`+50000 salario\` — ingreso (\`+1000 USD\` — en otra moneda)
+• Bajo un registro nuevo: ↩️ deshacer, 🏷 cambiar categoría
+• 📊 *Resumen del mes* — gastos, ingresos, balance, categorías; ◀️ — periodos anteriores
+• 📅 *Hoy* — registros del día; toca un número para editar o eliminar un registro
+• 🔁 *Gastos recurrentes* — el alquiler y las suscripciones se registran automáticamente cada mes
+• Monedas, recordatorios (hasta 3 al día) e inicio del periodo — en ☰ Más → ⚙️ Ajustes
+
+Comandos: /stats /history /income /recurring /export /settings /menu`,
   
     // Gastos
     expense_added: '✅ Registrado: {amount} - {description}',
@@ -443,18 +375,14 @@ module.exports = {
     status_regular: '👤 Estándar',
     status_premium: '💎 Premium',
     status_label: '*Estado:* {status}',
-    records_usage: '<b>Registros:</b> {current}/{max} ({percentage}%)',
-    records_remaining: '<b>Restante:</b> {remaining} registros',
     max_description_length: '<b>Longitud máxima de descripción:</b> {length} caracteres',
-    near_limit_warning: '⚠️ *Atención:* Estás cerca del límite de registros.',
-    limit_reached: '❌ *Límite de registros alcanzado!*',
     premium_benefits: `💎 <b>Ventajas premium:</b>
   • 160 caracteres en descripción (en vez de 80)
-  • 300 registros (en vez de 100)
   • Hasta 5 categorías propias
-  • Estadísticas avanzadas
   • Presupuesto familiar
-  • Editar y borrar gastos (no solo el último)`,
+  • Editar el importe y la descripción de cualquier registro
+
+  Registrar gastos e ingresos es gratis e ilimitado.`,
     
     // Suscripción premium
     premium_subscription_title: '⭐️ Suscripción',
@@ -468,7 +396,7 @@ module.exports = {
     premium_back_button: '⬅️ Atrás',
     premium_tariffs_title: '⭐️ Tarifas (Telegram Stars)',
     per_month: 'al mes',
-    premium_payment_info: '💳 El pago se hace con Telegram Stars, la moneda interna de Telegram. <b>Sin renovación automática.</b>',
+    premium_payment_info: '💳 El pago se hace con Telegram Stars, la moneda interna de Telegram. 🔁 El plan mensual se renueva automáticamente; cancélalo en Telegram: Ajustes → Mis estrellas → Mis suscripciones. Los planes de 3, 6 y 12 meses son pagos únicos.',
     premium_renewal_info: '📅 Puedes renovar en cualquier momento. Se añadirá a tu tiempo restante.',
     premium_stars_info: '💡 Compra estrellas sin comisión en el bot oficial [@PremiumBot].',
     premium_why_paid_title: '👀 ¿Por qué es de pago?',
@@ -512,10 +440,9 @@ module.exports = {
     error_too_long_premium: '❌ Descripción demasiado larga! Máx. 160 caracteres para premium.',
     error_no_description: '❌ Debes poner una descripción tras la cantidad.',
     error_amount: '❌ Cantidad inválida. Introduce entre 0.01 y 999999.',
-    error_format: '❌ Formato no válido. Escribe cantidad y descripción.\nEj: `200 compras` o `1500 comida en café`',
+    error_format: '❌ No lo entendí. Empieza con una cantidad: `250 café`, `20 USD taxi` o solo `300`.',
     error_forbidden_content: '❌ Contenido no permitido.',
-    error_limit_reached: '❌ Límite alcanzado!\nNormales: 100 registros\nPremium: 300 registros\n\n💎 Pásate a premium para aumentarlo.',
-    error_premium_required: '💎 Solo con premium!\n\nVentajas:\n• 160 caracteres descripción\n• 300 registros\n• Categorías personalizadas\n• Estadísticas avanzadas',
+    error_premium_required: '💎 Esta función solo está disponible con premium.\n\nPremium te da:\n• 160 caracteres en la descripción (en vez de 80)\n• Categorías personalizadas\n• Presupuesto familiar\n• Editar registros',
     error_generic: '❌ Error. Intenta más tarde o contacta con admin.',
     
     // Botones
@@ -565,7 +492,6 @@ module.exports = {
     edit_format_error: 'Formato inválido.',
     
     // Respuestas callback
-    callback_limit_reached: '❌ Límite de registros alcanzado',
     callback_button_not_found: '❌ Error: botón no encontrado',
     callback_data_not_found: '❌ Error: datos no encontrados',
     callback_expense_added: '✅ Añadido a categoría "{category}"',
@@ -605,5 +531,105 @@ module.exports = {
     custom_categories_list_title: 'Tus categorías personalizadas:',
     custom_categories_delete: '🗑️ Eliminar',
     custom_categories_deleted: '✅ Categoría eliminada.',
-    custom_categories_premium_required: '💎 Solo para usuarios premium.'
+    custom_categories_premium_required: '💎 Solo para usuarios premium.',
+
+    // Income
+    button_income: '💵 Ingresos',
+    button_add_income: '➕ Añadir ingreso',
+    button_income_currency: '💱 Moneda de ingresos',
+    income_menu_title: '💵 *Ingresos del periodo actual*',
+    income_menu_empty: 'Aún no hay ingresos en este periodo.',
+    income_currency_label: 'Moneda de ingresos predeterminada: *{currency}*',
+    income_hint: '💡 Forma rápida: envía un mensaje que empiece con más — `+50000 salario` o `+1000 USD freelance`',
+    income_enter_prompt: 'Introduce la cantidad y la descripción del ingreso 👇\n\nEjemplo: `50000 salario`\nMoneda predeterminada — *{currency}*. Puedes indicar otra con un código después de la cantidad: `1000 USD freelance`',
+    income_added: '✅ Ingreso registrado: *{amount}* — {description}',
+    income_default_description: 'Ingreso',
+    income_deleted: '✅ Ingreso eliminado',
+    income_not_found: '❌ Ingreso no encontrado',
+    income_currency_select: 'Elige la moneda en la que sueles cobrar. Los gastos se mantienen en tu moneda principal:',
+    income_currency_set: '✅ Moneda de ingresos: {currency}',
+    income_total: '💵 Ingresos: *{amount}*',
+    balance_label: '⚖️ Balance (ingresos − gastos): *{amount}*',
+    income_error_format: '❌ No lo entendí. Envía una cantidad y una descripción opcional: `50000 salario` o `1000 USD freelance`',
+    income_error_amount: '❌ Cantidad no válida. Introduce un número de 0.01 a {max}.',
+
+    // Recurring expenses
+    button_recurring: '🔁 Gastos recurrentes',
+    button_add_recurring: '➕ Añadir gasto recurrente',
+    recurring_menu_title: '🔁 *Gastos recurrentes*',
+    recurring_menu_info: 'Los pagos mensuales (alquiler, suscripciones, préstamos) se registran automáticamente como gastos el día del mes elegido.',
+    recurring_menu_empty: 'Aún no hay gastos recurrentes.',
+    recurring_item: '{icon} {description} — *{amount}*, el día {day} de cada mes\n    Próximo registro: {next}',
+    recurring_monthly_total: 'Total al mes: *{amount}*',
+    recurring_enter_prompt: 'Introduce la cantidad y la descripción del gasto recurrente 👇\n\nEjemplo: `50000 alquiler`\nPuedes indicar una moneda después de la cantidad: `500 USD alquiler`',
+    recurring_day_prompt: '¿Qué día de cada mes debo registrar este gasto? Introduce un número del 1 al 31.\n\nSi un mes es más corto, lo registraré el último día del mes.',
+    recurring_day_invalid: '❌ Introduce un número entero del 1 al 31.',
+    recurring_select_category: 'Elige una categoría para el gasto recurrente:',
+    recurring_added: '✅ Gasto recurrente añadido\n\n{description} — *{amount}*, el día {day} de cada mes\nPrimer registro: {next}',
+    recurring_added_charged_now: '✅ Gasto recurrente añadido y ya registrado este mes\n\n{description} — *{amount}*, el día {day} de cada mes\nPróximo registro: {next}',
+    recurring_deleted: '✅ Gasto recurrente eliminado. Los gastos ya registrados permanecen en el historial.',
+    recurring_not_found: '❌ Gasto recurrente no encontrado',
+    recurring_limit: '❌ Puedes tener como máximo {max} gastos recurrentes',
+    recurring_charged_notification: '🔁 Gasto recurrente registrado: {icon} {description} — *{amount}*',
+    recurring_error_format: '❌ Formato no reconocido. Envía una cantidad y una descripción: `50000 alquiler` o `500 USD alquiler`',
+    recurring_error_amount: '❌ Cantidad no válida. Introduce un número de 0.01 a {max}.',
+
+    // Main menu and «More»
+    button_overview: '📊 Resumen del mes',
+    button_today: '📅 Hoy',
+    button_more: '☰ Más',
+    more_menu_title: '☰ *Más*',
+    button_export: '📤 Exportar CSV',
+    keyboard_refreshed: '✅ El menú se actualizó — ahora es más compacto 👇',
+    button_outdated: 'Este botón está obsoleto. Abre la sección de nuevo desde el menú de abajo.',
+    overview_title: 'Resumen: {range}',
+    overview_spent: '💸 Gastos: *{amount}* · registros: {count}',
+    overview_upcoming: 'Próximos recurrentes:',
+    overview_income_hint: '💡 Registra ingresos con un más: `+50000 salario`',
+    button_prev_period: '◀️ Antes',
+    button_next_period: 'Después ▶️',
+    button_back_to_overview: '⬅️ Al resumen',
+    day_title_today: 'Hoy, {date}',
+    day_title_yesterday: 'Ayer, {date}',
+    day_title: '{date}',
+    day_entry_hint: 'Envía un gasto como mensaje: `250 café`',
+    button_prev_day: '◀️ Día anterior',
+    button_next_day: 'Día siguiente ▶️',
+    list_tap_number: 'Toca un número para abrir el registro.',
+    family_today_title: 'Familia: registros de hoy',
+    button_undo: '↩️ Deshacer',
+    button_delete_record: '🗑 Eliminar',
+    button_change_category: '🏷 Categoría',
+    button_edit_record: '✏️ Editar',
+    expense_family_label: 'en el presupuesto familiar',
+    expense_recurring_label: 'registrado automáticamente (gasto recurrente)',
+    expense_category_remembered: '🏷 La categoría se tomó de tu registro anterior con la misma descripción — cámbiala con el botón de abajo.',
+    category_will_be_remembered: '💡 Recordaré tu elección: la próxima vez un registro así irá directamente a esta categoría.',
+    expense_category_changed: 'Categoría: {category}',
+    settings_header: 'Ajustes',
+    settings_currency_line: '💱 Moneda: *{currency}* · ingresos: *{incomeCurrency}*',
+    settings_timezone_line: '🌍 Zona horaria: {timezone}',
+    settings_language_line: '🌐 Idioma: {language}',
+    settings_period_line: '📅 El periodo empieza el día {day}',
+    settings_reminders_on_line: '🔔 Recordatorios: activados ({hours})',
+    settings_reminders_off_line: '🔔 Recordatorios: desactivados',
+    button_currencies: '💱 Monedas',
+    settings_currencies_text: '💱 *Monedas*\n\nPrincipal — los gastos y todos los totales se calculan en ella: *{currency}*\nMoneda de ingresos por defecto: *{incomeCurrency}*\n\nCualquier registro puede estar en otra moneda — pon el código después de la cantidad: `20 USD taxi`.',
+    reminders_title: 'Recordatorios',
+    reminders_info: 'Si no has registrado nada a la hora elegida, te lo recordaré. Como máximo 3 veces al día.',
+    button_reminders_on: '🟢 Activado — toca para desactivar',
+    button_reminders_off: '⚫ Desactivado — toca para activar',
+    family_teaser: '👨‍👩‍👧‍👦 *Presupuesto familiar*\n\nGastos compartidos con tus seres queridos en un solo lugar: cada uno registra los suyos, las estadísticas y la exportación son comunes.\n\nDisponible con premium.',
+    button_try_premium: '⭐️ Probar premium',
+
+    // Subscription and premium ending
+    subscription_active_info: '🔁 La suscripción mensual está pagada hasta el {date} y se renueva automáticamente. Para cancelarla: Telegram → Ajustes → Mis estrellas → Mis suscripciones.',
+    subscription_renewed: '🔁 Suscripción renovada. Premium activo hasta el {date}.',
+    button_view_tariffs: '⭐️ Planes',
+    premium_expiring_trial: '⏳ Tu prueba premium termina el {date}.\n\nDespués dejarán de funcionar las categorías propias, el presupuesto familiar y la edición de registros. Todo lo que registraste se conserva y el registro de gastos es gratis.',
+    premium_expiring_paid: '⏳ Premium termina el {date}. Puedes renovarlo por adelantado: los días restantes se conservan.',
+    premium_expired_trial: '🌙 Tu prueba premium ha terminado. Registrar gastos e ingresos sigue siendo gratis; las categorías propias, la familia y la edición de registros vienen con premium.',
+    premium_expired_paid: '🌙 Premium ha terminado. ¡Gracias por apoyar el proyecto! Puedes renovarlo cuando quieras.',
+    premium_winback: '👋 Tu premium terminó hace una semana. Si quieres recuperar las categorías propias, el presupuesto familiar y la edición de registros, mira los planes abajo.',
+    start_reminders_note: '🔔 Si no registras nada durante el día, te lo recordaré (hasta 3 veces al día). Cambiar horas o desactivar: ☰ Más → ⚙️ Ajustes → 🔔.'
 };

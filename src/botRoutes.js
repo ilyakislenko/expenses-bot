@@ -1,36 +1,39 @@
 module.exports = function registerBotRoutes(bot, handlers) {
-  const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, adminHandlers, stateService, currencyUtils } = handlers;
-  
+  const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, stateService } = handlers;
+  const { BACK_VIEW_PATTERN } = require('./handlers/ExpenseHandlers');
+
   // Импортируем middleware для автоматической очистки состояний
   const stateCleanupMiddleware = require('./middleware/stateCleanupMiddleware');
-  
+
   // Регистрируем глобальный middleware для автоматической очистки состояний
   bot.use(stateCleanupMiddleware(handlers));
 
   // Команды
-  bot.command('start', errorHandler((ctx) => commandHandlers.start(ctx))); // главное меню бота
-  bot.command('help', errorHandler((ctx) => commandHandlers.help(ctx))); // справка и команды
-  bot.command('total', errorHandler((ctx) => commandHandlers.total(ctx))); // общая статистика расходов
-  bot.command('history', errorHandler((ctx) => commandHandlers.dailyHistory(ctx))); // история расходов за день
-  bot.command('stats', errorHandler((ctx) => commandHandlers.stats(ctx))); // детальная статистика по категориям
+  bot.command('start', errorHandler((ctx) => commandHandlers.start(ctx))); // приветствие и главная клавиатура
+  bot.command('help', errorHandler((ctx) => commandHandlers.help(ctx))); // короткая справка
+  bot.command('stats', errorHandler((ctx) => expenseHandlers.showOverview(ctx, 0))); // обзор текущего периода
+  bot.command('total', errorHandler((ctx) => expenseHandlers.showOverview(ctx, 0))); // обзор текущего периода
+  bot.command('categories', errorHandler((ctx) => expenseHandlers.showOverview(ctx, 0))); // категории — в обзоре
+  bot.command('history', errorHandler((ctx) => expenseHandlers.showDay(ctx, 0, 0))); // записи за сегодня
   bot.command('export', errorHandler((ctx) => commandHandlers.exportData(ctx))); // экспорт данных в CSV
   bot.command('undo', errorHandler((ctx) => commandHandlers.undo(ctx))); // отмена последней записи
-  bot.command('categories', errorHandler((ctx) => commandHandlers.categories(ctx))); // управление категориями
-  bot.command('currency', errorHandler((ctx) => commandHandlers.currency(ctx))); // настройка валюты пользователя
-  bot.command('timezone', errorHandler((ctx) => commandHandlers.timezone(ctx))); // настройка часового пояса
-  bot.command('settings', errorHandler((ctx) => commandHandlers.settings(ctx))); // настройки пользователя
-  bot.command('limits', errorHandler((ctx) => commandHandlers.premiumSubscription(ctx))); // лимиты и премиум функции (новое меню премиума)
+  bot.command('currency', errorHandler((ctx) => commandHandlers.currency(ctx))); // основная валюта
+  bot.command('timezone', errorHandler((ctx) => commandHandlers.timezone(ctx))); // часовой пояс
+  bot.command('settings', errorHandler((ctx) => commandHandlers.settings(ctx))); // настройки
+  bot.command('limits', errorHandler((ctx) => commandHandlers.premiumSubscription(ctx))); // лимиты и премиум
   // Требования Telegram Payments: обязательные команды поддержки и политики
-  bot.command('paysupport', errorHandler((ctx) => commandHandlers.paysupport(ctx))); // поддержка платежей
-  bot.command('terms', errorHandler((ctx) => commandHandlers.terms(ctx))); // условия использования
-  bot.command('privacy', errorHandler((ctx) => commandHandlers.privacy(ctx))); // политика конфиденциальности
-  bot.command('refund', errorHandler((ctx) => commandHandlers.refund(ctx))); // политика возвратов
-  bot.command('family', errorHandler((ctx) => commandHandlers.family(ctx))); // управление семейными группами
-  bot.command('menu', errorHandler((ctx) => commandHandlers.mainMenu(ctx))); // главное меню
+  bot.command('paysupport', errorHandler((ctx) => commandHandlers.paysupport(ctx)));
+  bot.command('terms', errorHandler((ctx) => commandHandlers.terms(ctx)));
+  bot.command('privacy', errorHandler((ctx) => commandHandlers.privacy(ctx)));
+  bot.command('refund', errorHandler((ctx) => commandHandlers.refund(ctx)));
+  bot.command('family', errorHandler((ctx) => commandHandlers.family(ctx))); // семейный бюджет
+  bot.command('menu', errorHandler((ctx) => commandHandlers.mainMenu(ctx))); // «☰ Ещё»
+  bot.command('income', errorHandler((ctx) => incomeHandlers.showMenu(ctx))); // доходы за период
+  bot.command('recurring', errorHandler((ctx) => recurringExpenseHandlers.showMenu(ctx))); // ежемесячные регулярные траты
   bot.command('cancel', async (ctx) => {
     const userId = ctx.from.id;
     const userLanguage = await handlers.userService.getUserLanguage(userId);
-    
+
     // Сбрасываем состояние редактирования
     if (stateService.hasUserEditState(ctx.from.id)) {
       stateService.deleteUserEditState(ctx.from.id);
@@ -41,6 +44,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
       await ctx.reply(noActiveStateText);
     }
   });
+
   // Custom categories (premium)
   bot.action('custom_categories', errorHandler((ctx) => callbackHandlers.handleCustomCategoriesMenu(ctx)));
   bot.action('custom_categories_add', errorHandler((ctx) => callbackHandlers.handleCustomCategoriesAdd(ctx)));
@@ -48,441 +52,126 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^custom_categories_delete\|(\d+)$/, errorHandler((ctx) => callbackHandlers.handleCustomCategoriesDelete(ctx)));
   bot.action(/^custom_categories_rename\|(\d+)$/, errorHandler((ctx) => callbackHandlers.handleCustomCategoriesRename(ctx)));
 
-  // Текстовые сообщения
-  bot.on('text', errorHandler((ctx) => messageHandlers.handleExpense(ctx))); // обработка ввода расходов
+  // Доходы
+  bot.action('income_menu', errorHandler((ctx) => incomeHandlers.showMenu(ctx)));
+  bot.action('income_add', errorHandler((ctx) => incomeHandlers.startAdd(ctx)));
+  bot.action('income_currency', errorHandler((ctx) => incomeHandlers.showCurrencyPicker(ctx, 'income')));
+  bot.action('change_income_currency', errorHandler((ctx) => incomeHandlers.showCurrencyPicker(ctx, 'settings')));
+  bot.action(/^set_income_currency\|[A-Z]{3}\|(income|settings)$/, errorHandler((ctx) => incomeHandlers.setCurrency(ctx, (c) => commandHandlers.settingsCurrencies(c))));
+  bot.action(/^in\|(\d+)$/, errorHandler((ctx) => incomeHandlers.showCard(ctx)));
+  bot.action(/^income_delete\|(\d+)$/, errorHandler((ctx) => incomeHandlers.deleteIncome(ctx)));
+  bot.action(/^income_undo\|(\d+)$/, errorHandler((ctx) => incomeHandlers.undoIncome(ctx)));
 
-  // Callback actions
-  bot.action(/^category\|/, (ctx) => callbackHandlers.handleCategorySelection(ctx)); // выбор категории для расхода (id или имя)
-  bot.action('cancel', (ctx) => callbackHandlers.handleCancel(ctx)); // отмена операции
-  bot.action('menu', errorHandler(async (ctx) => {
-    await ctx.answerCbQuery();
-    await commandHandlers.mainMenu(ctx);
-  })); // главное меню
-  bot.action('stats', errorHandler(async (ctx) => {
-    await ctx.answerCbQuery();
-    await commandHandlers.stats(ctx);
-  })); // детальная статистика по категориям
-  bot.action('history', errorHandler(async (ctx) => {
-    await ctx.answerCbQuery();
-    await commandHandlers.dailyHistory(ctx);
-  })); // история расходов за день
-  bot.action('categories', errorHandler(async (ctx) => {
-    await ctx.answerCbQuery();
-    await commandHandlers.categories(ctx);
-  })); // управление категориями
-  bot.action('settings', errorHandler(async (ctx) => {
-    await ctx.answerCbQuery();
-    await commandHandlers.settings(ctx);
-  })); // настройки пользователя
-  bot.action('undo', errorHandler(async (ctx) => {
-    await ctx.answerCbQuery();
-    await commandHandlers.undo(ctx);
-  })); // отмена последней записи
-  bot.action('help', errorHandler(async (ctx) => {
-    await ctx.answerCbQuery();
-    await commandHandlers.help(ctx);
-  })); // справка и команды
-  bot.action('limits', errorHandler(async (ctx) => {
-    await ctx.answerCbQuery();
-    await commandHandlers.premiumSubscription(ctx);
-  })); // лимиты и премиум функции (новое меню премиума)
+  // Регулярные (ежемесячные) траты
+  bot.action('recurring_menu', errorHandler((ctx) => recurringExpenseHandlers.showMenu(ctx)));
+  bot.action('recurring_add', errorHandler((ctx) => recurringExpenseHandlers.startAdd(ctx)));
+  bot.action(/^rc\|(\d+)$/, errorHandler((ctx) => recurringExpenseHandlers.showCard(ctx)));
+  bot.action(/^recurring_category\|(\d+)$/, errorHandler((ctx) => recurringExpenseHandlers.handleCategorySelection(ctx)));
+  bot.action(/^recurring_delete\|(\d+)$/, errorHandler((ctx) => recurringExpenseHandlers.delete(ctx)));
+
+  const back = `(${BACK_VIEW_PATTERN})`;
+  bot.action(/^ov\|(-?\d+)$/, errorHandler((ctx) => expenseHandlers.showOverview(ctx, parseInt(ctx.match[1], 10))));
+  bot.action(/^oc\|(\d+)\|(-?\d+)\|(\d+)$/, errorHandler((ctx) => expenseHandlers.showCategoryList(ctx, parseInt(ctx.match[1], 10), parseInt(ctx.match[2], 10), parseInt(ctx.match[3], 10))));
+  bot.action(/^dy\|(-?\d+)\|(\d+)$/, errorHandler((ctx) => expenseHandlers.showDay(ctx, parseInt(ctx.match[1], 10), parseInt(ctx.match[2], 10))));
+  bot.action(/^fd\|(\d+)$/, errorHandler((ctx) => expenseHandlers.showFamilyDay(ctx, parseInt(ctx.match[1], 10))));
+  bot.action(new RegExp(`^ex\\|(\\d+)\\|${back}$`), errorHandler((ctx) => expenseHandlers.handleOpenCard(ctx)));
+  bot.action(new RegExp(`^xd\\|(\\d+)\\|${back}$`), errorHandler((ctx) => expenseHandlers.handleDelete(ctx)));
+  bot.action(new RegExp(`^xc\\|(\\d+)\\|${back}$`), errorHandler((ctx) => expenseHandlers.handleChooseCategory(ctx)));
+  bot.action(new RegExp(`^xs\\|(\\d+)\\|(\\d+)\\|${back}$`), errorHandler((ctx) => expenseHandlers.handleSetCategory(ctx)));
+  bot.action(/^xe\|(\d+)$/, errorHandler((ctx) => expenseHandlers.handleEdit(ctx)));
+  bot.action(new RegExp(`^xf\\|(\\d+)\\|${back}$`), errorHandler((ctx) => expenseHandlers.handleFamilyToggle(ctx, true)));
+  bot.action(new RegExp(`^xu\\|(\\d+)\\|${back}$`), errorHandler((ctx) => expenseHandlers.handleFamilyToggle(ctx, false)));
+  bot.action('noop', (ctx) => ctx.answerCbQuery().catch(() => {})); // номер страницы и пустые ячейки пагинации
+
+  // Текстовые сообщения
+  bot.on('text', errorHandler((ctx) => messageHandlers.handleExpense(ctx))); // ввод трат, доходов и кнопки клавиатуры
+
+  // Черновик траты
+  bot.action(/^category\|(\d+)$/, errorHandler((ctx) => expenseHandlers.handleCategorySelection(ctx))); // выбор категории
+  bot.action('cancel', (ctx) => callbackHandlers.handleCancel(ctx)); // отмена черновика
+
+  // «☰ Ещё» и его разделы
+  bot.action('menu', errorHandler((ctx) => commandHandlers.mainMenu(ctx)));
+  bot.action('back_to_menu', errorHandler((ctx) => commandHandlers.mainMenu(ctx)));
+  bot.action('back', errorHandler((ctx) => callbackHandlers.handleBack(ctx)));
+  bot.action('help', errorHandler((ctx) => commandHandlers.help(ctx)));
   bot.action('family', errorHandler(async (ctx) => {
     await ctx.answerCbQuery();
     await commandHandlers.family(ctx);
-  })); // управление семейными группами
-  bot.action(/^set_currency\|/, async (ctx) => {
+  }));
+  bot.action('export', errorHandler(async (ctx) => {
+    await ctx.answerCbQuery();
+    await commandHandlers.exportData(ctx);
+  }));
+  bot.action('limits', errorHandler(async (ctx) => {
+    await ctx.answerCbQuery();
+    await commandHandlers.premiumSubscription(ctx);
+  }));
+
+  // Настройки
+  bot.action('settings', errorHandler((ctx) => commandHandlers.settings(ctx)));
+  bot.action('back_to_settings', errorHandler((ctx) => commandHandlers.settings(ctx)));
+  bot.action('settings_currencies', errorHandler((ctx) => commandHandlers.settingsCurrencies(ctx)));
+  bot.action(/^set_currency\|/, errorHandler(async (ctx) => {
     const userId = ctx.from.id;
-    const userLanguage = await handlers.userService.getUserLanguage(userId);
     const currency = ctx.callbackQuery.data.split('|')[1];
+    const validation = handlers.enhancedValidator.validateCurrency(currency);
+    if (!validation.isValid) return ctx.answerCbQuery();
     await handlers.userService.setUserCurrency(userId, currency);
-    
+    const userLanguage = await handlers.userService.getUserLanguage(userId);
     const currencySetText = handlers.localizationService.getText(userLanguage, 'currency_set', { currency });
-    const currencyUpdatedText = handlers.localizationService.getText(userLanguage, 'currency_updated', { currency });
-    const backText = handlers.localizationService.getText(userLanguage, 'button_back');
 
     // Если это шаг onboarding валюты — переходим к выбору часового пояса
-    const currentState = handlers.stateService.getUserState(userId);
-    if (currentState === 'onboarding_currency') {
-      handlers.stateService.setUserState(userId, 'onboarding_timezone');
+    if (stateService.getUserState(userId) === 'onboarding_currency') {
+      stateService.setUserState(userId, 'onboarding_timezone');
       await ctx.answerCbQuery(currencySetText);
-      // Показываем экран выбора часового пояса как следующий шаг онбординга
-      await handlers.commandHandlers.timezone(ctx);
+      await commandHandlers.timezone(ctx);
       return;
     }
 
     await ctx.answerCbQuery(currencySetText);
-    await ctx.editMessageText(currencyUpdatedText, {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: backText, callback_data: 'back_to_settings' }]
-        ]
-      }
-    });
-  }); // установка валюты пользователя
-  bot.action('change_currency', async (ctx) => {
+    await commandHandlers.settingsCurrencies(ctx);
+  })); // установка основной валюты
+  bot.action('change_currency', errorHandler(async (ctx) => {
+    await ctx.answerCbQuery();
     await commandHandlers.currency(ctx);
-  }); // выбор валюты
-  bot.action('change_timezone', async (ctx) => {
+  }));
+  bot.action('change_timezone', errorHandler(async (ctx) => {
+    await ctx.answerCbQuery();
     await commandHandlers.timezone(ctx);
-  }); // выбор часового пояса
-  bot.action('change_language', async (ctx) => {
+  }));
+  bot.action('change_language', errorHandler(async (ctx) => {
+    await ctx.answerCbQuery();
     await commandHandlers.language(ctx);
-  }); // выбор языка интерфейса
-  bot.action('change_period_start', errorHandler((ctx) => callbackHandlers.handleChangePeriodStart(ctx))); // настройка начала периода
-  bot.action('toggle_reminders', errorHandler((ctx) => callbackHandlers.handleToggleReminders(ctx))); // вкл/выкл напоминаний
-  bot.action('configure_reminder_hours', errorHandler((ctx) => callbackHandlers.handleConfigureReminderHours(ctx))); // меню настройки часов напоминаний
-  bot.action(/^toggle_reminder_hour\|(\d{1,2})$/, errorHandler((ctx) => callbackHandlers.handleToggleReminderHour(ctx))); // переключение конкретного часа
-  bot.action('save_reminder_hours', errorHandler((ctx) => callbackHandlers.handleSaveReminderHours(ctx))); // сохранить выбор
-  bot.action('clear_reminder_hours', errorHandler((ctx) => callbackHandlers.handleClearReminderHours(ctx))); // сбросить выбор
-  bot.action('bug_report', errorHandler((ctx) => callbackHandlers.handleBugReport(ctx))); // баг-репорт
-  bot.action(/^tz\|/, errorHandler((ctx) => callbackHandlers.handleTimezoneSelection(ctx))); // установка часового пояса
-  bot.action(/^time\|/, errorHandler((ctx) => callbackHandlers.handleTimezoneSelection(ctx))); // установка часового пояса (альтернативный формат)
-  bot.action(/^set_language\|/, errorHandler((ctx) => callbackHandlers.handleLanguageSelection(ctx))); // установка языка интерфейса
-  // Захардкоженные переходы "назад" для каждой страницы
-  bot.action('back_to_menu', errorHandler(async (ctx) => {
-    await ctx.answerCbQuery();
-    await commandHandlers.mainMenu(ctx);
-  })); // возврат в главное меню
-  
-  bot.action('back_to_settings', errorHandler(async (ctx) => {
-    await ctx.answerCbQuery();
-    await commandHandlers.settings(ctx);
-  })); // возврат в настройки
-  
-  bot.action('back_to_categories', errorHandler(async (ctx) => {
-    await ctx.answerCbQuery();
-    await commandHandlers.categories(ctx);
-  })); // возврат к списку категорий
-  
-  bot.action('back_to_history', errorHandler(async (ctx) => {
-    await ctx.answerCbQuery();
-    await commandHandlers.dailyHistory(ctx);
-  })); // возврат к истории расходов
-  
-  bot.action('back_to_stats', errorHandler(async (ctx) => {
-    await ctx.answerCbQuery();
-    await commandHandlers.stats(ctx);
-  })); // возврат к статистике
-  
-  // Универсальный обработчик для остальных случаев
-  bot.action('back', errorHandler(async (ctx) => {
-    await callbackHandlers.handleBack(ctx);
-  })); // универсальный возврат назад
-  bot.action(/^show_category\|(\d+)$/, async (ctx) => {
-    const categoryId = ctx.match[1];
-    const userId = ctx.from.id;
-    
-
-    
-    const userCurrency = await handlers.userService.getUserCurrency(userId);
-    const userTimezone = await handlers.userService.getUserTimezone(userId);
-    const expenses = await handlers.expenseService.getExpensesByCategoryId(userId, categoryId, 'month');
-    if (!expenses.length) {
-      const userLanguage = await handlers.userService.getUserLanguage(userId);
-      const noExpensesText = handlers.localizationService.getText(userLanguage, 'no_expenses_category');
-      return ctx.reply(noExpensesText);
-    }
-    const formatter = handlers.formatter;
-    const convertedAmounts = await Promise.all(
-      expenses.map(e => currencyUtils.convert(Number(e.amount), e.currency || 'RUB', userCurrency))
-    );
-    const total = {
-      total: convertedAmounts.reduce((sum, v) => sum + v, 0),
-      count: expenses.length,
-      currency: userCurrency
-    };
-    const userLanguage = await handlers.userService.getUserLanguage(userId);
-    let message = await formatter.formatStats(total, [], userCurrency, 'месяц', handlers.localizationService, userLanguage) + '\n' + formatter.formatExpenseList(expenses, userTimezone, handlers.localizationService, userLanguage);
-    const backText = handlers.localizationService.getText(userLanguage, 'button_back');
-    
-    // Проверяем премиум статус для показа кнопки редактирования
-    const isPremium = await handlers.premiumService.isPremiumUser(userId);
-    
-    let inlineKeyboardButtons = [[{ text: backText, callback_data: 'back_to_categories' }]];
-    
-    if (isPremium) {
-      const editText = handlers.localizationService.getText(userLanguage, 'button_edit');
-      inlineKeyboardButtons.unshift([{ text: editText, callback_data: `edit_category|${categoryId}` }]);
-    }
-    
-    await ctx.reply(message, { parse_mode: 'Markdown', reply_markup: {
-      inline_keyboard: inlineKeyboardButtons
-    } });
-  }); // список расходов по конкретной категории
-  bot.action(/^delete_expense\|(\d+)$/, async (ctx) => {
-    const expenseId = ctx.match[1];
-    const userId = ctx.from.id;
-    
-    const deleted = await handlers.expenseService.deleteExpenseById(userId, expenseId);
-    const userLanguage = await handlers.userService.getUserLanguage(userId);
-    if (deleted) {
-      const deletedText = handlers.localizationService.getText(userLanguage, 'callback_deleted');
-      await ctx.answerCbQuery(deletedText);
-      await ctx.editMessageText(deletedText);
-    } else {
-      const deleteErrorText = handlers.localizationService.getText(userLanguage, 'callback_delete_error');
-      await ctx.answerCbQuery(deleteErrorText);
-    }
-  }); // удаление записи расхода
-  // Пометить личную трату как семейную
-  bot.action(/^mark_as_family\|(\d+)$/, errorHandler(async (ctx) => {
-    const expenseId = parseInt(ctx.match[1], 10);
-    const userId = ctx.from.id;
-    const userLanguage = await handlers.userService.getUserLanguage(userId);
-
-    // Премиум требование
-    const isPremium = await handlers.premiumService.isPremiumUser(userId);
-    if (!isPremium) {
-      const premiumRequiredText = handlers.localizationService.getText(userLanguage, 'premium_required');
-      return ctx.answerCbQuery(premiumRequiredText);
-    }
-
-    // Должен быть участником семьи
-    const userFamily = await handlers.familyService.getUserFamily(userId);
-    if (!userFamily) {
-      const notFamilyMemberText = handlers.localizationService.getText(userLanguage, 'not_family_member');
-      return ctx.answerCbQuery(notFamilyMemberText);
-    }
-
-    const expense = await handlers.expenseService.getExpenseById(userId, expenseId);
-    if (!expense) {
-      const notFoundText = handlers.localizationService.getText(userLanguage, 'expense_not_found');
-      return ctx.answerCbQuery(notFoundText);
-    }
-    if (expense.family_id) {
-      const alreadyFamilyText = handlers.localizationService.getText(userLanguage, 'expense_already_family');
-      return ctx.answerCbQuery(alreadyFamilyText);
-    }
-
-    // Конвертируем личную трату в семейную
-    await handlers.expenseService.convertToFamilyExpense(userId, expenseId, userFamily.id);
-
-    const convertedText = handlers.localizationService.getText(userLanguage, 'expense_converted_to_family');
-    await ctx.answerCbQuery(convertedText);
-    await ctx.editMessageReplyMarkup();
   }));
+  bot.action('change_period_start', errorHandler((ctx) => callbackHandlers.handleChangePeriodStart(ctx)));
+  bot.action('toggle_reminders', errorHandler((ctx) => callbackHandlers.handleToggleReminders(ctx)));
+  bot.action('configure_reminder_hours', errorHandler((ctx) => callbackHandlers.handleConfigureReminderHours(ctx)));
+  bot.action(/^toggle_reminder_hour\|(\d{1,2})$/, errorHandler((ctx) => callbackHandlers.handleToggleReminderHour(ctx)));
+  bot.action('save_reminder_hours', errorHandler((ctx) => callbackHandlers.handleSaveReminderHours(ctx)));
+  bot.action('clear_reminder_hours', errorHandler((ctx) => callbackHandlers.handleClearReminderHours(ctx)));
+  bot.action('bug_report', errorHandler((ctx) => callbackHandlers.handleBugReport(ctx)));
+  bot.action(/^tz\|/, errorHandler((ctx) => callbackHandlers.handleTimezoneSelection(ctx)));
+  bot.action(/^time\|/, errorHandler((ctx) => callbackHandlers.handleTimezoneSelection(ctx)));
+  bot.action(/^set_language\|/, errorHandler((ctx) => callbackHandlers.handleLanguageSelection(ctx)));
 
-  // Вычеркнуть трату из семейного бюджета
-  bot.action(/^remove_from_family\|(\d+)$/, errorHandler(async (ctx) => {
-    const expenseId = parseInt(ctx.match[1], 10);
+  // Отмена ввода новой суммы/описания
+  bot.action('cancel_edit', errorHandler(async (ctx) => {
     const userId = ctx.from.id;
     const userLanguage = await handlers.userService.getUserLanguage(userId);
-
-    // Премиум требование
-    const isPremium = await handlers.premiumService.isPremiumUser(userId);
-    if (!isPremium) {
-      const premiumRequiredText = handlers.localizationService.getText(userLanguage, 'premium_required');
-      return ctx.answerCbQuery(premiumRequiredText);
-    }
-
-    // Получаем трату и проверяем, что она семейная
-    const expense = await handlers.expenseService.getExpenseById(userId, expenseId);
-    if (!expense) {
-      const notFoundText = handlers.localizationService.getText(userLanguage, 'expense_not_found');
-      return ctx.answerCbQuery(notFoundText);
-    }
-
-    // Проверяем, что трата семейная
-    if (!expense.family_id) {
-      const notFamilyText = handlers.localizationService.getText(userLanguage, 'expense_already_family');
-      return ctx.answerCbQuery(notFamilyText);
-    }
-
-    // Проверяем, что пользователь является автором траты
-    if (Number(expense.user_id) !== userId) {
-      const notOwnerText = handlers.localizationService.getText(userLanguage, 'not_owner');
-      return ctx.answerCbQuery(notOwnerText);
-    }
-
-    // Убираем family_id, делая трату личной
-    await handlers.expenseService.removeFromFamilyExpense(userId, expenseId);
-
-    const removedText = handlers.localizationService.getText(userLanguage, 'expense_removed_from_family');
-    await ctx.answerCbQuery(removedText);
-    await ctx.editMessageReplyMarkup();
-  }));
-
-  bot.action(/^edit_expense\|(\d+)$/, async (ctx) => {
-    const expenseId = ctx.match[1];
-    const userId = ctx.from.id;
-    
-    // Проверяем премиум статус
-    const isPremium = await handlers.premiumService.isPremiumUser(userId);
-    if (!isPremium) {
-      const userLanguage = await handlers.userService.getUserLanguage(userId);
-      const premiumRequiredText = handlers.localizationService.getText(userLanguage, 'premium_required');
-      return ctx.answerCbQuery(premiumRequiredText);
-    }
-    
-    handlers.stateService.setUserEditState(userId, expenseId);
-    const userLanguage = await handlers.userService.getUserLanguage(userId);
-    const editInstructionsText = handlers.localizationService.getText(userLanguage, 'edit_instructions');
-    const cancelText = handlers.localizationService.getText(userLanguage, 'button_cancel');
-    
-    await ctx.reply(editInstructionsText, {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: cancelText, callback_data: 'cancel_edit' }]
-        ]
-      }
-    });
-  }); // режим редактирования записи расхода
-  bot.action('cancel_edit', async (ctx) => {
-    const userId = ctx.from.id;
-    const userLanguage = await handlers.userService.getUserLanguage(userId);
-    
-    if (handlers.stateService.hasUserEditState(ctx.from.id)) {
-      handlers.stateService.deleteUserEditState(ctx.from.id);
-      const editCanceledText = handlers.localizationService.getText(userLanguage, 'edit_canceled');
-      await ctx.editMessageText(editCanceledText);
+    if (stateService.hasUserEditState(userId)) {
+      stateService.deleteUserEditState(userId);
+      await ctx.answerCbQuery();
+      await ctx.editMessageText(handlers.localizationService.getText(userLanguage, 'edit_canceled'));
     } else {
-      const editNoActiveText = handlers.localizationService.getText(userLanguage, 'edit_no_active');
-      await ctx.answerCbQuery(editNoActiveText);
+      await ctx.answerCbQuery(handlers.localizationService.getText(userLanguage, 'edit_no_active'));
     }
-  }); // отмена редактирования записи
-  bot.action('edit_history', async (ctx) => {
-    const userId = ctx.from.id;
-    
-
-    
-    const userLanguage = await handlers.userService.getUserLanguage(userId);
-    const userTimezone = await handlers.userService.getUserTimezone(userId);
-    const expenses = await handlers.expenseService.getDailyExpenses(userId);
-    const userFamily = await handlers.familyService.getUserFamily(userId);
-    if (!expenses.length) {
-      const noExpensesPeriodText = handlers.localizationService.getText(userLanguage, 'no_expenses_period');
-      return ctx.reply(noExpensesPeriodText);
-    }
-    const formatter = handlers.formatter;
-    for (const expense of expenses) {
-      const isPremium = await handlers.premiumService.isPremiumUser(userId);
-      const { text, reply_markup } = formatter.formatExpenseWithActions(
-        expense,
-        userTimezone,
-        handlers.localizationService,
-        userLanguage,
-        isPremium, // showEdit
-        true,      // showDelete - всегда показываем кнопку удаления
-        isPremium && userFamily ? true : false,      // showMarkFamily - показываем кнопку пометки как семейной
-        userId     // currentUserId - для проверки владельца траты
-      );
-      await ctx.reply(text, { reply_markup, parse_mode: 'Markdown' });
-    }
-    const exitEditModeText = handlers.localizationService.getText(userLanguage, 'callback_edit_mode');
-    const backText = handlers.localizationService.getText(userLanguage, 'button_back');
-    
-    await ctx.reply(exitEditModeText, {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: backText, callback_data: 'back_to_history' }]
-        ]
-      }
-    });
-  }); // режим редактирования истории расходов за день
-  bot.action('edit_family_history', async (ctx) => {
-    const userId = ctx.from.id;
-    const userLanguage = await handlers.userService.getUserLanguage(userId);
-    
-    // Проверяем премиум статус
-    const isPremium = await handlers.premiumService.isPremiumUser(userId);
-    if (!isPremium) {
-      const premiumRequiredText = handlers.localizationService.getText(userLanguage, 'premium_required');
-      return ctx.answerCbQuery(premiumRequiredText);
-    }
-    
-    // Получаем информацию о семье пользователя
-    const userFamily = await handlers.familyService.getUserFamily(userId);
-    if (!userFamily) {
-      const notFamilyMemberText = handlers.localizationService.getText(userLanguage, 'not_family_member');
-      return ctx.answerCbQuery(notFamilyMemberText);
-    }
-    
-    const userTimezone = await handlers.userService.getUserTimezone(userId);
-    const { expenses } = await handlers.familyService.getFamilyDailyStats(userFamily.id, userTimezone);
-    
-    if (!expenses.length) {
-      const noExpensesPeriodText = handlers.localizationService.getText(userLanguage, 'no_expenses_period');
-      return ctx.answerCbQuery(noExpensesPeriodText);
-    }
-    
-    const formatter = handlers.formatter;
-    for (const expense of expenses) {
-      const isPremium = await handlers.premiumService.isPremiumUser(userId);
-      // Показываем кнопки редактирования только для премиум и для своих записей
-      const { text, reply_markup } = formatter.formatExpenseWithActions(
-        expense,
-        userTimezone,
-        handlers.localizationService,
-        userLanguage,
-        isPremium && Number(expense.user_id) === userId, // showEdit
-        true,                                           // showDelete - всегда показываем кнопку удаления
-        isPremium && userFamily ? true : false,          // showMarkFamily - показываем кнопку пометки как семейной
-        userId                                          // currentUserId - для проверки владельца траты
-      );
-      await ctx.reply(text, { reply_markup, parse_mode: 'Markdown' });
-    }
-    
-    const exitEditModeText = handlers.localizationService.getText(userLanguage, 'callback_edit_mode');
-    const backText = handlers.localizationService.getText(userLanguage, 'button_back');
-    
-    await ctx.reply(exitEditModeText, {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: backText, callback_data: 'family_menu' }]
-        ]
-      }
-    });
-  }); // режим редактирования семейных трат за день
-  bot.action(/^edit_category\|(\d+)$/, async (ctx) => {
-    const categoryId = ctx.match[1];
-    const userId = ctx.from.id;
-    
-    // Проверяем премиум статус
-    const isPremium = await handlers.premiumService.isPremiumUser(userId);
-    if (!isPremium) {
-      const userLanguage = await handlers.userService.getUserLanguage(userId);
-      const premiumRequiredText = handlers.localizationService.getText(userLanguage, 'premium_required');
-      return ctx.answerCbQuery(premiumRequiredText);
-    }
-    
-    const userLanguage = await handlers.userService.getUserLanguage(userId);
-    const userTimezone = await handlers.userService.getUserTimezone(userId);
-    const expenses = await handlers.expenseService.getExpensesByCategoryId(userId, categoryId, 'month');
-    const userFamily = await handlers.familyService.getUserFamily(userId);
-    if (!expenses.length) {
-      const noCardsText = handlers.localizationService.getText(userLanguage, 'callback_no_cards');
-      return ctx.reply(noCardsText);
-    }
-    const formatter = handlers.formatter;
-    for (const expense of expenses) {
-      const { text, reply_markup } = formatter.formatExpenseWithActions(
-        expense, 
-        userTimezone, 
-        handlers.localizationService, 
-        userLanguage, 
-        isPremium, // showEdit
-        true,      // showDelete - всегда показываем кнопку удаления
-        isPremium && userFamily ? true : false,      // showMarkFamily - показываем кнопку пометки как семейной
-        userId     // currentUserId - для проверки владельца траты
-      );
-      await ctx.reply(text, { reply_markup, parse_mode: 'Markdown' });
-    }
-    const exitEditModeText = handlers.localizationService.getText(userLanguage, 'callback_edit_mode');
-    const backText = handlers.localizationService.getText(userLanguage, 'button_back');
-    
-    await ctx.reply(exitEditModeText, {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: backText, callback_data: `show_category|${categoryId}` }]
-        ]
-      }
-    });
-  }); // режим редактирования расходов по категории
+  }));
 
   // ========================================
   // FAMILY CALLBACK HANDLERS
   // ========================================
-  
+
   bot.action('family_create', errorHandler((ctx) => callbackHandlers.handleFamilyCreate(ctx)));
   bot.action('family_join', errorHandler((ctx) => callbackHandlers.handleFamilyJoin(ctx)));
   bot.action('family_invite', errorHandler((ctx) => callbackHandlers.handleFamilyInvite(ctx)));
@@ -491,7 +180,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('family_stats', errorHandler((ctx) => callbackHandlers.handleFamilyStats(ctx)));
   bot.action(/^remove_member\|(\d+)$/, errorHandler((ctx) => callbackHandlers.handleRemoveMember(ctx)));
   bot.action(/^confirm_remove_member\|(\d+)$/, errorHandler((ctx) => callbackHandlers.handleConfirmRemoveMember(ctx)));
-  bot.action('family_daily_history', errorHandler((ctx) => callbackHandlers.handleFamilyDailyHistory(ctx)));
+  bot.action('family_daily_history', errorHandler((ctx) => expenseHandlers.showFamilyDay(ctx, 0)));
   bot.action('family_export', errorHandler((ctx) => callbackHandlers.handleFamilyExport(ctx)));
   bot.action('family_add_expense', errorHandler((ctx) => callbackHandlers.handleFamilyAddExpense(ctx)));
   bot.action('family_delete', errorHandler((ctx) => callbackHandlers.handleFamilyDelete(ctx)));
@@ -499,7 +188,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('family_leave', errorHandler((ctx) => callbackHandlers.handleFamilyLeave(ctx)));
   bot.action('family_cancel', errorHandler((ctx) => callbackHandlers.handleFamilyCancel(ctx)));
   bot.action('family_menu', errorHandler((ctx) => callbackHandlers.handleFamilyMenu(ctx)));
-  
+
   // Обработчики для приглашений (с параметрами)
   bot.action(/^accept_invitation\|(.+)$/, errorHandler((ctx) => callbackHandlers.handleAcceptInvitation(ctx)));
   bot.action(/^reject_invitation\|(.+)$/, errorHandler((ctx) => callbackHandlers.handleRejectInvitation(ctx)));
@@ -508,34 +197,42 @@ module.exports = function registerBotRoutes(bot, handlers) {
   // ========================================
   // PREMIUM CALLBACK HANDLERS
   // ========================================
-  
+
   bot.action('premium_tariffs', errorHandler((ctx) => callbackHandlers.handlePremiumTariffs(ctx)));
   bot.action('premium_why_paid', errorHandler((ctx) => callbackHandlers.handlePremiumWhyPaid(ctx)));
   bot.action('premium_donate', errorHandler((ctx) => callbackHandlers.handlePremiumDonate(ctx)));
   bot.action(/^premium_purchases(?:\|(\d+))?$/, errorHandler((ctx) => callbackHandlers.handlePremiumPurchases(ctx)));
   bot.action('premium_subscription', errorHandler((ctx) => callbackHandlers.handlePremiumSubscription(ctx)));
-  
-  
-  
+
   // Обработчик успешных платежей
   bot.on('pre_checkout_query', errorHandler(async (ctx) => {
     await ctx.answerPreCheckoutQuery(true);
   }));
-  
+
   bot.on('successful_payment', errorHandler(async (ctx) => {
     const paymentService = handlers.paymentService;
     const result = await paymentService.handleSuccessfulPayment(
       ctx.message.successful_payment,
       handlers.userService
     );
-    
+
     const userLanguage = await handlers.userService.getUserLanguage(ctx.from.id);
-    
+
     if (result.type === 'donation') {
       // Для донатов показываем сообщение о благодарности
       const donationSuccessText = handlers.localizationService.getText(userLanguage, 'donation_success');
       await ctx.reply(donationSuccessText, { parse_mode: 'Markdown' });
     } else if (result.type === 'premium_subscription') {
+      if (result.status === 'duplicate') return; // повторная доставка того же платежа
+      if (result.isRenewal) {
+        // Автопродление подписки Stars
+        const timezone = await handlers.userService.getUserTimezone(ctx.from.id);
+        const renewedText = handlers.localizationService.getText(userLanguage, 'subscription_renewed', {
+          date: handlers.formatter.formatDate(result.newExpiryDate, timezone)
+        });
+        await ctx.reply(renewedText);
+        return;
+      }
       // Для премиум подписок показываем сообщение об активации
       const successText = handlers.localizationService.getText(userLanguage, 'payment_success');
       await ctx.reply(successText, { parse_mode: 'Markdown' });
@@ -547,37 +244,40 @@ module.exports = function registerBotRoutes(bot, handlers) {
   }));
 
   // ========================================
-  // ADMIN PANEL CALLBACK HANDLERS  
+  // ADMIN PANEL CALLBACK HANDLERS
   // ========================================
-  
+
   // Главная панель админа
   bot.action('panel_main', errorHandler((ctx) => adminHandlers.showAdminPanel(ctx)));
-  
+
   // Статистика
   bot.action('panel_stats', errorHandler((ctx) => adminHandlers.showStats(ctx)));
-  
+
+  // Воронка по источникам (30 / 90 / 0 — за всё время)
+  bot.action(/^panel_funnel_(\d+)$/, errorHandler((ctx) => adminHandlers.showFunnel(ctx, parseInt(ctx.match[1], 10))));
+
   // Управление пользователями
   bot.action('panel_users', errorHandler((ctx) => adminHandlers.showUsers(ctx, 1)));
   bot.action(/panel_users_page_(\d+)/, errorHandler((ctx) => {
     const page = parseInt(ctx.match[1], 10);
     return adminHandlers.showUsers(ctx, page);
   }));
-  
+
   // Баг-репорты
   bot.action('panel_bug_reports', errorHandler((ctx) => adminHandlers.showBugReports(ctx)));
-  
+
   // Донаты
   bot.action('panel_donations', errorHandler((ctx) => adminHandlers.showDonations(ctx)));
-  
+
   // Премиум
   bot.action('panel_premium', errorHandler((ctx) => adminHandlers.showPremiumStats(ctx)));
-  
+
   // Администраторы
   bot.action('panel_managers', errorHandler((ctx) => adminHandlers.showAdmins(ctx)));
-  
+
   // Поиск
   bot.action('panel_search', errorHandler((ctx) => adminHandlers.initiateSearch(ctx)));
-  
+
   // Действия с пользователями
   bot.action(/panel_user_(\d+)/, errorHandler((ctx) => {
     const targetUserId = parseInt(ctx.match[1], 10);
@@ -590,45 +290,51 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('panel_refund_exec', errorHandler((ctx) => {
     return adminHandlers.executeRefund(ctx);
   }));
-  
+
   bot.action(/panel_promote_(\d+)/, errorHandler((ctx) => {
     const targetUserId = parseInt(ctx.match[1], 10);
     return adminHandlers.promoteUser(ctx, targetUserId);
   }));
-  
+
   bot.action(/panel_demote_(\d+)/, errorHandler((ctx) => {
     const targetUserId = parseInt(ctx.match[1], 10);
     return adminHandlers.demoteUser(ctx, targetUserId);
   }));
-  
+
   // Управление премиумом
   bot.action(/panel_grant_premium_(\d+)/, errorHandler((ctx) => {
     const targetUserId = parseInt(ctx.match[1], 10);
     return adminHandlers.showGrantPremiumOptions(ctx, targetUserId);
   }));
-  
+
   bot.action(/panel_grant_premium_days_(\d+)_(\d+)/, errorHandler((ctx) => {
     const targetUserId = parseInt(ctx.match[1], 10);
     const days = parseInt(ctx.match[2], 10);
     return adminHandlers.grantPremium(ctx, targetUserId, days);
   }));
-  
+
   bot.action(/panel_revoke_premium_(\d+)/, errorHandler((ctx) => {
     const targetUserId = parseInt(ctx.match[1], 10);
     return adminHandlers.revokePremium(ctx, targetUserId);
   }));
-  
+
   // Массовые уведомления
   bot.action('panel_broadcast', errorHandler((ctx) => adminHandlers.initiateBroadcast(ctx)));
-  
+
   bot.action('panel_broadcast_confirm', errorHandler((ctx) => adminHandlers.confirmBroadcast(ctx)));
-  
+
   // Общие действия
   bot.action('back_to_main', errorHandler((ctx) => commandHandlers.start(ctx)));
+
+  // Кнопки из старых сообщений, для которых больше нет обработчика
+  bot.on('callback_query', errorHandler(async (ctx) => {
+    const userLanguage = await handlers.userService.getUserLanguage(ctx.from.id);
+    await ctx.answerCbQuery(handlers.localizationService.getText(userLanguage, 'button_outdated'), { show_alert: true });
+  }));
 
   // Глобальный обработчик ошибок
   bot.catch((error, ctx) => {
     console.error('Bot error:', error);
     ctx.reply('An unexpected error occurred. Please try again later.');
   }); // обработка глобальных ошибок бота
-}; 
+};

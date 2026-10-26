@@ -1,6 +1,6 @@
 module.exports = {
     button_reminders: '🔔 リマインダー',
-    reminders_enabled: 'リマインダーを有効にしました。18:00までに何も記録がない場合、ちょっとしたユーモアでお知らせします 😉',
+    reminders_enabled: '🔔 リマインダーがオンです',
     reminders_disabled: 'リマインダーを無効にしました。完全に静かです 🤐',
     reminder_sample_variants: [
       '👋 やあ！財布が静かでも、幸せとは限らないよ。支出を記録しよう😉',
@@ -192,96 +192,28 @@ module.exports = {
     save: '保存',
     
     // 開始メッセージ
-    start_message: `こんにちは！👋 私はあなたの支出を記録し、予算管理をお手伝いします。
-  
-  *支出の追加方法:*
-  金額と説明を入力してください:
-  -  \`200 食料品\`
-  -  \`1500 レストランでランチ\`
-  -  \`50 交通費\`
-  -  \`150.50 コーヒー\`
-  
-  次にカテゴリー選択メニューが表示されます — 適切なカテゴリーを選んでください 🏷️
-  
-  *主なコマンド:*
-  /start - ボットを再起動
-  /menu - インタラクティブメニューを開く
-  /history - 今日の記録を見る
-  /stats - カテゴリー別の今月の統計
-  
-  /export - データをCSVでダウンロード
-  /undo - 最後の記録を削除
-  
-  *設定:*
-  /settings - 設定を開く
-  /currency - デフォルトの通貨を変更
-  /timezone - タイムゾーンを設定
-  /categories - カテゴリーを管理
-  
-  *追加機能:*
-  /family - 家計（家族予算）
-  /limits - 制限とプレミアム機能
-  /help - 詳細ヘルプ
-  
-  さあ、支出の記録を始めましょう！💰`,
-  help_message: `📋 *コマンド詳細ヘルプ*
-  
-  *支出の追加:*
-  金額と説明の間にスペースを入れて入力します:
-  \`200 買い物\` — カテゴリーメニューが表示されます
-  \`150.50 コーヒー\` — 小数点も使用可能
-  
-  *主なコマンド:*
-  /start - ボットを再起動して歓迎メッセージを表示
-  /menu - 全機能のインタラクティブメニューを開く
-  /history - 今日の履歴を表示
-  /stats - 今月のカテゴリー別統計
-  
-  /export - 全データをCSVでダウンロード
-  /undo - 最後に追加した記録を削除
-  
-  *設定と管理:*
-  /settings - 設定メニューを開く
-  /currency - デフォルト通貨を変更 (RUB, USD, EUR, KZT, CNY, THB)
-  /timezone - 時差を設定し正しい時間で記録する
-  /categories - カスタムカテゴリーを管理（プレミアム）
-  
-  *家計（家族予算）:*
-  /family - 家族グループと共有支出を管理
-  - 家族作成、メンバー招待
-  - 共有支出と統計
-  - 家計データをエクスポート
-  
-  *プレミアム機能:*
-  /limits - 制限とプレミアム情報
-  - カスタムカテゴリー
-  - 高度な統計
-  - 家計（家族予算）
-  - 優先サポート
-  
-  *利用ヒント:*
-  • 支出には説明を追加して分析しやすく
-  • /stats で定期的に統計を確認
-  • タイムゾーンを正しく設定
-  • /menu で素早くアクセス
-  • /export でデータを分析用に出力
-  
-  *支出の編集:*
-  • /history 内で記録を削除または編集
-  • 「👨‍👩‍👧‍👦 家族に追加」ボタンで家計に移動
-  • 「🚫 家族予算から削除」ボタンで個人支出に戻す
-  • 自分の記録のみ編集・削除可能
-  
-  *リマインダー:*
-  • 毎日18:00に支出記録をリマインド
-  • 当日記録がない場合のみ
-  • 設定でオン/オフ切り替え可能
-  • 一日一回まで
-  
-  *サポート:*
-  /start でメインメニューに戻れます。
-  
-  良い予算管理を！💰📊`,
+    start_message: `こんにちは！👋 支出と収入の記録をお手伝いします。
+
+*支出* — 金額と説明を書くだけ: \`250 コーヒー\`、\`1500 ランチ\`。
+他の通貨もOK: \`20 USD タクシー\`、金額だけでも: \`300\`。
+*収入* — プラスを付けて: \`+50000 給料\`。
+
+カテゴリは一度選べば、次回から覚えておきます。
+メニューは下にあります: 月の概要、今日の記録、収入、定期支出（家賃、サブスク）、「☰ その他」。`,
+
+  start_returning: '👋 おかえりなさい！支出をメッセージで送ってください — `250 コーヒー`。メニューは下のキーボードにあります。',
+  help_message: `❓ *使い方*
+
+• \`250 コーヒー\` — 支出。カテゴリは一度選べば覚えます
+• \`20 USD タクシー\` — 他の通貨での支出、\`300\` — 説明なし
+• \`+50000 給料\` — 収入（\`+1000 USD\` — 他の通貨）
+• 新しい記録の下: ↩️ 取り消し、🏷 カテゴリ変更
+• 📊 *月の概要* — 支出、収入、残高、カテゴリ; ◀️ — 過去の期間
+• 📅 *今日* — その日の記録; 番号をタップして編集・削除
+• 🔁 *定期支出* — 家賃やサブスクは毎月自動で記録されます
+• 通貨、リマインダー（1日3回まで）、期間の開始日 — ☰ その他 → ⚙️ 設定
+
+コマンド: /stats /history /income /recurring /export /settings /menu`,
   
     // 支出
     expense_added: '✅ 記録しました: {amount} - {description}',
@@ -442,18 +374,14 @@ module.exports = {
     status_regular: '👤 通常',
     status_premium: '💎 プレミアム',
     status_label: '*ステータス:* {status}',
-    records_usage: '<b>記録数:</b> {current}/{max} ({percentage}%)',
-    records_remaining: '<b>残り:</b> {remaining} 件',
     max_description_length: '<b>説明の最大長:</b> {length} 文字',
-    near_limit_warning: '⚠️ *注意:* 記録数が上限に近づいています！',
-    limit_reached: '❌ *記録数の上限に達しました!*',
     premium_benefits: `💎 <b>プレミアム特典:</b>
-  • 説明160文字（通常80文字）
-  • 記録300件（通常100件）
-  • 最大5つのカスタムカテゴリー
-  • 高度な統計
-  • 家族予算
-  • 任意の記録を編集／削除可能（最後の記録だけでなく）`,
+• 説明160文字（通常80文字）
+• カスタムカテゴリー最大5個
+• 家族の予算
+• 任意の記録の金額と説明の編集
+
+支出と収入の記録は無料・無制限です。`,
     
     // プレミアム購読
     premium_subscription_title: '⭐️ サブスクリプション',
@@ -467,7 +395,7 @@ module.exports = {
     premium_back_button: '⬅️ 戻る',
     premium_tariffs_title: '⭐️ 料金プラン（Telegram Stars）',
     per_month: '月あたり',
-    premium_payment_info: '💳 支払いはTelegram Starsで行います。<b>自動更新はありません。</b>',
+    premium_payment_info: '💳 支払いはTelegramの内部通貨であるTelegram Starsで行います。🔁 月額プランは自動更新されます。解約はTelegramの「設定 → スター → 登録状況」（英語表示では Settings → My Stars → My subscriptions）から行えます。3・6・12か月プランは一回払いです。',
     premium_renewal_info: '📅 いつでも延長可能です。残り時間に加算されます。',
     premium_stars_info: '💡 公認 [@PremiumBot] から手数料なしでスターを購入できます。',
     premium_why_paid_title: '👀 なぜ有料？',
@@ -511,10 +439,9 @@ module.exports = {
     error_too_long_premium: '❌ 説明が長すぎます！プレミアムは160文字までです。',
     error_no_description: '❌ 金額の後に説明を入力してください。',
     error_amount: '❌ 無効な金額です。0.01〜999999の数字を入力してください。',
-    error_format: '❌ 認識できない形式です。「金額 説明」を入力してください。\n例: `200 買い物` または `1500 カフェランチ`',
+    error_format: '❌ 認識できませんでした。金額から始めてください: `250 コーヒー`、`20 USD タクシー`、または `300` だけ。',
     error_forbidden_content: '❌ 禁止されている内容が含まれています。',
-    error_limit_reached: '❌ 上限に達しました！\n通常: 100件\nプレミアム: 300件\n\n💎 プレミアムにアップグレードで上限増加！',
-    error_premium_required: '💎 この機能はプレミアム専用です！\n\n特典:\n• 説明160文字\n• 300件の記録\n• カスタムカテゴリー\n• 高度な統計',
+    error_premium_required: '💎 この機能はプレミアム専用です。\n\nプレミアム特典:\n• 説明160文字（通常80文字）\n• カスタムカテゴリー\n• 家族の予算\n• 記録の編集',
     error_generic: '❌ エラーが発生しました。後でもう一度お試しください、または管理者に連絡してください。',
     
     // ボタン
@@ -564,7 +491,6 @@ module.exports = {
     edit_format_error: '形式が正しくありません。',
     
     // コールバック応答
-    callback_limit_reached: '❌ 記録数の上限に達しました',
     callback_button_not_found: '❌ エラー: ボタンが見つかりません',
     callback_data_not_found: '❌ エラー: データが見つかりません',
     callback_expense_added: '✅ "{category}" カテゴリーに追加されました',
@@ -604,5 +530,103 @@ module.exports = {
     custom_categories_list_title: 'あなたのカスタムカテゴリー:',
     custom_categories_delete: '🗑️ 削除',
     custom_categories_deleted: '✅ カテゴリーを削除しました。',
-    custom_categories_premium_required: '💎 この機能はプレミアムユーザーのみ利用可能です。'
+    custom_categories_premium_required: '💎 この機能はプレミアムユーザーのみ利用可能です。',
+
+    // Income
+    button_income: '💵 収入',
+    button_add_income: '➕ 収入を追加',
+    button_income_currency: '💱 収入の通貨',
+    income_menu_title: '💵 *今期の収入*',
+    income_menu_empty: 'この期間の収入はまだありません。',
+    income_currency_label: 'デフォルトの収入通貨: *{currency}*',
+    income_hint: '💡 簡単な方法: プラスで始まるメッセージを送信 — `+50000 給料` または `+1000 USD 副業`',
+    income_enter_prompt: '収入の金額と説明を入力してください 👇\n\n例: `50000 給料`\nデフォルト通貨 — *{currency}*。金額の後にコードを付けると別の通貨を指定できます: `1000 USD 副業`',
+    income_added: '✅ 収入を記録しました: *{amount}* — {description}',
+    income_default_description: '収入',
+    income_deleted: '✅ 収入を削除しました',
+    income_not_found: '❌ 収入が見つかりません',
+    income_currency_select: '普段受け取る通貨を選んでください。支出はメイン通貨のままです:',
+    income_currency_set: '✅ 収入の通貨: {currency}',
+    income_total: '💵 収入: *{amount}*',
+    balance_label: '⚖️ 残高（収入 − 支出）: *{amount}*',
+    income_error_format: '❌ 理解できませんでした。金額と説明（任意）を送信してください: `50000 給料` または `1000 USD 副業`',
+    income_error_amount: '❌ 無効な金額です。0.01から{max}までの数値を入力してください。',
+
+    // Recurring expenses
+    button_recurring: '🔁 定期支出',
+    button_add_recurring: '➕ 定期支出を追加',
+    recurring_menu_title: '🔁 *定期支出*',
+    recurring_menu_info: '毎月の支払い（家賃、サブスク、ローン）は、指定した日に自動で支出として記録されます。',
+    recurring_menu_empty: '定期支出はまだありません。',
+    recurring_item: '{icon} {description} — *{amount}*、毎月{day}日\n    次回の記録: {next}',
+    recurring_monthly_total: '月合計: *{amount}*',
+    recurring_enter_prompt: '定期支出の金額と説明を入力してください 👇\n\n例: `50000 家賃`\n金額の後に通貨を指定できます: `500 USD 家賃`',
+    recurring_day_prompt: '毎月何日にこの支出を記録しますか？1から31までの数値を入力してください。\n\n月の日数が足りない場合は月末に記録します。',
+    recurring_day_invalid: '❌ 1から31までの整数を入力してください。',
+    recurring_select_category: '定期支出のカテゴリーを選択してください:',
+    recurring_added: '✅ 定期支出を追加しました\n\n{description} — *{amount}*、毎月{day}日\n初回の記録: {next}',
+    recurring_added_charged_now: '✅ 定期支出を追加し、今月分はすでに記録しました\n\n{description} — *{amount}*、毎月{day}日\n次回の記録: {next}',
+    recurring_deleted: '✅ 定期支出を削除しました。記録済みの支出は履歴に残ります。',
+    recurring_not_found: '❌ 定期支出が見つかりません',
+    recurring_limit: '❌ 定期支出は最大{max}件までです',
+    recurring_charged_notification: '🔁 定期支出を記録しました: {icon} {description} — *{amount}*',
+    recurring_error_format: '❌ 形式を認識できません。金額と説明を送信してください: `50000 家賃` または `500 USD 家賃`',
+    recurring_error_amount: '❌ 無効な金額です。0.01から{max}までの数値を入力してください。',
+
+  button_overview: '📊 月の概要',
+  button_today: '📅 今日',
+  button_more: '☰ その他',
+  more_menu_title: '☰ *その他*',
+  button_export: '📤 CSV出力',
+  keyboard_refreshed: '✅ メニューを更新しました — よりコンパクトになりました 👇',
+  button_outdated: 'このボタンは古くなっています。下のメニューからもう一度開いてください。',
+  overview_title: '概要: {range}',
+  overview_spent: '💸 支出: *{amount}* · 記録: {count}',
+  overview_upcoming: '今後の定期支出:',
+  overview_income_hint: '💡 収入はプラスを付けて記録: `+50000 給料`',
+  button_prev_period: '◀️ 前へ',
+  button_next_period: '次へ ▶️',
+  button_back_to_overview: '⬅️ 概要へ',
+  day_title_today: '今日、{date}',
+  day_title_yesterday: '昨日、{date}',
+  day_title: '{date}',
+  day_entry_hint: '支出をメッセージで送信: `250 コーヒー`',
+  button_prev_day: '◀️ 前日',
+  button_next_day: '翌日 ▶️',
+  list_tap_number: '番号をタップして記録を開きます。',
+  family_today_title: '家族: 今日の記録',
+  button_undo: '↩️ 取り消し',
+  button_delete_record: '🗑 削除',
+  button_change_category: '🏷 カテゴリ',
+  button_edit_record: '✏️ 編集',
+  expense_family_label: '家族の予算に',
+  expense_recurring_label: '自動で記録（定期支出）',
+  expense_category_remembered: '🏷 同じ説明の前回の記録からカテゴリを選びました — 下のボタンで変更できます。',
+  category_will_be_remembered: '💡 選択を覚えておきます: 次回から同様の記録はすぐこのカテゴリに入ります。',
+  expense_category_changed: 'カテゴリ: {category}',
+  settings_header: '設定',
+  settings_currency_line: '💱 通貨: *{currency}* · 収入: *{incomeCurrency}*',
+  settings_timezone_line: '🌍 タイムゾーン: {timezone}',
+  settings_language_line: '🌐 言語: {language}',
+  settings_period_line: '📅 期間は{day}日に始まります',
+  settings_reminders_on_line: '🔔 リマインダー: オン（{hours}）',
+  settings_reminders_off_line: '🔔 リマインダー: オフ',
+  button_currencies: '💱 通貨',
+  settings_currencies_text: '💱 *通貨*\n\nメイン — 支出とすべての合計はこの通貨で計算されます: *{currency}*\n収入のデフォルト通貨: *{incomeCurrency}*\n\nどの記録も他の通貨にできます — 金額の後にコードを付けてください: `20 USD タクシー`。',
+  reminders_title: 'リマインダー',
+  reminders_info: '選んだ時刻までに何も記録がなければ、お知らせします。1日最大3回。',
+  button_reminders_on: '🟢 オン — タップでオフ',
+  button_reminders_off: '⚫ オフ — タップでオン',
+  family_teaser: '👨‍👩‍👧‍👦 *家族の予算*\n\n大切な人との共有支出を一か所に: 各自が記録し、統計とエクスポートは共有されます。\n\nプレミアムで利用できます。',
+  button_try_premium: '⭐️ プレミアムを試す',
+    // Subscription and premium ending
+    subscription_active_info: '🔁 月額サブスクリプションは{date}まで支払い済みで、自動更新されます。解約: Telegram → 設定 → スター → 登録状況（英語表示: Settings → My Stars → My subscriptions）。',
+    subscription_renewed: '🔁 サブスクリプションが更新されました。プレミアムは{date}まで有効です。',
+    button_view_tariffs: '⭐️ プラン',
+    premium_expiring_trial: '⏳ プレミアムのお試し期間は{date}に終了します。\n\n終了後はカスタムカテゴリー、家族の予算、記録の編集が使えなくなります。記録したデータはすべて残り、支出の記録は無料です。',
+    premium_expiring_paid: '⏳ プレミアムは{date}に終了します。事前に更新できます — 残りの日数は引き継がれます。',
+    premium_expired_trial: '🌙 プレミアムのお試し期間が終了しました。支出と収入の記録は引き続き無料です。カスタムカテゴリー、家族、記録の編集はプレミアムで利用できます。',
+    premium_expired_paid: '🌙 プレミアムが終了しました。プロジェクトへのご支援ありがとうございました！いつでも更新できます。',
+    premium_winback: '👋 プレミアムが終了して1週間が経ちました。カスタムカテゴリー、家族の予算、記録の編集をまた使いたい場合は、下のプランをご覧ください。',
+    start_reminders_note: '🔔 1日の間に何も記録しなかった場合、リマインドします（1日最大3回）。時間の変更やオフ: ☰ その他 → ⚙️ 設定 → 🔔。'
 };

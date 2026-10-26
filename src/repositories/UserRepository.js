@@ -30,6 +30,17 @@ class UserRepository extends BaseRepository {
     await this.query(query, [currency, userId]);
   }
 
+  // Валюта дохода: если не задана отдельно — совпадает с основной валютой пользователя
+  async getUserIncomeCurrency(userId) {
+    const result = await this.query('SELECT COALESCE(income_currency, currency) AS currency FROM users WHERE id = $1', [userId]);
+    return result.rows[0]?.currency || currencyConfig.BASE_CURRENCY;
+  }
+
+  async setUserIncomeCurrency(userId, currency) {
+    const query = 'UPDATE users SET income_currency = $1 WHERE id = $2';
+    await this.query(query, [currency, userId]);
+  }
+
   async getUserPremium(userId) {
     const result = await this.query('SELECT premium FROM users WHERE id = $1', [userId]);
     return result.rows[0]?.premium || false;

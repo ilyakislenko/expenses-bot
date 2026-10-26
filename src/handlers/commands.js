@@ -1,7 +1,8 @@
-const { MAIN_MENU_KEYBOARD, CURRENCY_KEYBOARD, SETTINGS_KEYBOARD } = require('../utils/constants');
+const respond = require('../utils/respond');
+const FunnelService = require('../services/FunnelService');
 
 class CommandHandlers {
-  constructor({ expenseService, userService, premiumService, familyService, localizationService, formatter, stateService, keyboardGenerators, paymentService }) {
+  constructor({ expenseService, userService, premiumService, familyService, localizationService, formatter, stateService, keyboardGenerators, paymentService, incomeService, funnelService }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -11,6 +12,8 @@ class CommandHandlers {
     this.stateService = stateService;
     this.keyboardGenerators = keyboardGenerators;
     this.paymentService = paymentService;
+    this.incomeService = incomeService;
+    this.funnelService = funnelService;
   }
 
   async paysupport(ctx) {
@@ -61,7 +64,9 @@ class CommandHandlers {
     await ctx.reply(text, { disable_web_page_preview: true });
   }
 
-  async start(ctx) {
+  // afterOnboarding — первый показ после выбора языка/валюты/часового пояса: полное приветствие.
+  // Вернувшемуся пользователю — коротко, без простыни текста.
+  async start(ctx, { afterOnboarding = false } = {}) {
     const user = ctx.from;
     // Проверяем, существовал ли пользователь ранее (до регистрации)
     const existedUser = await this.userService.getUserById(user.id);
@@ -69,6 +74,10 @@ class CommandHandlers {
 
     // Если пользователь новый — запускаем одноразовый onboarding (язык → валюта)
     if (!existedUser) {
+      // Источник из ссылки t.me/<bot>?start=<код> и первый шаг воронки
+      await this.funnelService.registerSource(user.id, FunnelService.parseStartSource(ctx.message && ctx.message.text));
+      await this.funnelService.track(user.id, 'registered');
+
       // Выбираем стартовый язык для показа клавиатуры (если язык Telegram поддерживается — используем его, иначе en)
       const tgLang = (user && user.language_code) ? user.language_code : null;
       const initialLanguage = (tgLang && this.localizationService.isLanguageSupported(tgLang)) ? tgLang : 'en';
@@ -84,131 +93,57 @@ class CommandHandlers {
       return;
     }
 
-    // Получаем язык пользователя
     const userLanguage = await this.userService.getUserLanguage(user.id);
-    
-    // Проверяем, является ли пользователь админом
-    const isAdmin = await this.userService.isUserAdmin(user.id);
-    
-    // Получаем локализованное приветствие
-    // const welcomeMessage = this.localizationService.getText(userLanguage, 'welcome', { name: user.first_name });
-    const startMessage = this.localizationService.getText(userLanguage, 'start_message');
-
-    const message = `${startMessage}`;
-
-    // Проверяем, есть ли у пользователя семья и премиум для показа кнопки "добавить семейную трату"
-    let hasFamily = false;
-    let isPremium = false;
-    try {
-      isPremium = await this.premiumService.isPremiumUser(user.id);
-      if (isPremium) {
-        hasFamily = await this.familyService.getUserFamily(user.id);
-        hasFamily = !!hasFamily; // преобразуем в boolean
-      }
-    } catch (error) {
-      // В случае ошибки просто показываем базовое меню
+    let message = this.localizationService.getText(userLanguage, 'start_returning');
+    if (afterOnboarding) {
+      await this.funnelService.track(user.id, 'onboarding_completed');
+      message = `${this.localizationService.getText(userLanguage, 'start_message')}\n\n${this.localizationService.getText(userLanguage, 'start_reminders_note')}`;
     }
-
-    const mainMenuKeyboard = this.keyboardGenerators.generateMainMenuKeyboard(userLanguage, isAdmin, hasFamily, isPremium);
     await ctx.reply(message, {
       parse_mode: 'Markdown',
-      reply_markup: {
-        keyboard: mainMenuKeyboard,
-        resize_keyboard: true,
-        one_time_keyboard: false
-      }
+      reply_markup: await this.mainKeyboardMarkup(user.id, userLanguage)
+    });
+  }
+
+  // Reply-клавиатура главного меню (кнопка семейной траты — только премиум с семьёй)
+  async mainKeyboardMarkup(userId, userLanguage) {
+    let showFamilyExpense = false;
+    try {
+      const isPremium = await this.premiumService.isPremiumUser(userId);
+      showFamilyExpense = isPremium && !!(await this.familyService.getUserFamily(userId));
+    } catch (error) {
+      // В случае ошибки показываем базовое меню
+    }
+    return {
+      keyboard: this.keyboardGenerators.generateMainMenuKeyboard(userLanguage, showFamilyExpense),
+      resize_keyboard: true,
+      one_time_keyboard: false
+    };
+  }
+
+  // Отправить актуальную reply-клавиатуру (например, если у пользователя осталась старая)
+  async sendMainKeyboard(ctx, userLanguage) {
+    await ctx.reply(this.localizationService.getText(userLanguage, 'keyboard_refreshed'), {
+      reply_markup: await this.mainKeyboardMarkup(ctx.from.id, userLanguage)
     });
   }
 
   async help(ctx) {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
-    
-    const message = this.localizationService.getText(userLanguage, 'help_message');
-
-    await ctx.reply(message, { parse_mode: 'Markdown' });
-  }
-
-  async total(ctx) {
-    try {
-      const userId = ctx.from.id;
-      const userLanguage = await this.userService.getUserLanguage(userId);
-      const { total, userCurrency } = await this.expenseService.getMonthlyStats(userId);
-      let message;
-      if (Array.isArray(total.byCurrency) && total.byCurrency.length > 1) {
-        // Используем formatStats для вывода по всем валютам
-        message = await this.formatter.formatStats(total, [], userCurrency, 'месяц', this.localizationService, userLanguage);
-      } else {
-        const monthlyStatsText = this.localizationService.getText(userLanguage, 'monthly_stats');
-        const totalSpentText = this.localizationService.getText(userLanguage, 'total_spent', { amount: this.formatter.formatAmount(total.total, total.currency || 'RUB') });
-        const recordsCountText = this.localizationService.getText(userLanguage, 'records_count', { count: total.count });
-        
-        message = `${monthlyStatsText}\n\n${totalSpentText}\n${recordsCountText}`;
+    const t = (key) => this.localizationService.getText(userLanguage, key);
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
+    await respond(ctx, t('help_message'), {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: t('button_bug_report'), callback_data: 'bug_report' }],
+          [{ text: t('button_back'), callback_data: 'back_to_menu' }]
+        ]
       }
-      await ctx.reply(message, { parse_mode: 'Markdown' });
-    } catch (error) {
-      console.error('Error in total command:', error);
-      const errorText = this.localizationService.getText(userLanguage, 'error');
-      await ctx.reply(errorText);
-    }
+    });
   }
 
-  async dailyHistory(ctx) {
-    try {
-      const userId = ctx.from.id;
-      const userLanguage = await this.userService.getUserLanguage(userId);
-      
-      
-      
-      const { total, expenses, userCurrency } = await this.expenseService.getDailyStats(userId);
-      const userTimezone = await this.userService.getUserTimezone(userId);
-      let message = await this.formatter.formatStats(total, [], userCurrency, 'день', this.localizationService, userLanguage) + '\n' + this.formatter.formatExpenseList(expenses, userTimezone, this.localizationService, userLanguage);
-      
-      const editText = this.localizationService.getText(userLanguage, 'button_edit');
-      const backText = this.localizationService.getText(userLanguage, 'button_back');
-      
-      const isPremium = await this.premiumService.isPremiumUser(userId);
-      const keyboardRow = isPremium
-        ? [{ text: editText, callback_data: 'edit_history' }, { text: backText, callback_data: 'back_to_menu' }]
-        : [{ text: backText, callback_data: 'back_to_menu' }];
-      
-      await ctx.reply(message, { parse_mode: 'Markdown', reply_markup: {
-        inline_keyboard: [
-          keyboardRow
-        ]
-      } });
-    } catch (error) {
-      console.error('Error in history command:', error);
-      const errorText = this.localizationService.getText(userLanguage, 'error');
-      await ctx.reply(errorText);
-    }
-  }
-
-  async stats(ctx) {
-    try {
-      const userId = ctx.from.id;
-      const userLanguage = await this.userService.getUserLanguage(userId);
-      
-      
-      
-      const { total, categoryStats, userCurrency } = await this.expenseService.getMonthlyStats(userId);
-      
-      const message = await this.formatter.formatStats(total, categoryStats, userCurrency, 'месяц', this.localizationService, userLanguage);
-      
-      const backText = this.localizationService.getText(userLanguage, 'button_back');
-      const isPremium = await this.premiumService.isPremiumUser(userId);
-      
-      await ctx.reply(message, { parse_mode: 'Markdown' , reply_markup: {
-        inline_keyboard: [
-          [{ text: backText, callback_data: 'back_to_menu' }]
-        ]
-      } });
-    } catch (error) {
-      console.error('Error in stats command:', error);
-      const errorText = this.localizationService.getText(userLanguage || 'en', 'error');
-      await ctx.reply(errorText);
-    }
-  }
 
   async exportData(ctx) {
     let userLanguage = 'en'; // fallback язык
@@ -263,70 +198,67 @@ class CommandHandlers {
     }
   }
 
-  async categories(ctx) {
-    let userLanguage = 'en'; // fallback язык
-    try {
-      const userId = ctx.from.id;
-      userLanguage = await this.userService.getUserLanguage(userId);
-      
-      
-      
-      const categories = await this.expenseService.getCategories(userId, this.localizationService, userLanguage);
-
-      if (!categories.length) {
-        const noCategoriesText = this.localizationService.getText(userLanguage, 'no_categories');
-        return await ctx.reply(noCategoriesText);
-      }
-
-      // Формируем inline-клавиатуру
-      const keyboard = categories.map(cat => [
-        { text: `${cat.icon} ${cat.name}`, callback_data: `show_category|${cat.id}` }
-      ]);
-      
-      const backText = this.localizationService.getText(userLanguage, 'button_back');
-      keyboard.push([{ text: backText, callback_data: 'back_to_menu' }]);
-
-      const selectCategoryText = this.localizationService.getText(userLanguage, 'select_category');
-      await ctx.reply(selectCategoryText, {
-        reply_markup: {
-          inline_keyboard: keyboard
-        }
-      });
-    } catch (error) {
-      console.error('Error in categories command:', error);
-      const errorText = this.localizationService.getText(userLanguage, 'error');
-      await ctx.reply(errorText);
-    }
-  }
 
   async currency(ctx) {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
-    
-
-    
     const message = this.localizationService.getText(userLanguage, 'currency_select');
-    const currencyKeyboard = require('../utils/constants').generateCurrencyKeyboard(this.localizationService, userLanguage);
-    await ctx.reply(message, {
-      reply_markup: {
-        inline_keyboard: currencyKeyboard
-      }
-    });
+    const currencyKeyboard = require('../utils/constants').generateCurrencyKeyboard(this.localizationService, userLanguage, 'set_currency', 'settings_currencies');
+    await respond(ctx, message, { reply_markup: { inline_keyboard: currencyKeyboard } });
   }
 
   async settings(ctx) {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
-    
-    // Получаем состояние напоминалок
-    const reminderSettings = await this.userService.getReminderSettings(userId);
-    
-    const settingsTitle = this.localizationService.getText(userLanguage, 'settings_title');
-    const settingsKeyboard = require('../utils/constants').generateSettingsKeyboard(this.localizationService, userLanguage, reminderSettings.reminder_enabled);
-    
-    await ctx.reply(settingsTitle, {
+    const t = (key, params) => this.localizationService.getText(userLanguage, key, params);
+
+    const [currency, incomeCurrency, timezone, periodStartDay, reminders] = await Promise.all([
+      this.userService.getUserCurrency(userId),
+      this.incomeService.getIncomeCurrency(userId),
+      this.userService.getUserTimezone(userId),
+      this.userService.getUserPeriodStartDay(userId),
+      this.userService.getReminderSettings(userId)
+    ]);
+    const language = this.localizationService.getLanguageInfo(userLanguage);
+    const reminderHours = (Array.isArray(reminders.reminder_hours) ? [...reminders.reminder_hours] : [10, 14, 18])
+      .sort((a, b) => a - b).map(h => `${String(h).padStart(2, '0')}:00`).join(', ');
+
+    const lines = [
+      `⚙️ *${t('settings_header')}*`,
+      '',
+      t('settings_currency_line', { currency, incomeCurrency }),
+      t('settings_timezone_line', { timezone }),
+      t('settings_language_line', { language: `${language.flag} ${language.name}` }),
+      t('settings_period_line', { day: periodStartDay }),
+      reminders.reminder_enabled
+        ? t('settings_reminders_on_line', { hours: reminderHours || '—' })
+        : t('settings_reminders_off_line')
+    ];
+
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
+    await respond(ctx, lines.join('\n'), {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: this.keyboardGenerators.generateSettingsKeyboard(userLanguage) }
+    });
+  }
+
+  // Экран валют: основная (траты и итоги) и валюта дохода по умолчанию
+  async settingsCurrencies(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const t = (key, params) => this.localizationService.getText(userLanguage, key, params);
+    const [currency, incomeCurrency] = await Promise.all([
+      this.userService.getUserCurrency(userId),
+      this.incomeService.getIncomeCurrency(userId)
+    ]);
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
+    await respond(ctx, t('settings_currencies_text', { currency, incomeCurrency }), {
+      parse_mode: 'Markdown',
       reply_markup: {
-        inline_keyboard: settingsKeyboard
+        inline_keyboard: [
+          [{ text: t('button_change_currency'), callback_data: 'change_currency' }, { text: t('button_income_currency'), callback_data: 'change_income_currency' }],
+          [{ text: t('button_back'), callback_data: 'back_to_settings' }]
+        ]
       }
     });
   }
@@ -340,7 +272,7 @@ class CommandHandlers {
     // ставим состояние ожидания ввода числа
     this.stateService.setUserState(userId, 'setting_period_start');
     
-    await ctx.reply(prompt, {
+    await respond(ctx, prompt, {
       reply_markup: {
         inline_keyboard: [[{ text: backText, callback_data: 'back_to_settings' }]]
       }
@@ -356,7 +288,7 @@ class CommandHandlers {
     const languageSelectText = this.localizationService.getText(userLanguage, 'language_select');
     const keyboard = this.localizationService.getLanguageKeyboardLocalized(userLanguage);
     
-    await ctx.reply(languageSelectText, {
+    await respond(ctx, languageSelectText, {
       reply_markup: {
         inline_keyboard: keyboard
       }
@@ -375,7 +307,7 @@ class CommandHandlers {
     
     const message = this.localizationService.getText(userLanguage, 'timezone_setup', { utcTime: utcTimeString });
     
-    await ctx.reply(message, {
+    await respond(ctx, message, {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: generateTimeKeyboard(this.localizationService, userLanguage)
@@ -395,16 +327,14 @@ class CommandHandlers {
       // Проверяем премиум статус пользователя
       const isPremium = await this.premiumService.isPremiumUser(userId);
       if (!isPremium) {
-        const premiumRequiredText = this.localizationService.getText(userLanguage, 'premium_required');
-        const upgradeText = this.localizationService.getText(userLanguage, 'upgrade_to_premium');
-        const message = `${premiumRequiredText}\n\n${upgradeText}`;
-        
-        const backText = this.localizationService.getText(userLanguage, 'button_back');
-        await ctx.reply(message, {
+        // Тизер вместо тупика: что даёт семья и кнопка перейти к премиуму
+        const t = (key) => this.localizationService.getText(userLanguage, key);
+        await respond(ctx, t('family_teaser'), {
           parse_mode: 'Markdown',
           reply_markup: {
             inline_keyboard: [
-              [{ text: backText, callback_data: 'back_to_menu' }]
+              [{ text: t('button_try_premium'), callback_data: 'premium_subscription' }],
+              [{ text: t('button_back'), callback_data: 'back_to_menu' }]
             ]
           }
         });
@@ -422,8 +352,9 @@ class CommandHandlers {
         // Пользователь уже в семье
         const isOwner = userFamily.owner_id === userId;
         const familyInfoText = this.localizationService.getText(userLanguage, 'family_info');
-        const familyName = userFamily.name;
-        const ownerName = userFamily.owner_username || userFamily.owner_first_name || 'Unknown';
+        // Имена пользовательские: экранируем, иначе "_" в username ломает Markdown и сообщение не отправится
+        const familyName = this.formatter.escapeMarkdown(userFamily.name);
+        const ownerName = this.formatter.escapeMarkdown(userFamily.owner_username || userFamily.owner_first_name || 'Unknown');
         
         const familyLabelText = this.localizationService.getText(userLanguage, 'family_label');
         const ownerLabelText = this.localizationService.getText(userLanguage, 'family_owner_label');
@@ -441,12 +372,9 @@ class CommandHandlers {
           const deleteText = this.localizationService.getText(userLanguage, 'delete_family');
           
           keyboard = [
-            [{ text: membersText, callback_data: 'family_members' }],
-            [{ text: inviteText, callback_data: 'family_invite' }],
-            [{ text: activeInvitationsText, callback_data: 'family_active_invitations' }],
-            [{ text: statsText, callback_data: 'family_stats' }],
-            [{ text: dailyStatsText, callback_data: 'family_daily_history' }],
-            [{ text: exportText, callback_data: 'family_export' }],
+            [{ text: membersText, callback_data: 'family_members' }, { text: inviteText, callback_data: 'family_invite' }],
+            [{ text: activeInvitationsText, callback_data: 'family_active_invitations' }, { text: statsText, callback_data: 'family_stats' }],
+            [{ text: dailyStatsText, callback_data: 'family_daily_history' }, { text: exportText, callback_data: 'family_export' }],
             [{ text: addExpenseText, callback_data: 'family_add_expense' }],
             [{ text: deleteText, callback_data: 'family_delete' }]
           ];
@@ -459,10 +387,8 @@ class CommandHandlers {
           const addExpenseText = this.localizationService.getText(userLanguage, 'family_add_expense');
           
           keyboard = [
-            [{ text: statsText, callback_data: 'family_stats' }],
-            [{ text: dailyStatsText, callback_data: 'family_daily_history' }],
-            [{ text: exportText, callback_data: 'family_export' }],
-            [{ text: addExpenseText, callback_data: 'family_add_expense' }],
+            [{ text: statsText, callback_data: 'family_stats' }, { text: dailyStatsText, callback_data: 'family_daily_history' }],
+            [{ text: exportText, callback_data: 'family_export' }, { text: addExpenseText, callback_data: 'family_add_expense' }],
             [{ text: leaveText, callback_data: 'family_leave' }]
           ];
         }
@@ -472,11 +398,10 @@ class CommandHandlers {
         const createText = this.localizationService.getText(userLanguage, 'create_family');
         const joinText = this.localizationService.getText(userLanguage, 'join_family');
         
-        message = `${familyInfoText}\n\nВыберите действие:`;
+        message = familyInfoText;
         
         keyboard = [
-          [{ text: createText, callback_data: 'family_create' }],
-          [{ text: joinText, callback_data: 'family_join' }]
+          [{ text: createText, callback_data: 'family_create' }, { text: joinText, callback_data: 'family_join' }]
         ];
       }
       
@@ -484,7 +409,7 @@ class CommandHandlers {
       const backText = this.localizationService.getText(userLanguage, 'button_back');
       keyboard.push([{ text: backText, callback_data: 'back_to_menu' }]);
       
-      await ctx.reply(message, {
+      await respond(ctx, message, {
         parse_mode: 'Markdown',
         reply_markup: {
           inline_keyboard: keyboard
@@ -534,7 +459,7 @@ class CommandHandlers {
       const familyStatsMessage = `${message}`;
       
       const backText = this.localizationService.getText(userLanguage, 'button_back');
-      await ctx.reply(familyStatsMessage, {
+      await respond(ctx, familyStatsMessage, {
         parse_mode: 'Markdown',
         reply_markup: {
           inline_keyboard: [
@@ -544,58 +469,6 @@ class CommandHandlers {
       });
     } catch (error) {
       console.error('Error in familyStats command:', error);
-      const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
-      const errorText = this.localizationService.getText(userLanguage, 'error');
-      await ctx.reply(errorText);
-    }
-  }
-
-  async familyDailyHistory(ctx) {
-    try {
-      const userId = ctx.from.id;
-      const userLanguage = await this.userService.getUserLanguage(userId);
-      const userCurrency = await this.userService.getUserCurrency(userId);
-      
-      // Проверяем премиум статус
-      const isPremium = await this.premiumService.isPremiumUser(userId);
-      if (!isPremium) {
-        const premiumRequiredText = this.localizationService.getText(userLanguage, 'premium_required');
-        await ctx.reply(premiumRequiredText, { parse_mode: 'Markdown' });
-        return;
-      }
-      
-      // Получаем информацию о семье пользователя
-      const userFamily = await this.familyService.getUserFamily(userId);
-      if (!userFamily) {
-        const notFamilyMemberText = this.localizationService.getText(userLanguage, 'not_family_member');
-        await ctx.reply(notFamilyMemberText, { parse_mode: 'Markdown' });
-        return;
-      }
-      
-      // Получаем дневную статистику семьи
-      const userTimezone = await this.userService.getUserTimezone(userId);
-      const { total, expenses } = await this.familyService.getFamilyDailyStats(userFamily.id, userTimezone);
-      
-      // Формируем сообщение
-
-      const statsMessage = await this.formatter.formatStats(total, [], userCurrency, 'день', this.localizationService, userLanguage);
-      const expensesList = this.formatter.formatExpenseList(expenses, userTimezone, this.localizationService, userLanguage);
-      
-      const message = `${statsMessage}\n${expensesList}`;
-      
-      const editText = this.localizationService.getText(userLanguage, 'button_edit');
-      const backText = this.localizationService.getText(userLanguage, 'button_back');
-      
-      await ctx.reply(message, { 
-        parse_mode: 'Markdown', 
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: editText, callback_data: 'edit_family_history' }, { text: backText, callback_data: 'family_menu' }]
-          ]
-        }
-      });
-    } catch (error) {
-      console.error('Error in familyDailyHistory command:', error);
       const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
       const errorText = this.localizationService.getText(userLanguage, 'error');
       await ctx.reply(errorText);
@@ -662,31 +535,23 @@ class CommandHandlers {
     
     // Получаем информацию о статусе пользователя
     const limitsInfo = await this.premiumService.getLimitsInfo(userId);
+    await this.funnelService.track(userId, 'paywall_viewed');
     const status = limitsInfo.isPremium ? 
       this.localizationService.getText(userLanguage, 'status_premium') : 
       this.localizationService.getText(userLanguage, 'status_regular');
     
-    // Формируем детальную информацию о лимитах
-    const recordsUsage = this.localizationService.getText(userLanguage, 'records_usage', { 
-      current: limitsInfo.currentCount, 
-      max: limitsInfo.maxCount, 
-      percentage: limitsInfo.percentage 
+    const maxDescriptionLength = this.localizationService.getText(userLanguage, 'max_description_length', {
+      length: limitsInfo.maxDescriptionLength
     });
-    const recordsRemaining = this.localizationService.getText(userLanguage, 'records_remaining', { 
-      remaining: limitsInfo.remaining 
-    });
-    const maxDescriptionLength = this.localizationService.getText(userLanguage, 'max_description_length', { 
-      length: limitsInfo.maxDescriptionLength 
-    });
-    
+
     // Формируем сообщение о статусе
     const subscriptionTitle = this.localizationService.getText(userLanguage, 'premium_subscription_title');
     const statusHeader = this.localizationService.getText(userLanguage, 'premium_status_header');
     const privileges = this.localizationService.getText(userLanguage, 'premium_privileges', { status });
     const menuTitle = this.localizationService.getText(userLanguage, 'premium_menu_title');
     const benefits = this.localizationService.getText(userLanguage, 'premium_benefits');
-    
-          let message = `${subscriptionTitle}\n\n${statusHeader}\n- ${privileges}\n- ${recordsUsage}\n- ${recordsRemaining}\n- ${maxDescriptionLength}`;
+
+    let message = `${subscriptionTitle}\n\n${statusHeader}\n- ${privileges}\n- ${maxDescriptionLength}`;
       
       // Добавляем информацию о дате истечения премиума
       if (limitsInfo.isPremium && limitsInfo.premiumExpiresAt) {
@@ -695,6 +560,14 @@ class CommandHandlers {
           days: limitsInfo.daysRemaining
         });
         message += `\n\n${expiryInfo}`;
+      }
+
+      // Подписка с автопродлением: когда следующее списание и как отменить
+      const subscription = await this.userService.getActiveRecurringSubscription(userId);
+      if (subscription) {
+        message += `\n\n${this.localizationService.getText(userLanguage, 'subscription_active_info', {
+          date: this.formatter.formatDate(subscription.subscription_expires_at, userTimezone)
+        })}`;
       }
       
       message += `\n\n${benefits}\n\n${menuTitle}`;
@@ -716,7 +589,7 @@ class CommandHandlers {
       [{ text: backButton, callback_data: 'back_to_menu' }]
     ];
     
-    await ctx.reply(message, {
+    await respond(ctx, message, {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: inlineKeyboard
@@ -724,44 +597,15 @@ class CommandHandlers {
     });
   }
 
-
-
+  // «☰ Ещё»: редкие разделы (семья, подписка, экспорт, настройки, справка, админка)
   async mainMenu(ctx) {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
-    
-    // Проверяем, является ли пользователь админом
     const isAdmin = await this.userService.isUserAdmin(userId);
-    
-    const message = this.localizationService.getText(userLanguage, 'main_menu_title');
-    
-    const inlineMainMenu = this.keyboardGenerators.generateInlineMainMenu(userLanguage, isAdmin);
-    
-    // Условная кнопка: "Добавить семейную трату"
-    // Показываем только если пользователь премиум и состоит в семье
-    try {
-      const isPremium = await this.premiumService.isPremiumUser(userId);
-      const userFamily = await this.familyService.getUserFamily(userId);
-      if (isPremium && userFamily) {
-        const addExpenseText = this.localizationService.getText(userLanguage, 'family_add_expense');
-        const addExpenseButtonRow = [{ text: addExpenseText, callback_data: 'family_add_expense' }];
-        // Вставляем рядом с пунктом семейного меню, если он есть; иначе добавляем в конец
-        const familyRowIndex = inlineMainMenu.findIndex(row => Array.isArray(row) && row.some(btn => btn && btn.callback_data === 'family'));
-        if (familyRowIndex >= 0) {
-          inlineMainMenu.splice(familyRowIndex + 1, 0, addExpenseButtonRow);
-        } else {
-          inlineMainMenu.push(addExpenseButtonRow);
-        }
-      }
-    } catch (e) {
-      // В случае ошибки условий просто показываем базовое меню
-    }
-    
-    await ctx.reply(message, {
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
+    await respond(ctx, this.localizationService.getText(userLanguage, 'more_menu_title'), {
       parse_mode: 'Markdown',
-      reply_markup: {
-        inline_keyboard: inlineMainMenu
-      }
+      reply_markup: { inline_keyboard: this.keyboardGenerators.generateMoreMenu(userLanguage, isAdmin) }
     });
   }
 }

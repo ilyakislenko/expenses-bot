@@ -1,6 +1,6 @@
 module.exports = {
     button_reminders: '🔔 Me rappeler',
-    reminders_enabled: 'Rappels activés. Si tu n’as rien enregistré avant 18h00, je te le rappellerai avec humour 😉',
+    reminders_enabled: '🔔 Rappels activés',
     reminders_disabled: 'Rappels désactivés. Silence total 🤐',
     reminder_sample_variants: [
       '👋 Hé ! Si ton portefeuille se tait, ça ne veut pas dire qu’il est heureux. Enregistre tes dépenses 😉',
@@ -192,96 +192,28 @@ module.exports = {
     save: 'Enregistrer',
     
     // Message de démarrage
-    start_message: `Bonjour ! 👋 Je vais t’aider à suivre tes dépenses et gérer ton budget.
-  
-  *Comment ajouter une dépense :*
-  Écris simplement le montant et la description :
-  -  \`200 courses au supermarché\`
-  -  \`1500 déjeuner au restaurant\`
-  -  \`50 transport\`
-  -  \`150,50 café\`
-  
-  Ensuite, un menu de catégories apparaîtra - choisis celle qui convient 🏷️
-  
-  *Commandes principales :*
-  /start - redémarrer le bot
-  /menu - ouvrir le menu interactif
-  /history - dernières entrées du jour
-  /stats - statistiques détaillées par catégorie
-  
-  /export - télécharger les données en CSV
-  /undo - annuler la dernière entrée
-  
-  *Paramètres :*
-  /settings - ouvrir les paramètres
-  /currency - définir la devise par défaut
-  /timezone - définir le fuseau horaire
-  /categories - gérer les catégories
-  
-  *Fonctions supplémentaires :*
-  /family - budget familial
-  /limits - limites et fonctions premium
-  /help - aide détaillée
-  
-  Commence à enregistrer tes dépenses ! 💰`,
-  help_message: `📋 *Aide détaillée sur les commandes*
-  
-  *Ajout de dépenses :*
-  Écris le montant et la description séparés par un espace :
-  \`200 courses\` - affichera un menu des catégories
-  \`150,50 café\` - prend en charge les nombres à virgule
-  
-  *Commandes principales :*
-  /start - redémarrer le bot et afficher l’accueil
-  /menu - ouvrir le menu interactif avec toutes les fonctions
-  /history - afficher les entrées d’aujourd’hui
-  /stats - statistiques détaillées du mois par catégorie
-  
-  /export - télécharger toutes les données au format CSV
-  /undo - annuler la dernière entrée ajoutée
-  
-  *Paramètres et gestion :*
-  /settings - ouvrir le menu principal des paramètres
-  /currency - changer la devise par défaut (RUB, USD, EUR, KZT, CNY, THB)
-  /timezone - régler le fuseau horaire pour une bonne précision
-  /categories - gérer des catégories personnalisées (premium)
-  
-  *Budget familial :*
-  /family - gérer les groupes familiaux et les dépenses communes
-  - Créer une famille, inviter des membres
-  - Suivi et statistiques des dépenses communes
-  - Exportation des données familiales
-  
-  *Fonctions premium :*
-  /limits - information sur les limites et le premium
-  - Catégories personnalisées
-  - Statistiques avancées
-  - Budget familial
-  - Support prioritaire
-  
-  *Conseils d’utilisation :*
-  • Utilise des descriptions pour mieux comprendre les dépenses
-  • Consulte régulièrement les statistiques via /stats
-  • Règle ton fuseau horaire pour une précision optimale
-  • Utilise /menu pour un accès rapide aux fonctions
-  • Exporte tes données via /export pour analyser
-  
-  *Modification des dépenses :*
-  • Dans /history tu peux supprimer ou éditer les entrées
-  • Le bouton "👨‍👩‍👧‍👦 En famille" déplace une dépense au budget familial
-  • Le bouton "🚫 Retirer du budget familial" la remet en dépenses personnelles
-  • Tu ne peux modifier/supprimer que tes propres dépenses
-  
-  *Rappels :*
-  • Le bot rappelle à 18h00 heure locale d’enregistrer tes dépenses
-  • Uniquement si tu n’as rien saisi dans la journée
-  • Rappels activables/désactivables dans les paramètres
-  • Un seul rappel max par jour
-  
-  *Support :*
-  Si tu as une question, utilise /start pour revenir au menu principal.
-  
-  Bonne gestion de budget ! 💰📊`,
+    start_message: `Bonjour ! 👋 Je vais t'aider à suivre tes dépenses et tes revenus.
+
+*Dépense* — écris simplement le montant et la description : \`250 café\`, \`1500 déjeuner\`.
+Une autre devise marche aussi : \`20 USD taxi\`, ou juste un montant : \`300\`.
+*Revenu* — avec un plus : \`+50000 salaire\`.
+
+Choisis une catégorie une fois — je m'en souviendrai la prochaine fois.
+Le menu est en bas : aperçu du mois, entrées du jour, revenus, dépenses récurrentes (loyer, abonnements) et «☰ Plus».`,
+
+    start_returning: '👋 Content de te revoir ! Envoie une dépense en message — `250 café`. Le menu est sur le clavier ci-dessous.',
+  help_message: `❓ *Mode d'emploi*
+
+• \`250 café\` — dépense. Choisis une catégorie une fois, je m'en souviendrai
+• \`20 USD taxi\` — dépense dans une autre devise, \`300\` — sans description
+• \`+50000 salaire\` — revenu (\`+1000 USD\` — dans une autre devise)
+• Sous une nouvelle entrée : ↩️ annuler, 🏷 changer de catégorie
+• 📊 *Aperçu du mois* — dépenses, revenus, solde, catégories ; ◀️ — périodes précédentes
+• 📅 *Aujourd'hui* — entrées du jour ; touche un numéro pour modifier ou supprimer une entrée
+• 🔁 *Dépenses récurrentes* — le loyer et les abonnements sont enregistrés automatiquement chaque mois
+• Devises, rappels (jusqu'à 3 par jour) et début de période — dans ☰ Plus → ⚙️ Paramètres
+
+Commandes : /stats /history /income /recurring /export /settings /menu`,
   
     // Dépenses
     expense_added: '✅ Enregistré : {amount} - {description}',
@@ -442,18 +374,14 @@ module.exports = {
     status_regular: '👤 Standard',
     status_premium: '💎 Premium',
     status_label: '*Statut :* {status}',
-    records_usage: '<b>Entrées :</b> {current}/{max} ({percentage}%)',
-    records_remaining: '<b>Restantes :</b> {remaining} entrées',
     max_description_length: '<b>Longueur max. de description :</b> {length} caractères',
-    near_limit_warning: '⚠️ *Attention :* Vous approchez du nombre maximal d’entrées.',
-    limit_reached: '❌ *Limite d’entrées atteinte !*',
-    premium_benefits: `💎 <b>Avantages premium :</b>
+    premium_benefits: `💎 <b>Avantages premium :</b>
   • 160 caractères dans la description (au lieu de 80)
-  • 300 entrées (au lieu de 100)
   • Jusqu’à 5 catégories personnalisées
-  • Statistiques avancées
   • Budget familial
-  • Modification et suppression de n’importe quelle dépense (pas seulement la dernière)`,
+  • Modification du montant et de la description de n’importe quelle entrée
+
+  L’enregistrement des dépenses et des revenus est gratuit et illimité.`,
     
     // Abonnement premium
     premium_subscription_title: '⭐️ Abonnement',
@@ -466,7 +394,7 @@ module.exports = {
     premium_donate_button: '🤝 Faire un don',
     premium_back_button: '⬅️ Retour',
     premium_tariffs_title: '⭐️ Tarifs (Telegram Stars)',
-    premium_payment_info: '💳 Paiement avec Telegram Stars — la monnaie interne de Telegram. <b>Pas de renouvellement automatique.</b>',
+    premium_payment_info: '💳 Paiement avec Telegram Stars — la monnaie interne de Telegram. 🔁 Le forfait mensuel se renouvelle automatiquement ; annulez-le dans Telegram : Paramètres → Mes étoiles → Mes abonnements. Les forfaits de 3, 6 et 12 mois sont des paiements uniques.',
     premium_renewal_info: '📅 Renouvelable à tout moment. Les jours seront ajoutés à la durée restante.',
     premium_stars_info: '💡 Achetez des étoiles sans commission via le bot officiel [@PremiumBot].',
     premium_why_paid_title: '👀 Pourquoi payant ?',
@@ -510,10 +438,9 @@ module.exports = {
     error_too_long_premium: '❌ Description trop longue ! Max. 160 caractères pour les premium.',
     error_no_description: '❌ Vous devez saisir une description après le montant.',
     error_amount: '❌ Montant invalide. Entrez un nombre entre 0.01 et 999999.',
-    error_format: '❌ Format invalide. Écrivez montant et description.\nEx : `200 courses` ou `1500 déjeuner au café`',
+    error_format: '❌ Je n\'ai pas compris. Commence par un montant : `250 café`, `20 USD taxi` ou juste `300`.',
     error_forbidden_content: '❌ Contenu interdit.',
-    error_limit_reached: '❌ Limite atteinte !\nStandard : 100 entrées\nPremium : 300 entrées\n\n💎 Passez en premium pour plus de limites !',
-    error_premium_required: '💎 Cette fonction est réservée aux premium !\n\nAvantages :\n• 160 caractères description\n• 300 entrées\n• Catégories personnalisées\n• Statistiques avancées',
+    error_premium_required: '💎 Cette fonction est réservée aux premium.\n\nPremium vous offre :\n• 160 caractères dans la description (au lieu de 80)\n• Catégories personnalisées\n• Budget familial\n• Modification des entrées',
     error_generic: '❌ Erreur. Réessayez plus tard ou contactez un admin.',
     
     // Boutons
@@ -563,7 +490,6 @@ module.exports = {
     edit_format_error: 'Format invalide.',
     
     // Réponses callback
-    callback_limit_reached: '❌ Limite d’entrées atteinte',
     callback_button_not_found: '❌ Erreur : bouton introuvable',
     callback_data_not_found: '❌ Erreur : données introuvables',
     callback_expense_added: '✅ Ajouté à la catégorie "{category}"',
@@ -603,5 +529,106 @@ module.exports = {
     custom_categories_list_title: 'Vos catégories personnalisées :',
     custom_categories_delete: '🗑️ Supprimer',
     custom_categories_deleted: '✅ Catégorie supprimée.',
-    custom_categories_premium_required: '💎 Cette fonctionnalité est réservée aux premium.'
+    custom_categories_premium_required: '💎 Cette fonctionnalité est réservée aux premium.',
+
+    // Income
+    button_income: '💵 Revenus',
+    button_add_income: '➕ Ajouter un revenu',
+    button_income_currency: '💱 Devise des revenus',
+    income_menu_title: '💵 *Revenus de la période en cours*',
+    income_menu_empty: 'Aucun revenu pour cette période.',
+    income_currency_label: 'Devise de revenu par défaut : *{currency}*',
+    income_hint: '💡 Méthode rapide : envoie un message commençant par plus — `+50000 salaire` ou `+1000 USD freelance`',
+    income_enter_prompt: 'Saisis le montant et la description du revenu 👇\n\nExemple : `50000 salaire`\nDevise par défaut — *{currency}*. Tu peux en indiquer une autre avec un code après le montant : `1000 USD freelance`',
+    income_added: '✅ Revenu enregistré : *{amount}* — {description}',
+    income_default_description: 'Revenu',
+    income_deleted: '✅ Revenu supprimé',
+    income_not_found: '❌ Revenu introuvable',
+    income_currency_select: 'Choisis la devise dans laquelle tu es habituellement payé. Les dépenses restent dans ta devise principale :',
+    income_currency_set: '✅ Devise des revenus : {currency}',
+    income_total: '💵 Revenus : *{amount}*',
+    balance_label: '⚖️ Solde (revenus − dépenses) : *{amount}*',
+    income_error_format: '❌ Je n\'ai pas compris. Envoie un montant et une description facultative : `50000 salaire` ou `1000 USD freelance`',
+    income_error_amount: '❌ Montant invalide. Saisis un nombre de 0.01 à {max}.',
+
+    // Recurring expenses
+    button_recurring: '🔁 Dépenses récurrentes',
+    button_add_recurring: '➕ Ajouter une dépense récurrente',
+    recurring_menu_title: '🔁 *Dépenses récurrentes*',
+    recurring_menu_info: 'Les paiements mensuels (loyer, abonnements, crédits) sont enregistrés automatiquement comme dépenses le jour du mois choisi.',
+    recurring_menu_empty: 'Aucune dépense récurrente pour le moment.',
+    recurring_item: '{icon} {description} — *{amount}*, le {day} de chaque mois\n    Prochain enregistrement : {next}',
+    recurring_monthly_total: 'Total par mois : *{amount}*',
+    recurring_enter_prompt: 'Saisis le montant et la description de la dépense récurrente 👇\n\nExemple : `50000 loyer`\nTu peux indiquer une devise après le montant : `500 USD loyer`',
+    recurring_day_prompt: 'Quel jour de chaque mois dois-je enregistrer cette dépense ? Saisis un nombre de 1 à 31.\n\nSi un mois est plus court, je l\'enregistrerai le dernier jour du mois.',
+    recurring_day_invalid: '❌ Saisis un nombre entier de 1 à 31.',
+    recurring_select_category: 'Choisis une catégorie pour la dépense récurrente :',
+    recurring_added: '✅ Dépense récurrente ajoutée\n\n{description} — *{amount}*, le {day} de chaque mois\nPremier enregistrement : {next}',
+    recurring_added_charged_now: '✅ Dépense récurrente ajoutée et déjà enregistrée pour ce mois\n\n{description} — *{amount}*, le {day} de chaque mois\nProchain enregistrement : {next}',
+    recurring_deleted: '✅ Dépense récurrente supprimée. Les dépenses déjà enregistrées restent dans l\'historique.',
+    recurring_not_found: '❌ Dépense récurrente introuvable',
+    recurring_limit: '❌ Tu peux avoir au maximum {max} dépenses récurrentes',
+    recurring_charged_notification: '🔁 Dépense récurrente enregistrée : {icon} {description} — *{amount}*',
+    recurring_error_format: '❌ Format non reconnu. Envoie un montant et une description : `50000 loyer` ou `500 USD loyer`',
+    recurring_error_amount: '❌ Montant invalide. Saisis un nombre de 0.01 à {max}.',
+
+    // Main menu and «More»
+    button_overview: '📊 Aperçu du mois',
+    button_today: '📅 Aujourd\'hui',
+    button_more: '☰ Plus',
+    more_menu_title: '☰ *Plus*',
+    button_export: '📤 Export CSV',
+    keyboard_refreshed: '✅ Le menu est mis à jour — il est plus compact maintenant 👇',
+    button_outdated: 'Ce bouton est obsolète. Rouvre la section depuis le menu ci-dessous.',
+    overview_title: 'Aperçu : {range}',
+    overview_spent: '💸 Dépenses : *{amount}* · entrées : {count}',
+    overview_upcoming: 'Récurrentes à venir :',
+    overview_income_hint: '💡 Enregistre un revenu avec un plus : `+50000 salaire`',
+    button_prev_period: '◀️ Avant',
+    button_next_period: 'Après ▶️',
+    button_back_to_overview: '⬅️ Vers l\'aperçu',
+    day_title_today: 'Aujourd\'hui, {date}',
+    day_title_yesterday: 'Hier, {date}',
+    day_title: '{date}',
+    day_entry_hint: 'Envoie une dépense en message : `250 café`',
+    button_prev_day: '◀️ Jour précédent',
+    button_next_day: 'Jour suivant ▶️',
+    list_tap_number: 'Touche un numéro pour ouvrir l\'entrée.',
+    family_today_title: 'Famille : entrées du jour',
+    button_undo: '↩️ Annuler',
+    button_delete_record: '🗑 Supprimer',
+    button_change_category: '🏷 Catégorie',
+    button_edit_record: '✏️ Modifier',
+    expense_family_label: 'dans le budget familial',
+    expense_recurring_label: 'enregistrée automatiquement (dépense récurrente)',
+    expense_category_remembered: '🏷 La catégorie vient de ton entrée précédente avec la même description — change-la avec le bouton ci-dessous.',
+    category_will_be_remembered: '💡 Je retiens ton choix : la prochaine fois, une telle entrée ira directement dans cette catégorie.',
+    expense_category_changed: 'Catégorie : {category}',
+    settings_header: 'Paramètres',
+    settings_currency_line: '💱 Devise : *{currency}* · revenus : *{incomeCurrency}*',
+    settings_timezone_line: '🌍 Fuseau horaire : {timezone}',
+    settings_language_line: '🌐 Langue : {language}',
+    settings_period_line: '📅 La période commence le jour {day}',
+    settings_reminders_on_line: '🔔 Rappels : activés ({hours})',
+    settings_reminders_off_line: '🔔 Rappels : désactivés',
+    button_currencies: '💱 Devises',
+    settings_currencies_text: '💱 *Devises*\n\nPrincipale — les dépenses et tous les totaux y sont calculés : *{currency}*\nDevise des revenus par défaut : *{incomeCurrency}*\n\nToute entrée peut être dans une autre devise — mets le code après le montant : `20 USD taxi`.',
+    reminders_title: 'Rappels',
+    reminders_info: 'Si tu n\'as rien enregistré à l\'heure choisie, je te le rappellerai. Au maximum 3 fois par jour.',
+    button_reminders_on: '🟢 Activé — touche pour désactiver',
+    button_reminders_off: '⚫ Désactivé — touche pour activer',
+    family_teaser: '👨‍👩‍👧‍👦 *Budget familial*\n\nLes dépenses communes avec tes proches au même endroit : chacun enregistre les siennes, les statistiques et l\'export sont partagés.\n\nDisponible avec premium.',
+    button_try_premium: '⭐️ Essayer premium',
+
+    // Subscription and premium ending
+    subscription_active_info: '🔁 L’abonnement mensuel est payé jusqu’au {date} et se renouvelle automatiquement. Pour l’annuler : Telegram → Paramètres → Mes étoiles → Mes abonnements.',
+    subscription_renewed: '🔁 Abonnement renouvelé. Premium actif jusqu’au {date}.',
+    button_view_tariffs: '⭐️ Tarifs',
+    premium_expiring_trial: '⏳ Votre essai premium se termine le {date}.\n\nEnsuite, les catégories personnalisées, le budget familial et la modification des entrées ne fonctionneront plus. Tout ce que vous avez enregistré est conservé, et le suivi des dépenses est gratuit.',
+    premium_expiring_paid: '⏳ Premium se termine le {date}. Vous pouvez renouveler à l’avance — les jours restants sont conservés.',
+    premium_expired_trial: '🌙 Votre essai premium est terminé. Le suivi des dépenses et des revenus reste gratuit ; les catégories personnalisées, la famille et la modification des entrées sont inclus avec premium.',
+    premium_expired_paid: '🌙 Premium est terminé. Merci de soutenir le projet ! Vous pouvez renouveler à tout moment.',
+    premium_winback: '👋 Votre premium a pris fin il y a une semaine. Si vous voulez retrouver les catégories personnalisées, le budget familial et la modification des entrées — consultez les tarifs ci-dessous.',
+    start_reminders_note: '🔔 Si vous n’enregistrez rien pendant la journée, je vous le rappellerai (jusqu’à 3 fois par jour). Modifier les heures ou désactiver : ☰ Plus → ⚙️ Paramètres → 🔔.',
+    per_month: 'par mois'
 };

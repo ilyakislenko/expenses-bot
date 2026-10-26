@@ -266,7 +266,9 @@ class UserService {
           invoice_payload: transactionData.invoice_payload || null,
           previous_expiry_date: previousExpiryDate,
           new_expiry_date: newExpiryDate,
-          status: 'completed'
+          status: 'completed',
+          is_recurring: transactionData.is_recurring === true,
+          subscription_expires_at: transactionData.subscription_expires_at || null
         });
       }
       
@@ -399,6 +401,11 @@ class UserService {
    */
   async transactionExists(telegramPaymentId) {
     return this.premiumTransactionRepository.transactionExists(telegramPaymentId);
+  }
+
+  // Подписка Stars с автопродлением, по которой оплачен текущий период: { subscription_expires_at } или null
+  async getActiveRecurringSubscription(userId) {
+    return this.premiumTransactionRepository.getActiveRecurringSubscription(userId);
   }
 
   async getPremiumStatus(userId) {

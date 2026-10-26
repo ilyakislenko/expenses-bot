@@ -33,6 +33,10 @@ const FamilyInvitationRepository = require('./repositories/FamilyInvitationRepos
 const PremiumTransactionRepository = require('./repositories/PremiumTransactionRepository');
 const DonationRepository = require('./repositories/DonationRepository');
 const BugReportRepository = require('./repositories/BugReportRepository');
+const IncomeRepository = require('./repositories/IncomeRepository');
+const RecurringExpenseRepository = require('./repositories/RecurringExpenseRepository');
+const FunnelRepository = require('./repositories/FunnelRepository');
+const UserNotificationRepository = require('./repositories/UserNotificationRepository');
 
 // Services
 const ExpenseService = require('./services/ExpenseService');
@@ -44,23 +48,30 @@ const FamilyService = require('./services/FamilyService');
 const NotificationService = require('./services/NotificationService');
 const CategoryService = require('./services/CategoryService');
 const AdminService = require('./services/AdminService');
+const IncomeService = require('./services/IncomeService');
+const RecurringExpenseService = require('./services/RecurringExpenseService');
+const FunnelService = require('./services/FunnelService');
+const PremiumLifecycleService = require('./services/PremiumLifecycleService');
 
 // Handlers
 const CommandHandlers = require('./handlers/commands');
 const MessageHandlers = require('./handlers/messages');
 const CallbackHandlers = require('./handlers/callbacks');
 const AdminHandlers = require('./handlers/AdminHandlers');
+const IncomeHandlers = require('./handlers/IncomeHandlers');
+const RecurringExpenseHandlers = require('./handlers/RecurringExpenseHandlers');
+const ExpenseHandlers = require('./handlers/ExpenseHandlers');
 
 // State management
 const StateService = require('./services/StateService');
 
 // Constants and utilities
-const { 
-  generateMainMenuKeyboard, 
-  generateInlineMainMenu, 
-  generateCurrencyKeyboard, 
-  generateSettingsKeyboard, 
-  generateTimeKeyboard 
+const {
+  generateMainMenuKeyboard,
+  generateMoreMenu,
+  generateCurrencyKeyboard,
+  generateSettingsKeyboard,
+  generateTimeKeyboard
 } = require('./utils/constants');
 
 class Container {
@@ -105,6 +116,12 @@ class Container {
       case 'bugReportRepository':
         return new BugReportRepository();
 
+      case 'incomeRepository':
+        return new IncomeRepository();
+
+      case 'recurringExpenseRepository':
+        return new RecurringExpenseRepository();
+
       case 'currencyUtils':
         return createCurrencyUtils(this.get('currencyRepository'));
 
@@ -134,12 +151,30 @@ class Container {
       case 'stateService':
         return new StateService();
 
+      case 'funnelRepository':
+        return new FunnelRepository();
+
+      case 'userNotificationRepository':
+        return new UserNotificationRepository();
+
+      case 'funnelService':
+        return new FunnelService(this.get('funnelRepository'));
+
+      case 'premiumLifecycleService':
+        return new PremiumLifecycleService(
+          this.get('userNotificationRepository'),
+          this.get('notificationService'),
+          this.get('localizationService'),
+          this.get('formatter')
+        );
+
       case 'expenseService':
         return new ExpenseService(
           this.get('expenseRepository'),
           this.get('userRepository'),
           this.get('categoryRepository'),
-          this.get('premiumService')
+          this.get('premiumService'),
+          this.get('funnelService')
         );
 
           case 'userService':
@@ -152,13 +187,12 @@ class Container {
       case 'premiumService':
         return new PremiumService(
           this.get('userRepository'),
-          this.get('expenseRepository'),
           this.get('userService')
         );
 
       case 'paymentService':
         // Создаем PaymentService с отложенной инициализацией бота
-        const paymentService = new PaymentService(this.get('donationRepository'), this.get('localizationService'));
+        const paymentService = new PaymentService(this.get('donationRepository'), this.get('localizationService'), this.get('funnelService'));
         // Устанавливаем бота позже, когда он будет создан
         if (this.instances.has('bot')) {
           paymentService.setBot(this.get('bot'));
@@ -201,6 +235,21 @@ class Container {
           this.get('localizationService')
         );
 
+      case 'incomeService':
+        return new IncomeService(
+          this.get('incomeRepository'),
+          this.get('userRepository')
+        );
+
+      case 'recurringExpenseService':
+        return new RecurringExpenseService(
+          this.get('recurringExpenseRepository'),
+          this.get('userRepository'),
+          this.get('notificationService'),
+          this.get('localizationService'),
+          this.get('formatter')
+        );
+
       case 'commandHandlers':
         return new CommandHandlers({
           expenseService: this.get('expenseService'),
@@ -211,7 +260,9 @@ class Container {
           formatter: this.get('formatter'),
           stateService: this.get('stateService'),
           keyboardGenerators: this.get('keyboardGenerators'),
-          paymentService: this.get('paymentService')
+          paymentService: this.get('paymentService'),
+          incomeService: this.get('incomeService'),
+          funnelService: this.get('funnelService')
         });
 
       case 'messageHandlers':
@@ -229,7 +280,10 @@ class Container {
           paymentService: this.get('paymentService'),
           donationRepository: this.get('donationRepository'),
           bugReportRepository: this.get('bugReportRepository'),
-          adminHandlers: this.get('adminHandlers')
+          adminHandlers: this.get('adminHandlers'),
+          incomeHandlers: this.get('incomeHandlers'),
+          recurringExpenseHandlers: this.get('recurringExpenseHandlers'),
+          expenseHandlers: this.get('expenseHandlers')
         });
 
       case 'callbackHandlers':
@@ -245,7 +299,8 @@ class Container {
           userService: this.get('userService'),
           commandHandlers: this.get('commandHandlers'),
           keyboardGenerators: this.get('keyboardGenerators'),
-          donationRepository: this.get('donationRepository')
+          donationRepository: this.get('donationRepository'),
+          funnelService: this.get('funnelService')
         });
 
       case 'adminHandlers':
@@ -254,8 +309,47 @@ class Container {
           this.get('userService'),
           this.get('localizationService'),
           this.get('formatter'),
-          this.get('stateService')
+          this.get('stateService'),
+          this.get('funnelService')
         );
+
+      case 'expenseHandlers':
+        return new ExpenseHandlers({
+          expenseService: this.get('expenseService'),
+          incomeService: this.get('incomeService'),
+          recurringExpenseService: this.get('recurringExpenseService'),
+          familyService: this.get('familyService'),
+          premiumService: this.get('premiumService'),
+          userService: this.get('userService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter'),
+          stateService: this.get('stateService'),
+          validator: this.get('enhancedValidator')
+        });
+
+      case 'incomeHandlers':
+        return new IncomeHandlers({
+          incomeService: this.get('incomeService'),
+          expenseService: this.get('expenseService'),
+          userService: this.get('userService'),
+          premiumService: this.get('premiumService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter'),
+          stateService: this.get('stateService'),
+          validator: this.get('enhancedValidator')
+        });
+
+      case 'recurringExpenseHandlers':
+        return new RecurringExpenseHandlers({
+          recurringExpenseService: this.get('recurringExpenseService'),
+          expenseService: this.get('expenseService'),
+          userService: this.get('userService'),
+          premiumService: this.get('premiumService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter'),
+          stateService: this.get('stateService'),
+          validator: this.get('enhancedValidator')
+        });
 
       case 'bot':
         const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -285,10 +379,10 @@ class Container {
 
       case 'keyboardGenerators':
         return {
-          generateMainMenuKeyboard: (userLanguage, isAdmin = false, hasFamily = false, isPremium = false) => generateMainMenuKeyboard(this.get('localizationService'), userLanguage, isAdmin, hasFamily, isPremium),
-          generateInlineMainMenu: (userLanguage, isAdmin = false) => generateInlineMainMenu(this.get('localizationService'), userLanguage, isAdmin),
+          generateMainMenuKeyboard: (userLanguage, showFamilyExpense = false) => generateMainMenuKeyboard(this.get('localizationService'), userLanguage, showFamilyExpense),
+          generateMoreMenu: (userLanguage, isAdmin = false) => generateMoreMenu(this.get('localizationService'), userLanguage, isAdmin),
           generateCurrencyKeyboard: (userLanguage) => generateCurrencyKeyboard(this.get('localizationService'), userLanguage),
-          generateSettingsKeyboard: (userLanguage, reminderEnabled) => generateSettingsKeyboard(this.get('localizationService'), userLanguage, reminderEnabled),
+          generateSettingsKeyboard: (userLanguage) => generateSettingsKeyboard(this.get('localizationService'), userLanguage),
           generateTimeKeyboard: (userLanguage) => generateTimeKeyboard(this.get('localizationService'), userLanguage)
         };
 
@@ -305,6 +399,12 @@ class Container {
       messageHandlers: this.get('messageHandlers'),
       callbackHandlers: this.get('callbackHandlers'),
       adminHandlers: this.get('adminHandlers'),
+      incomeHandlers: this.get('incomeHandlers'),
+      recurringExpenseHandlers: this.get('recurringExpenseHandlers'),
+      expenseHandlers: this.get('expenseHandlers'),
+      recurringExpenseService: this.get('recurringExpenseService'),
+      premiumLifecycleService: this.get('premiumLifecycleService'),
+      funnelService: this.get('funnelService'),
       stateService: this.get('stateService'),
       expenseService: this.get('expenseService'),
       userService: this.get('userService'),
