@@ -56,7 +56,7 @@ module.exports = {
     button_clear: '清除',
     
     // 支付支持与政策
-    paysupport_message: '*支付支持*\n\n商家：{businessName}\n支持：@{supportUsername} / {supportEmail}\n\n服务条款：{termsUrl}\n隐私政策：{privacyUrl}\n退款政策：{refundPolicyUrl}\n\n如遇 Stars 支付或退款问题，请先联系支持。我们遵守 Telegram Stars 政策。',
+    paysupport_message: '支付支持\n\n商家：{businessName}\n支持：@{supportUsername} / {supportEmail}\n\n服务条款：{termsUrl}\n隐私政策：{privacyUrl}\n退款政策：{refundPolicyUrl}\n\n如遇 Stars 支付或退款问题，请先联系支持。我们遵守 Telegram Stars 政策。',
     terms_message: '📄 服务条款：{termsUrl}',
     privacy_message: '🔐 隐私政策：{privacyUrl}',
     refund_message: '↩️ 退款政策：{refundPolicyUrl}\n\n如有问题：@{supportUsername} / {supportEmail}',

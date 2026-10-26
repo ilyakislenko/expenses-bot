@@ -56,7 +56,7 @@ module.exports = {
     button_clear: 'クリア',
     
     // 支払いサポートとポリシー
-    paysupport_message: '*支払いサポート*\n\n事業者: {businessName}\nサポート: @{supportUsername} / {supportEmail}\n\n利用規約: {termsUrl}\nプライバシー: {privacyUrl}\n返金ポリシー: {refundPolicyUrl}\n\nStarsの支払い・返金に関する問題は、まずサポートにご連絡ください。Telegram Starsのポリシーに準拠しています。',
+    paysupport_message: '支払いサポート\n\n事業者: {businessName}\nサポート: @{supportUsername} / {supportEmail}\n\n利用規約: {termsUrl}\nプライバシー: {privacyUrl}\n返金ポリシー: {refundPolicyUrl}\n\nStarsの支払い・返金に関する問題は、まずサポートにご連絡ください。Telegram Starsのポリシーに準拠しています。',
     terms_message: '📄 利用規約: {termsUrl}',
     privacy_message: '🔐 プライバシーポリシー: {privacyUrl}',
     refund_message: '↩️ 返金ポリシー: {refundPolicyUrl}\n\nお問い合わせ: @{supportUsername} / {supportEmail}',

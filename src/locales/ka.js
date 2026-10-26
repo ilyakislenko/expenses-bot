@@ -56,7 +56,7 @@ module.exports = {
     button_clear: 'გასუფთავება',
     
     // გადახდის მხარდაჭერა და პოლიტიკები
-    paysupport_message: '*გადახდის მხარდაჭერა*\n\nკომპანია: {businessName}\nმხარდაჭერა: @{supportUsername} / {supportEmail}\n\nწესები: {termsUrl}\nკონფიდენციალურობა: {privacyUrl}\nდაბრუნების პოლიტიკა: {refundPolicyUrl}\n\nStars გადახდებთან/დაბრუნებებთან დაკავშირებით ჯერ მოგვწერეთ მხარდაჭერაში. Telegram Stars პოლიტიკებს ვასრულებთ.',
+    paysupport_message: 'გადახდის მხარდაჭერა\n\nკომპანია: {businessName}\nმხარდაჭერა: @{supportUsername} / {supportEmail}\n\nწესები: {termsUrl}\nკონფიდენციალურობა: {privacyUrl}\nდაბრუნების პოლიტიკა: {refundPolicyUrl}\n\nStars გადახდებთან/დაბრუნებებთან დაკავშირებით ჯერ მოგვწერეთ მხარდაჭერაში. Telegram Stars პოლიტიკებს ვასრულებთ.',
     terms_message: '📄 მომსახურების პირობები: {termsUrl}',
     privacy_message: '🔐 კონფიდენციალურობის პოლიტიკა: {privacyUrl}',
     refund_message: '↩️ დაბრუნების პოლიტიკა: {refundPolicyUrl}\n\nკითხვები: @{supportUsername} / {supportEmail}',

@@ -56,7 +56,7 @@ module.exports = {
     button_clear: 'Temizle',
     
     // Ödeme desteği ve politikalar
-    paysupport_message: '*Ödeme desteği*\n\nİşletme: {businessName}\nDestek: @{supportUsername} / {supportEmail}\n\nŞartlar: {termsUrl}\nGizlilik: {privacyUrl}\nİade politikası: {refundPolicyUrl}\n\nStars ödemeleri/iade konularında önce destek ile iletişime geçin. Telegram Stars politikalarına uyuyoruz.',
+    paysupport_message: 'Ödeme desteği\n\nİşletme: {businessName}\nDestek: @{supportUsername} / {supportEmail}\n\nŞartlar: {termsUrl}\nGizlilik: {privacyUrl}\nİade politikası: {refundPolicyUrl}\n\nStars ödemeleri/iade konularında önce destek ile iletişime geçin. Telegram Stars politikalarına uyuyoruz.',
     terms_message: '📄 Hizmet şartları: {termsUrl}',
     privacy_message: '🔐 Gizlilik politikası: {privacyUrl}',
     refund_message: '↩️ İade politikası: {refundPolicyUrl}\n\nSorular: @{supportUsername} / {supportEmail}',

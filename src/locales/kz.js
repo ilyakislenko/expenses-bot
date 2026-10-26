@@ -38,7 +38,7 @@ module.exports = {
     button_clear: 'Тазалау',
     
     // Төлемге қолдау және саясаттар
-    paysupport_message: '*Төлем бойынша қолдау*\n\nКомпания: {businessName}\nҚолдау: @{supportUsername} / {supportEmail}\n\nШарттар: {termsUrl}\nҚұпиялылық: {privacyUrl}\nҚайтарым саясаты: {refundPolicyUrl}\n\nStars төлемдері/қайтарымдары бойынша сұрақтар болса, алдымен қолдауға жазыңыз. Telegram Stars ережелерін сақтаймыз.',
+    paysupport_message: 'Төлем бойынша қолдау\n\nКомпания: {businessName}\nҚолдау: @{supportUsername} / {supportEmail}\n\nШарттар: {termsUrl}\nҚұпиялылық: {privacyUrl}\nҚайтарым саясаты: {refundPolicyUrl}\n\nStars төлемдері/қайтарымдары бойынша сұрақтар болса, алдымен қолдауға жазыңыз. Telegram Stars ережелерін сақтаймыз.',
     terms_message: '📄 Қызмет көрсету шарттары: {termsUrl}',
     privacy_message: '🔐 Құпиялылық саясаты: {privacyUrl}',
     refund_message: '↩️ Қайтарым саясаты: {refundPolicyUrl}\n\nСұрақтар: @{supportUsername} / {supportEmail}',

@@ -56,7 +56,7 @@ module.exports = {
     button_clear: 'Limpiar',
     
     // Soporte de pagos y políticas
-    paysupport_message: '*Soporte de pagos*\n\nEmpresa: {businessName}\nSoporte: @{supportUsername} / {supportEmail}\n\nTérminos: {termsUrl}\nPrivacidad: {privacyUrl}\nReembolsos: {refundPolicyUrl}\n\nPara pagos con Stars y reembolsos, contacta primero con soporte. Cumplimos las políticas de Telegram Stars.',
+    paysupport_message: 'Soporte de pagos\n\nEmpresa: {businessName}\nSoporte: @{supportUsername} / {supportEmail}\n\nTérminos: {termsUrl}\nPrivacidad: {privacyUrl}\nReembolsos: {refundPolicyUrl}\n\nPara pagos con Stars y reembolsos, contacta primero con soporte. Cumplimos las políticas de Telegram Stars.',
     terms_message: '📄 Términos del servicio: {termsUrl}',
     privacy_message: '🔐 Política de privacidad: {privacyUrl}',
     refund_message: '↩️ Política de reembolsos: {refundPolicyUrl}\n\nDudas: @{supportUsername} / {supportEmail}',

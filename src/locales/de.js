@@ -56,7 +56,7 @@ module.exports = {
     button_clear: 'Zurücksetzen',
     
     // Zahlungs-Support und Richtlinien
-    paysupport_message: '*Zahlungssupport*\n\nUnternehmen: {businessName}\nSupport: @{supportUsername} / {supportEmail}\n\nAGB: {termsUrl}\nDatenschutz: {privacyUrl}\nRückerstattungen: {refundPolicyUrl}\n\nBei Fragen zu Stars-Zahlungen oder Rückerstattungen wenden Sie sich bitte zuerst an den Support. Wir erfüllen die Telegram Stars-Richtlinien.',
+    paysupport_message: 'Zahlungssupport\n\nUnternehmen: {businessName}\nSupport: @{supportUsername} / {supportEmail}\n\nAGB: {termsUrl}\nDatenschutz: {privacyUrl}\nRückerstattungen: {refundPolicyUrl}\n\nBei Fragen zu Stars-Zahlungen oder Rückerstattungen wenden Sie sich bitte zuerst an den Support. Wir erfüllen die Telegram Stars-Richtlinien.',
     terms_message: '📄 Nutzungsbedingungen: {termsUrl}',
     privacy_message: '🔐 Datenschutzerklärung: {privacyUrl}',
     refund_message: '↩️ Rückerstattungsrichtlinie: {refundPolicyUrl}\n\nFragen: @{supportUsername} / {supportEmail}',
