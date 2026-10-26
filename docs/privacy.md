@@ -1,7 +1,7 @@
 # SpendTracker — Политика конфиденциальности / Privacy Policy
 
 ## Русский
-Редакция от 26.10.2026. Бот SpendTracker (@ExpensesAssistant_bot). Контакт: ikis.dev01@gmail.com, в боте — /paysupport.
+Редакция от 26.10.2026. Оператор персональных данных — ИП KISLENKO (Республика Казахстан), ИИН 010320550645. Бот SpendTracker (@ExpensesAssistant_bot). Контакт: ikis.dev01@gmail.com, в боте — /paysupport.
 
 ## Какие данные бот хранит
 - Из Telegram: ID, имя, username, язык.
@@ -27,7 +27,7 @@
 О существенных изменениях сообщим в боте. Актуальная версия — по команде /privacy.
 
 ## English
-Version of 26.10.2026. SpendTracker bot (@ExpensesAssistant_bot). Contact: ikis.dev01@gmail.com, in the bot — /paysupport.
+Version of 26.10.2026. Data controller: IE KISLENKO (Republic of Kazakhstan), IIN 010320550645. SpendTracker bot (@ExpensesAssistant_bot). Contact: ikis.dev01@gmail.com, in the bot — /paysupport.
 
 ## What the bot stores
 - From Telegram: ID, name, username, language.
