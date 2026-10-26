@@ -91,11 +91,14 @@ class ExpenseService {
     return this.expenseRepository.deleteLastExpense(userId);
   }
 
-  async exportExpenses(userId) {
-    const expenses = await this.expenseRepository.exportExpenses(userId);
-    const userCurrency = await this.userRepository.getUserCurrency(userId);
-    const userTimezone = await this.userRepository.getUserTimezone(userId);
-    return { expenses, userCurrency, userTimezone };
+  // Траты для экспорта: period = null — за всё время, categoryIds = null — все категории
+  async getExpensesForExport(userId, timezone, period, categoryIds = null) {
+    const expenses = period
+      ? await this.getExpenses(userId, timezone, period)
+      : await this.expenseRepository.getAllExpenses(userId);
+    if (!categoryIds) return expenses;
+    const selected = new Set(categoryIds);
+    return expenses.filter(expense => selected.has(expense.category_id));
   }
 
   async getCategories(userId, localizationService = null, userLanguage = 'ru') {

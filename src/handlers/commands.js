@@ -1,6 +1,7 @@
 const respond = require('../utils/respond');
 const FunnelService = require('../services/FunnelService');
 const { getTimezoneDisplayName } = require('../utils/timezoneCalculator');
+const { summaryHour } = require('../services/DailySummaryService');
 
 class CommandHandlers {
   constructor({ expenseService, userService, premiumService, familyService, localizationService, formatter, stateService, keyboardGenerators, paymentService, incomeService, funnelService }) {
@@ -146,36 +147,6 @@ class CommandHandlers {
   }
 
 
-  async exportData(ctx) {
-    let userLanguage = 'en'; // fallback язык
-    try {
-      const userId = ctx.from.id;
-      userLanguage = await this.userService.getUserLanguage(userId);
-      const { expenses, userCurrency, userTimezone } = await this.expenseService.exportExpenses(userId);
-      if (expenses.length === 0) {
-        const noDataText = this.localizationService.getText(userLanguage, 'no_expenses_period');
-        return await ctx.reply(noDataText);
-      }
-      const csv = await this.formatter.formatCSV(expenses, userCurrency, userTimezone, this.localizationService, userLanguage);
-      const filename = `expenses_${new Date().toISOString().split('T')[0]}.csv`;
-      
-      const exportSuccessText = this.localizationService.getText(userLanguage, 'export_success');
-      const recordsCountText = this.localizationService.getText(userLanguage, 'records_count', { count: expenses.length });
-      const caption = `${exportSuccessText}\n${recordsCountText}`;
-      
-      await ctx.replyWithDocument({
-        source: Buffer.from(csv, 'utf-8'),
-        filename
-      }, {
-        caption: caption
-      });
-    } catch (error) {
-      console.error('Error in export command:', error);
-      const exportErrorText = this.localizationService.getText(userLanguage, 'export_error');
-      await ctx.reply(exportErrorText);
-    }
-  }
-
   async undo(ctx) {
     let userLanguage = 'en'; // fallback язык
     try {
@@ -233,7 +204,10 @@ class CommandHandlers {
       t('settings_period_line', { day: periodStartDay }),
       reminders.reminder_enabled
         ? t('settings_reminders_on_line', { hours: reminderHours || '—' })
-        : t('settings_reminders_off_line')
+        : t('settings_reminders_off_line'),
+      reminders.daily_summary_enabled
+        ? t('settings_daily_summary_on_line', { time: `${String(summaryHour(reminders.daily_summary_hour)).padStart(2, '0')}:00` })
+        : t('settings_daily_summary_off_line')
     ];
 
     if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});

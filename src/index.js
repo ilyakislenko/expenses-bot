@@ -35,7 +35,8 @@ async function startApplication() {
       handlers.notificationService,
       handlers.recurringExpenseService,
       handlers.premiumLifecycleService,
-      handlers.reportService
+      handlers.reportService,
+      handlers.dailySummaryService
     );
     logger.startup('Cron jobs configured');
 

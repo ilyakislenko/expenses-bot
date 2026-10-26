@@ -1,5 +1,5 @@
 module.exports = function registerBotRoutes(bot, handlers) {
-  const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, stateService } = handlers;
+  const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, stateService } = handlers;
   const { BACK_VIEW_PATTERN } = require('./handlers/ExpenseHandlers');
 
   // Импортируем middleware для автоматической очистки состояний
@@ -15,7 +15,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.command('total', errorHandler((ctx) => expenseHandlers.showOverview(ctx, 0))); // обзор текущего периода
   bot.command('categories', errorHandler((ctx) => expenseHandlers.showOverview(ctx, 0))); // категории — в обзоре
   bot.command('history', errorHandler((ctx) => expenseHandlers.showDay(ctx, 0, 0))); // записи за сегодня
-  bot.command('export', errorHandler((ctx) => commandHandlers.exportData(ctx))); // экспорт данных в CSV
+  bot.command('export', errorHandler((ctx) => exportHandlers.open(ctx))); // экспорт CSV: период и фильтр
   bot.command('undo', errorHandler((ctx) => commandHandlers.undo(ctx))); // отмена последней записи
   bot.command('currency', errorHandler((ctx) => commandHandlers.currency(ctx))); // основная валюта
   bot.command('timezone', errorHandler((ctx) => commandHandlers.timezone(ctx))); // часовой пояс
@@ -102,10 +102,15 @@ module.exports = function registerBotRoutes(bot, handlers) {
     await ctx.answerCbQuery();
     await commandHandlers.family(ctx);
   }));
-  bot.action('export', errorHandler(async (ctx) => {
-    await ctx.answerCbQuery();
-    await commandHandlers.exportData(ctx);
-  }));
+  // Экспорт CSV
+  bot.action('export', errorHandler((ctx) => exportHandlers.open(ctx)));
+  bot.action('xp_menu', errorHandler((ctx) => exportHandlers.showMenu(ctx)));
+  bot.action(/^xp\|(day|week|cur|prev|all)$/, errorHandler((ctx) => exportHandlers.exportPeriod(ctx, ctx.match[1])));
+  bot.action('xp_range', errorHandler((ctx) => exportHandlers.showRangeInput(ctx)));
+  bot.action('xp_cats', errorHandler((ctx) => exportHandlers.showCategories(ctx)));
+  bot.action(/^xp_cat\|(\d+)$/, errorHandler((ctx) => exportHandlers.toggleCategory(ctx, Number(ctx.match[1]))));
+  bot.action(/^xp_cats_all\|([01])$/, errorHandler((ctx) => exportHandlers.setAllCategories(ctx, ctx.match[1] === '1')));
+  bot.action('xp_cats_done', errorHandler((ctx) => exportHandlers.categoriesDone(ctx)));
   bot.action('limits', errorHandler(async (ctx) => {
     await ctx.answerCbQuery();
     await commandHandlers.premiumSubscription(ctx);
@@ -153,6 +158,9 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^toggle_reminder_hour\|(\d{1,2})$/, errorHandler((ctx) => callbackHandlers.handleToggleReminderHour(ctx)));
   bot.action('save_reminder_hours', errorHandler((ctx) => callbackHandlers.handleSaveReminderHours(ctx)));
   bot.action('clear_reminder_hours', errorHandler((ctx) => callbackHandlers.handleClearReminderHours(ctx)));
+  bot.action('toggle_daily_summary', errorHandler((ctx) => callbackHandlers.handleToggleDailySummary(ctx)));
+  bot.action('daily_summary_hour', errorHandler((ctx) => callbackHandlers.handleDailySummaryHour(ctx)));
+  bot.action(/^set_daily_summary_hour\|(\d{1,2})$/, errorHandler((ctx) => callbackHandlers.handleSetDailySummaryHour(ctx)));
   bot.action('bug_report', errorHandler((ctx) => callbackHandlers.handleBugReport(ctx)));
   bot.action(/^time\|/, errorHandler((ctx) => callbackHandlers.handleTimezoneSelection(ctx)));
   bot.action(/^set_language\|/, errorHandler((ctx) => callbackHandlers.handleLanguageSelection(ctx)));

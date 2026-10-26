@@ -4,6 +4,7 @@ class StateService {
     this.pendingExpenses = new Map();
     this.userStates = new Map(); // Для семейных состояний
     this.pendingRecurring = new Map(); // Черновик регулярной траты до выбора категории
+    this.exportState = new Map(); // Фильтр экспорта: { categoryIds } (null — все категории)
   }
 
   // User Edit State methods
@@ -53,6 +54,19 @@ class StateService {
     return this.pendingRecurring.delete(userId);
   }
 
+  // Export state methods
+  setExportState(userId, data) {
+    this.exportState.set(userId, data);
+  }
+
+  getExportState(userId) {
+    return this.exportState.get(userId);
+  }
+
+  deleteExportState(userId) {
+    return this.exportState.delete(userId);
+  }
+
   // User States methods (для семейных состояний)
   setUserState(userId, state) {
     this.userStates.set(userId, state);
@@ -75,6 +89,7 @@ class StateService {
     this.deleteUserEditState(userId);
     this.deletePendingExpense(userId);
     this.deletePendingRecurring(userId);
+    this.deleteExportState(userId);
     this.deleteUserState(userId);
   }
 
@@ -83,6 +98,7 @@ class StateService {
     this.userEditState.clear();
     this.pendingExpenses.clear();
     this.pendingRecurring.clear();
+    this.exportState.clear();
     this.userStates.clear();
   }
 }

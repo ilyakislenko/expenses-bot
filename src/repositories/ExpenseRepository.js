@@ -221,18 +221,14 @@ class ExpenseRepository extends BaseRepository {
     return result.rows[0];
   }
 
-  async exportExpenses(userId, format = 'csv') {
+  // Все траты пользователя без ограничения по датам (экспорт «за всё время»), формат как у getExpensesBetween
+  async getAllExpenses(userId) {
     const query = `
-      SELECT 
-        e.amount,
-        e.currency,
-        e.description,
-        c.name as category,
-        e.created_at_utc
+      SELECT e.*, c.name AS category_name, c.icon AS category_icon
       FROM expenses e
       LEFT JOIN categories c ON e.category_id = c.id
       WHERE e.user_id = $1
-      ORDER BY e.created_at_utc DESC
+      ORDER BY e.created_at_utc ASC
     `;
     const result = await this.query(query, [userId]);
     return result.rows;

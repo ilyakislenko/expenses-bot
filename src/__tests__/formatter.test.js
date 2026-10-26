@@ -158,6 +158,24 @@ describe('Formatter CSV Localization', () => {
       expect(csv).toContain('"Transport"'); // Транспорт -> Transport
       expect(csv).toContain('"Custom Category"'); // Кастомная категория остается как есть
     });
+
+    test('adds totals by category in the main currency, largest first, before totals by currency', async () => {
+      const convertingFormatter = new Formatter({
+        convert: jest.fn(async (amount, from, to) => (from === to ? amount : amount * 90))
+      });
+      const expenses = [
+        { amount: 300, currency: 'RUB', category_name: 'Transport', description: '', created_at_utc: new Date('2024-01-15T10:00:00Z') },
+        { amount: 100, currency: 'RUB', category_name: 'Food', description: '', created_at_utc: new Date('2024-01-15T12:00:00Z') },
+        { amount: '10', currency: 'USD', category_name: 'Food', description: '', created_at_utc: new Date('2024-01-15T14:00:00Z') }
+      ];
+
+      const csv = await convertingFormatter.formatCSV(expenses, 'RUB', 'UTC');
+
+      const food = `"Food: ${convertingFormatter.formatAmount(1000, 'RUB')}",,,,`;
+      const transport = `"Transport: ${convertingFormatter.formatAmount(300, 'RUB')}",,,,`;
+      expect(csv).toContain(`"Total by categories:",,,,\n${food}\n${transport}\n`);
+      expect(csv.indexOf('"Total by categories:"')).toBeLessThan(csv.indexOf('"Total by currencies:"'));
+    });
   });
 
   describe('translateCategoryName', () => {

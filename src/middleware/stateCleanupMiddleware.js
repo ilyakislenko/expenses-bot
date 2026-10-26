@@ -23,7 +23,8 @@ function stateCleanupMiddleware(handlers) {
         'inviting_member',
         'adding_income',
         'adding_recurring',
-        'adding_recurring_day'
+        'adding_recurring_day',
+        'export_date_range'
       ];
       // Состояния с параметром после двоеточия (например, setting_budget:<цель>)
       const autoResetPrefixes = ['setting_budget:'];

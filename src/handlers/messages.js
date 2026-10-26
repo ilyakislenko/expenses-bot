@@ -1,7 +1,7 @@
 const { LEGACY_MENU_BUTTON_KEYS } = require('../utils/constants');
 
 class MessageHandlers {
-constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, donationRepository, bugReportRepository, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers }) {
+constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, donationRepository, bugReportRepository, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -20,6 +20,7 @@ constructor({ expenseService, userService, premiumService, familyService, catego
     this.recurringExpenseHandlers = recurringExpenseHandlers;
     this.expenseHandlers = expenseHandlers;
     this.budgetHandlers = budgetHandlers;
+    this.exportHandlers = exportHandlers;
   }
 
   async handleExpense(ctx) {
@@ -124,6 +125,10 @@ constructor({ expenseService, userService, premiumService, familyService, catego
 
         if (typeof userState === 'string' && userState.startsWith('setting_budget:')) {
           return await this.budgetHandlers.handleAmountInput(ctx, text, userLanguage, userState.split(':')[1]);
+        }
+
+        if (userState === 'export_date_range') {
+          return await this.exportHandlers.handleRangeInput(ctx, text, userLanguage);
         }
       }
       

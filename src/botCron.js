@@ -1,6 +1,6 @@
 const currencyConfig = require('./config/currencies');
 
-module.exports = function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, recurringExpenseService, premiumLifecycleService, reportService, supportedCurrencies = currencyConfig.SUPPORTED_CURRENCIES) {
+module.exports = function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, recurringExpenseService, premiumLifecycleService, reportService, dailySummaryService, supportedCurrencies = currencyConfig.SUPPORTED_CURRENCIES) {
   // Проверяем, нужно ли обновлять курсы при запуске
   (async () => {
     try {
@@ -68,6 +68,19 @@ module.exports = function setupBotCron(cron, currencyUtils, donationRepository, 
       }
     } catch (err) {
       console.error('Ошибка при отправке итогов периода:', err);
+    }
+  });
+
+  // Ежедневная сводка: в выбранный пользователем локальный час (ровно в HH:00), по разу за день, если были траты.
+  // С напоминаниями в :00 не пересекается: те приходят только в дни без записей.
+  cron.schedule('0 * * * *', async () => {
+    try {
+      const sent = await dailySummaryService.processDue();
+      if (sent > 0) {
+        console.log(`Ежедневная сводка: отправлено ${sent}`);
+      }
+    } catch (err) {
+      console.error('Ошибка при отправке ежедневной сводки:', err);
     }
   });
 

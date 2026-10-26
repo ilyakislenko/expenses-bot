@@ -55,6 +55,7 @@ const FunnelService = require('./services/FunnelService');
 const PremiumLifecycleService = require('./services/PremiumLifecycleService');
 const BudgetService = require('./services/BudgetService');
 const ReportService = require('./services/ReportService');
+const DailySummaryService = require('./services/DailySummaryService');
 
 // Handlers
 const CommandHandlers = require('./handlers/commands');
@@ -65,6 +66,7 @@ const IncomeHandlers = require('./handlers/IncomeHandlers');
 const RecurringExpenseHandlers = require('./handlers/RecurringExpenseHandlers');
 const ExpenseHandlers = require('./handlers/ExpenseHandlers');
 const BudgetHandlers = require('./handlers/BudgetHandlers');
+const ExportHandlers = require('./handlers/ExportHandlers');
 
 // State management
 const StateService = require('./services/StateService');
@@ -199,6 +201,17 @@ class Container {
           currencyUtils: this.get('currencyUtils')
         });
 
+      case 'dailySummaryService':
+        return new DailySummaryService({
+          expenseService: this.get('expenseService'),
+          incomeService: this.get('incomeService'),
+          reportService: this.get('reportService'),
+          userNotificationRepository: this.get('userNotificationRepository'),
+          notificationService: this.get('notificationService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter')
+        });
+
       case 'expenseService':
         return new ExpenseService(
           this.get('expenseRepository'),
@@ -318,7 +331,8 @@ class Container {
           incomeHandlers: this.get('incomeHandlers'),
           recurringExpenseHandlers: this.get('recurringExpenseHandlers'),
           expenseHandlers: this.get('expenseHandlers'),
-          budgetHandlers: this.get('budgetHandlers')
+          budgetHandlers: this.get('budgetHandlers'),
+          exportHandlers: this.get('exportHandlers')
         });
 
       case 'callbackHandlers':
@@ -374,6 +388,15 @@ class Container {
           formatter: this.get('formatter'),
           stateService: this.get('stateService'),
           validator: this.get('enhancedValidator')
+        });
+
+      case 'exportHandlers':
+        return new ExportHandlers({
+          expenseService: this.get('expenseService'),
+          userService: this.get('userService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter'),
+          stateService: this.get('stateService')
         });
 
       case 'incomeHandlers':
@@ -452,7 +475,9 @@ class Container {
       recurringExpenseHandlers: this.get('recurringExpenseHandlers'),
       expenseHandlers: this.get('expenseHandlers'),
       budgetHandlers: this.get('budgetHandlers'),
+      exportHandlers: this.get('exportHandlers'),
       reportService: this.get('reportService'),
+      dailySummaryService: this.get('dailySummaryService'),
       recurringExpenseService: this.get('recurringExpenseService'),
       premiumLifecycleService: this.get('premiumLifecycleService'),
       funnelService: this.get('funnelService'),

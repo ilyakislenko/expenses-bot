@@ -1,4 +1,8 @@
 const respond = require('../utils/respond');
+const { summaryHour } = require('../services/DailySummaryService');
+
+const hourLabel = (hour) => `${String(hour).padStart(2, '0')}:00`;
+
 class CallbackHandlers {
   constructor({ expenseService, premiumService, paymentService, familyService, categoryService, localizationService, formatter, stateService, userService, commandHandlers, keyboardGenerators, donationRepository, funnelService }) {
     this.expenseService = expenseService;
@@ -30,7 +34,7 @@ class CallbackHandlers {
   async handleConfigureReminderHours(ctx) {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
-    const t = (key) => this.localizationService.getText(userLanguage, key);
+    const t = (key, params) => this.localizationService.getText(userLanguage, key, params);
     const settings = await this.userService.getReminderSettings(userId);
     const current = Array.isArray(settings.reminder_hours)
       ? [...settings.reminder_hours].sort((a,b)=>a-b)
@@ -60,12 +64,58 @@ class CallbackHandlers {
       { text: saveText, callback_data: 'save_reminder_hours' },
       { text: clearText, callback_data: 'clear_reminder_hours' }
     ]);
+    // Ежедневная сводка: вкл/выкл и её час (выбор часа — на отдельном экране)
+    keyboard.push([
+      { text: t(settings.daily_summary_enabled ? 'button_daily_summary_on' : 'button_daily_summary_off'), callback_data: 'toggle_daily_summary' },
+      { text: `🕒 ${hourLabel(summaryHour(settings.daily_summary_hour))}`, callback_data: 'daily_summary_hour' }
+    ]);
     keyboard.push([{ text: backText, callback_data: 'back_to_settings' }]);
 
     const list = current.map(h => `${h.toString().padStart(2,'0')}:00`).join(', ');
-    const newText = `🔔 *${t('reminders_title')}*\n\n${t('reminders_info')}\n\n${t('reminder_hours_info')} ${list || '-'}`;
+    const summaryLine = settings.daily_summary_enabled
+      ? t('settings_daily_summary_on_line', { time: hourLabel(summaryHour(settings.daily_summary_hour)) })
+      : t('settings_daily_summary_off_line');
+    const newText = `🔔 *${t('reminders_title')}*\n\n${t('reminders_info')}\n\n${t('reminder_hours_info')} ${list || '-'}\n\n${t('daily_summary_info')}\n${summaryLine}`;
     await ctx.answerCbQuery().catch(() => {});
     await respond(ctx, newText, { reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown' });
+  }
+
+  async handleToggleDailySummary(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const settings = await this.userService.getReminderSettings(userId);
+    const newValue = !settings.daily_summary_enabled;
+    await this.userService.setDailySummaryEnabled(userId, newValue);
+    await ctx.answerCbQuery(this.localizationService.getText(userLanguage, newValue ? 'daily_summary_enabled' : 'daily_summary_disabled'));
+    await this.handleConfigureReminderHours(ctx);
+  }
+
+  // Выбор часа ежедневной сводки: сетка 0..23, текущий час отмечен
+  async handleDailySummaryHour(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const t = (key) => this.localizationService.getText(userLanguage, key);
+    const settings = await this.userService.getReminderSettings(userId);
+    const current = summaryHour(settings.daily_summary_hour);
+    const keyboard = [];
+    for (let row = 0; row < 6; row++) {
+      keyboard.push([0, 1, 2, 3].map(col => {
+        const hour = row * 4 + col;
+        return { text: `${hour === current ? '✅' : '☐'} ${hourLabel(hour)}`, callback_data: `set_daily_summary_hour|${hour}` };
+      }));
+    }
+    keyboard.push([{ text: t('button_back'), callback_data: 'configure_reminder_hours' }]);
+    await ctx.answerCbQuery().catch(() => {});
+    await respond(ctx, `🗓 *${t('daily_summary_title')}*\n\n${t('daily_summary_hour_info')}`, { reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown' });
+  }
+
+  // Выбранный час сохраняется и включает сводку
+  async handleSetDailySummaryHour(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    await this.userService.setDailySummaryHour(userId, parseInt(ctx.callbackQuery.data.split('|')[1], 10));
+    await ctx.answerCbQuery(this.localizationService.getText(userLanguage, 'daily_summary_hour_set'));
+    await this.handleConfigureReminderHours(ctx);
   }
 
   async handleToggleReminderHour(ctx) {

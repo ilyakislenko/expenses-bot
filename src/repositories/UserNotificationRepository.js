@@ -37,6 +37,15 @@ class UserNotificationRepository extends BaseRepository {
     return result.rows;
   }
 
+  // Кандидаты для ежедневной сводки: включили её в настройках напоминаний
+  async getDailySummaryCandidates() {
+    const result = await this.query(
+      'SELECT id, language, timezone, daily_summary_hour FROM users WHERE id > 0 AND daily_summary_enabled = TRUE',
+      []
+    );
+    return result.rows;
+  }
+
   // true — уведомление ещё не отправлялось и теперь отмечено; false — уже было
   async markSent(userId, kind, refKey) {
     const result = await this.query(

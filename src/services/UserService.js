@@ -128,6 +128,15 @@ class UserService {
     return this.userRepository.setReminderSentTodayHours(userId, clean);
   }
 
+  async setDailySummaryEnabled(userId, enabled) {
+    return this.userRepository.setDailySummaryEnabled(userId, enabled);
+  }
+
+  async setDailySummaryHour(userId, hour) {
+    if (!Number.isInteger(hour) || hour < 0 || hour > 23) throw new Error('Invalid daily summary hour');
+    return this.userRepository.setDailySummaryHour(userId, hour);
+  }
+
   async setUserPeriodStartDay(userId, day) {
     if (typeof day !== 'number' || day < 1 || day > 31) {
       throw new Error('Invalid period start day');

@@ -59,6 +59,31 @@ function dayPeriod(today, offset = 0) {
   return { start, end: addDays(start, 1), last: start };
 }
 
+// Последние n дней, включая сегодня
+function lastDaysPeriod(today, n) {
+  return { start: addDays(today, 1 - n), end: addDays(today, 1), last: today };
+}
+
+function parseDmy(str) {
+  const match = str.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (!match) return null;
+  const [d, m, y] = [Number(match[1]), Number(match[2]), Number(match[3])];
+  if (y < 1900 || m < 1 || m > 12 || d < 1 || d > daysInMonth(y, m)) return null;
+  return ymd(y, m, d);
+}
+
+// Ввод пользователя "DD.MM.YYYY - DD.MM.YYYY" (или одна дата = один день) → период [start, end).
+// Ошибка: { error: 'format' } — не дата/несуществующая дата, { error: 'order' } — начало позже конца.
+function parseDateRange(text) {
+  const parts = String(text || '').trim().split(/\s*[-–—]\s*/);
+  if (parts.length > 2) return { error: 'format' };
+  const start = parseDmy(parts[0]);
+  const last = parts.length === 2 ? parseDmy(parts[1]) : start;
+  if (!start || !last) return { error: 'format' };
+  if (start > last) return { error: 'order' };
+  return { start, end: addDays(last, 1), last };
+}
+
 module.exports = {
   pad,
   ymd,
@@ -69,5 +94,7 @@ module.exports = {
   clampDay,
   localToday,
   customPeriod,
-  dayPeriod
+  dayPeriod,
+  lastDaysPeriod,
+  parseDateRange
 };

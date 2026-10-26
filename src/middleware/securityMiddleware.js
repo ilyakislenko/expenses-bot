@@ -81,8 +81,8 @@ class SecurityMiddleware {
         limitType = 'global';
     }
 
-    // Специальная проверка для экспорта
-    if (ctx.message?.text === '/export') {
+    // Специальная проверка для экспорта: лимит на формирование файла (кнопки периода xp|…)
+    if (ctx.callbackQuery?.data?.startsWith('xp|')) {
       limitType = 'export';
     }
 
