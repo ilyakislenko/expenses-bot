@@ -640,5 +640,21 @@ module.exports = {
     export_enter_dates: '🗓 日付の範囲を入力してください:\n`01.03.2026 - 15.03.2026`\n\nまたは1日のみ: `01.03.2026`',
     export_dates_invalid: '❌ 日付を読み取れませんでした。`01.03.2026 - 15.03.2026` または1日のみ `01.03.2026` の形式で入力してください。',
     export_dates_order: '❌ 開始日が終了日より後になっています。例: `01.03.2026 - 15.03.2026`',
-    total_by_categories: 'カテゴリー別合計:'
+    total_by_categories: 'カテゴリー別合計:',
+    bot_short_description: '数タップで支出を記録：「250 コーヒー」と入力するだけ。収入、予算、月次まとめ、家族の家計簿。',
+    bot_description: 'Telegramで支出と収入を管理できます。\n\n「250 コーヒー」と入力すると、支出が記録され、カテゴリーも記憶されます。\n\n• カテゴリー別の月間概要と前月との比較\n• 収入と残高：「+50000 給料」\n• 定期支出：家賃やサブスクを自動で記録\n• アラート付き予算、日次まとめ、リマインダー\n• 家族の家計簿、複数通貨、CSVエクスポート\n\n基本機能は無料です。新規ユーザーは14日間プレミアムをご利用いただけます。',
+    command_start: 'メインメニュー',
+    command_stats: '月間概要',
+    command_history: '今日の記録',
+    command_income: '収入と残高',
+    command_recurring: '定期支出',
+    command_export: 'CSVエクスポート',
+    command_family: '家族の家計簿',
+    command_settings: '設定',
+    command_limits: 'サブスクとプレミアム',
+    command_help: 'ヘルプ',
+    command_cancel: '入力をキャンセル',
+    command_paysupport: '支払いサポート',
+    command_terms: '利用規約',
+    command_privacy: 'プライバシーポリシー'
 };

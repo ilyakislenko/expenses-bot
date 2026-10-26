@@ -63,7 +63,11 @@
 | `/menu` | «☰ Ещё» |
 | `/help` | Короткая справка |
 | `/cancel` | Отменить любой ожидаемый ввод (правка записи, черновик траты, доход, бюджет, регулярная трата и т.д.) |
-| `/paysupport`, `/terms`, `/privacy`, `/refund` | Требования Telegram Payments |
+| `/paysupport`, `/terms`, `/privacy`, `/refund` | Требования Telegram Payments. Ссылки — из `.env` (`TERMS_URL`, `PRIVACY_URL`, `REFUND_POLICY_URL`, `SUPPORT_EMAIL`); тексты документов — `docs/terms.md`, `docs/privacy.md`, `docs/refund.md` (на GitHub: telegra.ph в России заблокирован) |
+
+Описание бота до `/start`, короткое описание и меню команд на всех 13 языках задаёт `node scripts/set-bot-profile.js`
+(тексты — ключи `bot_description`, `bot_short_description`, `command_*` в `src/locales`). При старте бот их не меняет;
+после правки текстов или списка команд скрипт нужно запустить заново.
 
 ## Навигация
 

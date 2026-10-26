@@ -641,5 +641,21 @@ module.exports = {
     export_enter_dates: '🗓 输入日期范围：\n`01.03.2026 - 15.03.2026`\n\n或单个日期：`01.03.2026`',
     export_dates_invalid: '❌ 无法识别日期。请按以下格式输入：`01.03.2026 - 15.03.2026` 或单个日期 `01.03.2026`。',
     export_dates_order: '❌ 开始日期晚于结束日期。示例：`01.03.2026 - 15.03.2026`。',
-    total_by_categories: '按类别总计：'
+    total_by_categories: '按类别总计：',
+    bot_short_description: '轻点几下即可记账：输入“250 咖啡”。收入、预算、月度总结、家庭预算。',
+    bot_description: '直接在 Telegram 中记录支出和收入。\n\n输入“250 咖啡”——支出即被记录，类别也会被记住。\n\n• 按类别的月度概览及与上月的对比\n• 收入和余额：“+50000 工资”\n• 定期支出：房租和订阅自动记录\n• 带预警的预算、每日总结、提醒\n• 家庭预算、多种货币、导出为 CSV\n\n基础功能免费。新用户可获得 14 天高级版。',
+    command_start: '主菜单',
+    command_stats: '月度概览',
+    command_history: '今日记录',
+    command_income: '收入和余额',
+    command_recurring: '定期支出',
+    command_export: '导出为 CSV',
+    command_family: '家庭预算',
+    command_settings: '设置',
+    command_limits: '订阅和高级版',
+    command_help: '帮助',
+    command_cancel: '取消输入',
+    command_paysupport: '支付支持',
+    command_terms: '服务条款',
+    command_privacy: '隐私政策'
 };

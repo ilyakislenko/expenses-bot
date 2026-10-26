@@ -658,5 +658,23 @@ Recording expenses and income is free and unlimited.`,
   export_enter_dates: '🗓 Enter a date range:\n`01.03.2026 - 15.03.2026`\n\nor a single date: `01.03.2026`',
   export_dates_invalid: '❌ Couldn\'t read the dates. Enter them as `01.03.2026 - 15.03.2026` or a single date `01.03.2026`.',
   export_dates_order: '❌ The start date is later than the end date. Example: `01.03.2026 - 15.03.2026`.',
-  total_by_categories: 'Total by categories:'
+  total_by_categories: 'Total by categories:',
+
+  // Bot profile in Telegram (scripts/set-bot-profile.js): description before /start, short description, command menu
+  bot_short_description: 'Track spending in a couple of taps: type "250 coffee". Income, budgets, monthly summary, family budget.',
+  bot_description: 'Expense and income tracking right in Telegram.\n\nType "250 coffee" — the expense is recorded and the category is remembered.\n\n• Month overview by category and a summary vs last month\n• Income and balance: "+50000 salary"\n• Recurring expenses: rent and subscriptions are recorded automatically\n• Budgets with alerts, daily summary, reminders\n• Family budget, multiple currencies, CSV export\n\nThe basics are free. New users get 14 days of premium.',
+  command_start: 'Main menu',
+  command_stats: 'Month overview',
+  command_history: 'Today\'s records',
+  command_income: 'Income and balance',
+  command_recurring: 'Recurring expenses',
+  command_export: 'Export to CSV',
+  command_family: 'Family budget',
+  command_settings: 'Settings',
+  command_limits: 'Subscription and premium',
+  command_help: 'Help',
+  command_cancel: 'Cancel input',
+  command_paysupport: 'Payment support',
+  command_terms: 'Terms of Service',
+  command_privacy: 'Privacy Policy'
 }; 
