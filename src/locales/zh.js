@@ -51,8 +51,8 @@ module.exports = {
     reminder_message_title: '提醒',
     reminder_turn_on_off: (enabled) => enabled ? '关闭提醒' : '开启提醒',
     button_configure_reminder_hours: '⏰ 配置提醒时间',
-    reminder_hours_info: '选择最多3个小时作为提醒时间（您的本地时区）。当前:',
-    reminder_hours_limit: '您最多可以选择3个小时',
+    reminder_hours_info: '选择最多3个小时作为提醒时间（你的本地时区）。当前:',
+    reminder_hours_limit: '你最多可以选择3个小时',
     reminder_hours_saved: '✅ 提醒时间已保存',
     button_save: '保存',
     button_clear: '清除',
@@ -549,7 +549,7 @@ module.exports = {
     income_default_description: '收入',
     income_deleted: '✅ 收入已删除',
     income_not_found: '❌ 未找到收入',
-    income_currency_select: '请选择您通常收款的货币。支出仍使用主货币：',
+    income_currency_select: '请选择你通常收款的货币。支出仍使用主货币：',
     income_currency_set: '✅ 收入货币：{currency}',
     income_total: '💵 收入：*{amount}*',
     balance_label: '⚖️ 结余（收入 − 支出）：*{amount}*',
@@ -622,7 +622,7 @@ module.exports = {
   button_reminders_on: '🟢 开启 — 点击关闭',
   button_reminders_off: '⚫ 关闭 — 点击开启',
   family_teaser: '👨‍👩‍👧‍👦 *家庭预算*\n\n与亲人的共同支出集中一处：每人记录自己的，统计和导出共享。\n\n高级版可用。',
-  button_try_premium: '⭐️ 试用高级版',
+  button_premium: '⭐️ 高级版',
     // Subscription and premium ending
     subscription_active_info: '🔁 月度订阅已支付至 {date}，并将自动续费。取消方式：Telegram → 设置 → 我的星星 → 我的订阅（英文界面：Settings → My Stars → My subscriptions）。',
     subscription_renewed: '🔁 订阅已续费。高级版有效期至 {date}。',
@@ -666,5 +666,7 @@ module.exports = {
     report_categories_gone: '本期无支出：{list}',
     report_more_numbers: '更多数据：',
     report_per_day: '📅 每日平均：{amount}',
-    report_largest: '🔝 最大一笔支出：{amount} — {description}（{date}）'
+    report_largest: '🔝 最大一笔支出：{amount} — {description}（{date}）',
+    overview_budget_limit: '限额 {amount}',
+    report_title_current: '截至目前的总结：{range}'
 };

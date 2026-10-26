@@ -3,54 +3,54 @@ module.exports = {
     reminders_enabled: '🔔 Hatırlatıcılar açık',
     reminders_disabled: 'Hatırlatıcılar kapalı. Tam sessizlik 🤐',
     reminder_sample_variants: [
-      '👋 Hey! Cüzdanın sessizse bu, onun mutlu olduğu anlamına gelmez. Harcamalarını kaydet 😉',
-'🤔 Bugün bir şey harcadın mı? Hafızan ekmek almaya gitmeden önce yaz 🧠🥖',
-'💭 Eğer kaydetmediysen — boşa gitmiş say. Hadi bunu kaydedelim 💸',
+      '👋 Merhaba! Cüzdanınız sessizse bu, onun mutlu olduğu anlamına gelmez. Harcamalarınızı kaydedin 😉',
+'🤔 Bugün bir şey harcadınız mı? Hafızanız ekmek almaya gitmeden önce yazın 🧠🥖',
+'💭 Eğer kaydetmediyseniz — boşa gitmiş sayın. Hadi bunu kaydedelim 💸',
 '🌊 Damla damla, bütçe fark etmeden akıp gider. Bugünün harcamalarını yazmak daha iyi 🌊',
 '🤖 Bot azarlamaz, sadece hatırlatır: harcamaları kaydetme zamanı 😌',
-'💡 Kuruşu korursan — liran da korunur. Not alma zamanı!',
+'💡 Kuruşu korursanız — liranız da korunur. Not alma zamanı!',
 
-'💰 Para sayımı ve sessizliği sever. Harcamalarını kaydet.',
+'💰 Para sayımı ve sessizliği sever. Harcamalarınızı kaydedin.',
 
-'💡 Boş yere harcama — önemli olana biriktir. Kayıt zamanı.',
+'💡 Boş yere harcamayın — önemli olana biriktirin. Kayıt zamanı.',
 
-'🏗️ Küçük tasarruflar — büyük işler. Şimdi bir alışveriş ekle.',
+'🏗️ Küçük tasarruflar — büyük işler. Şimdi bir alışveriş ekleyin.',
 
-'🌱 Bugün tasarruf et — yarın daha rahat nefes al. Harcamalarını kaydet.',
+'🌱 Bugün tasarruf edin — yarın daha rahat nefes alın. Harcamalarınızı kaydedin.',
 
-'🔄 Korumalı lira iki kat gelir getirir. Bir dakikada bir harcama kaydet.',
+'🔄 Korumalı lira iki kat gelir getirir. Bir dakikada bir harcama kaydedin.',
 
-'⏰ Önce biriktir — sonra harca. Not alma zamanı!',
+'⏰ Önce biriktirin — sonra harcayın. Not alma zamanı!',
 
-'🧱 Her kuruş özgürlüğün bir tuğlasıdır. Bir harcama kaydet.',
+'🧱 Her kuruş özgürlüğünüzün bir tuğlasıdır. Bir harcama kaydedin.',
 
-'🛡️ Kötü günler için önceden biriktir. Şimdi bir kayıt ekle.',
+'🛡️ Kötü günler için önceden biriktirin. Şimdi bir kayıt ekleyin.',
 
-'📈 Akıllı harcama en iyi yatırımdır. Satın alımı kaydet.',
+'📈 Akıllı harcama en iyi yatırımdır. Satın alımı kaydedin.',
 
-'🎯 Harcama kontrolü = daha az endişe. Harcamalarını kaydet.',
+'🎯 Harcama kontrolü = daha az endişe. Harcamalarınızı kaydedin.',
 
 '🚀 Daha az dürtü — daha çok fırsat. Kayıt zamanı.',
 
-'💎 Önce kendine ödeme yap. Bota bir harcama ekle.',
+'💎 Önce kendinize ödeme yapın. Bota bir harcama ekleyin.',
 
-'✂️ Kesilen gereksiz harcama = kazanılan gelir. Satın alımı kaydet.',
+'✂️ Kesilen gereksiz harcama = kazanılan gelir. Satın alımı kaydedin.',
 
-'🎪 Bütçe, seçim özgürlüğüdür. Bugünün harcamalarını kaydet.',
+'🎪 Bütçe, seçim özgürlüğüdür. Bugünün harcamalarını kaydedin.',
 
-'🌟 Birikim, geleceğine “evet” demektir. Not alma zamanı!',
+'🌟 Birikim, geleceğinize “evet” demektir. Not alma zamanı!',
 
-'⚡ Disiplin kaosu yener. Harcamayı kaydet.',
+'⚡ Disiplin kaosu yener. Harcamayı kaydedin.',
 
-'⏳ Para sessizce gider — zamanında kaydet. Şimdi bir harcama ekle.',
+'⏳ Para sessizce gider — zamanında kaydedin. Şimdi bir harcama ekleyin.',
 
-'🧘 Tutumluluk huzura giden yoldur. Satın alımı kaydet.',
+'🧘 Tutumluluk huzura giden yoldur. Satın alımı kaydedin.',
 
 '📋 Para düzeni sever. Kayıt zamanı.'
     ],
     reminder_message_title: 'Hatırlatma',
-    reminder_turn_on_off: (enabled) => enabled ? 'Hatırlatıcıları kapat' : 'Hatırlatıcıları aç',
-    button_configure_reminder_hours: '⏰ Hatırlatıcı saatlerini yapılandır',
+    reminder_turn_on_off: (enabled) => enabled ? 'Hatırlatıcıları kapatın' : 'Hatırlatıcıları açın',
+    button_configure_reminder_hours: '⏰ Hatırlatıcı saatlerini yapılandırın',
     reminder_hours_info: 'Hatırlatıcılar için 3 saate kadar seçin (yerel saat diliminiz). Mevcut:',
     reminder_hours_limit: 'Maksimum 3 saat seçebilirsiniz',
     reminder_hours_saved: '✅ Hatırlatıcı saatleri kaydedildi',
@@ -64,22 +64,22 @@ module.exports = {
     refund_message: '↩️ İade politikası: {refundPolicyUrl}\n\nSorular: @{supportUsername} / {supportEmail}',
   
     // Hata bildirimi
-    button_bug_report: '🐛 Hata bildir / İyileştirme öner',
-    bug_report_prompt: '🐛 *Hata bildir veya iyileştirme öner*\n\nLütfen sorunu veya önerini yaz (en fazla 1000 karakter):',
-    bug_report_success: '✅ Teşekkürler! Mesajın geliştiricilere iletildi.',
-    bug_report_too_long: '❌ Mesaj çok uzun! Lütfen {excess} karakter kısalt (en fazla 1000).',
-    bug_report_empty: '❌ Mesaj boş. Lütfen bir sorun veya öneri yaz.',
-    bug_report_rate_limit: '⚠️ Çok fazla hata bildirimi!\n\n10 dakikada en fazla 3 bildirim gönderebilirsin',
+    button_bug_report: '🐛 Hata bildirin / İyileştirme önerin',
+    bug_report_prompt: '🐛 *Hata bildirin veya iyileştirme önerin*\n\nLütfen sorunu veya önerinizi yazın (en fazla 1000 karakter):',
+    bug_report_success: '✅ Teşekkürler! Mesajınız geliştiricilere iletildi.',
+    bug_report_too_long: '❌ Mesaj çok uzun! Lütfen {excess} karakter kısaltın (en fazla 1000).',
+    bug_report_empty: '❌ Mesaj boş. Lütfen bir sorun veya öneri yazın.',
+    bug_report_rate_limit: '⚠️ Çok fazla hata bildirimi!\n\n10 dakikada en fazla 3 bildirim gönderebilirsiniz',
   
     // Güvenlik
-    security_rate_limit: '⚠️ *Çok fazla istek*\n\n{resetTime} saniye sonra tekrar dene\nLimit: dakikada {limit} istek',
+    security_rate_limit: '⚠️ *Çok fazla istek*\n\n{resetTime} saniye sonra tekrar deneyin\nLimit: dakikada {limit} istek',
     security_validation_error: '⚠️ *Doğrulama hatası*\n\n{message}',
-    security_error: '❌ *Güvenlik hatası*\n\nLütfen daha sonra tekrar dene veya yöneticiyle iletişime geç.',
+    security_error: '❌ *Güvenlik hatası*\n\nLütfen daha sonra tekrar deneyin veya yöneticiyle iletişime geçin.',
     
     // Admin paneli
     button_admin: '👑 Admin paneli',
-    admin_access_denied: '❌ Yönetici yetkin yok.',
-    admin_panel_title: '👑 *Admin paneli*\n\nBir işlem seç:',
+    admin_access_denied: '❌ Yönetici yetkiniz yok.',
+    admin_panel_title: '👑 *Admin paneli*\n\nBir işlem seçin:',
     admin_error: '❌ Yönetici işlemi yapılırken hata oluştu.',
       // Yönetici istatistikleri
       admin_stats_text: `📊 *Bot istatistikleri*
@@ -140,7 +140,7 @@ module.exports = {
         admin_admins_title: '👑 *Yöneticiler* ({count})\n',
         
         // Admin arama
-        admin_search_prompt: '🔍 *Kullanıcı ara*\n\nKullanıcı ID’si veya kullanıcı adını gir:',
+        admin_search_prompt: '🔍 *Kullanıcı ara*\n\nKullanıcı ID’si veya kullanıcı adını girin:',
         admin_search_not_found: '❌ Kullanıcı bulunamadı.',
         admin_search_results: '🔍 *Arama sonuçları* "{query}"\n\nBulunan: {count}\n',
         
@@ -164,14 +164,14 @@ module.exports = {
         // Admin işlemleri
         admin_promote_success: '✅ {userId} yönetici yapıldı.',
         admin_demote_success: '✅ {userId} kullanıcısının yönetici yetkileri kaldırıldı.',
-        admin_cannot_demote_self: '❌ Kendi yönetici yetkini kaldıramazsın.',
-        admin_grant_premium_options: '⭐ *{userId} kullanıcısına premium ver*\n\nSüre seç:',
+        admin_cannot_demote_self: '❌ Kendi yönetici yetkinizi kaldıramazsınız.',
+        admin_grant_premium_options: '⭐ *{userId} kullanıcısına premium ver*\n\nSüre seçin:',
         admin_grant_premium_success: '✅ {userId} kullanıcısına {days} gün premium verildi.',
         admin_revoke_premium_success: '✅ {userId} kullanıcısının premiumu kaldırıldı.',
         
         // Toplu duyuru
-        admin_broadcast_prompt: '📢 *Toplu mesaj*\n\nTüm kullanıcılara gidecek mesajı yaz (en fazla 3600 karakter):',
-        admin_broadcast_too_long: '❌ Mesaj çok uzun!\n\n📏 Mevcut uzunluk: {current}\n📏 Maksimum: {max}\n📏 Kısalt: {excess} karakter',
+        admin_broadcast_prompt: '📢 *Toplu mesaj*\n\nTüm kullanıcılara gidecek mesajı yazın (en fazla 3600 karakter):',
+        admin_broadcast_too_long: '❌ Mesaj çok uzun!\n\n📏 Mevcut uzunluk: {current}\n📏 Maksimum: {max}\n📏 Kısaltın: {excess} karakter',
         admin_broadcast_confirm: '📢 *Toplu mesajı onayla*\n\n📝 **Mesaj:**\n{message}\n\n📏 **Uzunluk:** {length} karakter\n\n⚠️ Bu mesaj botun **tüm** kullanıcılarına gönderilecek!',
         admin_broadcast_started: '📢 Gönderim başladı...',
         admin_broadcast_result: '📢 *Gönderim bitti!*\n\n📊 **İstatistik:**\n• Toplam: {total}\n• Başarılı: {sent}\n• Başarısız: {failed}',
@@ -179,36 +179,36 @@ module.exports = {
         
         // Genel mesajlar
         welcome: 'Merhaba, {name}! 👋',
-        main_menu_title: '🏠 *Ana menü*\n\nLütfen bir işlem seç:',
+        main_menu_title: '🏠 *Ana menü*\n\nLütfen bir işlem seçin:',
         error: 'Bir hata oluştu 😞',
-        unknown_error: 'Beklenmeyen hata. Lütfen daha sonra tekrar dene.',
+        unknown_error: 'Beklenmeyen hata. Lütfen daha sonra tekrar deneyin.',
         not_found: 'Bulunamadı',
-        error_invalid_description_format: '❌ Geçersiz format. Şu şekilde kullan: Tutar Açıklama veya Tutar Kategori Açıklama',
-        expense_save_error: '❌ Harcama kaydedilirken hata oluştu. Tekrar dene.',
+        error_invalid_description_format: '❌ Geçersiz format. Şu şekilde kullanın: Tutar Açıklama veya Tutar Kategori Açıklama',
+        expense_save_error: '❌ Harcama kaydedilirken hata oluştu. Tekrar deneyin.',
         cancel: 'İptal',
         back: 'Geri',
         confirm: 'Onayla',
         save: 'Kaydet',
         
         // Başlangıç mesajı
-        start_message: `Merhaba! 👋 Harcamalarını ve gelirlerini takip etmene yardımcı olurum.
+        start_message: `Merhaba! 👋 Harcamalarınızı ve gelirlerinizi takip etmenize yardımcı olurum.
 
-*Harcama* — tutarı ve açıklamayı yaz: \`250 kahve\`, \`1500 öğle yemeği\`.
+*Harcama* — tutarı ve açıklamayı yazın: \`250 kahve\`, \`1500 öğle yemeği\`.
 Başka para birimi de olur: \`20 USD taksi\` ya da sadece tutar: \`300\`.
 *Gelir* — artı ile: \`+50000 maaş\`.
 
-Kategoriyi bir kez seç — bir dahaki sefere hatırlarım.
+Kategoriyi bir kez seçin — bir dahaki sefere hatırlarım.
 Menü aşağıda: ay özeti, bugünkü kayıtlar, gelir, düzenli harcamalar (kira, abonelikler) ve «☰ Daha fazla».`,
 
-        start_returning: '👋 Tekrar hoş geldin! Harcamayı mesaj olarak gönder — `250 kahve`. Menü aşağıdaki klavyede.',
+        start_returning: '👋 Tekrar hoş geldiniz! Harcamayı mesaj olarak gönderin — `250 kahve`. Menü aşağıdaki klavyede.',
       help_message: `❓ *Nasıl kullanılır*
 
-• \`250 kahve\` — harcama. Kategoriyi bir kez seç, hatırlarım
+• \`250 kahve\` — harcama. Kategoriyi bir kez seçin, hatırlarım
 • \`20 USD taksi\` — başka para biriminde harcama, \`300\` — açıklamasız
 • \`+50000 maaş\` — gelir (\`+1000 USD\` — başka para biriminde)
 • Yeni kaydın altında: ↩️ geri al, 🏷 kategoriyi değiştir
 • 📊 *Ay özeti* — harcamalar, gelir, bakiye, kategoriler; ◀️ — önceki dönemler
-• 📅 *Bugün* — günün kayıtları; düzenlemek veya silmek için numaraya dokun
+• 📅 *Bugün* — günün kayıtları; düzenlemek veya silmek için numaraya dokunun
 • 🔁 *Düzenli harcamalar* — kira ve abonelikler her ay otomatik kaydedilir
 • 🎯 *Bütçeler* ve 📄 dönem *Özeti* — ay genel bakışının altındaki düğmeler (Premium)
 • Para birimleri, hatırlatıcılar (günde en fazla 3) ve dönem başlangıcı — ☰ Daha fazla → ⚙️ Ayarlar
@@ -427,13 +427,13 @@ Gider ve gelir kaydı ücretsiz ve sınırsızdır.`,
     premium_product: 'Premium abonelik',
     discount_save: '%{percent} tasarruf',
   
-    payment_success: '🎉 *Ödeme başarılı!* Premium etkinleştirildi. Gelişmiş özelliklerin tadını çıkar.',
+    payment_success: '🎉 *Ödeme başarılı!* Premium etkinleştirildi. Gelişmiş özelliklerin tadını çıkarın.',
     donation_success: '🙏 *Desteğiniz için teşekkürler!* Bağışınız botun geliştirilmesine yardımcı olacak.',
     general_payment_success: '✅ *Ödeme başarılı!* Botu kullandığınız için teşekkürler.',
     premium_expires: '📅 Premium bitiş tarihi: <b>{date}</b>\n⏰ Kalan gün: <b>{days}</b>',
   
     // Bağış
-    donate_prompt_title: '🤝 Projeyi destekle',
+    donate_prompt_title: '🤝 Projeyi destekleyin',
     donate_prompt_text: 'Bağış yapmak istediğiniz yıldız sayısını yazın (1–2500).\nİsterseniz yeni satırda en fazla 500 karakterlik mesaj ekleyebilirsiniz.',
     donate_invalid: '❌ 1 ile 2500 arasında tam sayı girin. Mesaj en fazla 500 karakter olabilir.',
     donate_created: '✅ Bağış isteği oluşturuldu: {stars} ⭐️. Ödeme bağlantısını gönderiyorum.',
@@ -618,10 +618,10 @@ Gider ve gelir kaydı ücretsiz ve sınırsızdır.`,
   settings_currencies_text: '💱 *Para birimleri*\n\nAna para birimi — harcamalar ve tüm toplamlar bununla hesaplanır: *{currency}*\nVarsayılan gelir para birimi: *{incomeCurrency}*\n\nHer kayıt başka para biriminde olabilir — kodu tutardan sonra yazın: `20 USD taksi`.',
   reminders_title: 'Hatırlatıcılar',
   reminders_info: 'Seçilen saate kadar hiçbir şey kaydetmediyseniz size hatırlatırım. Günde en fazla 3 kez.',
-  button_reminders_on: '🟢 Açık — kapatmak için dokun',
-  button_reminders_off: '⚫ Kapalı — açmak için dokun',
+  button_reminders_on: '🟢 Açık — kapatmak için dokunun',
+  button_reminders_off: '⚫ Kapalı — açmak için dokunun',
   family_teaser: '👨‍👩‍👧‍👦 *Aile bütçesi*\n\nYakınlarınızla ortak harcamalar tek yerde: herkes kendi kaydını yapar, istatistik ve dışa aktarma ortaktır.\n\nPremium ile kullanılabilir.',
-  button_try_premium: '⭐️ Premium’u dene',
+  button_premium: '⭐️ Premium',
 
   // Subscription and premium ending
   subscription_active_info: '🔁 Aylık abonelik {date} tarihine kadar ödendi ve otomatik olarak yenilenir. İptal etmek için: Telegram → Ayarlar → Yıldızlarım → Aboneliklerim.',
@@ -665,5 +665,7 @@ Gider ve gelir kaydı ücretsiz ve sınırsızdır.`,
   report_categories_gone: 'Bu sefer harcama yok: {list}',
   report_more_numbers: 'Diğer rakamlar:',
   report_per_day: '📅 Günlük ortalama: {amount}',
-  report_largest: '🔝 En büyük harcama: {amount} — {description} ({date})'
+  report_largest: '🔝 En büyük harcama: {amount} — {description} ({date})',
+  overview_budget_limit: 'limit {amount}',
+  report_title_current: 'Şu ana kadarki özet: {range}'
 };

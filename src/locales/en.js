@@ -646,7 +646,7 @@ Recording expenses and income is free and unlimited.`,
 
   // Family without premium
   family_teaser: '👨‍👩‍👧‍👦 *Family budget*\n\nShared expenses with your close ones in one place: everyone records their own, statistics and export are shared.\n\nAvailable with premium.',
-  button_try_premium: '⭐️ Try premium',
+  button_premium: '⭐️ Premium',
 
   // Subscription and premium ending
   subscription_active_info: '🔁 The monthly subscription is paid until {date} and renews automatically. To cancel: Telegram → Settings → My Stars → My subscriptions.',
@@ -691,5 +691,7 @@ Recording expenses and income is free and unlimited.`,
   report_categories_gone: 'No spending this time: {list}',
   report_more_numbers: 'More numbers:',
   report_per_day: '📅 Average per day: {amount}',
-  report_largest: '🔝 Largest expense: {amount} — {description} ({date})'
+  report_largest: '🔝 Largest expense: {amount} — {description} ({date})',
+  overview_budget_limit: 'limit {amount}',
+  report_title_current: 'Summary so far: {range}'
 }; 

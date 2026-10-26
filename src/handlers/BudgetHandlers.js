@@ -28,7 +28,7 @@ class BudgetHandlers {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
-          [{ text: this.t(lang, 'button_try_premium'), callback_data: 'premium_subscription' }],
+          [{ text: this.t(lang, 'button_premium'), callback_data: 'premium_subscription' }],
           [{ text: this.t(lang, 'button_back_to_overview'), callback_data: 'ov|0' }]
         ]
       }

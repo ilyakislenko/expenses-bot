@@ -627,7 +627,7 @@ Comandos: /stats /history /income /recurring /export /settings /menu`,
     button_reminders_on: '🟢 Ativado — toque para desativar',
     button_reminders_off: '⚫ Desativado — toque para ativar',
     family_teaser: '👨‍👩‍👧‍👦 *Orçamento familiar*\n\nDespesas compartilhadas com quem você ama em um só lugar: cada um registra as suas, as estatísticas e a exportação são comuns.\n\nDisponível com premium.',
-    button_try_premium: '⭐️ Testar premium',
+    button_premium: '⭐️ Premium',
 
     // Subscription and premium ending
     subscription_active_info: '🔁 A assinatura mensal está paga até {date} e é renovada automaticamente. Para cancelar: Telegram → Configurações → Minhas Estrelas → Minhas assinaturas.',
@@ -672,5 +672,7 @@ Comandos: /stats /history /income /recurring /export /settings /menu`,
     report_categories_gone: 'Sem gastos desta vez: {list}',
     report_more_numbers: 'Mais números:',
     report_per_day: '📅 Média por dia: {amount}',
-    report_largest: '🔝 Maior gasto: {amount} — {description} ({date})'
+    report_largest: '🔝 Maior gasto: {amount} — {description} ({date})',
+    overview_budget_limit: 'limite {amount}',
+    report_title_current: 'Resumo até agora: {range}'
 };

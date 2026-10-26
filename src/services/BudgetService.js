@@ -72,7 +72,8 @@ class BudgetService {
       for (const status of statuses) {
         const level = thresholdLevel(status.ratio);
         if (!level) continue;
-        const refKey = `${status.id}:${context.period.start}`;
+        // Сумма в ключе: после изменения лимита предупреждения по новому лимиту приходят заново
+        const refKey = `${status.id}:${context.period.start}:${Number(status.amount)}`;
         if (level === 100) {
           const isNew = await this.userNotificationRepository.markSent(userId, 'budget_100', refKey);
           await this.userNotificationRepository.markSent(userId, 'budget_80', refKey); // 80% после превышения уже не нужно

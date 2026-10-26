@@ -1,6 +1,7 @@
 const respond = require('../utils/respond');
 
 const PAGE_SIZE = 10;
+const INCOME_HINT_DAYS = 14; // подсказку про доходы видят только новые пользователи
 
 // Экран, на который возвращается карточка записи. Кодируется в callback_data через точку:
 //   d.<offset>.<page>              — записи за день
@@ -414,14 +415,16 @@ class ExpenseHandlers {
     const incomeSummary = await this.formatter.formatIncomeSummary(incomeTotals, totals, currency, this.localizationService, lang);
     if (incomeSummary) text += `\n${incomeSummary}`;
 
-    // Категории: суммы в основной валюте, по убыванию; у категорий с бюджетом — % от лимита
+    // Категории: суммы в основной валюте, по убыванию; у категорий с бюджетом — лимит (процент от лимита — в «🎯 Бюджеты»)
     const categorySum = categories.reduce((sum, c) => sum + c.total, 0);
     if (categories.length) {
       text += `\n\n*${this.t(lang, 'by_categories')}*\n`;
       text += categories.map(c => {
         const percentage = categorySum > 0 ? (c.total / categorySum * 100).toFixed(0) : 0;
         const budget = budgetFor(c.name);
-        const budgetMark = budget ? ` · 🎯 ${Math.round(budget.ratio * 100)}%${budget.ratio > 1 ? ' 🚨' : ''}` : '';
+        const budgetMark = budget
+          ? ` · 🎯 ${this.t(lang, 'overview_budget_limit', { amount: this.formatter.formatAmount(budget.limit, currency) })}${budget.ratio > 1 ? ' 🚨' : budget.ratio >= 0.8 ? ' ⚠️' : ''}`
+          : '';
         return `${c.icon} ${this.categoryName(c.name, lang)}: ${this.formatter.formatAmount(c.total, currency)} (${percentage}%)${budgetMark}`;
       }).join('\n');
     }
@@ -436,7 +439,11 @@ class ExpenseHandlers {
           return `🔁 ${this.formatter.escapeMarkdown(item.description)} — ${this.formatter.formatAmount(Number(item.amount), item.currency)} · ${d}.${m}`;
         }).join('\n');
       }
-      if (!incomeTotals.count) text += `\n\n${this.t(lang, 'overview_income_hint')}`;
+      if (!incomeTotals.count) {
+        const user = await this.userService.getUserById(userId);
+        const ageDays = user?.created_at ? (Date.now() - new Date(user.created_at).getTime()) / 86400000 : Infinity;
+        if (ageDays < INCOME_HINT_DAYS) text += `\n\n${this.t(lang, 'overview_income_hint')}`;
+      }
     }
 
     const keyboard = [];
@@ -465,7 +472,7 @@ class ExpenseHandlers {
     const isPremium = await this.premiumService.isPremiumUser(userId);
     const { text } = await this.reportService.buildReport(userId, offset, lang, { full: isPremium });
     const keyboard = [];
-    if (!isPremium) keyboard.push([{ text: this.t(lang, 'button_try_premium'), callback_data: 'premium_subscription' }]);
+    if (!isPremium) keyboard.push([{ text: this.t(lang, 'button_premium'), callback_data: 'premium_subscription' }]);
     keyboard.push([{ text: this.t(lang, 'button_back_to_overview'), callback_data: `ov|${offset}` }]);
     await respond(ctx, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
   }

@@ -30,6 +30,27 @@ class BudgetRepository extends BaseRepository {
     const result = await this.query('DELETE FROM category_budgets WHERE id = $1 AND user_id = $2 RETURNING id', [budgetId, userId]);
     return result.rowCount > 0;
   }
+
+  // Категорию переименовали: бюджет переходит на новое имя, если старого имени больше нет среди
+  // категорий пользователя и на новое имя бюджета ещё нет
+  async renameCategory(userId, oldName, newName) {
+    await this.query(`
+      UPDATE category_budgets b SET category_name = $3
+      WHERE b.user_id = $1 AND b.category_name = $2
+        AND NOT EXISTS (SELECT 1 FROM categories c WHERE c.name = $2 AND c.user_id IN (0, $1))
+        AND NOT EXISTS (SELECT 1 FROM category_budgets x WHERE x.user_id = $1 AND x.category_name = $3)
+    `, [userId, oldName, newName]);
+    await this.deleteOrphan(userId, oldName);
+  }
+
+  // Бюджет категории, которой у пользователя больше нет (удалили или переименовали)
+  async deleteOrphan(userId, categoryName) {
+    await this.query(`
+      DELETE FROM category_budgets b
+      WHERE b.user_id = $1 AND b.category_name = $2
+        AND NOT EXISTS (SELECT 1 FROM categories c WHERE c.name = $2 AND c.user_id IN (0, $1))
+    `, [userId, categoryName]);
+  }
 }
 
 module.exports = BudgetRepository;

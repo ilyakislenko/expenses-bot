@@ -50,6 +50,16 @@ describe('BudgetService.checkAfterExpense', () => {
     expect(await service.checkAfterExpense(1, 'Еда')).toEqual([]);
   });
 
+
+  test('after the limit is changed, alerts for the new limit come again in the same period', async () => {
+    let food = 5100;
+    const budgets = [{ id: 1, category_name: 'Еда', amount: 5000, currency: 'RUB' }];
+    const service = makeService({ spentByCategory: () => ({ 'Еда': food }), totalSpent: () => food, budgets });
+    expect((await service.checkAfterExpense(1, 'Еда')).map(w => w.level)).toEqual([100]);
+    budgets[0].amount = 8000;
+    food = 7000;
+    expect((await service.checkAfterExpense(1, 'Еда')).map(w => w.level)).toEqual([80]);
+  });
   test('only the category of the expense and the whole-month budget are checked', async () => {
     const service = makeService({
       spentByCategory: () => ({ 'Еда': 9000, 'Транспорт': 9000 }),

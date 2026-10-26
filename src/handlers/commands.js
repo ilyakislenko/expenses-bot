@@ -333,7 +333,7 @@ class CommandHandlers {
           parse_mode: 'Markdown',
           reply_markup: {
             inline_keyboard: [
-              [{ text: t('button_try_premium'), callback_data: 'premium_subscription' }],
+              [{ text: t('button_premium'), callback_data: 'premium_subscription' }],
               [{ text: t('button_back'), callback_data: 'back_to_menu' }]
             ]
           }

@@ -625,7 +625,7 @@ Befehle: /stats /history /income /recurring /export /settings /menu`,
     button_reminders_on: '🟢 An — tippen zum Ausschalten',
     button_reminders_off: '⚫ Aus — tippen zum Einschalten',
     family_teaser: '👨‍👩‍👧‍👦 *Familienbudget*\n\nGemeinsame Ausgaben mit deinen Liebsten an einem Ort: Jeder erfasst seine eigenen, Statistik und Export sind gemeinsam.\n\nMit Premium verfügbar.',
-    button_try_premium: '⭐️ Premium testen',
+    button_premium: '⭐️ Premium',
 
     // Subscription and premium ending
     subscription_active_info: '🔁 Das Monatsabo ist bis {date} bezahlt und verlängert sich automatisch. Kündigen: Telegram → Einstellungen → Meine Sterne → Meine Abos.',
@@ -670,5 +670,7 @@ Befehle: /stats /history /income /recurring /export /settings /menu`,
     report_categories_gone: 'Diesmal keine Ausgaben: {list}',
     report_more_numbers: 'Weitere Zahlen:',
     report_per_day: '📅 Durchschnitt pro Tag: {amount}',
-    report_largest: '🔝 Größte Ausgabe: {amount} — {description} ({date})'
+    report_largest: '🔝 Größte Ausgabe: {amount} — {description} ({date})',
+    overview_budget_limit: 'Limit {amount}',
+    report_title_current: 'Zusammenfassung bisher: {range}'
 };

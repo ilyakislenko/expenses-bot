@@ -85,7 +85,9 @@ class ReportService {
     const prevSpent = await this.formatter.sumInCurrency(prevTotals.byCurrency, currency);
     const money = (value) => this.formatter.formatAmount(value, currency);
 
-    const lines = [`📄 *${this.t(lang, 'report_title', { range: this.formatter.formatPeriodRange(period) })}*`, ''];
+    // Незавершённый период — «итоги на сегодня»
+    const titleKey = offset === 0 ? 'report_title_current' : 'report_title';
+    const lines = [`📄 *${this.t(lang, titleKey, { range: this.formatter.formatPeriodRange(period) })}*`, ''];
     if (!totals.count) {
       lines.push(this.t(lang, 'no_expenses_period'));
       return { text: lines.join('\n'), hasData: false };
@@ -107,13 +109,14 @@ class ReportService {
       return { text: lines.join('\n'), hasData: true };
     }
 
-    // Категории с шкалой и сравнением с прошлым периодом
+    // Категории с шкалой; сравнение — только если в прошлом периоде были траты (иначе всё было бы «новое»)
+    const hasPrevious = prevTotals.count > 0;
     const prevByName = new Map(prevCategories.map(c => [c.name, c.total]));
     const maxTotal = categories.length ? categories[0].total : 0;
-    lines.push('', `*${this.t(lang, 'report_categories_vs_previous')}*`);
+    lines.push('', `*${this.t(lang, hasPrevious ? 'report_categories_vs_previous' : 'by_categories')}*`);
     for (const category of categories) {
-      const percent = changePercent(category.total, prevByName.get(category.name));
-      lines.push(`${this.categoryLabel(category, lang)} — ${money(category.total)} · ${this.changeText(lang, percent)}`);
+      const change = hasPrevious ? ` · ${this.changeText(lang, changePercent(category.total, prevByName.get(category.name)))}` : '';
+      lines.push(`${this.categoryLabel(category, lang)} — ${money(category.total)}${change}`);
       lines.push(`   ${this.formatter.progressBar(maxTotal ? category.total / maxTotal : 0)}`);
     }
     const gone = prevCategories.filter(c => !categories.some(x => x.name === c.name));
@@ -172,7 +175,7 @@ class ReportService {
         if (!(await this.userNotificationRepository.markSent(candidate.id, 'period_report', previous.start))) continue;
 
         const keyboard = [[{ text: this.t(lang, 'button_overview'), callback_data: 'ov|-1' }]];
-        if (!isPremium) keyboard.unshift([{ text: this.t(lang, 'button_try_premium'), callback_data: 'premium_subscription' }]);
+        if (!isPremium) keyboard.unshift([{ text: this.t(lang, 'button_premium'), callback_data: 'premium_subscription' }]);
         await this.notificationService.sendMessage(candidate.id, report.text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
         sent++;
       } catch (error) {

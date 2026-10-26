@@ -252,7 +252,8 @@ class Container {
         return new CategoryService(
           this.get('categoryRepository'),
           this.get('premiumService'),
-          this.get('expenseRepository')
+          this.get('expenseRepository'),
+          this.get('budgetRepository')
         );
 
       case 'adminService':
