@@ -210,6 +210,7 @@ Menü aşağıda: ay özeti, bugünkü kayıtlar, gelir, düzenli harcamalar (ki
 • 📊 *Ay özeti* — harcamalar, gelir, bakiye, kategoriler; ◀️ — önceki dönemler
 • 📅 *Bugün* — günün kayıtları; düzenlemek veya silmek için numaraya dokun
 • 🔁 *Düzenli harcamalar* — kira ve abonelikler her ay otomatik kaydedilir
+• 🎯 *Bütçeler* ve 📄 dönem *Özeti* — ay genel bakışının altındaki düğmeler (Premium)
 • Para birimleri, hatırlatıcılar (günde en fazla 3) ve dönem başlangıcı — ☰ Daha fazla → ⚙️ Ayarlar
 
 Komutlar: /stats /history /income /recurring /export /settings /menu`,
@@ -378,10 +379,12 @@ Komutlar: /stats /history /income /recurring /export /settings /menu`,
     status_label: '*Durum:* {status}',
     max_description_length: '<b>Maks açıklama uzunluğu:</b> {length} karakter',
     premium_benefits: `💎 <b>Premium avantajları:</b>
-  • 160 karakter açıklama (80 yerine)
+  • 🎯 %80’de ve aşıldığında uyarılı aylık ve kategori bütçeleri
+  • 📄 Tam dönem özeti: her kategori geçen ayla karşılaştırmalı, bütçeler, günlük ortalama harcama
   • 5 adede kadar özel kategori
   • Aile bütçesi
   • Herhangi bir kaydın tutarını ve açıklamasını düzenleme
+  • 160 karakter açıklama (80 yerine)
 
 Gider ve gelir kaydı ücretsiz ve sınırsızdır.`,
     
@@ -443,7 +446,7 @@ Gider ve gelir kaydı ücretsiz ve sınırsızdır.`,
     error_amount: '❌ Geçersiz tutar. 0,01 ile 999999 arasında girin.',
     error_format: '❌ Anlayamadım. Tutarla başlayın: `250 kahve`, `20 USD taksi` veya sadece `300`.',
     error_forbidden_content: '❌ Yasaklı içerik.',
-    error_premium_required: '💎 Bu özellik yalnızca Premium ile kullanılabilir.\n\nPremium ile:\n• 160 karakter açıklama (80 yerine)\n• Özel kategoriler\n• Aile bütçesi\n• Kayıtları düzenleme',
+    error_premium_required: '💎 Bu özellik yalnızca Premium ile kullanılabilir.\n\nPremium ile:\n• Uyarılı bütçeler\n• Tam dönem özeti\n• Özel kategoriler\n• Aile bütçesi\n• Kayıtları düzenleme',
     error_generic: '❌ Bir hata oluştu. Daha sonra tekrar deneyin veya yöneticiyle iletişime geçin.',
     
     // Düğmeler
@@ -624,11 +627,43 @@ Gider ve gelir kaydı ücretsiz ve sınırsızdır.`,
   subscription_active_info: '🔁 Aylık abonelik {date} tarihine kadar ödendi ve otomatik olarak yenilenir. İptal etmek için: Telegram → Ayarlar → Yıldızlarım → Aboneliklerim.',
   subscription_renewed: '🔁 Abonelik yenilendi. Premium {date} tarihine kadar aktif.',
   button_view_tariffs: '⭐️ Planlar',
-  premium_expiring_trial: '⏳ Premium deneme süreniz {date} tarihinde bitiyor.\n\nBundan sonra özel kategoriler, aile bütçesi ve kayıt düzenleme çalışmayacak. Kaydettiğiniz her şey kalır, harcama takibi ücretsizdir.',
+  premium_expiring_trial: '⏳ Premium deneme süreniz {date} tarihinde bitiyor.\n\nBundan sonra bütçeler, tam dönem özeti, özel kategoriler, aile bütçesi ve kayıt düzenleme çalışmayacak. Kaydettiğiniz her şey kalır, harcama takibi ücretsizdir.',
   premium_expiring_paid: '⏳ Premium {date} tarihinde bitiyor. Önceden yenileyebilirsiniz — kalan günler korunur.',
-  premium_expired_trial: '🌙 Premium deneme süreniz sona erdi. Gider ve gelir takibi ücretsiz kalır; özel kategoriler, aile bütçesi ve kayıt düzenleme Premium ile kullanılabilir.',
+  premium_expired_trial: '🌙 Premium deneme süreniz sona erdi. Gider ve gelir takibi ücretsiz kalır; bütçeler, tam özet, özel kategoriler, aile ve kayıt düzenleme Premium ile kullanılabilir.',
   premium_expired_paid: '🌙 Premium sona erdi. Projeyi desteklediğiniz için teşekkürler! İstediğiniz zaman yenileyebilirsiniz.',
-  premium_winback: '👋 Premium’unuz bir hafta önce sona erdi. Özel kategorileri, aile bütçesini ve kayıt düzenlemeyi geri istiyorsanız aşağıdaki planlara göz atın.',
+  premium_winback: '👋 Premium’unuz bir hafta önce sona erdi. Bütçeleri, tam özeti, özel kategorileri, aile bütçesini ve kayıt düzenlemeyi geri istiyorsanız aşağıdaki planlara göz atın.',
   start_reminders_note: '🔔 Gün içinde hiçbir şey kaydetmezseniz size hatırlatırım (günde en fazla 3 kez). Saatleri değiştirmek veya kapatmak için: ☰ Daha fazla → ⚙️ Ayarlar → 🔔.',
-  bug_report_suspicious: '⚠️ Mesaj yasaklı karakterler veya şüpheli içerik içeriyor'
+  bug_report_suspicious: '⚠️ Mesaj yasaklı karakterler veya şüpheli içerik içeriyor',
+
+  // Budgets
+  button_budgets: '🎯 Bütçeler',
+  budgets_title: 'Bütçeler',
+  budgets_empty: 'Tüm ay veya bir kategori için limit belirleyin — %80’de ve limit aşıldığında sizi uyaracağım.',
+  budgets_teaser: '🎯 *Bütçeler*\n\nAy veya kategori için limit: ilerleme genel bakışta gösterilir, %80’de ve limit aşıldığında uyarı alırsınız.\n\nPremium ile kullanılabilir.',
+  button_budget_total: '➕ Tüm ay',
+  button_budget_category: '➕ Kategori',
+  button_budget_change: '✏️ Tutarı değiştir',
+  budget_total_name: '🎯 Tüm ay',
+  budget_left: '{amount} kaldı',
+  budget_over: '{amount} aşıldı',
+  budget_enter_prompt: '“{name}” için dönem limitini girin 👇\n\nÖrneğin: `10000` (*{currency}* cinsinden) veya `150 USD`',
+  budget_amount_invalid: '❌ Yalnızca tutar gerekli: `10000` veya `150 USD`.',
+  budget_saved: '✅ Bütçe kaydedildi',
+  budget_deleted: '✅ Bütçe silindi',
+  budget_not_found: '❌ Bütçe bulunamadı',
+  budget_warning_80: '⚠️ {name}: {limit} limitin {spent} harcandı ({percent}%)',
+  budget_warning_100: '🚨 {name}: bütçe aşıldı — {limit} limitin {spent} ({percent}%)',
+  overview_budget_of: '{amount} bütçeden',
+  button_report: '📄 Özet',
+  report_title: 'Özet: {range}',
+  report_vs_previous: 'Önceki döneme göre: {change} (önceki: {amount})',
+  report_change_new: 'yeni',
+  report_change_same: 'değişiklik yok',
+  report_top_categories: 'En çok harcama:',
+  report_locked: '🔒 Tam döküm — önceki dönemle karşılaştırmalı tüm kategoriler, bütçeler, günlük ortalama harcama ve en büyük harcama — Premium ile gelir.',
+  report_categories_vs_previous: 'Kategoriler (önceki döneme göre):',
+  report_categories_gone: 'Bu sefer harcama yok: {list}',
+  report_more_numbers: 'Diğer rakamlar:',
+  report_per_day: '📅 Günlük ortalama: {amount}',
+  report_largest: '🔝 En büyük harcama: {amount} — {description} ({date})'
 };

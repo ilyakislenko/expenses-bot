@@ -153,6 +153,12 @@ class Formatter {
     return String(text ?? '').replace(/([_*`\[])/g, '\\$1');
   }
 
+  // Текстовая шкала: 0.72 → '▓▓▓▓▓▓▓░░░' (больше 100% — полная шкала)
+  progressBar(ratio, width = 10) {
+    const filled = Math.max(0, Math.min(width, Math.round(ratio * width)));
+    return '▓'.repeat(filled) + '░'.repeat(width - filled);
+  }
+
   // 'YYYY-MM-DD' → 'DD.MM.YYYY'
   formatLocalDate(ymd) {
     const [y, m, d] = ymd.split('-');

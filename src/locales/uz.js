@@ -193,6 +193,7 @@ Menyu pastda: oy sharhi, bugungi yozuvlar, daromad, doimiy xarajatlar (ijara, ob
 • 📊 *Oy sharhi* — xarajatlar, daromad, balans, kategoriyalar; ◀️ — oldingi davrlar
 • 📅 *Bugun* — kun yozuvlari; yozuvni tahrirlash yoki o‘chirish uchun raqamni bosing
 • 🔁 *Doimiy xarajatlar* — ijara va obunalar har oy avtomatik yoziladi
+• 🎯 *Byudjetlar* va 📄 davr *Xulosasi* — oy sharhi ostidagi tugmalar (Premium)
 • Valyutalar, eslatmalar (kuniga 3 tagacha) va davr boshi — ☰ Yana → ⚙️ Sozlamalar
 
 Buyruqlar: /stats /history /income /recurring /export /settings /menu`,
@@ -359,10 +360,12 @@ Buyruqlar: /stats /history /income /recurring /export /settings /menu`,
     status_label: '*Holat:* {status}',
     max_description_length: '<b>Izoh uzunligi limiti:</b> {length} belgi',
     premium_benefits: `💎 <b>Premium afzalliklari:</b>
-  • Izoh 160 belgi (oddiyda 80 belgi)
+  • 🎯 80% da va oshganda ogohlantiruvchi oylik va kategoriya byudjetlari
+  • 📄 Davrning to‘liq xulosasi: har bir kategoriya o‘tgan oy bilan taqqoslab, byudjetlar, kunlik o‘rtacha xarajat
   • 5 tagacha maxsus kategoriya
   • Oilaviy byudjet
   • Har qanday yozuvning summasi va izohini tahrirlash
+  • Izoh 160 belgi (oddiyda 80 belgi)
 
 Xarajat va daromadlarni yozish bepul va cheklanmagan.`,
     
@@ -424,7 +427,7 @@ Xarajat va daromadlarni yozish bepul va cheklanmagan.`,
     error_amount: '❌ Noto‘g‘ri summa. 0,01 va 999999 oralig‘ida bo‘lishi kerak.',
     error_format: '❌ Tushunmadim. Summadan boshlang: `250 qahva`, `20 USD taksi` yoki shunchaki `300`.',
     error_forbidden_content: '❌ Ruxsat etilmagan kontent.',
-    error_premium_required: '💎 Bu funksiya faqat Premium bilan mavjud.\n\nPremium beradi:\n• Izoh 160 belgi (80 o‘rniga)\n• Maxsus kategoriyalar\n• Oilaviy byudjet\n• Yozuvlarni tahrirlash',
+    error_premium_required: '💎 Bu funksiya faqat Premium bilan mavjud.\n\nPremium beradi:\n• Ogohlantirishli byudjetlar\n• Davrning to‘liq xulosasi\n• Maxsus kategoriyalar\n• Oilaviy byudjet\n• Yozuvlarni tahrirlash',
     error_generic: '❌ Xatolik yuz berdi. Keyinroq urinib ko‘ring yoki administratorga murojaat qiling.',
     
     // Tugmalar
@@ -607,10 +610,42 @@ Xarajat va daromadlarni yozish bepul va cheklanmagan.`,
   subscription_active_info: '🔁 Oylik obuna {date} gacha to‘langan va avtomatik uzaytiriladi. Bekor qilish: Telegram → Sozlamalar → Yulduzlarim → Obunalarim.',
   subscription_renewed: '🔁 Obuna uzaytirildi. Premium {date} gacha faol.',
   button_view_tariffs: '⭐️ Tariflar',
-  premium_expiring_trial: '⏳ Premium sinov muddati {date} da tugaydi.\n\nShundan so‘ng maxsus kategoriyalar, oilaviy byudjet va yozuvlarni tahrirlash ishlamaydi. Barcha yozuvlaringiz saqlanadi, xarajatlarni hisobga olish esa bepul.',
+  premium_expiring_trial: '⏳ Premium sinov muddati {date} da tugaydi.\n\nShundan so‘ng byudjetlar, davrning to‘liq xulosasi, maxsus kategoriyalar, oilaviy byudjet va yozuvlarni tahrirlash ishlamaydi. Barcha yozuvlaringiz saqlanadi, xarajatlarni hisobga olish esa bepul.',
   premium_expiring_paid: '⏳ Premium {date} da tugaydi. Oldindan uzaytirishingiz mumkin — qolgan kunlar saqlanadi.',
-  premium_expired_trial: '🌙 Premium sinov muddati tugadi. Xarajat va daromadlarni hisobga olish bepul qoladi; maxsus kategoriyalar, oila va yozuvlarni tahrirlash — Premium bilan.',
+  premium_expired_trial: '🌙 Premium sinov muddati tugadi. Xarajat va daromadlarni hisobga olish bepul qoladi; byudjetlar, to‘liq xulosa, maxsus kategoriyalar, oila va yozuvlarni tahrirlash — Premium bilan.',
   premium_expired_paid: '🌙 Premium tugadi. Loyihani qo‘llab-quvvatlaganingiz uchun rahmat! Istalgan vaqtda uzaytirishingiz mumkin.',
-  premium_winback: '👋 Premium bir hafta oldin tugadi. Maxsus kategoriyalar, oilaviy byudjet va yozuvlarni tahrirlashni qaytarmoqchi bo‘lsangiz — quyidagi tariflarni ko‘ring.',
-  start_reminders_note: '🔔 Kun davomida hech narsa yozmasangiz, eslatib qo‘yaman (kuniga 3 martagacha). Soatlarni o‘zgartirish yoki o‘chirish: ☰ Yana → ⚙️ Sozlamalar → 🔔.'
+  premium_winback: '👋 Premium bir hafta oldin tugadi. Byudjetlar, to‘liq xulosa, maxsus kategoriyalar, oilaviy byudjet va yozuvlarni tahrirlashni qaytarmoqchi bo‘lsangiz — quyidagi tariflarni ko‘ring.',
+  start_reminders_note: '🔔 Kun davomida hech narsa yozmasangiz, eslatib qo‘yaman (kuniga 3 martagacha). Soatlarni o‘zgartirish yoki o‘chirish: ☰ Yana → ⚙️ Sozlamalar → 🔔.',
+
+  // Budgets
+  button_budgets: '🎯 Byudjetlar',
+  budgets_title: 'Byudjetlar',
+  budgets_empty: 'Butun oy yoki kategoriya uchun limit qo‘ying — 80% da va limit oshganda ogohlantiraman.',
+  budgets_teaser: '🎯 *Byudjetlar*\n\nOy yoki kategoriya uchun limit: jarayon sharhda ko‘rsatiladi, 80% da va limit oshganda ogohlantirish olasiz.\n\nPremium bilan mavjud.',
+  button_budget_total: '➕ Butun oy',
+  button_budget_category: '➕ Kategoriya',
+  button_budget_change: '✏️ Summani o‘zgartirish',
+  budget_total_name: '🎯 Butun oy',
+  budget_left: '{amount} qoldi',
+  budget_over: '{amount} oshdi',
+  budget_enter_prompt: '“{name}” uchun davr limitini kiriting 👇\n\nMasalan: `10000` (*{currency}* da) yoki `150 USD`',
+  budget_amount_invalid: '❌ Faqat summa kerak: `10000` yoki `150 USD`.',
+  budget_saved: '✅ Byudjet saqlandi',
+  budget_deleted: '✅ Byudjet o‘chirildi',
+  budget_not_found: '❌ Byudjet topilmadi',
+  budget_warning_80: '⚠️ {name}: {limit} dan {spent} sarflandi ({percent}%)',
+  budget_warning_100: '🚨 {name}: byudjet oshib ketdi — {limit} dan {spent} ({percent}%)',
+  overview_budget_of: '{amount} byudjetdan',
+  button_report: '📄 Xulosa',
+  report_title: 'Xulosa: {range}',
+  report_vs_previous: 'Oldingi davrga nisbatan: {change} ({amount} edi)',
+  report_change_new: 'yangi',
+  report_change_same: 'o‘zgarishsiz',
+  report_top_categories: 'Eng ko‘p xarajat:',
+  report_locked: '🔒 To‘liq tahlil — oldingi davr bilan taqqoslangan barcha kategoriyalar, byudjetlar, kunlik o‘rtacha xarajat va eng katta xarajat — Premium bilan.',
+  report_categories_vs_previous: 'Kategoriyalar (oldingi davrga nisbatan):',
+  report_categories_gone: 'Bu safar xarajat yo‘q: {list}',
+  report_more_numbers: 'Boshqa raqamlar:',
+  report_per_day: '📅 Kuniga o‘rtacha: {amount}',
+  report_largest: '🔝 Eng katta xarajat: {amount} — {description} ({date})'
 };

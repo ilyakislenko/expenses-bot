@@ -23,6 +23,20 @@ class UserNotificationRepository extends BaseRepository {
     return result.rows;
   }
 
+  // Кандидаты для итогов периода: вносили траты вручную за последние 45 дней
+  async getReportCandidates() {
+    const query = `
+      SELECT u.id, u.language, u.timezone
+      FROM users u
+      WHERE u.id > 0 AND EXISTS (
+        SELECT 1 FROM expenses e
+        WHERE e.user_id = u.id AND e.recurring_expense_id IS NULL AND e.created_at_utc > NOW() - INTERVAL '45 days'
+      )
+    `;
+    const result = await this.query(query, []);
+    return result.rows;
+  }
+
   // true — уведомление ещё не отправлялось и теперь отмечено; false — уже было
   async markSent(userId, kind, refKey) {
     const result = await this.query(

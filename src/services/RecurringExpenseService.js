@@ -19,12 +19,13 @@ function nextChargeDate(dayOfMonth, lastChargedMonth, today) {
 }
 
 class RecurringExpenseService {
-  constructor(recurringExpenseRepository, userRepository, notificationService, localizationService, formatter) {
+  constructor(recurringExpenseRepository, userRepository, notificationService, localizationService, formatter, budgetService) {
     this.recurringExpenseRepository = recurringExpenseRepository;
     this.userRepository = userRepository;
     this.notificationService = notificationService;
     this.localizationService = localizationService;
     this.formatter = formatter;
+    this.budgetService = budgetService;
   }
 
   getMaxPerUser() {
@@ -115,9 +116,13 @@ class RecurringExpenseService {
     logger.info('Recurring expense charged', { recurringId: recurring.id, userId: recurring.user_id, expenseId: expense.id, month: recurring.charge_month });
 
     if (notify) {
-      await this.notify(recurring.user_id, this.localizationService.getText(lang, 'recurring_charged_notification', {
+      let text = this.localizationService.getText(lang, 'recurring_charged_notification', {
         icon: recurring.category_icon || '🔁', description: descriptionText, amount: amountText
-      }));
+      });
+      // Удалённая категория заменяется на системную «Другое» (см. chargeForMonth)
+      const warnings = await this.budgetService.checkAfterExpense(recurring.user_id, recurring.category_name || 'Другое');
+      if (warnings.length) text += `\n\n${warnings.map(w => this.budgetService.warningText(lang, w)).join('\n')}`;
+      await this.notify(recurring.user_id, text);
     }
     return expense;
   }

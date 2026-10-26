@@ -1,5 +1,5 @@
 module.exports = function registerBotRoutes(bot, handlers) {
-  const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, stateService } = handlers;
+  const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, stateService } = handlers;
   const { BACK_VIEW_PATTERN } = require('./handlers/ExpenseHandlers');
 
   // Импортируем middleware для автоматической очистки состояний
@@ -82,6 +82,14 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(new RegExp(`^xf\\|(\\d+)\\|${back}$`), errorHandler((ctx) => expenseHandlers.handleFamilyToggle(ctx, true)));
   bot.action(new RegExp(`^xu\\|(\\d+)\\|${back}$`), errorHandler((ctx) => expenseHandlers.handleFamilyToggle(ctx, false)));
   bot.action('noop', (ctx) => ctx.answerCbQuery().catch(() => {})); // номер страницы и пустые ячейки пагинации
+  bot.action(/^rp\|(-?\d+)$/, errorHandler((ctx) => expenseHandlers.showReport(ctx, parseInt(ctx.match[1], 10)))); // итоги периода
+
+  // Бюджеты (премиум): список, карточка, новый/изменённый лимит, удаление
+  bot.action('bg_menu', errorHandler((ctx) => budgetHandlers.showMenu(ctx)));
+  bot.action(/^bg\|(\d+)$/, errorHandler((ctx) => budgetHandlers.showCard(ctx)));
+  bot.action('bg_cat', errorHandler((ctx) => budgetHandlers.chooseCategory(ctx)));
+  bot.action(/^bg_add\|(total|\d+)$/, errorHandler((ctx) => budgetHandlers.startSetAmount(ctx)));
+  bot.action(/^bg_del\|(\d+)$/, errorHandler((ctx) => budgetHandlers.delete(ctx)));
 
   // Текстовые сообщения
   bot.on('text', errorHandler((ctx) => messageHandlers.handleExpense(ctx))); // ввод трат, доходов и кнопки клавиатуры

@@ -211,6 +211,7 @@ El menú está abajo: resumen del mes, registros de hoy, ingresos, gastos recurr
 • 📊 *Resumen del mes* — gastos, ingresos, balance, categorías; ◀️ — periodos anteriores
 • 📅 *Hoy* — registros del día; toca un número para editar o eliminar un registro
 • 🔁 *Gastos recurrentes* — el alquiler y las suscripciones se registran automáticamente cada mes
+• 🎯 *Presupuestos* y 📄 *Resumen* del periodo — botones bajo el resumen del mes (premium)
 • Monedas, recordatorios (hasta 3 al día) e inicio del periodo — en ☰ Más → ⚙️ Ajustes
 
 Comandos: /stats /history /income /recurring /export /settings /menu`,
@@ -377,6 +378,8 @@ Comandos: /stats /history /income /recurring /export /settings /menu`,
     status_label: '*Estado:* {status}',
     max_description_length: '<b>Longitud máxima de descripción:</b> {length} caracteres',
     premium_benefits: `💎 <b>Ventajas premium:</b>
+  • 🎯 Presupuestos mensuales y por categoría con avisos al 80 % y al superarlos
+  • 📄 Resumen completo del periodo: cada categoría frente al mes anterior, presupuestos, gasto medio por día
   • 160 caracteres en descripción (en vez de 80)
   • Hasta 5 categorías propias
   • Presupuesto familiar
@@ -442,7 +445,7 @@ Comandos: /stats /history /income /recurring /export /settings /menu`,
     error_amount: '❌ Cantidad inválida. Introduce entre 0.01 y 999999.',
     error_format: '❌ No lo entendí. Empieza con una cantidad: `250 café`, `20 USD taxi` o solo `300`.',
     error_forbidden_content: '❌ Contenido no permitido.',
-    error_premium_required: '💎 Esta función solo está disponible con premium.\n\nPremium te da:\n• 160 caracteres en la descripción (en vez de 80)\n• Categorías personalizadas\n• Presupuesto familiar\n• Editar registros',
+    error_premium_required: '💎 Esta función solo está disponible con premium.\n\nPremium te da:\n• Presupuestos con avisos\n• Resumen completo del periodo\n• Categorías personalizadas\n• Presupuesto familiar\n• Editar registros',
     error_generic: '❌ Error. Intenta más tarde o contacta con admin.',
     
     // Botones
@@ -626,10 +629,44 @@ Comandos: /stats /history /income /recurring /export /settings /menu`,
     subscription_active_info: '🔁 La suscripción mensual está pagada hasta el {date} y se renueva automáticamente. Para cancelarla: Telegram → Ajustes → Mis estrellas → Mis suscripciones.',
     subscription_renewed: '🔁 Suscripción renovada. Premium activo hasta el {date}.',
     button_view_tariffs: '⭐️ Planes',
-    premium_expiring_trial: '⏳ Tu prueba premium termina el {date}.\n\nDespués dejarán de funcionar las categorías propias, el presupuesto familiar y la edición de registros. Todo lo que registraste se conserva y el registro de gastos es gratis.',
+    premium_expiring_trial: '⏳ Tu prueba premium termina el {date}.\n\nDespués dejarán de funcionar los presupuestos, el resumen completo del periodo, las categorías propias, el presupuesto familiar y la edición de registros. Todo lo que registraste se conserva y el registro de gastos es gratis.',
     premium_expiring_paid: '⏳ Premium termina el {date}. Puedes renovarlo por adelantado: los días restantes se conservan.',
-    premium_expired_trial: '🌙 Tu prueba premium ha terminado. Registrar gastos e ingresos sigue siendo gratis; las categorías propias, la familia y la edición de registros vienen con premium.',
+    premium_expired_trial: '🌙 Tu prueba premium ha terminado. Registrar gastos e ingresos sigue siendo gratis; los presupuestos, el resumen completo, las categorías propias, la familia y la edición de registros vienen con premium.',
     premium_expired_paid: '🌙 Premium ha terminado. ¡Gracias por apoyar el proyecto! Puedes renovarlo cuando quieras.',
-    premium_winback: '👋 Tu premium terminó hace una semana. Si quieres recuperar las categorías propias, el presupuesto familiar y la edición de registros, mira los planes abajo.',
-    start_reminders_note: '🔔 Si no registras nada durante el día, te lo recordaré (hasta 3 veces al día). Cambiar horas o desactivar: ☰ Más → ⚙️ Ajustes → 🔔.'
+    premium_winback: '👋 Tu premium terminó hace una semana. Si quieres recuperar los presupuestos, el resumen completo, las categorías propias, el presupuesto familiar y la edición de registros, mira los planes abajo.',
+    start_reminders_note: '🔔 Si no registras nada durante el día, te lo recordaré (hasta 3 veces al día). Cambiar horas o desactivar: ☰ Más → ⚙️ Ajustes → 🔔.',
+
+    // Budgets
+    button_budgets: '🎯 Presupuestos',
+    budgets_title: 'Presupuestos',
+    budgets_empty: 'Fija un límite para todo el mes o para una categoría: te avisaré al 80 % y cuando se supere el límite.',
+    budgets_teaser: '🎯 *Presupuestos*\n\nUn límite para el mes o para una categoría: el progreso se muestra en el resumen y recibes un aviso al 80 % y cuando se supera el límite.\n\nDisponible con premium.',
+    button_budget_total: '➕ Todo el mes',
+    button_budget_category: '➕ Categoría',
+    button_budget_change: '✏️ Cambiar importe',
+    budget_total_name: '🎯 Todo el mes',
+    budget_left: 'quedan {amount}',
+    budget_over: 'superado en {amount}',
+    budget_enter_prompt: 'Introduce el límite del periodo para «{name}» 👇\n\nPor ejemplo: `10000` (en *{currency}*) o `150 USD`',
+    budget_amount_invalid: '❌ Solo hace falta un importe: `10000` o `150 USD`.',
+    budget_saved: '✅ Presupuesto guardado',
+    budget_deleted: '✅ Presupuesto eliminado',
+    budget_not_found: '❌ Presupuesto no encontrado',
+    budget_warning_80: '⚠️ {name}: gastado {spent} de {limit} ({percent} %)',
+    budget_warning_100: '🚨 {name}: presupuesto superado — {spent} de {limit} ({percent} %)',
+    overview_budget_of: 'del presupuesto de {amount}',
+
+    // Period summary
+    button_report: '📄 Resumen',
+    report_title: 'Resumen: {range}',
+    report_vs_previous: 'Frente al periodo anterior: {change} (antes {amount})',
+    report_change_new: 'nuevo',
+    report_change_same: 'sin cambios',
+    report_top_categories: 'Mayores gastos:',
+    report_locked: '🔒 El desglose completo — cada categoría frente al periodo anterior, presupuestos, gasto medio por día y el mayor gasto — viene con premium.',
+    report_categories_vs_previous: 'Categorías (frente al periodo anterior):',
+    report_categories_gone: 'Sin gastos esta vez: {list}',
+    report_more_numbers: 'Más cifras:',
+    report_per_day: '📅 Media por día: {amount}',
+    report_largest: '🔝 Mayor gasto: {amount} — {description} ({date})'
 };

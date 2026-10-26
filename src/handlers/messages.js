@@ -1,7 +1,7 @@
 const { LEGACY_MENU_BUTTON_KEYS } = require('../utils/constants');
 
 class MessageHandlers {
-constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, donationRepository, bugReportRepository, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers }) {
+constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, donationRepository, bugReportRepository, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -19,6 +19,7 @@ constructor({ expenseService, userService, premiumService, familyService, catego
     this.incomeHandlers = incomeHandlers;
     this.recurringExpenseHandlers = recurringExpenseHandlers;
     this.expenseHandlers = expenseHandlers;
+    this.budgetHandlers = budgetHandlers;
   }
 
   async handleExpense(ctx) {
@@ -119,6 +120,10 @@ constructor({ expenseService, userService, premiumService, familyService, catego
 
         if (userState === 'adding_recurring_day') {
           return await this.recurringExpenseHandlers.handleDayInput(ctx, text, userLanguage);
+        }
+
+        if (typeof userState === 'string' && userState.startsWith('setting_budget:')) {
+          return await this.budgetHandlers.handleAmountInput(ctx, text, userLanguage, userState.split(':')[1]);
         }
       }
       

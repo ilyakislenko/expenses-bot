@@ -211,6 +211,7 @@ module.exports = {
 • 📊 *月度概览* — 支出、收入、余额、类别；◀️ — 以前的周期
 • 📅 *今天* — 当天的记录；点击编号可编辑或删除记录
 • 🔁 *定期支出* — 房租和订阅每月自动记录
+• 🎯 *预算* 和 📄 期间 *总结* — 月度概览下方的按钮（高级版）
 • 货币、提醒（每天最多3次）和周期起始日 — 在 ☰ 更多 → ⚙️ 设置
 
 命令：/stats /history /income /recurring /export /settings /menu`,
@@ -377,6 +378,8 @@ module.exports = {
     status_label: '*状态:* {status}',
     max_description_length: '<b>描述最大长度:</b> {length} 个字符',
     premium_benefits: `💎 <b>高级用户优势:</b>
+• 🎯 月度和分类预算，达到80%和超支时提醒
+• 📄 完整期间总结：每个类别与上月对比、预算、每日平均支出
 • 描述160字符（而非80）
 • 最多5个自定义类别
 • 家庭预算
@@ -442,7 +445,7 @@ module.exports = {
     error_amount: '❌ 金额无效。请输入0.01到999999之间的数字。',
     error_format: '❌ 没看懂。请以金额开头：`250 咖啡`、`20 USD 出租车` 或只写 `300`。',
     error_forbidden_content: '❌ 含有不允许的内容。',
-    error_premium_required: '💎 此功能仅限高级用户。\n\n高级版提供:\n• 描述160字符（而非80）\n• 自定义类别\n• 家庭预算\n• 编辑记录',
+    error_premium_required: '💎 此功能仅限高级用户。\n\n高级版提供:\n• 带提醒的预算\n• 完整期间总结\n• 自定义类别\n• 家庭预算\n• 编辑记录',
     error_generic: '❌ 出错了，请稍后再试或联系管理员。',
     
     // 按钮
@@ -624,10 +627,44 @@ module.exports = {
     subscription_active_info: '🔁 月度订阅已支付至 {date}，并将自动续费。取消方式：Telegram → 设置 → 我的星星 → 我的订阅（英文界面：Settings → My Stars → My subscriptions）。',
     subscription_renewed: '🔁 订阅已续费。高级版有效期至 {date}。',
     button_view_tariffs: '⭐️ 方案',
-    premium_expiring_trial: '⏳ 你的高级版试用将于 {date} 结束。\n\n之后自定义类别、家庭预算和编辑记录将无法使用。你记录的所有内容都会保留，记录支出仍然免费。',
+    premium_expiring_trial: '⏳ 你的高级版试用将于 {date} 结束。\n\n之后预算、完整期间总结、自定义类别、家庭预算和编辑记录将无法使用。你记录的所有内容都会保留，记录支出仍然免费。',
     premium_expiring_paid: '⏳ 高级版将于 {date} 结束。你可以提前续费 — 剩余天数会保留。',
-    premium_expired_trial: '🌙 你的高级版试用已结束。记录支出和收入仍然免费；自定义类别、家庭和编辑记录需要高级版。',
+    premium_expired_trial: '🌙 你的高级版试用已结束。记录支出和收入仍然免费；预算、完整总结、自定义类别、家庭和编辑记录需要高级版。',
     premium_expired_paid: '🌙 高级版已结束。感谢你对项目的支持！你可以随时续费。',
-    premium_winback: '👋 你的高级版已结束一周。如果想重新使用自定义类别、家庭预算和编辑记录 — 请查看下方方案。',
-    start_reminders_note: '🔔 如果你一天内没有任何记录，我会提醒你（每天最多3次）。更改时间或关闭：☰ 更多 → ⚙️ 设置 → 🔔。'
+    premium_winback: '👋 你的高级版已结束一周。如果想重新使用预算、完整总结、自定义类别、家庭预算和编辑记录 — 请查看下方方案。',
+    start_reminders_note: '🔔 如果你一天内没有任何记录，我会提醒你（每天最多3次）。更改时间或关闭：☰ 更多 → ⚙️ 设置 → 🔔。',
+
+    // 预算
+    button_budgets: '🎯 预算',
+    budgets_title: '预算',
+    budgets_empty: '为整月或某个类别设置限额 — 达到80%和超出限额时我会提醒你。',
+    budgets_teaser: '🎯 *预算*\n\n整月或某个类别的限额：进度显示在概览中，达到80%和超出限额时会收到提醒。\n\n高级版可用。',
+    button_budget_total: '➕ 整月',
+    button_budget_category: '➕ 类别',
+    button_budget_change: '✏️ 修改金额',
+    budget_total_name: '🎯 整月',
+    budget_left: '剩余 {amount}',
+    budget_over: '超出 {amount}',
+    budget_enter_prompt: '请输入“{name}”的期间限额 👇\n\n例如：`10000`（*{currency}*）或 `150 USD`',
+    budget_amount_invalid: '❌ 只需输入金额：`10000` 或 `150 USD`。',
+    budget_saved: '✅ 预算已保存',
+    budget_deleted: '✅ 预算已删除',
+    budget_not_found: '❌ 未找到预算',
+    budget_warning_80: '⚠️ {name}：已花费 {spent} / {limit}（{percent}%）',
+    budget_warning_100: '🚨 {name}：预算超支 — {spent} / {limit}（{percent}%）',
+    overview_budget_of: '预算 {amount} 中',
+
+    // 期间总结
+    button_report: '📄 总结',
+    report_title: '总结：{range}',
+    report_vs_previous: '与上一期间相比：{change}（之前 {amount}）',
+    report_change_new: '新增',
+    report_change_same: '无变化',
+    report_top_categories: '主要支出：',
+    report_locked: '🔒 完整明细 — 每个类别与上一期间的对比、预算、每日平均支出和最大一笔支出 — 需要高级版。',
+    report_categories_vs_previous: '类别（与上一期间相比）：',
+    report_categories_gone: '本期无支出：{list}',
+    report_more_numbers: '更多数据：',
+    report_per_day: '📅 每日平均：{amount}',
+    report_largest: '🔝 最大一笔支出：{amount} — {description}（{date}）'
 };

@@ -25,9 +25,13 @@ function stateCleanupMiddleware(handlers) {
         'adding_recurring',
         'adding_recurring_day'
       ];
-      
+      // Состояния с параметром после двоеточия (например, setting_budget:<цель>)
+      const autoResetPrefixes = ['setting_budget:'];
+      const shouldReset = autoResetStates.includes(userState)
+        || (typeof userState === 'string' && autoResetPrefixes.some(prefix => userState.startsWith(prefix)));
+
       // Сбрасываем состояния при любых действиях пользователя (кроме текстовых сообщений)
-      if (autoResetStates.includes(userState) && ctx.updateType !== 'message') {
+      if (shouldReset && ctx.updateType !== 'message') {
         console.log(`🔄 Автоматически сбрасываем состояние ${userState} для пользователя ${userId} при действии: ${ctx.updateType}`);
         handlers.stateService.deleteUserState(userId);
       }

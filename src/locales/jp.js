@@ -211,6 +211,7 @@ module.exports = {
 • 📊 *月の概要* — 支出、収入、残高、カテゴリ; ◀️ — 過去の期間
 • 📅 *今日* — その日の記録; 番号をタップして編集・削除
 • 🔁 *定期支出* — 家賃やサブスクは毎月自動で記録されます
+• 🎯 *予算* と 📄 期間の *サマリー* — 月の概要の下のボタン（プレミアム）
 • 通貨、リマインダー（1日3回まで）、期間の開始日 — ☰ その他 → ⚙️ 設定
 
 コマンド: /stats /history /income /recurring /export /settings /menu`,
@@ -376,6 +377,8 @@ module.exports = {
     status_label: '*ステータス:* {status}',
     max_description_length: '<b>説明の最大長:</b> {length} 文字',
     premium_benefits: `💎 <b>プレミアム特典:</b>
+• 🎯 月全体・カテゴリー別の予算（80%到達時と超過時に通知）
+• 📄 期間の詳細サマリー: 全カテゴリーの前月比較、予算、1日あたりの平均支出
 • 説明160文字（通常80文字）
 • カスタムカテゴリー最大5個
 • 家族の予算
@@ -441,7 +444,7 @@ module.exports = {
     error_amount: '❌ 無効な金額です。0.01〜999999の数字を入力してください。',
     error_format: '❌ 認識できませんでした。金額から始めてください: `250 コーヒー`、`20 USD タクシー`、または `300` だけ。',
     error_forbidden_content: '❌ 禁止されている内容が含まれています。',
-    error_premium_required: '💎 この機能はプレミアム専用です。\n\nプレミアム特典:\n• 説明160文字（通常80文字）\n• カスタムカテゴリー\n• 家族の予算\n• 記録の編集',
+    error_premium_required: '💎 この機能はプレミアム専用です。\n\nプレミアム特典:\n• 通知付きの予算\n• 期間の詳細サマリー\n• カスタムカテゴリー\n• 家族の予算\n• 記録の編集',
     error_generic: '❌ エラーが発生しました。後でもう一度お試しください、または管理者に連絡してください。',
     
     // ボタン
@@ -623,10 +626,44 @@ module.exports = {
     subscription_active_info: '🔁 月額サブスクリプションは{date}まで支払い済みで、自動更新されます。解約: Telegram → 設定 → スター → 登録状況（英語表示: Settings → My Stars → My subscriptions）。',
     subscription_renewed: '🔁 サブスクリプションが更新されました。プレミアムは{date}まで有効です。',
     button_view_tariffs: '⭐️ プラン',
-    premium_expiring_trial: '⏳ プレミアムのお試し期間は{date}に終了します。\n\n終了後はカスタムカテゴリー、家族の予算、記録の編集が使えなくなります。記録したデータはすべて残り、支出の記録は無料です。',
+    premium_expiring_trial: '⏳ プレミアムのお試し期間は{date}に終了します。\n\n終了後は予算、期間の詳細サマリー、カスタムカテゴリー、家族の予算、記録の編集が使えなくなります。記録したデータはすべて残り、支出の記録は無料です。',
     premium_expiring_paid: '⏳ プレミアムは{date}に終了します。事前に更新できます — 残りの日数は引き継がれます。',
-    premium_expired_trial: '🌙 プレミアムのお試し期間が終了しました。支出と収入の記録は引き続き無料です。カスタムカテゴリー、家族、記録の編集はプレミアムで利用できます。',
+    premium_expired_trial: '🌙 プレミアムのお試し期間が終了しました。支出と収入の記録は引き続き無料です。予算、詳細サマリー、カスタムカテゴリー、家族、記録の編集はプレミアムで利用できます。',
     premium_expired_paid: '🌙 プレミアムが終了しました。プロジェクトへのご支援ありがとうございました！いつでも更新できます。',
-    premium_winback: '👋 プレミアムが終了して1週間が経ちました。カスタムカテゴリー、家族の予算、記録の編集をまた使いたい場合は、下のプランをご覧ください。',
-    start_reminders_note: '🔔 1日の間に何も記録しなかった場合、リマインドします（1日最大3回）。時間の変更やオフ: ☰ その他 → ⚙️ 設定 → 🔔。'
+    premium_winback: '👋 プレミアムが終了して1週間が経ちました。予算、詳細サマリー、カスタムカテゴリー、家族の予算、記録の編集をまた使いたい場合は、下のプランをご覧ください。',
+    start_reminders_note: '🔔 1日の間に何も記録しなかった場合、リマインドします（1日最大3回）。時間の変更やオフ: ☰ その他 → ⚙️ 設定 → 🔔。',
+
+    // 予算
+    button_budgets: '🎯 予算',
+    budgets_title: '予算',
+    budgets_empty: '月全体またはカテゴリーごとに上限を設定できます — 80%に達したときと上限を超えたときにお知らせします。',
+    budgets_teaser: '🎯 *予算*\n\n月全体またはカテゴリーの上限: 進捗は概要に表示され、80%に達したときと上限を超えたときに通知が届きます。\n\nプレミアムで利用できます。',
+    button_budget_total: '➕ 月全体',
+    button_budget_category: '➕ カテゴリー',
+    button_budget_change: '✏️ 金額を変更',
+    budget_total_name: '🎯 月全体',
+    budget_left: '残り {amount}',
+    budget_over: '{amount} 超過',
+    budget_enter_prompt: '「{name}」の期間の上限を入力してください 👇\n\n例: `10000`（*{currency}*）または `150 USD`',
+    budget_amount_invalid: '❌ 金額だけを入力してください: `10000` または `150 USD`。',
+    budget_saved: '✅ 予算を保存しました',
+    budget_deleted: '✅ 予算を削除しました',
+    budget_not_found: '❌ 予算が見つかりません',
+    budget_warning_80: '⚠️ {name}: {limit} のうち {spent} を使用（{percent}%）',
+    budget_warning_100: '🚨 {name}: 予算超過 — {limit} のうち {spent}（{percent}%）',
+    overview_budget_of: '予算 {amount} のうち',
+
+    // 期間のサマリー
+    button_report: '📄 サマリー',
+    report_title: 'サマリー: {range}',
+    report_vs_previous: '前の期間との比較: {change}（前回 {amount}）',
+    report_change_new: '新規',
+    report_change_same: '変化なし',
+    report_top_categories: '支出の多い項目:',
+    report_locked: '🔒 詳細な内訳 — 全カテゴリーの前の期間との比較、予算、1日あたりの平均支出、最大の支出 — はプレミアムで利用できます。',
+    report_categories_vs_previous: 'カテゴリー（前の期間との比較）:',
+    report_categories_gone: '今回は支出なし: {list}',
+    report_more_numbers: 'その他の数値:',
+    report_per_day: '📅 1日あたりの平均: {amount}',
+    report_largest: '🔝 最大の支出: {amount} — {description}（{date}）'
 };

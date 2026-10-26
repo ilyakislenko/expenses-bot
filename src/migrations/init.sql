@@ -304,3 +304,19 @@ SELECT user_id, 'paid', MIN(created_at) FROM premium_transactions
 WHERE status = 'completed' AND stars_amount > 0 AND transaction_type IN ('purchase', 'activation', 'extension')
 GROUP BY user_id
 ON CONFLICT DO NOTHING;
+
+-- ========================================
+-- BUDGETS
+-- ========================================
+
+-- Бюджет на пользовательский период (period_start_day): на категорию (по имени, как в обзоре) или общий (category_name IS NULL)
+CREATE TABLE IF NOT EXISTS category_budgets (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    category_name VARCHAR(100) NULL,
+    amount DECIMAL(12,2) NOT NULL CHECK (amount > 0),
+    currency VARCHAR(3) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+COMMENT ON COLUMN category_budgets.category_name IS 'Имя категории; NULL — общий бюджет на период';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_category_budgets_user_category ON category_budgets(user_id, (COALESCE(category_name, '')));

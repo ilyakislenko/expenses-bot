@@ -1,6 +1,6 @@
 const currencyConfig = require('./config/currencies');
 
-module.exports = function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, recurringExpenseService, premiumLifecycleService, supportedCurrencies = currencyConfig.SUPPORTED_CURRENCIES) {
+module.exports = function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, recurringExpenseService, premiumLifecycleService, reportService, supportedCurrencies = currencyConfig.SUPPORTED_CURRENCIES) {
   // Проверяем, нужно ли обновлять курсы при запуске
   (async () => {
     try {
@@ -56,6 +56,18 @@ module.exports = function setupBotCron(cron, currencyUtils, donationRepository, 
       }
     } catch (err) {
       console.error('Ошибка при отправке уведомлений о премиуме:', err);
+    }
+  });
+
+  // Итоги прошлого периода: в первые 3 дня нового периода, днём по местному времени, по разу на период
+  cron.schedule('35 * * * *', async () => {
+    try {
+      const sent = await reportService.processDue();
+      if (sent > 0) {
+        console.log(`Итоги периода: отправлено ${sent}`);
+      }
+    } catch (err) {
+      console.error('Ошибка при отправке итогов периода:', err);
     }
   });
 

@@ -26,7 +26,7 @@ function groupByCurrency(expenses) {
 }
 
 class ExpenseHandlers {
-  constructor({ expenseService, incomeService, recurringExpenseService, familyService, premiumService, userService, localizationService, formatter, stateService, validator }) {
+  constructor({ expenseService, incomeService, recurringExpenseService, familyService, premiumService, userService, localizationService, formatter, stateService, validator, budgetService, reportService }) {
     this.expenseService = expenseService;
     this.incomeService = incomeService;
     this.recurringExpenseService = recurringExpenseService;
@@ -37,6 +37,8 @@ class ExpenseHandlers {
     this.formatter = formatter;
     this.stateService = stateService;
     this.validator = validator;
+    this.budgetService = budgetService;
+    this.reportService = reportService;
   }
 
   t(lang, key, params) {
@@ -73,6 +75,7 @@ class ExpenseHandlers {
       const category = remembered || await this.expenseService.getDefaultCategory();
       const expense = await this.expenseService.addExpense(userId, { ...draft, categoryId: category.id });
       await this.showCard(ctx, expense.id, 'n', { added: true, remembered: !!remembered });
+      await this.sendBudgetWarnings(ctx, userId, lang, category.name);
       return true;
     }
 
@@ -126,6 +129,17 @@ class ExpenseHandlers {
       category: this.formatter.translateCategoryName(category.name, this.localizationService, lang)
     }));
     await this.showCard(ctx, expense.id, 'n', { added: true });
+    await this.sendBudgetWarnings(ctx, userId, lang, category.name);
+  }
+
+  // Предупреждения бюджета (80% и превышение) отдельным сообщением, чтобы не потерялись при правке карточки
+  async sendBudgetWarnings(ctx, userId, lang, categoryName) {
+    const warnings = await this.budgetService.checkAfterExpense(userId, categoryName);
+    if (!warnings.length) return;
+    await ctx.reply(warnings.map(w => this.budgetService.warningText(lang, w)).join('\n'), {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: [[{ text: this.t(lang, 'button_budgets'), callback_data: 'bg_menu' }]] }
+    });
   }
 
   // ========================================
@@ -248,6 +262,7 @@ class ExpenseHandlers {
       category: this.formatter.translateCategoryName(category.name, this.localizationService, lang)
     }));
     await this.showCard(ctx, expenseId, back, { added: back === 'n' });
+    await this.sendBudgetWarnings(ctx, userId, lang, category.name);
   }
 
   // callback: xe|<id> — изменить сумму/описание (премиум), ввод следующим сообщением
@@ -375,11 +390,15 @@ class ExpenseHandlers {
     const lang = await this.userService.getUserLanguage(userId);
     if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
     const { timezone, currency, today, period } = await this.expenseService.getPeriodContext(userId, 'month', offset);
-    const [totals, categoryRows, incomeTotals] = await Promise.all([
+    const [totals, categories, incomeTotals, isPremium] = await Promise.all([
       this.expenseService.getTotals(userId, timezone, period),
-      this.expenseService.getCategoryTotals(userId, timezone, period),
-      this.incomeService.getTotals(userId, timezone, period)
+      this.reportService.categoryBreakdown(userId, timezone, period, currency),
+      this.incomeService.getTotals(userId, timezone, period),
+      this.premiumService.isPremiumUser(userId)
     ]);
+    // Бюджеты показываем для текущего периода
+    const budgets = offset === 0 && isPremium ? await this.budgetService.getStatus(userId, { timezone, currency, period }) : [];
+    const budgetFor = (name) => budgets.find(b => b.category_name === name);
 
     let text = `📊 *${this.t(lang, 'overview_title', { range: this.formatter.formatPeriodRange(period) })}*\n\n`;
     if (totals.count) {
@@ -388,25 +407,22 @@ class ExpenseHandlers {
     } else {
       text += this.t(lang, 'no_expenses_period');
     }
+    const totalBudget = budgetFor(null);
+    if (totalBudget) {
+      text += `\n🎯 ${this.formatter.progressBar(totalBudget.ratio)} ${Math.round(totalBudget.ratio * 100)}% · ${this.t(lang, 'overview_budget_of', { amount: this.formatter.formatAmount(totalBudget.limit, currency) })}`;
+    }
     const incomeSummary = await this.formatter.formatIncomeSummary(incomeTotals, totals, currency, this.localizationService, lang);
     if (incomeSummary) text += `\n${incomeSummary}`;
 
-    // Категории: суммы в основной валюте, по убыванию
-    const byName = new Map();
-    for (const row of categoryRows) {
-      const converted = await this.formatter.currencyUtils.convert(Number(row.total), row.currency, currency);
-      const entry = byName.get(row.name) || { id: row.category_id, name: row.name, icon: row.icon, total: 0 };
-      entry.total += converted;
-      entry.id = Math.min(entry.id, row.category_id);
-      byName.set(row.name, entry);
-    }
-    const categories = [...byName.values()].sort((a, b) => b.total - a.total);
+    // Категории: суммы в основной валюте, по убыванию; у категорий с бюджетом — % от лимита
     const categorySum = categories.reduce((sum, c) => sum + c.total, 0);
     if (categories.length) {
       text += `\n\n*${this.t(lang, 'by_categories')}*\n`;
       text += categories.map(c => {
         const percentage = categorySum > 0 ? (c.total / categorySum * 100).toFixed(0) : 0;
-        return `${c.icon} ${this.categoryName(c.name, lang)}: ${this.formatter.formatAmount(c.total, currency)} (${percentage}%)`;
+        const budget = budgetFor(c.name);
+        const budgetMark = budget ? ` · 🎯 ${Math.round(budget.ratio * 100)}%${budget.ratio > 1 ? ' 🚨' : ''}` : '';
+        return `${c.icon} ${this.categoryName(c.name, lang)}: ${this.formatter.formatAmount(c.total, currency)} (${percentage}%)${budgetMark}`;
       }).join('\n');
     }
 
@@ -433,7 +449,24 @@ class ExpenseHandlers {
     const nav = [{ text: this.t(lang, 'button_prev_period'), callback_data: `ov|${offset - 1}` }];
     if (offset < 0) nav.push({ text: this.t(lang, 'button_next_period'), callback_data: `ov|${offset + 1}` });
     keyboard.push(nav);
+    keyboard.push([
+      { text: this.t(lang, 'button_budgets'), callback_data: 'bg_menu' },
+      { text: this.t(lang, 'button_report'), callback_data: `rp|${offset}` }
+    ]);
 
+    await respond(ctx, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
+  }
+
+  // callback: rp|<offset> — итоги периода (полные с премиумом, краткие без)
+  async showReport(ctx, offset = 0) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
+    const isPremium = await this.premiumService.isPremiumUser(userId);
+    const { text } = await this.reportService.buildReport(userId, offset, lang, { full: isPremium });
+    const keyboard = [];
+    if (!isPremium) keyboard.push([{ text: this.t(lang, 'button_try_premium'), callback_data: 'premium_subscription' }]);
+    keyboard.push([{ text: this.t(lang, 'button_back_to_overview'), callback_data: `ov|${offset}` }]);
     await respond(ctx, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
   }
 

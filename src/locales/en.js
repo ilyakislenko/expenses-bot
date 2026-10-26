@@ -207,6 +207,7 @@ The menu is at the bottom: month overview, today's records, income, recurring ex
 • 📊 *Month overview* — expenses, income, balance, categories; ◀️ — previous periods
 • 📅 *Today* — records for the day; tap a number to edit or delete a record
 • 🔁 *Recurring expenses* — rent and subscriptions are recorded automatically every month
+• 🎯 *Budgets* and 📄 period *Summary* — buttons under the month overview (premium)
 • Currencies, reminders (up to 3 a day) and period start — in ☰ More → ⚙️ Settings
 
 Commands: /stats /history /income /recurring /export /settings /menu`,
@@ -272,10 +273,12 @@ Now all your expenses will be correctly displayed in your local time.`,
   status_label: '*Status:* {status}',
   max_description_length: '<b>Max description length:</b> {length} characters',
   premium_benefits: `💎 <b>Premium benefits:</b>
-• 160 characters in description (instead of 80)
+• 🎯 Monthly and per-category budgets with alerts at 80% and when exceeded
+• 📄 Full period summary: every category vs last month, budgets, average spending per day
 • Up to 5 custom categories
 • Family budget
 • Editing the amount and description of any record
+• 160 characters in description (instead of 80)
 
 Recording expenses and income is free and unlimited.`,
   
@@ -286,7 +289,7 @@ Recording expenses and income is free and unlimited.`,
   error_amount: '❌ Invalid amount. Enter a number from 0.01 to 999999.',
   error_format: '❌ I did not get it. Start with an amount: `250 coffee`, `20 USD taxi` or just `300`.',
   error_forbidden_content: '❌ Forbidden content.',
-  error_premium_required: '💎 This feature is available with premium only.\n\nPremium gives you:\n• 160 characters in description (instead of 80)\n• Custom categories\n• Family budget\n• Editing records',
+  error_premium_required: '💎 This feature is available with premium only.\n\nPremium gives you:\n• Budgets with alerts\n• Full period summary\n• Custom categories\n• Family budget\n• Editing records',
   error_generic: '❌ An error occurred. Please try again later or contact the administrator.',
   
   // Buttons
@@ -649,10 +652,44 @@ Recording expenses and income is free and unlimited.`,
   subscription_active_info: '🔁 The monthly subscription is paid until {date} and renews automatically. To cancel: Telegram → Settings → My Stars → My subscriptions.',
   subscription_renewed: '🔁 Subscription renewed. Premium is active until {date}.',
   button_view_tariffs: '⭐️ Plans',
-  premium_expiring_trial: '⏳ Your premium trial ends on {date}.\n\nAfter that custom categories, the family budget and editing records will stop working. Everything you recorded stays, and expense tracking is free.',
+  premium_expiring_trial: '⏳ Your premium trial ends on {date}.\n\nAfter that budgets, the full period summary, custom categories, the family budget and editing records will stop working. Everything you recorded stays, and expense tracking is free.',
   premium_expiring_paid: '⏳ Premium ends on {date}. You can renew in advance — the remaining days are kept.',
-  premium_expired_trial: '🌙 Your premium trial has ended. Tracking expenses and income stays free; custom categories, family and editing records come with premium.',
+  premium_expired_trial: '🌙 Your premium trial has ended. Tracking expenses and income stays free; budgets, the full summary, custom categories, family and editing records come with premium.',
   premium_expired_paid: '🌙 Premium has ended. Thank you for supporting the project! You can renew any time.',
-  premium_winback: '👋 Your premium ended a week ago. If you want custom categories, the family budget and editing records back — see the plans below.',
-  start_reminders_note: '🔔 If you record nothing during the day, I will remind you (up to 3 times a day). Change hours or turn off: ☰ More → ⚙️ Settings → 🔔.'
+  premium_winback: '👋 Your premium ended a week ago. If you want budgets, the full summary, custom categories, the family budget and editing records back — see the plans below.',
+  start_reminders_note: '🔔 If you record nothing during the day, I will remind you (up to 3 times a day). Change hours or turn off: ☰ More → ⚙️ Settings → 🔔.',
+
+  // Budgets
+  button_budgets: '🎯 Budgets',
+  budgets_title: 'Budgets',
+  budgets_empty: 'Set a limit for the whole month or for a category — I will warn you at 80% and when the limit is exceeded.',
+  budgets_teaser: '🎯 *Budgets*\n\nA limit for the month or for a category: progress is shown in the overview, and you get an alert at 80% and when the limit is exceeded.\n\nAvailable with premium.',
+  button_budget_total: '➕ Whole month',
+  button_budget_category: '➕ Category',
+  button_budget_change: '✏️ Change amount',
+  budget_total_name: '🎯 Whole month',
+  budget_left: '{amount} left',
+  budget_over: 'over by {amount}',
+  budget_enter_prompt: 'Enter the period limit for «{name}» 👇\n\nFor example: `10000` (in *{currency}*) or `150 USD`',
+  budget_amount_invalid: '❌ Only an amount is needed: `10000` or `150 USD`.',
+  budget_saved: '✅ Budget saved',
+  budget_deleted: '✅ Budget deleted',
+  budget_not_found: '❌ Budget not found',
+  budget_warning_80: '⚠️ {name}: spent {spent} of {limit} ({percent}%)',
+  budget_warning_100: '🚨 {name}: budget exceeded — {spent} of {limit} ({percent}%)',
+  overview_budget_of: 'of the {amount} budget',
+
+  // Period summary
+  button_report: '📄 Summary',
+  report_title: 'Summary: {range}',
+  report_vs_previous: 'Compared to the previous period: {change} (was {amount})',
+  report_change_new: 'new',
+  report_change_same: 'no change',
+  report_top_categories: 'Top spending:',
+  report_locked: '🔒 The full breakdown — every category compared to the previous period, budgets, average spending per day and the largest expense — comes with premium.',
+  report_categories_vs_previous: 'Categories (vs previous period):',
+  report_categories_gone: 'No spending this time: {list}',
+  report_more_numbers: 'More numbers:',
+  report_per_day: '📅 Average per day: {amount}',
+  report_largest: '🔝 Largest expense: {amount} — {description} ({date})'
 }; 
