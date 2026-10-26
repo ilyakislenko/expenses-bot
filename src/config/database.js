@@ -2,7 +2,8 @@ module.exports = {
   // Настройки подключения к БД
   CONNECTION: {
     connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    // SSL только по явному флагу: локальный Postgres в docker работает без SSL, в том числе в production
+    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
   },
   
   // Настройки пула соединений
