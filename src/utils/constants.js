@@ -6,11 +6,13 @@ const USER_LIMITS = {
     MAX_DESCRIPTION_LENGTH: 80,
     ALLOW_CUSTOM_CATEGORIES: false,
     MAX_CUSTOM_CATEGORIES: 0,
+    MAX_SAVINGS_GOALS: 1,
   },
   premium: {
     MAX_DESCRIPTION_LENGTH: 160,
     ALLOW_CUSTOM_CATEGORIES: true,
     MAX_CUSTOM_CATEGORIES: 5,
+    MAX_SAVINGS_GOALS: 10,
   }
 };
 
@@ -100,6 +102,7 @@ const LEGACY_MENU_BUTTON_KEYS = [
 function generateMoreMenu(localizationService, userLanguage, isAdmin = false) {
   const t = (key) => localizationService.getText(userLanguage, key);
   const keyboard = [
+    [{ text: t('button_savings'), callback_data: 'sv' }],
     [{ text: t('button_family'), callback_data: 'family' }, { text: t('premium_subscription_title'), callback_data: 'premium_subscription' }],
     [{ text: t('button_export'), callback_data: 'export' }, { text: t('button_settings'), callback_data: 'settings' }],
     [{ text: t('button_help'), callback_data: 'help' }]

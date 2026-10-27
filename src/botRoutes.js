@@ -1,5 +1,5 @@
 module.exports = function registerBotRoutes(bot, handlers) {
-  const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, stateService } = handlers;
+  const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, savingsHandlers, stateService } = handlers;
   const { BACK_VIEW_PATTERN } = require('./handlers/ExpenseHandlers');
 
   // Импортируем middleware для автоматической очистки состояний
@@ -34,6 +34,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.command('menu', errorHandler((ctx) => commandHandlers.mainMenu(ctx))); // «☰ Ещё»
   bot.command('income', errorHandler((ctx) => incomeHandlers.showMenu(ctx))); // доходы за период
   bot.command('recurring', errorHandler((ctx) => recurringExpenseHandlers.showMenu(ctx))); // ежемесячные регулярные траты
+  bot.command('savings', errorHandler((ctx) => savingsHandlers.showMenu(ctx))); // накопления, цели, прогноз
   bot.command('cancel', errorHandler(async (ctx) => {
     const userId = ctx.from.id;
     const userLanguage = await handlers.userService.getUserLanguage(userId);
@@ -90,6 +91,25 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('bg_cat', errorHandler((ctx) => budgetHandlers.chooseCategory(ctx)));
   bot.action(/^bg_add\|(total|\d+)$/, errorHandler((ctx) => budgetHandlers.startSetAmount(ctx)));
   bot.action(/^bg_del\|(\d+)$/, errorHandler((ctx) => budgetHandlers.delete(ctx)));
+
+  // Накопления: копилки, цели, прогноз, параметры
+  bot.action('sv', errorHandler((ctx) => savingsHandlers.showMenu(ctx)));
+  bot.action(/^svp\|(\d+)$/, errorHandler((ctx) => savingsHandlers.showPot(ctx)));
+  bot.action(/^svd\|(\d+)$/, errorHandler((ctx) => savingsHandlers.startBalanceInput(ctx, 'dep')));
+  bot.action(/^svw\|(\d+)$/, errorHandler((ctx) => savingsHandlers.startBalanceInput(ctx, 'wd')));
+  bot.action(/^svs\|(\d+)$/, errorHandler((ctx) => savingsHandlers.startBalanceInput(ctx, 'set')));
+  bot.action(/^svt\|(\d+)$/, errorHandler((ctx) => savingsHandlers.chooseTransferTarget(ctx)));
+  bot.action(/^svtt\|(\d+)\|(\d+)$/, errorHandler((ctx) => savingsHandlers.startTransfer(ctx)));
+  bot.action('svgn', errorHandler((ctx) => savingsHandlers.startNewGoal(ctx)));
+  bot.action(/^svga\|(\d+)$/, errorHandler((ctx) => savingsHandlers.startGoalTarget(ctx)));
+  bot.action(/^svgd\|(\d+)$/, errorHandler((ctx) => savingsHandlers.startGoalDate(ctx)));
+  bot.action(/^svgdn\|(\d+)$/, errorHandler((ctx) => savingsHandlers.clearGoalDate(ctx)));
+  bot.action(/^svgm\|(\d+)$/, errorHandler((ctx) => savingsHandlers.toggleGoalMode(ctx)));
+  bot.action(/^svgx\|(\d+)$/, errorHandler((ctx) => savingsHandlers.confirmDeleteGoal(ctx)));
+  bot.action(/^svgxc\|(\d+)$/, errorHandler((ctx) => savingsHandlers.deleteGoal(ctx)));
+  bot.action('svf', errorHandler((ctx) => savingsHandlers.showForecast(ctx)));
+  bot.action('svo', errorHandler((ctx) => savingsHandlers.showSettings(ctx)));
+  bot.action(/^svo\|(m|ma|i|y|g)$/, errorHandler((ctx) => savingsHandlers.settingsAction(ctx)));
 
   // Текстовые сообщения
   bot.on('text', errorHandler((ctx) => messageHandlers.handleExpense(ctx))); // ввод трат, доходов и кнопки клавиатуры

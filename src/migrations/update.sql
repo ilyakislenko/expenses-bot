@@ -525,3 +525,51 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_family_user_user_id_unique ON family_user(
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS family_mode BOOLEAN NOT NULL DEFAULT FALSE;
 COMMENT ON COLUMN users.family_mode IS 'Режим «все траты в семью»: новые траты по умолчанию записываются в семью пользователя';
+
+-- ========================================
+-- SAVINGS: накопления, цели, прогноз
+-- ========================================
+
+-- Копилки: общая (одна на пользователя) и цели. Цель 'own' — своя копилка,
+-- 'total' — без своих денег, прогресс считается от всех накоплений.
+CREATE TABLE IF NOT EXISTS savings_pots (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind VARCHAR(10) NOT NULL CHECK (kind IN ('general', 'goal')),
+    name VARCHAR(60) NULL,
+    balance DECIMAL(14,2) NOT NULL DEFAULT 0 CHECK (balance >= 0),
+    currency VARCHAR(3) NOT NULL,
+    target_amount DECIMAL(14,2) NULL CHECK (target_amount IS NULL OR target_amount > 0),
+    target_date DATE NULL,
+    goal_mode VARCHAR(10) NOT NULL DEFAULT 'own' CHECK (goal_mode IN ('own', 'total')),
+    achieved_at TIMESTAMPTZ NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (kind = 'general' OR (name IS NOT NULL AND target_amount IS NOT NULL))
+);
+COMMENT ON COLUMN savings_pots.goal_mode IS 'own — своя копилка цели; total — прогресс от всех накоплений, balance не используется';
+COMMENT ON COLUMN savings_pots.achieved_at IS 'Когда цель достигнута (для поздравления один раз); сбрасывается, если сумма снова ниже цели';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_savings_pots_general ON savings_pots(user_id) WHERE kind = 'general';
+CREATE INDEX IF NOT EXISTS idx_savings_pots_user ON savings_pots(user_id);
+
+-- История изменений копилок: amount со знаком (+ пополнение, − снятие)
+CREATE TABLE IF NOT EXISTS savings_operations (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    pot_id INTEGER NOT NULL REFERENCES savings_pots(id) ON DELETE CASCADE,
+    amount DECIMAL(14,2) NOT NULL,
+    kind VARCHAR(10) NOT NULL CHECK (kind IN ('deposit', 'withdraw', 'set', 'transfer')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_savings_operations_pot ON savings_operations(pot_id, created_at);
+
+-- Параметры прогноза (проценты годовых). monthly_contribution NULL — взнос считается автоматически
+CREATE TABLE IF NOT EXISTS savings_settings (
+    user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    monthly_contribution DECIMAL(14,2) NULL CHECK (monthly_contribution IS NULL OR monthly_contribution >= 0),
+    inflation_rate DECIMAL(6,2) NULL CHECK (inflation_rate IS NULL OR inflation_rate BETWEEN 0 AND 300),
+    yield_rate DECIMAL(6,2) NULL CHECK (yield_rate IS NULL OR yield_rate BETWEEN 0 AND 300),
+    contribution_growth DECIMAL(6,2) NULL CHECK (contribution_growth IS NULL OR contribution_growth BETWEEN 0 AND 100),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+COMMENT ON COLUMN savings_settings.monthly_contribution IS 'Сколько откладывается в месяц (основная валюта); NULL — среднее (доходы − траты) за 3 полных периода';
+COMMENT ON COLUMN savings_settings.contribution_growth IS 'Рост ежемесячного взноса раз в год, %';

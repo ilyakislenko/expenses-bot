@@ -1,11 +1,11 @@
 # SpendTracker — Политика конфиденциальности / Privacy Policy
 
 ## Русский
-Редакция от 26.10.2026. Оператор персональных данных — ИП KISLENKO (Республика Казахстан), ИИН 010320550645. Бот SpendTracker (@ExpensesAssistant_bot). Контакт: ikis.dev01@gmail.com, в боте — /paysupport.
+Редакция от 27.10.2026. Оператор персональных данных — ИП KISLENKO (Республика Казахстан), ИИН 010320550645. Бот SpendTracker (@ExpensesAssistant_bot). Контакт: ikis.dev01@gmail.com, в боте — /paysupport.
 
 ## Какие данные бот хранит
 - Из Telegram: ID, имя, username, язык.
-- То, что ты вводишь: траты, доходы, регулярные траты, бюджеты, категории, описания, настройки (валюта, часовой пояс, начало периода, напоминания, сводка).
+- То, что ты вводишь: траты, доходы, регулярные траты, бюджеты, категории, описания, накопления и цели (суммы, названия, сроки, история пополнений), параметры прогноза, настройки (валюта, часовой пояс, начало периода, напоминания, сводка).
 - Семья: участие в семье и приглашения. Семейные траты видят участники семьи.
 - Покупки в Telegram Stars: тариф, сумма в звёздах, идентификатор платежа Telegram. Данные карт и счетов бот не получает — оплата проходит внутри Telegram.
 - Сообщения в поддержку и баг-репорты.
@@ -27,11 +27,11 @@
 О существенных изменениях сообщим в боте. Актуальная версия — по команде /privacy.
 
 ## English
-Version of 26.10.2026. Data controller: IE KISLENKO (Republic of Kazakhstan), IIN 010320550645. SpendTracker bot (@ExpensesAssistant_bot). Contact: ikis.dev01@gmail.com, in the bot — /paysupport.
+Version of 27.10.2026. Data controller: IE KISLENKO (Republic of Kazakhstan), IIN 010320550645. SpendTracker bot (@ExpensesAssistant_bot). Contact: ikis.dev01@gmail.com, in the bot — /paysupport.
 
 ## What the bot stores
 - From Telegram: ID, name, username, language.
-- What you enter: expenses, income, recurring expenses, budgets, categories, descriptions, settings (currency, time zone, period start, reminders, summary).
+- What you enter: expenses, income, recurring expenses, budgets, categories, descriptions, savings and goals (amounts, names, deadlines, deposit history), forecast parameters, settings (currency, time zone, period start, reminders, summary).
 - Family: membership and invitations. Family expenses are visible to family members.
 - Telegram Stars purchases: plan, amount in Stars, Telegram payment ID. The bot never receives card or bank details — payment happens inside Telegram.
 - Support messages and bug reports.

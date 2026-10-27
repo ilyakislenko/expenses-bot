@@ -1,7 +1,7 @@
 const { LEGACY_MENU_BUTTON_KEYS } = require('../utils/constants');
 
 class MessageHandlers {
-constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, donationRepository, bugReportRepository, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers }) {
+constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, donationRepository, bugReportRepository, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, savingsHandlers }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -21,6 +21,7 @@ constructor({ expenseService, userService, premiumService, familyService, catego
     this.expenseHandlers = expenseHandlers;
     this.budgetHandlers = budgetHandlers;
     this.exportHandlers = exportHandlers;
+    this.savingsHandlers = savingsHandlers;
   }
 
   async handleExpense(ctx) {
@@ -128,6 +129,10 @@ constructor({ expenseService, userService, premiumService, familyService, catego
 
         if (typeof userState === 'string' && userState.startsWith('editing_income:')) {
           return await this.incomeHandlers.handleEditInput(ctx, text, userLanguage, parseInt(userState.split(':')[1], 10));
+        }
+
+        if (typeof userState === 'string' && userState.startsWith('sv_in:')) {
+          return await this.savingsHandlers.handleInput(ctx, text, userLanguage, userState);
         }
 
         if (userState === 'adding_recurring') {

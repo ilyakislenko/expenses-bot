@@ -34,6 +34,7 @@ const PremiumTransactionRepository = require('./repositories/PremiumTransactionR
 const DonationRepository = require('./repositories/DonationRepository');
 const BugReportRepository = require('./repositories/BugReportRepository');
 const IncomeRepository = require('./repositories/IncomeRepository');
+const SavingsRepository = require('./repositories/SavingsRepository');
 const RecurringExpenseRepository = require('./repositories/RecurringExpenseRepository');
 const FunnelRepository = require('./repositories/FunnelRepository');
 const UserNotificationRepository = require('./repositories/UserNotificationRepository');
@@ -50,6 +51,7 @@ const NotificationService = require('./services/NotificationService');
 const CategoryService = require('./services/CategoryService');
 const AdminService = require('./services/AdminService');
 const IncomeService = require('./services/IncomeService');
+const SavingsService = require('./services/SavingsService');
 const RecurringExpenseService = require('./services/RecurringExpenseService');
 const FunnelService = require('./services/FunnelService');
 const PremiumLifecycleService = require('./services/PremiumLifecycleService');
@@ -63,6 +65,7 @@ const MessageHandlers = require('./handlers/messages');
 const CallbackHandlers = require('./handlers/callbacks');
 const AdminHandlers = require('./handlers/AdminHandlers');
 const IncomeHandlers = require('./handlers/IncomeHandlers');
+const SavingsHandlers = require('./handlers/SavingsHandlers');
 const RecurringExpenseHandlers = require('./handlers/RecurringExpenseHandlers');
 const ExpenseHandlers = require('./handlers/ExpenseHandlers');
 const BudgetHandlers = require('./handlers/BudgetHandlers');
@@ -121,6 +124,9 @@ class Container {
 
       case 'bugReportRepository':
         return new BugReportRepository();
+
+      case 'savingsRepository':
+        return new SavingsRepository();
 
       case 'incomeRepository':
         return new IncomeRepository();
@@ -290,6 +296,16 @@ class Container {
           this.get('localizationService')
         );
 
+      case 'savingsService':
+        return new SavingsService({
+          savingsRepository: this.get('savingsRepository'),
+          expenseService: this.get('expenseService'),
+          incomeService: this.get('incomeService'),
+          userService: this.get('userService'),
+          premiumService: this.get('premiumService'),
+          currencyUtils: this.get('currencyUtils')
+        });
+
       case 'incomeService':
         return new IncomeService(
           this.get('incomeRepository'),
@@ -341,7 +357,8 @@ class Container {
           recurringExpenseHandlers: this.get('recurringExpenseHandlers'),
           expenseHandlers: this.get('expenseHandlers'),
           budgetHandlers: this.get('budgetHandlers'),
-          exportHandlers: this.get('exportHandlers')
+          exportHandlers: this.get('exportHandlers'),
+          savingsHandlers: this.get('savingsHandlers')
         });
 
       case 'callbackHandlers':
@@ -407,6 +424,17 @@ class Container {
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
           stateService: this.get('stateService')
+        });
+
+      case 'savingsHandlers':
+        return new SavingsHandlers({
+          savingsService: this.get('savingsService'),
+          userService: this.get('userService'),
+          premiumService: this.get('premiumService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter'),
+          stateService: this.get('stateService'),
+          validator: this.get('enhancedValidator')
         });
 
       case 'incomeHandlers':
@@ -487,6 +515,7 @@ class Container {
       expenseHandlers: this.get('expenseHandlers'),
       budgetHandlers: this.get('budgetHandlers'),
       exportHandlers: this.get('exportHandlers'),
+      savingsHandlers: this.get('savingsHandlers'),
       reportService: this.get('reportService'),
       dailySummaryService: this.get('dailySummaryService'),
       recurringExpenseService: this.get('recurringExpenseService'),
