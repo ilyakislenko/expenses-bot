@@ -20,7 +20,7 @@ const QUICK_CURRENCIES = ['USD', 'EUR', 'RUB'];
 // Ввод текстом — состояние sv_in:<операция>:<параметры>, см. handleInput.
 // Откуда вводили взнос в месяц (svm|<origin>): s — главный экран, f — прогноз, o — настройки, g<id> — цель.
 class SavingsHandlers {
-  constructor({ savingsService, userService, premiumService, localizationService, formatter, stateService, validator, achievementService = null }) {
+  constructor({ savingsService, userService, premiumService, localizationService, formatter, stateService, validator, achievementService = null, referralService = null }) {
     this.savingsService = savingsService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -29,6 +29,7 @@ class SavingsHandlers {
     this.stateService = stateService;
     this.validator = validator;
     this.achievementService = achievementService;
+    this.referralService = referralService;
     this.wizards = new UpdateWizards();
   }
 
@@ -796,9 +797,11 @@ class SavingsHandlers {
   async showGoalLimit(ctx, lang, limit) {
     await this.answer(ctx);
     const isPremium = await this.premiumService.isPremiumUser(ctx.from.id);
-    const keyboard = isPremium ? [] : [[{ text: this.t(lang, 'button_premium'), callback_data: 'premium_subscription' }]];
+    let text = this.t(lang, isPremium ? 'savings_goal_limit_premium' : 'savings_goal_limit_regular', { limit });
+    let keyboard = isPremium ? [] : [[{ text: this.t(lang, 'button_premium'), callback_data: 'premium_subscription' }]];
     keyboard.push(this.backToSavings(lang));
-    await respond(ctx, this.t(lang, isPremium ? 'savings_goal_limit_premium' : 'savings_goal_limit_regular', { limit }), {
+    if (!isPremium && this.referralService) ({ text, keyboard } = await this.referralService.withUpsell(ctx.from.id, lang, text, keyboard));
+    await respond(ctx, text, {
       parse_mode: 'Markdown',
       reply_markup: { inline_keyboard: keyboard }
     });

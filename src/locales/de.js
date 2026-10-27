@@ -207,6 +207,7 @@ Das Menü ist unten: Monatsübersicht, heutige Einträge, Einnahmen, wiederkehre
 • 🎯 *Budgets* und 📄 *Zusammenfassung* des Zeitraums — Buttons unter der Monatsübersicht (Premium)
 • Währungen, Erinnerungen (bis zu 3 pro Tag) und Periodenbeginn — unter ☰ Mehr → ⚙️ Einstellungen
 • 🏆 /achievements — Tagesserie, Erfolge, Challenges und dein Monatsrückblick
+• 🎁 /invite — lade einen Freund ein: +7 Tage Premium für euch beide
 
 Befehle: /stats /history /income /recurring /export /settings /menu`,
   
@@ -345,7 +346,7 @@ Ab jetzt werden alle Ausgaben in deiner Ortszeit angezeigt.`,
     status_regular: '👤 Standard',
     status_premium: '💎 Premium',
     max_description_length: '<b>Maximale Beschreibungslänge:</b> {length} Zeichen',
-    premium_benefits: '💎 <b>Premium-Vorteile:</b>\n  • 🎯 Monats- und Kategorienbudgets mit Warnungen bei 80 % und bei Überschreitung\n  • 📄 Vollständige Zusammenfassung des Zeitraums: jede Kategorie im Vergleich zum Vormonat, Budgets, Durchschnittsausgaben pro Tag\n  • Beschreibung bis zu 160 Zeichen (statt 80)\n  • Bis zu 5 eigene Kategorien\n  • Familienbudget\n  • Bis zu 10 Sparziele (ohne Premium — 1)\n\n  Das Erfassen von Ausgaben und Einnahmen ist kostenlos und unbegrenzt.',
+    premium_benefits: '💎 <b>Was Premium dir bringt</b>\n\n👀 <b>Du siehst, wohin das Geld geht</b>\n• Vollständige Zusammenfassung des Zeitraums: jede Kategorie im Vergleich zum Vormonat, Durchschnittsausgaben pro Tag, die größte Ausgabe{receipts}\n\n🎯 <b>Du gibst nach Plan aus</b>\n• Monats- und Kategorienbudgets — Warnung bei 80 % und bei Überschreitung\n\n🏦 <b>Du sparst schneller</b>\n• Bis zu 10 Sparziele (ohne Premium — 1)\n\n👨‍👩‍👧 <b>Die ganze Familie</b>\n• Familienbudget: gemeinsame Ausgaben aller an einem Ort\n\n✏️ <b>Nach deinem Geschmack</b>\n• Bis zu 5 eigene Kategorien und Beschreibungen bis 160 Zeichen (statt 80)\n\nAusgaben und Einnahmen erfassen, Kontoauszüge importieren, Ersparnisse und Prognose — kostenlos und unbegrenzt.',
     
     // Premium-Abonnement
     premium_subscription_title: '⭐️ Abonnement',
@@ -370,6 +371,32 @@ Ab jetzt werden alle Ausgaben in deiner Ortszeit angezeigt.`,
     purchases_prev_button: '◀ Zurück',
     purchases_next_button: 'Weiter ▶',
     premium_why_paid_text: 'Der Betrieb dieses Bots kostet etwa $200 pro Monat. Die Nutzerzahl wächst und als Entwickler muss ich auch meinen Lebensunterhalt verdienen :)',
+    button_invite: '🎁 Freund einladen',
+    command_invite: 'Freund einladen: +7 Tage Premium',
+    referral_title: '🎁 *Lade einen Freund ein*',
+    referral_intro: 'Schick einem Freund deinen Link. Sobald er {expenses} Ausgaben erfasst, bekommt ihr *beide* *+{days} Tage Premium* — zusätzlich zur Test- oder bezahlten Laufzeit.',
+    referral_link_label: '🔗 Dein Link (tippen zum Kopieren):',
+    referral_stats: '👥 Über deinen Link gekommen: *{invited}* · erfassen schon: *{activated}*',
+    referral_stats_days: '⭐ Verdient: *{days}* von {max} Premium-Tagen',
+    referral_capped_note: '✅ Du hast das Maximum erreicht — {max} Tage. Danke! Freunde über deinen Link bekommen trotzdem +{days} Tage.',
+    referral_share_text: 'Ich erfasse meine Ausgaben mit einem Telegram-Bot: Du schreibst „250 Kaffee“ — er sortiert alles in Kategorien und zeigt, wohin das Geld geht. Probier ihn über meinen Link aus — du bekommst +{days} Tage Premium geschenkt 🎁',
+    referral_button_share: '📤 An Freund senden',
+    referral_button_text: '✉️ Text zum Weiterleiten',
+    referral_button_invite_more: '🎁 Mehr einladen',
+    referral_friend_fallback: 'Ein Freund',
+    referral_joined_notification: '👋 {name} ist über deinen Link dazugekommen! Sobald {expenses} Ausgaben erfasst sind, bekommt ihr beide +{days} Tage Premium.',
+    referral_welcome_note: '🎁 Ein Freund hat dich eingeladen: Erfasse {expenses} Ausgaben — und ihr bekommt beide +{days} Tage Premium.',
+    referral_reward_invitee: '🎉 *+{days} Tage Premium!* Du hast {expenses} Ausgaben erfasst — den Einladungsbonus bekommen du und der Freund, der dich eingeladen hat. Premium gilt bis {date}.\n\nLade deine Freunde ein — für jeden weitere +{days} Tage.',
+    referral_reward_inviter: '🎉 *+{days} Tage Premium!* {name} erfasst dank deiner Einladung schon Ausgaben. Premium gilt bis {date}.',
+    referral_reward_inviter_capped: '🎉 {name} erfasst dank deiner Einladung schon Ausgaben und hat +{friendDays} Tage bekommen. Du hast den maximalen Bonus ({days} Tage) schon erreicht — danke, dass du den Bot weiterempfiehlst ❤️',
+    referral_upsell_line: '🎁 Oder lade einen Freund ein — ihr bekommt beide +{days} Tage Premium.',
+    premium_hook_regular: '📊 Einträge in den letzten 30 Tagen: <b>{count}</b>. Mit Premium siehst du, welche Kategorien wachsen, setzt Limits — und am Monatsende bleibt mehr übrig.',
+    premium_hook_trial: '📊 Einträge in den letzten 30 Tagen: <b>{count}</b>. Nach der Testphase gibt es Budgets, vollständige Zusammenfassungen und Familie nur mit Premium — alles Erfasste bleibt in jedem Fall erhalten.',
+    premium_benefit_receipts: '\n• 🧾 Kassenbon-Fotos: bis zu {premium} pro Monat (ohne Premium — {free})',
+    premium_coming_soon: '✨ Neue Funktionen kommen regelmäßig ins Premium — dein Abo enthält sie bereits.',
+    premium_trial_note: '⏳ Du testest gerade Premium. Wähle vor dem Ende einen Tarif — die restlichen Tage bleiben erhalten.',
+    premium_best_value: '💡 Am günstigsten — jährlich: <b>≈ {stars} ⭐ ({price}) pro Monat</b>, du sparst {percent} %.',
+    premium_referral_line: '🎁 Noch nicht bereit zu zahlen? Lade einen Freund ein — ihr bekommt beide +{days} Tage Premium.',
     // Labels für Tarife und Produktname
     tariff_button_30: '1 Monat',
     tariff_button_90: '3 Monate',

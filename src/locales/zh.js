@@ -207,6 +207,7 @@ module.exports = {
 • 🎯 *预算* 和 📄 期间 *总结* — 月度概览下方的按钮（高级版）
 • 货币、提醒（每天最多3次）和周期起始日 — 在 ☰ 更多 → ⚙️ 设置
 • 🏆 /achievements — 连续记录天数、成就、挑战和月度回顾
+• 🎁 /invite — 邀请好友：你们俩都得高级版 +7 天
 
 命令：/stats /history /income /recurring /export /settings /menu`,
   
@@ -343,7 +344,7 @@ module.exports = {
     status_regular: '👤 普通',
     status_premium: '💎 高级',
     max_description_length: '<b>描述最大长度:</b> {length} 个字符',
-    premium_benefits: '💎 <b>高级用户优势:</b>\n• 🎯 月度和分类预算，达到80%和超支时提醒\n• 📄 完整期间总结：每个类别与上月对比、预算、每日平均支出\n• 描述160字符（而非80）\n• 最多5个自定义类别\n• 家庭预算\n• 最多10个储蓄目标（非高级版为1个）\n\n记录支出和收入免费且不限次数。',
+    premium_benefits: '💎 <b>高级版能带来什么</b>\n\n👀 <b>看清钱花在哪儿</b>\n• 完整的期间总结：每个类别与上月对比、日均支出、最大一笔支出{receipts}\n\n🎯 <b>按计划花钱</b>\n• 月度和分类预算——达到 80% 和超支时提醒\n\n🏦 <b>存钱更快</b>\n• 最多 10 个储蓄目标（无高级版 — 1 个）\n\n👨‍👩‍👧 <b>全家一起</b>\n• 家庭预算：所有人的共同支出集中在一处\n\n✏️ <b>按你的习惯</b>\n• 最多 5 个自定义类别，描述最长 160 个字符（原为 80）\n\n记录支出和收入、导入账单、储蓄与预测——免费且不限量。',
     
     // 高级订阅
     premium_subscription_title: '⭐️ 订阅',
@@ -368,6 +369,32 @@ module.exports = {
     purchases_prev_button: '◀ 上一页',
     purchases_next_button: '下一页 ▶',
     premium_why_paid_text: '运行此机器人服务器每月约需 $200，且用户数量持续增长。作为开发者，我也需要维持生活来改进服务 :)',
+    button_invite: '🎁 邀请好友',
+    command_invite: '邀请好友：高级版 +7 天',
+    referral_title: '🎁 *邀请好友*',
+    referral_intro: '把你的链接发给好友。好友记录 {expenses} 笔支出后，你们*俩*都将获得*高级版 +{days} 天*——叠加到试用或已付费的期限上。',
+    referral_link_label: '🔗 你的链接（点按即可复制）：',
+    referral_stats: '👥 通过链接加入：*{invited}* · 已开始记账：*{activated}*',
+    referral_stats_days: '⭐ 已获得：*{days}* / {max} 天高级版',
+    referral_capped_note: '✅ 你已达到上限——{max} 天。谢谢！通过你的链接加入的好友仍会获得 +{days} 天。',
+    referral_share_text: '我在用一个 Telegram 机器人记账：发一句“250 咖啡”，它就会自动分类，并告诉你钱都花在哪儿了。用我的链接试试——还送你高级版 +{days} 天 🎁',
+    referral_button_share: '📤 发送给好友',
+    referral_button_text: '✉️ 转发用文本',
+    referral_button_invite_more: '🎁 继续邀请',
+    referral_friend_fallback: '好友',
+    referral_joined_notification: '👋 {name} 通过你的链接加入了！记录满 {expenses} 笔支出后，你们俩都将获得高级版 +{days} 天。',
+    referral_welcome_note: '🎁 你是被好友邀请来的：记录 {expenses} 笔支出，你们俩都能获得高级版 +{days} 天。',
+    referral_reward_invitee: '🎉 *高级版 +{days} 天！* 你已记录 {expenses} 笔支出——邀请奖励已发给你和邀请你的好友。高级版有效期至 {date}。\n\n也邀请你的好友吧——每邀请一位再得 +{days} 天。',
+    referral_reward_inviter: '🎉 *高级版 +{days} 天！* {name} 通过你的邀请开始记账了。高级版有效期至 {date}。',
+    referral_reward_inviter_capped: '🎉 {name} 通过你的邀请开始记账了，并获得了 +{friendDays} 天。你已拿满奖励上限（{days} 天）——感谢你推荐这个机器人 ❤️',
+    referral_upsell_line: '🎁 或者邀请好友——你们俩都得高级版 +{days} 天。',
+    premium_hook_regular: '📊 最近 30 天的记录：<b>{count}</b> 条。有了高级版，你能看到哪些类别在增长、设置限额——月底就能剩下更多。',
+    premium_hook_trial: '📊 最近 30 天的记录：<b>{count}</b> 条。试用期结束后，预算、完整总结和家庭功能仅限高级版——已记录的内容都会保留。',
+    premium_benefit_receipts: '\n• 🧾 小票照片：每月最多 {premium} 张（无高级版 — {free} 张）',
+    premium_coming_soon: '✨ 高级版会定期加入新功能——你的订阅已包含它们。',
+    premium_trial_note: '⏳ 你正在试用高级版。在试用结束前选择套餐——剩余天数会保留。',
+    premium_best_value: '💡 最划算——年付：<b>每月 ≈ {stars} ⭐（{price}）</b>，节省 {percent}%。',
+    premium_referral_line: '🎁 还不想付费？邀请好友——你们俩都得高级版 +{days} 天。',
     // 套餐标签与产品名
     tariff_button_30: '1 个月',
     tariff_button_90: '3 个月',

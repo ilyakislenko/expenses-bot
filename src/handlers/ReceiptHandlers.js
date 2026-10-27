@@ -50,7 +50,7 @@ function pickPhotoSize(sizes) {
 // Фото чека → каждая позиция записывается отдельной тратой сразу, затем список чека для правки
 // (номер → обычная карточка записи с возвратом к чеку, «Всё верно», «Отменить чек»).
 class ReceiptHandlers {
-  constructor({ receiptService, expenseHandlers, budgetService, userService, localizationService, formatter, achievementService = null }) {
+  constructor({ receiptService, expenseHandlers, budgetService, userService, localizationService, formatter, achievementService = null, referralService = null }) {
     this.receiptService = receiptService;
     this.expenseHandlers = expenseHandlers;
     this.budgetService = budgetService;
@@ -58,6 +58,7 @@ class ReceiptHandlers {
     this.localizationService = localizationService;
     this.formatter = formatter;
     this.achievementService = achievementService;
+    this.referralService = referralService;
     this.tasks = new Set(); // фоновые распознавания
     this.busyUsers = new Set(); // у кого сейчас распознаётся чек (по одному на пользователя)
     this.drafts = new Map(); // `${userId}:${messageId}` → неуверенно распознанный чек до подтверждения | null — уже записывается
@@ -134,8 +135,10 @@ class ReceiptHandlers {
       const limit = await this.receiptService.checkLimit(userId, timezone);
       if (!limit.remaining) {
         const key = limit.isPremium ? 'receipt_limit_premium' : 'receipt_limit_regular';
-        const keyboard = limit.isPremium ? [] : [[{ text: this.t(lang, 'button_premium'), callback_data: 'premium_subscription' }]];
-        await ctx.reply(this.t(lang, key, { used: limit.used, limit: limit.limit, premium: this.receiptService.premiumLimit }), {
+        let text = this.t(lang, key, { used: limit.used, limit: limit.limit, premium: this.receiptService.premiumLimit });
+        let keyboard = limit.isPremium ? [] : [[{ text: this.t(lang, 'button_premium'), callback_data: 'premium_subscription' }]];
+        if (!limit.isPremium && this.referralService) ({ text, keyboard } = await this.referralService.withUpsell(userId, lang, text, keyboard));
+        await ctx.reply(text, {
           parse_mode: 'Markdown',
           reply_markup: { inline_keyboard: keyboard }
         });

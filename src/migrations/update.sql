@@ -765,3 +765,28 @@ ALTER TABLE user_challenges ADD CONSTRAINT user_challenges_kind_check CHECK (kin
 ALTER TABLE user_challenges DROP CONSTRAINT IF EXISTS user_challenges_status_check;
 ALTER TABLE user_challenges ADD CONSTRAINT user_challenges_status_check CHECK (status IN ('active', 'won', 'lost', 'canceled'));
 CREATE INDEX IF NOT EXISTS idx_user_challenges_user ON user_challenges(user_id, status);
+
+-- ==== REFERRALS ====
+-- Реферальная программа: личный код для ссылки t.me/<бот>?start=ref_<код> (создаётся при первом показе экрана
+-- «Пригласить друга») и приглашённые. Награда (+N дней премиума обоим) — один раз, когда приглашённый запишет
+-- 3 траты; rewarded_at ставится атомарно вместе с днями, выданными каждому.
+CREATE TABLE IF NOT EXISTS referral_codes (
+    user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    code VARCHAR(16) NOT NULL UNIQUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+COMMENT ON TABLE referral_codes IS 'Личный реферальный код пользователя (ссылка t.me/<бот>?start=ref_<код>)';
+
+CREATE TABLE IF NOT EXISTS referrals (
+    invitee_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    inviter_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    rewarded_at TIMESTAMPTZ NULL,
+    invitee_days INTEGER NOT NULL DEFAULT 0,
+    inviter_days INTEGER NOT NULL DEFAULT 0,
+    CHECK (invitee_id <> inviter_id)
+);
+COMMENT ON TABLE referrals IS 'Кто кого пригласил: только новые пользователи, пришедшие по ссылке ref_<код>';
+COMMENT ON COLUMN referrals.rewarded_at IS 'Когда выдана награда (приглашённый записал 3 траты); NULL — ещё нет';
+COMMENT ON COLUMN referrals.inviter_days IS 'Дней премиума пригласившему (0 — его лимит наград исчерпан)';
+CREATE INDEX IF NOT EXISTS idx_referrals_inviter ON referrals(inviter_id);

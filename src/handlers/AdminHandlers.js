@@ -3,7 +3,7 @@ const respond = require('../utils/respond');
 const { getTimezoneDisplayName } = require('../utils/timezoneCalculator');
 
 class AdminHandlers {
-  constructor(adminService, userService, localizationService, formatter, stateService, funnelService, paymentService) {
+  constructor(adminService, userService, localizationService, formatter, stateService, funnelService, paymentService, referralService = null) {
     this.adminService = adminService;
     this.userService = userService;
     this.localizationService = localizationService;
@@ -11,6 +11,7 @@ class AdminHandlers {
     this.stateService = stateService;
     this.funnelService = funnelService;
     this.paymentService = paymentService;
+    this.referralService = referralService;
   }
 
   // Проверка прав администратора
@@ -86,7 +87,7 @@ class AdminHandlers {
         this.adminService.getPremiumTransactionStats()
       ]);
 
-      const statsText = this.localizationService.getText(userLanguage, 'admin_stats_text', {
+      let statsText = this.localizationService.getText(userLanguage, 'admin_stats_text', {
         totalUsers: userStats.totalUsers,
         activePremium: userStats.activePremiumUsers,
         newUsersWeek: userStats.newUsersLastWeek,
@@ -99,6 +100,13 @@ class AdminHandlers {
         totalStars: donationStats.totalStars,
         premiumTransactions: premiumStats.total_transactions || 0
       });
+      // Приглашения друзей: всего, сколько записали 3 траты (награда выдана), бонусных дней обоим сторонам
+      if (this.referralService) {
+        const referrals = await this.referralService.getGlobalStats().catch(() => null);
+        if (referrals) {
+          statsText += `\n\n🎁 Приглашения: ${referrals.invited} · активировали ${referrals.activated} · пригласивших ${referrals.inviters} · выдано ${referrals.days} дн. премиума`;
+        }
+      }
 
       const keyboard = [
         [{ text: '🔙 Назад', callback_data: 'panel_main' }]

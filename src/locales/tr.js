@@ -206,6 +206,7 @@ Menü aşağıda: ay özeti, bugünkü kayıtlar, gelir, düzenli harcamalar (ki
 • 🎯 *Bütçeler* ve 📄 dönem *Özeti* — ay genel bakışının altındaki düğmeler (Premium)
 • Para birimleri, hatırlatıcılar (günde en fazla 3) ve dönem başlangıcı — ☰ Daha fazla → ⚙️ Ayarlar
 • 🏆 /achievements — gün serisi, başarılar, meydan okumalar ve ayın özeti
+• 🎁 /invite — arkadaşınızı davet edin: ikinize de +7 gün Premium
 
 Komutlar: /stats /history /income /recurring /export /settings /menu`,
       
@@ -344,7 +345,7 @@ Artık tüm harcamalar yerel saatte gösterilecek.`,
     status_regular: '👤 Standart',
     status_premium: '💎 Premium',
     max_description_length: '<b>Maks açıklama uzunluğu:</b> {length} karakter',
-    premium_benefits: '💎 <b>Premium avantajları:</b>\n  • 🎯 %80’de ve aşıldığında uyarılı aylık ve kategori bütçeleri\n  • 📄 Tam dönem özeti: her kategori geçen ayla karşılaştırmalı, bütçeler, günlük ortalama harcama\n  • 5 adede kadar özel kategori\n  • Aile bütçesi\n  • 10 adede kadar birikim hedefi (premium olmadan — 1)\n  • 160 karakter açıklama (80 yerine)\n\nGider ve gelir kaydı ücretsiz ve sınırsızdır.',
+    premium_benefits: '💎 <b>Premium size neler sunar</b>\n\n👀 <b>Paranın nereye gittiğini görürsünüz</b>\n• Dönemin tam özeti: her kategori geçen ayla karşılaştırmalı, günlük ortalama harcama, en büyük harcama{receipts}\n\n🎯 <b>Plana göre harcarsınız</b>\n• Aylık ve kategori bütçeleri — %80\'de ve aşıldığında uyarı\n\n🏦 <b>Daha hızlı biriktirirsiniz</b>\n• 10 adede kadar birikim hedefi (Premium olmadan — 1)\n\n👨‍👩‍👧 <b>Tüm aile</b>\n• Aile bütçesi: herkesin ortak harcamaları tek yerde\n\n✏️ <b>Size göre</b>\n• 5 adede kadar özel kategori ve 160 karaktere kadar açıklama (80 yerine)\n\nHarcama ve gelir kaydı, hesap dökümü içe aktarma, birikimler ve tahmin — ücretsiz ve sınırsız.',
     
     // Premium abonelik
     premium_subscription_title: '⭐️ Abonelik',
@@ -369,6 +370,32 @@ Artık tüm harcamalar yerel saatte gösterilecek.`,
         purchases_prev_button: '◀ Önceki',
         purchases_next_button: 'Sonraki ▶',
     premium_why_paid_text: 'Bu botun sunucu masrafı ayda yaklaşık $200. Kullanıcı sayısı sürekli artıyor ve geliştirici olarak hizmeti geliştirmeye devam etmek için gelire ihtiyacım var :)',
+    button_invite: '🎁 Arkadaş davet et',
+    command_invite: 'Arkadaş davet et: +7 gün Premium',
+    referral_title: '🎁 *Bir arkadaşınızı davet edin*',
+    referral_intro: 'Bağlantınızı bir arkadaşınıza gönderin. Arkadaşınız {expenses} harcama kaydettiğinde *ikiniz de* *+{days} gün Premium* kazanırsınız — deneme ya da ücretli sürenize eklenir.',
+    referral_link_label: '🔗 Bağlantınız (kopyalamak için dokunun):',
+    referral_stats: '👥 Bağlantınızla gelen: *{invited}* · kayıt tutmaya başlayan: *{activated}*',
+    referral_stats_days: '⭐ Kazanılan: *{days}* / {max} gün Premium',
+    referral_capped_note: '✅ Maksimuma ulaştınız — {max} gün. Teşekkürler! Bağlantınızla gelen arkadaşlar yine de +{days} gün alır.',
+    referral_share_text: 'Harcamalarımı bir Telegram botuyla takip ediyorum: "250 kahve" yazıyorsunuz, bot harcamaları kategorilere ayırıyor ve paranın nereye gittiğini gösteriyor. Bağlantımla deneyin — +{days} gün Premium hediye 🎁',
+    referral_button_share: '📤 Arkadaşa gönder',
+    referral_button_text: '✉️ İletmek için metin',
+    referral_button_invite_more: '🎁 Daha fazla davet et',
+    referral_friend_fallback: 'Bir arkadaş',
+    referral_joined_notification: '👋 {name} bağlantınızla katıldı! {expenses} harcama kaydedildiğinde ikiniz de +{days} gün Premium kazanacaksınız.',
+    referral_welcome_note: '🎁 Sizi bir arkadaşınız davet etti: {expenses} harcama kaydedin — ikiniz de +{days} gün Premium kazanın.',
+    referral_reward_invitee: '🎉 *+{days} gün Premium!* {expenses} harcama kaydettiniz — davet bonusu hem size hem de sizi davet eden arkadaşınıza verildi. Premium {date} tarihine kadar geçerli.\n\nSiz de arkadaşlarınızı davet edin — her biri için +{days} gün.',
+    referral_reward_inviter: '🎉 *+{days} gün Premium!* {name} davetiniz sayesinde harcamalarını kaydediyor. Premium {date} tarihine kadar geçerli.',
+    referral_reward_inviter_capped: '🎉 {name} davetiniz sayesinde harcamalarını kaydediyor ve +{friendDays} gününü aldı. Maksimum bonusa ({days} gün) zaten ulaştınız — botu önerdiğiniz için teşekkürler ❤️',
+    referral_upsell_line: '🎁 Ya da bir arkadaşınızı davet edin — ikiniz de +{days} gün Premium kazanırsınız.',
+    premium_hook_regular: '📊 Son 30 gündeki kayıtlar: <b>{count}</b>. Premium ile hangi kategorilerin büyüdüğünü görür, limit koyarsınız — ay sonunda daha fazlası kalır.',
+    premium_hook_trial: '📊 Son 30 gündeki kayıtlar: <b>{count}</b>. Deneme bittikten sonra bütçeler, tam özetler ve aile yalnızca Premium ile kalır — kaydettikleriniz her durumda saklanır.',
+    premium_benefit_receipts: '\n• 🧾 Fiş fotoğrafları: ayda {premium} adede kadar (Premium olmadan — {free})',
+    premium_coming_soon: '✨ Premium\'a düzenli olarak yeni özellikler geliyor — aboneliğiniz bunları zaten içeriyor.',
+    premium_trial_note: '⏳ Şu anda deneme Premium\'unuz var. Bitmeden bir tarife seçin — kalan günler korunur.',
+    premium_best_value: '💡 En avantajlısı — yıllık: <b>ayda ≈ {stars} ⭐ ({price})</b>, %{percent} tasarruf.',
+    premium_referral_line: '🎁 Henüz ödemeye hazır değil misiniz? Bir arkadaşınızı davet edin — ikiniz de +{days} gün Premium kazanırsınız.',
     // Tarife etiketleri ve ürün adı
     tariff_button_30: '1 Ay',
     tariff_button_90: '3 Ay',

@@ -207,6 +207,7 @@ module.exports = {
 • 🎯 *予算* と 📄 期間の *サマリー* — 月の概要の下のボタン（プレミアム）
 • 通貨、リマインダー（1日3回まで）、期間の開始日 — ☰ その他 → ⚙️ 設定
 • 🏆 /achievements — 連続記録日数、実績、チャレンジ、月間まとめ
+• 🎁 /invite — 友だちを招待：おふたりにプレミアム+7日
 
 コマンド: /stats /history /income /recurring /export /settings /menu`,
   
@@ -342,7 +343,7 @@ module.exports = {
     status_regular: '👤 通常',
     status_premium: '💎 プレミアム',
     max_description_length: '<b>説明の最大長:</b> {length} 文字',
-    premium_benefits: '💎 <b>プレミアム特典:</b>\n• 🎯 月全体・カテゴリー別の予算（80%到達時と超過時に通知）\n• 📄 期間の詳細サマリー: 全カテゴリーの前月比較、予算、1日あたりの平均支出\n• 説明160文字（通常80文字）\n• カスタムカテゴリー最大5個\n• 家族の予算\n• 貯蓄目標は最大10個（プレミアムなしは1個）\n\n支出と収入の記録は無料・無制限です。',
+    premium_benefits: '💎 <b>プレミアムでできること</b>\n\n👀 <b>お金の行き先が見える</b>\n• 期間の詳細サマリー：カテゴリごとの前月比、1日あたりの平均支出、最大の支出{receipts}\n\n🎯 <b>計画どおりに使える</b>\n• 月・カテゴリ別の予算 — 80%到達時と超過時に通知\n\n🏦 <b>もっと早く貯まる</b>\n• 貯蓄目標は最大10個（プレミアムなし — 1個）\n\n👨‍👩‍👧 <b>家族みんなで</b>\n• 家族の予算：全員の共通の支出をひとつの場所に\n\n✏️ <b>自分好みに</b>\n• 独自カテゴリ最大5個、説明は最大160文字（通常80文字）\n\n支出・収入の記録、明細のインポート、貯蓄と予測は無料・無制限です。',
     
     // プレミアム購読
     premium_subscription_title: '⭐️ サブスクリプション',
@@ -367,6 +368,32 @@ module.exports = {
     purchases_prev_button: '◀ 前へ',
     purchases_next_button: '次へ ▶',
     premium_why_paid_text: 'このボットのサーバー維持には毎月約$200かかります。利用者が増え続ける中、開発者としてサービス改善のために生活費も必要です :)',
+    button_invite: '🎁 友だちを招待',
+    command_invite: '友だちを招待：プレミアム+7日',
+    referral_title: '🎁 *友だちを招待*',
+    referral_intro: 'あなたのリンクを友だちに送ってください。友だちが支出を{expenses}件記録すると、*おふたりとも* *プレミアム+{days}日* を受け取れます（お試し期間・有料期間に加算）。',
+    referral_link_label: '🔗 あなたのリンク（タップでコピー）：',
+    referral_stats: '👥 リンクから参加：*{invited}* · 記録を始めた人：*{activated}*',
+    referral_stats_days: '⭐ 獲得：プレミアム *{days}* / {max}日',
+    referral_capped_note: '✅ 上限の{max}日に達しました。ありがとうございます！あなたのリンクから参加した友だちは引き続き+{days}日を受け取れます。',
+    referral_share_text: 'Telegramのボットで支出を記録しています。「250 コーヒー」と送るだけでカテゴリに分けて、お金の行き先を見せてくれます。私のリンクから試すと、プレミアム+{days}日がプレゼントされます 🎁',
+    referral_button_share: '📤 友だちに送る',
+    referral_button_text: '✉️ 転送用テキスト',
+    referral_button_invite_more: '🎁 さらに招待',
+    referral_friend_fallback: '友だち',
+    referral_joined_notification: '👋 {name}さんがあなたのリンクから参加しました！支出が{expenses}件記録されると、おふたりともプレミアム+{days}日を受け取れます。',
+    referral_welcome_note: '🎁 友だちからの招待です：支出を{expenses}件記録すると、おふたりともプレミアム+{days}日を受け取れます。',
+    referral_reward_invitee: '🎉 *プレミアム+{days}日！* 支出を{expenses}件記録しました。招待ボーナスはあなたと招待してくれた友だちの両方に付与されました。プレミアムは{date}まで有効です。\n\nあなたも友だちを招待しましょう。1人につき+{days}日です。',
+    referral_reward_inviter: '🎉 *プレミアム+{days}日！* {name}さんがあなたの招待で記録を始めました。プレミアムは{date}まで有効です。',
+    referral_reward_inviter_capped: '🎉 {name}さんがあなたの招待で記録を始め、+{friendDays}日を受け取りました。あなたはすでにボーナスの上限（{days}日）に達しています。ボットを紹介してくださりありがとうございます ❤️',
+    referral_upsell_line: '🎁 または友だちを招待すると、おふたりともプレミアム+{days}日。',
+    premium_hook_regular: '📊 直近30日間の記録：<b>{count}</b>件。プレミアムなら、どのカテゴリが増えているかが分かり、上限も設定できます。月末に残るお金が増えます。',
+    premium_hook_trial: '📊 直近30日間の記録：<b>{count}</b>件。お試し期間の後は、予算・詳細サマリー・家族機能はプレミアムのみになります。記録したデータはそのまま残ります。',
+    premium_benefit_receipts: '\n• 🧾 レシート写真：月{premium}枚まで（プレミアムなし — {free}枚）',
+    premium_coming_soon: '✨ プレミアムには新機能が定期的に追加されます。サブスクリプションにはすでに含まれています。',
+    premium_trial_note: '⏳ 現在、お試しプレミアムをご利用中です。終了前にプランを選ぶと、残りの日数はそのまま引き継がれます。',
+    premium_best_value: '💡 いちばんお得なのは年間プラン：<b>月あたり ≈ {stars} ⭐（{price}）</b>、{percent}%お得。',
+    premium_referral_line: '🎁 まだ支払う準備ができていませんか？友だちを招待すると、おふたりともプレミアム+{days}日。',
     // 料金プランのラベルと商品名
     tariff_button_30: '1 Month',
     tariff_button_90: '3 Months',

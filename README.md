@@ -21,7 +21,8 @@ around making that useful over months rather than days.
 | **Family** | Shared budgets — invite members, expenses roll up across the family |
 | **Money** | Multi-currency with scheduled rate updates; per-user currency |
 | **Time** | Per-user timezone and period start day, so "today" and "this month" are the user's |
-| **Premium** | Trial period, Telegram Stars tariffs and monthly subscription, transaction ledger |
+| **Premium** | Trial period, Telegram Stars tariffs and monthly subscription, transaction ledger; subscription screen with grouped benefits, a personal hook from the last 30 days and the yearly per-month price |
+| **Growth** | Invite a friend (`/invite`, ☰ More): personal `?start=ref_<code>` link, share button and forwardable text, stats; when the friend records 3 expenses both get +7 days of premium (inviter capped at 10 rewards / 90 days); gentle «or invite a friend» hint on limit screens at most once a week |
 | **Languages** | de, en, es, fr, hi, jp, ka, kz, pt, ru, tr, uz, zh |
 
 ## Design

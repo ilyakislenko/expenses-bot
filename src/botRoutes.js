@@ -38,6 +38,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.command('recurring', errorHandler((ctx) => recurringExpenseHandlers.showMenu(ctx))); // ежемесячные регулярные траты
   bot.command('savings', errorHandler((ctx) => savingsHandlers.showMenu(ctx))); // накопления, цели, прогноз
   bot.command('achievements', errorHandler((ctx) => achievementHandlers.show(ctx))); // уровень, серия, достижения, челленджи
+  bot.command('invite', errorHandler((ctx) => handlers.referralHandlers.showInvite(ctx))); // пригласить друга
   bot.command('cancel', errorHandler(async (ctx) => {
     const userId = ctx.from.id;
     const userLanguage = await handlers.userService.getUserLanguage(userId);
@@ -218,6 +219,9 @@ module.exports = function registerBotRoutes(bot, handlers) {
     await ctx.answerCbQuery();
     await commandHandlers.premiumSubscription(ctx);
   }));
+  // Пригласить друга: экран со ссылкой и статистикой, текст для пересылки отдельным сообщением
+  bot.action('ref', errorHandler((ctx) => handlers.referralHandlers.showInvite(ctx)));
+  bot.action('ref_text', errorHandler((ctx) => handlers.referralHandlers.sendForwardText(ctx)));
 
   // Настройки
   bot.action('settings', errorHandler((ctx) => commandHandlers.settings(ctx)));

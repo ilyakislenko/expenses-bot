@@ -202,6 +202,7 @@ The menu is at the bottom: month overview, today's records, income, recurring ex
 • 🎯 *Budgets* and 📄 period *Summary* — buttons under the month overview (premium)
 • Currencies, reminders (up to 3 a day) and period start — in ☰ More → ⚙️ Settings
 • 🏆 /achievements — day streak, achievements, challenges and your month in review
+• 🎁 /invite — invite a friend: +7 days of premium for both of you
 
 Commands: /stats /history /income /recurring /export /settings /menu`,
 
@@ -251,7 +252,7 @@ Now all your expenses will be correctly displayed in your local time.`,
   status_regular: '👤 Standard',
   status_premium: '💎 Premium',
   max_description_length: '<b>Max description length:</b> {length} characters',
-  premium_benefits: '💎 <b>Premium benefits:</b>\n• 🎯 Monthly and per-category budgets with alerts at 80% and when exceeded\n• 📄 Full period summary: every category vs last month, budgets, average spending per day\n• Up to 5 custom categories\n• Family budget\n• Up to 10 savings goals (1 without premium)\n• 160 characters in description (instead of 80)\n\nRecording expenses and income is free and unlimited.',
+  premium_benefits: '💎 <b>What premium gives you</b>\n\n👀 <b>See where the money goes</b>\n• Full period summary: every category vs last month, average spending per day, the biggest expense{receipts}\n\n🎯 <b>Spend to plan</b>\n• Monthly and per-category budgets — alerts at 80% and when exceeded\n\n🏦 <b>Save faster</b>\n• Up to 10 savings goals (1 without premium)\n\n👨‍👩‍👧 <b>The whole family</b>\n• Family budget: everyone\'s shared expenses in one place\n\n✏️ <b>Your way</b>\n• Up to 5 custom categories and 160-character descriptions (instead of 80)\n\nRecording expenses and income, statement import, savings and forecast are free and unlimited.',
   
   // Validation errors
   error_too_long_regular: '❌ Description is too long!\nMaximum 80 characters for regular users.',
@@ -442,6 +443,32 @@ Now all your expenses will be correctly displayed in your local time.`,
   purchases_prev_button: '◀ Previous',
   purchases_next_button: 'Next ▶',
   premium_why_paid_text: 'Keeping the server running for this bot costs about $200 a month — and that\'s even without accounting for the rapidly growing number of users. And as the developer, I also need to eat to have the strength to improve the service :)',
+  button_invite: '🎁 Invite a friend',
+  command_invite: 'Invite a friend: +7 days of premium',
+  referral_title: '🎁 *Invite a friend*',
+  referral_intro: 'Send a friend your link. Once they record {expenses} expenses, you *both* get *+{days} days of premium* — added to a trial or paid period.',
+  referral_link_label: '🔗 Your link (tap to copy):',
+  referral_stats: '👥 Joined via your link: *{invited}* · started tracking: *{activated}*',
+  referral_stats_days: '⭐ Earned: *{days}* of {max} premium days',
+  referral_capped_note: '✅ You have collected the maximum — {max} days. Thank you! Friends who join via your link still get +{days} days.',
+  referral_share_text: 'I track my spending with a Telegram bot: type "250 coffee" and it sorts expenses into categories and shows where the money goes. Try it with my link — you get +{days} days of premium as a gift 🎁',
+  referral_button_share: '📤 Send to a friend',
+  referral_button_text: '✉️ Text to forward',
+  referral_button_invite_more: '🎁 Invite more',
+  referral_friend_fallback: 'A friend',
+  referral_joined_notification: '👋 {name} joined via your link! Once they record {expenses} expenses, you both get +{days} days of premium.',
+  referral_welcome_note: '🎁 A friend invited you: record {expenses} expenses and you both get +{days} days of premium.',
+  referral_reward_invitee: '🎉 *+{days} days of premium!* You recorded {expenses} expenses — the invite bonus went to you and to the friend who invited you. Premium is active until {date}.\n\nInvite your own friends — +{days} days for each one.',
+  referral_reward_inviter: '🎉 *+{days} days of premium!* {name} is tracking expenses thanks to your invite. Premium is active until {date}.',
+  referral_reward_inviter_capped: '🎉 {name} is tracking expenses thanks to your invite and got their +{friendDays} days. You have already collected the maximum bonus ({days} days) — thanks for spreading the word ❤️',
+  referral_upsell_line: '🎁 Or invite a friend — you both get +{days} days of premium.',
+  premium_hook_regular: '📊 Entries in the last 30 days: <b>{count}</b>. With premium you see which categories grow, set limits — and keep more by the end of the month.',
+  premium_hook_trial: '📊 Entries in the last 30 days: <b>{count}</b>. After the trial, budgets, full summaries and family stay with premium only — everything you recorded is kept either way.',
+  premium_benefit_receipts: '\n• 🧾 Receipt photos: up to {premium} a month ({free} without premium)',
+  premium_coming_soon: '✨ New features land in premium regularly — your subscription already includes them.',
+  premium_trial_note: '⏳ You are on a premium trial now. Pick a plan before it ends — the remaining days are kept.',
+  premium_best_value: '💡 Best value — yearly: <b>≈ {stars} ⭐ ({price}) a month</b>, save {percent}%.',
+  premium_referral_line: '🎁 Not ready to pay? Invite a friend — you both get +{days} days of premium.',
   // Tariff labels and product name
   tariff_button_30: '1 Month',
   tariff_button_90: '3 Months',

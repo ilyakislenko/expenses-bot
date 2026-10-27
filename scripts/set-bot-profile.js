@@ -7,7 +7,7 @@ const LocalizationService = require('../src/services/LocalizationService');
 // Команды в меню (порядок важен). Все обрабатываются в src/botRoutes.js
 const COMMANDS = [
   'start', 'stats', 'history', 'income', 'recurring', 'savings', 'achievements', 'export', 'import', 'family',
-  'settings', 'limits', 'help', 'cancel', 'paysupport', 'terms', 'privacy'
+  'settings', 'limits', 'invite', 'help', 'cancel', 'paysupport', 'terms', 'privacy'
 ];
 // Коды языков бота, которые в Telegram называются иначе
 const TELEGRAM_LANGUAGE = { jp: 'ja', kz: 'kk' };

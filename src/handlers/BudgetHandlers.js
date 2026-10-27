@@ -5,7 +5,7 @@ const MAX_BUDGET_AMOUNT = 9999999999; // category_budgets.amount DECIMAL(12,2)
 // Бюджеты на пользовательский период — функция премиума.
 // Цель бюджета в callback/состоянии: "total" — общий бюджет, иначе id категории.
 class BudgetHandlers {
-  constructor({ budgetService, expenseService, premiumService, userService, localizationService, formatter, stateService, validator, achievementService = null }) {
+  constructor({ budgetService, expenseService, premiumService, userService, localizationService, formatter, stateService, validator, achievementService = null, referralService = null }) {
     this.budgetService = budgetService;
     this.expenseService = expenseService;
     this.premiumService = premiumService;
@@ -15,24 +15,26 @@ class BudgetHandlers {
     this.stateService = stateService;
     this.validator = validator;
     this.achievementService = achievementService;
+    this.referralService = referralService;
   }
 
   t(lang, key, params) {
     return this.localizationService.getText(lang, key, params);
   }
 
-  // Без премиума — описание и кнопка премиума вместо экрана
+  // Без премиума — описание и кнопка премиума вместо экрана (иногда — и «пригласи друга»)
   async ensurePremium(ctx, lang) {
     if (await this.premiumService.isPremiumUser(ctx.from.id)) return true;
     if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
-    await respond(ctx, this.t(lang, 'budgets_teaser'), {
+    let text = this.t(lang, 'budgets_teaser');
+    let keyboard = [
+      [{ text: this.t(lang, 'button_premium'), callback_data: 'premium_subscription' }],
+      [{ text: this.t(lang, 'button_back_to_overview'), callback_data: 'ov|0' }]
+    ];
+    if (this.referralService) ({ text, keyboard } = await this.referralService.withUpsell(ctx.from.id, lang, text, keyboard));
+    await respond(ctx, text, {
       parse_mode: 'Markdown',
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: this.t(lang, 'button_premium'), callback_data: 'premium_subscription' }],
-          [{ text: this.t(lang, 'button_back_to_overview'), callback_data: 'ov|0' }]
-        ]
-      }
+      reply_markup: { inline_keyboard: keyboard }
     });
     return false;
   }

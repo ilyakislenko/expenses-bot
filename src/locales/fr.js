@@ -207,6 +207,7 @@ Le menu est en bas : aperçu du mois, entrées du jour, revenus, dépenses récu
 • 🎯 *Budgets* et 📄 *Bilan* de la période — boutons sous l’aperçu du mois (premium)
 • Devises, rappels (jusqu'à 3 par jour) et début de période — dans ☰ Plus → ⚙️ Paramètres
 • 🏆 /achievements — série de jours, succès, défis et ton bilan du mois
+• 🎁 /invite — invite un ami : +7 jours de premium pour vous deux
 
 Commandes : /stats /history /income /recurring /export /settings /menu`,
   
@@ -342,7 +343,7 @@ Toutes tes dépenses seront désormais affichées à ton heure locale.`,
     status_regular: '👤 Standard',
     status_premium: '💎 Premium',
     max_description_length: '<b>Longueur max. de description :</b> {length} caractères',
-    premium_benefits: '💎 <b>Avantages premium :</b>\n  • 🎯 Budgets mensuels et par catégorie avec alertes à 80 % et en cas de dépassement\n  • 📄 Bilan complet de la période : chaque catégorie comparée au mois précédent, budgets, dépense moyenne par jour\n  • 160 caractères dans la description (au lieu de 80)\n  • Jusqu’à 5 catégories personnalisées\n  • Budget familial\n  • Jusqu’à 10 objectifs d’épargne (sans premium — 1)\n\n  L’enregistrement des dépenses et des revenus est gratuit et illimité.',
+    premium_benefits: '💎 <b>Ce que t’apporte le premium</b>\n\n👀 <b>Tu vois où part l’argent</b>\n• Bilan complet de la période : chaque catégorie comparée au mois précédent, dépense moyenne par jour, la plus grosse dépense{receipts}\n\n🎯 <b>Tu dépenses selon ton plan</b>\n• Budgets mensuels et par catégorie — alerte à 80 % et en cas de dépassement\n\n🏦 <b>Tu épargnes plus vite</b>\n• Jusqu’à 10 objectifs d’épargne (sans premium — 1)\n\n👨‍👩‍👧 <b>Toute la famille</b>\n• Budget familial : les dépenses communes de tous au même endroit\n\n✏️ <b>À ta façon</b>\n• Jusqu’à 5 catégories personnalisées et des descriptions jusqu’à 160 caractères (au lieu de 80)\n\nEnregistrer dépenses et revenus, importer des relevés, l’épargne et les prévisions — gratuit et sans limite.',
     
     // Abonnement premium
     premium_subscription_title: '⭐️ Abonnement',
@@ -366,6 +367,32 @@ Toutes tes dépenses seront désormais affichées à ton heure locale.`,
     purchases_prev_button: '◀ Précédent',
     purchases_next_button: 'Suivant ▶',
     premium_why_paid_text: 'L\'hébergement coûte environ $200 par mois, sans compter la croissance des utilisateurs. Et moi, développeur, j\'ai aussi besoin de manger pour continuer à améliorer le service :)',
+    button_invite: '🎁 Inviter un ami',
+    command_invite: 'Inviter un ami : +7 jours de premium',
+    referral_title: '🎁 *Invite un ami*',
+    referral_intro: 'Envoie ton lien à un ami. Dès qu’il aura enregistré {expenses} dépenses, vous recevrez *tous les deux* *+{days} jours de premium* — ajoutés à l’essai ou à la période payée.',
+    referral_link_label: '🔗 Ton lien (touche pour copier) :',
+    referral_stats: '👥 Venus par ton lien : *{invited}* · suivent déjà leurs dépenses : *{activated}*',
+    referral_stats_days: '⭐ Gagné : *{days}* sur {max} jours de premium',
+    referral_capped_note: '✅ Tu as atteint le maximum — {max} jours. Merci ! Les amis venus par ton lien reçoivent quand même +{days} jours.',
+    referral_share_text: 'Je suis mes dépenses avec un bot Telegram : tu écris « 250 café » et il range tout par catégories et montre où part l’argent. Essaie-le avec mon lien — tu reçois +{days} jours de premium en cadeau 🎁',
+    referral_button_share: '📤 Envoyer à un ami',
+    referral_button_text: '✉️ Texte à transférer',
+    referral_button_invite_more: '🎁 Inviter d’autres amis',
+    referral_friend_fallback: 'Un ami',
+    referral_joined_notification: '👋 {name} est arrivé par ton lien ! Dès que {expenses} dépenses seront enregistrées, vous recevrez tous les deux +{days} jours de premium.',
+    referral_welcome_note: '🎁 Un ami t’a invité : enregistre {expenses} dépenses et vous recevrez tous les deux +{days} jours de premium.',
+    referral_reward_invitee: '🎉 *+{days} jours de premium !* Tu as enregistré {expenses} dépenses — le bonus d’invitation est pour toi et pour l’ami qui t’a invité. Premium actif jusqu’au {date}.\n\nInvite tes amis — +{days} jours pour chacun.',
+    referral_reward_inviter: '🎉 *+{days} jours de premium !* {name} suit déjà ses dépenses grâce à ton invitation. Premium actif jusqu’au {date}.',
+    referral_reward_inviter_capped: '🎉 {name} suit déjà ses dépenses grâce à ton invitation et a reçu ses +{friendDays} jours. Tu as déjà le bonus maximum ({days} jours) — merci de parler du bot ❤️',
+    referral_upsell_line: '🎁 Ou invite un ami — vous recevez tous les deux +{days} jours de premium.',
+    premium_hook_regular: '📊 Entrées sur les 30 derniers jours : <b>{count}</b>. Avec premium, tu vois quelles catégories augmentent, tu fixes des limites — et il te reste plus en fin de mois.',
+    premium_hook_trial: '📊 Entrées sur les 30 derniers jours : <b>{count}</b>. Après l’essai, les budgets, les bilans complets et la famille restent réservés au premium — tout ce que tu as enregistré est conservé dans tous les cas.',
+    premium_benefit_receipts: '\n• 🧾 Photos de tickets : jusqu’à {premium} par mois (sans premium — {free})',
+    premium_coming_soon: '✨ De nouvelles fonctions arrivent régulièrement dans le premium — ton abonnement les inclut déjà.',
+    premium_trial_note: '⏳ Tu as un premium d’essai en ce moment. Choisis un forfait avant la fin — les jours restants sont conservés.',
+    premium_best_value: '💡 Le plus avantageux — à l’année : <b>≈ {stars} ⭐ ({price}) par mois</b>, soit {percent} % d’économie.',
+    premium_referral_line: '🎁 Pas prêt à payer ? Invite un ami — vous recevez tous les deux +{days} jours de premium.',
     // Libellés des tarifs et nom du produit
     tariff_button_30: '1 mois',
     tariff_button_90: '3 mois',
