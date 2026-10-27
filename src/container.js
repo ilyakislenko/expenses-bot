@@ -41,6 +41,7 @@ const UserNotificationRepository = require('./repositories/UserNotificationRepos
 const BudgetRepository = require('./repositories/BudgetRepository');
 const ImportRepository = require('./repositories/ImportRepository');
 const ReceiptRepository = require('./repositories/ReceiptRepository');
+const AssistantRepository = require('./repositories/AssistantRepository');
 
 // Services
 const ExpenseService = require('./services/ExpenseService');
@@ -64,6 +65,8 @@ const WeeklyInsightService = require('./services/WeeklyInsightService');
 const ImportService = require('./services/ImportService');
 const ReceiptService = require('./services/ReceiptService');
 const { createProviderFromEnv: createReceiptProvider } = require('./services/receipt/chain');
+const AssistantService = require('./services/AssistantService');
+const { createAssistantProvider } = require('./services/assistant/model');
 
 // Handlers
 const CommandHandlers = require('./handlers/commands');
@@ -78,6 +81,7 @@ const BudgetHandlers = require('./handlers/BudgetHandlers');
 const ExportHandlers = require('./handlers/ExportHandlers');
 const ImportHandlers = require('./handlers/ImportHandlers');
 const ReceiptHandlers = require('./handlers/ReceiptHandlers');
+const AssistantHandlers = require('./handlers/AssistantHandlers');
 
 // State management
 const StateService = require('./services/StateService');
@@ -188,6 +192,35 @@ class Container {
           userService: this.get('userService'),
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter')
+        });
+
+      case 'assistantRepository':
+        return new AssistantRepository();
+
+      // Модель для вопросов боту из ASSISTANT_AI_* (иначе слоты чеков); smoke-тесты подменяют её через instances
+      case 'assistantProvider':
+        return createAssistantProvider(process.env);
+
+      case 'assistantService':
+        return new AssistantService({
+          assistantRepository: this.get('assistantRepository'),
+          provider: this.get('assistantProvider'),
+          expenseService: this.get('expenseService'),
+          incomeService: this.get('incomeService'),
+          savingsService: this.get('savingsService'),
+          budgetService: this.get('budgetService'),
+          premiumService: this.get('premiumService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter'),
+          currencyUtils: this.get('currencyUtils')
+        });
+
+      case 'assistantHandlers':
+        return new AssistantHandlers({
+          assistantService: this.get('assistantService'),
+          userService: this.get('userService'),
+          stateService: this.get('stateService'),
+          localizationService: this.get('localizationService')
         });
 
       case 'currencyUtils':
@@ -427,7 +460,8 @@ class Container {
           expenseHandlers: this.get('expenseHandlers'),
           budgetHandlers: this.get('budgetHandlers'),
           exportHandlers: this.get('exportHandlers'),
-          savingsHandlers: this.get('savingsHandlers')
+          savingsHandlers: this.get('savingsHandlers'),
+          assistantHandlers: this.get('assistantHandlers')
         });
 
       case 'callbackHandlers':
@@ -587,6 +621,7 @@ class Container {
       exportHandlers: this.get('exportHandlers'),
       importHandlers: this.get('importHandlers'),
       receiptHandlers: this.get('receiptHandlers'),
+      assistantHandlers: this.get('assistantHandlers'),
       savingsHandlers: this.get('savingsHandlers'),
       reportService: this.get('reportService'),
       dailySummaryService: this.get('dailySummaryService'),

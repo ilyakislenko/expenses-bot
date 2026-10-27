@@ -88,6 +88,31 @@ class GeminiProvider {
     if (!text) throw new ReceiptError('unreadable', `empty response${candidate ? `: ${candidate.finishReason}` : ''}`);
     return parseModelJson(text);
   }
+
+  // Текстовый запрос с ответом JSON (вопросы боту): messages — [{ role: system|user|assistant, content }]
+  buildCompletionRequest({ messages }) {
+    const system = messages.filter(m => m.role === 'system').map(m => m.content).join('\n\n');
+    const body = {
+      contents: messages.filter(m => m.role !== 'system').map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
+      generationConfig: { responseMimeType: 'application/json', temperature: 0 }
+    };
+    if (system) body.systemInstruction = { parts: [{ text: system }] };
+    return {
+      url: `${this.baseUrl}/v1beta/models/${encodeURIComponent(this.model)}:generateContent?key=${encodeURIComponent(this.apiKey)}`,
+      body
+    };
+  }
+
+  async complete(input) {
+    if (!this.configured) throw new ReceiptError('not_configured');
+    const { url, body } = this.buildCompletionRequest(input);
+    const response = await this.post(url, body, { localAddress: this.localAddress, timeoutMs: this.timeoutMs, connectTimeoutMs: this.connectTimeoutMs });
+    if (response.status !== 200) throw mapHttpError(response);
+    const json = response.json;
+    if (!json || !json.candidates) throw unexpected(response);
+    const parts = (json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts) || [];
+    return parseModelJson(parts.map(part => part.text || '').join(''));
+  }
 }
 
 // OpenAI-совместимый /chat/completions. Ключ необязателен (локальная Ollama его не проверяет — не отправляем)
@@ -139,6 +164,26 @@ class OpenAiCompatibleProvider {
     const text = Array.isArray(content) ? content.map(part => part.text || '').join('') : content;
     if (!text) throw new ReceiptError('unreadable', 'empty response');
     return parseModelJson(text);
+  }
+
+  // Текстовый запрос с ответом JSON (вопросы боту): messages — [{ role: system|user|assistant, content }]
+  buildCompletionRequest({ messages }) {
+    return {
+      url: `${this.baseUrl}/chat/completions`,
+      headers: this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {},
+      body: { model: this.model, temperature: 0, response_format: { type: 'json_object' }, messages }
+    };
+  }
+
+  async complete(input) {
+    if (!this.configured) throw new ReceiptError('not_configured');
+    const { url, headers, body } = this.buildCompletionRequest(input);
+    const response = await this.post(url, body, { headers, localAddress: this.localAddress, timeoutMs: this.timeoutMs, connectTimeoutMs: this.connectTimeoutMs });
+    if (response.status !== 200) throw mapHttpError(response);
+    if (!response.json || !Array.isArray(response.json.choices)) throw unexpected(response);
+    const choice = response.json.choices[0];
+    const content = choice && choice.message && choice.message.content;
+    return parseModelJson(Array.isArray(content) ? content.map(part => part.text || '').join('') : content);
   }
 }
 

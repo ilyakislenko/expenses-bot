@@ -1,0 +1,747 @@
+const { normalizeIntent, normalizePeriod } = require('../services/assistant/intent');
+const { resolvePeriod, comparisonPeriods, previousPeriod, elapsedDays, weekStart } = require('../services/assistant/periods');
+const { parseFastPath } = require('../services/assistant/fastPath');
+const { stem, searchStem, matchCategory } = require('../services/assistant/text');
+const { buildMessages } = require('../services/assistant/prompt');
+const { AnswerComposer } = require('../services/assistant/compose');
+const { createAssistantProvider } = require('../services/assistant/model');
+const { parseSlots, createChain, limiterFor } = require('../services/receipt/chain');
+const { OpenAiCompatibleProvider, GeminiProvider } = require('../services/receipt/providers');
+const AssistantService = require('../services/AssistantService');
+const AssistantHandlers = require('../handlers/AssistantHandlers');
+const AssistantRepository = require('../repositories/AssistantRepository');
+const EnhancedValidator = require('../utils/enhancedValidator');
+const LocalizationService = require('../services/LocalizationService');
+const Formatter = require('../utils/formatter');
+const { USER_LIMITS } = require('../utils/constants');
+
+const TODAY = '2026-10-28'; // среда
+const CATEGORIES = [
+  ['Еда', '🍔'], ['Транспорт', '🚕'], ['Развлечения', '🎬'], ['Покупки', '🛍'], ['Здоровье', '💊'], ['Другое', '📦']
+].map(([name, icon], i) => ({ id: i + 1, name, icon, label: name }));
+const EN_CATEGORIES = CATEGORIES.map(c => ({ ...c, label: { Еда: 'Food', Транспорт: 'Transport', Развлечения: 'Entertainment', Покупки: 'Shopping', Здоровье: 'Health', Другое: 'Other' }[c.name] }));
+const context = { categories: CATEGORIES, today: TODAY, startDay: 1 };
+const check = (raw, ctx = context) => normalizeIntent(raw, ctx);
+
+describe('assistant intent validation', () => {
+  test('accepts only whitelisted types; aliases map to them; garbage is unknown', () => {
+    expect(check({ type: 'spend_total' }).ok).toBe(true);
+    expect(check({ type: 'Largest' }).intent.type).toBe('largest_purchase');
+    expect(check({ type: 'by-category' }).intent.type).toBe('spend_by_category');
+    expect(check({ type: 'drop_table' })).toEqual({ ok: false, reason: 'unknown' });
+    expect(check({ type: 'unknown' })).toEqual({ ok: false, reason: 'unknown' });
+    expect(check(null).ok).toBe(false);
+    expect(check('spend_total').ok).toBe(false);
+    expect(check([{ type: 'spend_total' }]).ok).toBe(false);
+  });
+
+  test('default period is the current user period; savings and budgets have none', () => {
+    expect(check({ type: 'spend_total' }).intent.period).toEqual({ kind: 'month', offset: 0 });
+    expect(check({ type: 'spend_total', period: 'nonsense' }).intent.period).toEqual({ kind: 'month', offset: 0 });
+    expect(check({ type: 'savings_status', period: { kind: 'day', offset: -1 } }).intent.period).toBeNull();
+    expect(check({ type: 'budget_status' }).intent.period).toBeNull();
+  });
+
+  test('clamps offsets and day counts; future periods are refused', () => {
+    expect(normalizePeriod({ kind: 'month', offset: -500 }, TODAY)).toEqual({ spec: { kind: 'month', offset: -120 } });
+    expect(normalizePeriod({ kind: 'day', offset: '-1' }, TODAY)).toEqual({ spec: { kind: 'day', offset: -1 } });
+    expect(normalizePeriod({ kind: 'week', offset: 1 }, TODAY)).toEqual({ error: 'future' });
+    expect(normalizePeriod({ kind: 'last_n_days', n: 100000 }, TODAY)).toEqual({ spec: { kind: 'last_n_days', n: 3650 } });
+    expect(normalizePeriod({ kind: 'last_n_days', n: 0 }, TODAY)).toEqual({ error: 'invalid' });
+    expect(normalizePeriod({ kind: 'month', offset: 'x' }, TODAY)).toEqual({ error: 'invalid' });
+    expect(check({ type: 'spend_total', period: { kind: 'year', offset: 2 } })).toEqual({ ok: false, reason: 'future' });
+    expect(normalizePeriod('yesterday', TODAY)).toEqual({ spec: { kind: 'day', offset: -1 } });
+    expect(normalizePeriod({ kind: 'today' }, TODAY)).toEqual({ spec: { kind: 'day', offset: 0 } });
+  });
+
+  test('named months without a year are the latest such month; future months are refused', () => {
+    expect(normalizePeriod({ kind: 'named_month', month: 9 }, TODAY).spec).toEqual({ kind: 'named_month', month: 9, year: 2026 });
+    expect(normalizePeriod({ kind: 'named_month', month: 12, year: null }, TODAY).spec).toEqual({ kind: 'named_month', month: 12, year: 2025 });
+    expect(normalizePeriod({ kind: 'named_month', month: 'сентября' }, TODAY).spec.month).toBe(9);
+    expect(normalizePeriod({ kind: 'named_month', month: 'May' }, TODAY).spec.month).toBe(5);
+    expect(normalizePeriod({ kind: 'named_month', month: 'марта' }, TODAY).spec.month).toBe(3);
+    expect(normalizePeriod({ kind: 'named_month', month: 12, year: 2026 }, TODAY)).toEqual({ error: 'future' });
+    expect(normalizePeriod({ kind: 'named_month', month: 13 }, TODAY)).toEqual({ error: 'invalid' });
+  });
+
+  test('custom dates: several formats, swapped ends, end capped at today, start in the future refused', () => {
+    expect(normalizePeriod({ kind: 'custom', from: '2026-10-15', to: '2026-10-01' }, TODAY).spec).toEqual({ kind: 'custom', from: '2026-10-01', to: '2026-10-15' });
+    expect(normalizePeriod({ kind: 'custom', from: '01.10.2026', to: '15.10' }, TODAY).spec).toEqual({ kind: 'custom', from: '2026-10-01', to: '2026-10-15' });
+    expect(normalizePeriod({ kind: 'custom', from: '2026-10-20', to: '2026-12-31' }, TODAY).spec.to).toBe(TODAY);
+    expect(normalizePeriod({ kind: 'custom', from: '2026-11-01', to: '2026-11-05' }, TODAY)).toEqual({ error: 'future' });
+    expect(normalizePeriod({ kind: 'custom', from: '2026-02-30' }, TODAY)).toEqual({ error: 'invalid' });
+    expect(normalizePeriod({ kind: 'custom', from: '2026-10-05' }, TODAY).spec).toEqual({ kind: 'custom', from: '2026-10-05', to: '2026-10-05' });
+  });
+
+  test('categories map to the user\'s own; unknown names become description search; generic words are dropped', () => {
+    const intent = check({ type: 'spend_total', categories: ['еду', 'Такси', 'Uber'], text_filter: 'расходы' }).intent;
+    expect(intent.categories.map(c => c.name)).toEqual(['Еда']);
+    expect(intent.terms).toEqual(['такси', 'uber']);
+    expect(check({ type: 'spend_total', text_filter: 'Транспорт' }).intent.categories.map(c => c.name)).toEqual(['Транспорт']);
+    expect(check({ type: 'spend_total', categories: ['food'] }).intent.categories.map(c => c.name)).toEqual(['Еда']);
+    expect(check({ type: 'spend_total', text_filter: '%_\'; DROP TABLE expenses; --' }).intent.terms).toEqual(['drop table expenses']);
+    expect(check({ type: 'spend_total', text_filter: 'x'.repeat(100) }).intent.terms[0]).toHaveLength(40);
+    expect(check({ type: 'spend_total', text_filter: ['a', 'b', 'c', 'd'] }).intent.terms).toHaveLength(3);
+    // фильтры не нужны доходам, накоплениям, бюджетам
+    expect(check({ type: 'income_total', categories: ['Еда'], text_filter: 'кофе' }).intent).toMatchObject({ categories: [], terms: [] });
+  });
+
+  test('a category next to a description search is kept only when the question names it', () => {
+    const raw = { type: 'count_records', categories: ['Еда'], text_filter: 'кофе' };
+    expect(check(raw, { ...context, question: 'сколько раз я покупал кофе' }).intent).toMatchObject({ categories: [], terms: ['кофе'] });
+    expect(check(raw, { ...context, question: 'сколько кофе в категории еда' }).intent.categories.map(c => c.name)).toEqual(['Еда']);
+    // без поиска по описанию категория по смыслу остаётся: «лекарства» → «Здоровье»
+    expect(check({ type: 'spend_total', categories: ['Здоровье'] }, { ...context, question: 'сколько ушло на лекарства' }).intent.categories.map(c => c.name)).toEqual(['Здоровье']);
+  });
+
+  test('top limit is clamped to 1..10, largest is always 1, currency only from the supported list', () => {
+    expect(check({ type: 'top_expenses' }).intent.limit).toBe(5);
+    expect(check({ type: 'top_expenses', limit: 50 }).intent.limit).toBe(10);
+    expect(check({ type: 'top_expenses', limit: -3 }).intent.limit).toBe(5);
+    expect(check({ type: 'largest_purchase', limit: 7 }).intent.limit).toBe(1);
+    expect(check({ type: 'spend_total', limit: 7 }).intent.limit).toBeNull();
+    expect(check({ type: 'spend_total', currency: 'usd' }).intent.currency).toBe('USD');
+    expect(check({ type: 'spend_total', currency: 'BTC' }).intent.currency).toBeNull();
+  });
+
+  test('compare_to is kept only for comparisons', () => {
+    const intent = check({ type: 'compare_periods', period: { kind: 'named_month', month: 9 }, compare_to: { kind: 'named_month', month: 8 } }).intent;
+    expect(intent.compareTo).toEqual({ kind: 'named_month', month: 8, year: 2026 });
+    expect(check({ type: 'spend_total', compare_to: { kind: 'month', offset: -1 } }).intent.compareTo).toBeNull();
+  });
+});
+
+describe('assistant periods', () => {
+  test('relative and named periods', () => {
+    expect(resolvePeriod({ kind: 'day', offset: 0 }, { today: TODAY })).toEqual({ start: '2026-10-28', end: '2026-10-29', last: '2026-10-28' });
+    expect(resolvePeriod({ kind: 'day', offset: -1 }, { today: TODAY }).start).toBe('2026-10-27');
+    expect(weekStart(TODAY)).toBe('2026-10-26');
+    expect(weekStart('2026-11-01')).toBe('2026-10-26'); // воскресенье — та же неделя
+    expect(resolvePeriod({ kind: 'week', offset: -1 }, { today: TODAY })).toEqual({ start: '2026-10-19', end: '2026-10-26', last: '2026-10-25' });
+    // «за неделю» — последние 7 дней включая сегодня
+    expect(resolvePeriod({ kind: 'last_n_days', n: 7 }, { today: TODAY })).toEqual({ start: '2026-10-22', end: '2026-10-29', last: TODAY });
+    // «в сентябре» — календарный месяц
+    expect(resolvePeriod({ kind: 'named_month', month: 9, year: 2026 }, { today: TODAY })).toEqual({ start: '2026-09-01', end: '2026-10-01', last: '2026-09-30' });
+    expect(resolvePeriod({ kind: 'named_month', month: 2, year: 2028 }, { today: TODAY }).last).toBe('2028-02-29');
+    // «с 1 по 15 октября»
+    expect(resolvePeriod({ kind: 'custom', from: '2026-10-01', to: '2026-10-15' }, { today: TODAY })).toEqual({ start: '2026-10-01', end: '2026-10-16', last: '2026-10-15' });
+    expect(resolvePeriod({ kind: 'year', offset: -1 }, { today: TODAY })).toEqual({ start: '2025-01-01', end: '2026-01-01', last: '2025-12-31' });
+    expect(resolvePeriod({ kind: 'all' }, { today: TODAY }).end).toBe('2026-10-29');
+  });
+
+  test('«в прошлом месяце» follows the user period start day like the overview', () => {
+    expect(resolvePeriod({ kind: 'month', offset: -1 }, { today: TODAY, startDay: 1 })).toEqual({ start: '2026-09-01', end: '2026-10-01', last: '2026-09-30' });
+    expect(resolvePeriod({ kind: 'month', offset: 0 }, { today: TODAY, startDay: 10 })).toEqual({ start: '2026-10-10', end: '2026-11-10', last: '2026-11-09' });
+    expect(resolvePeriod({ kind: 'month', offset: -1 }, { today: TODAY, startDay: 10 })).toEqual({ start: '2026-09-10', end: '2026-10-10', last: '2026-10-09' });
+    // до числа начала периода текущий период начался в прошлом месяце
+    expect(resolvePeriod({ kind: 'month', offset: 0 }, { today: '2026-10-05', startDay: 10 }).start).toBe('2026-09-10');
+    expect(resolvePeriod({ kind: 'month', offset: 0 }, { today: '2026-03-01', startDay: 31 })).toEqual({ start: '2026-02-28', end: '2026-03-31', last: '2026-03-30' });
+  });
+
+  test('comparisons: an unfinished period against the same number of days of the previous one', () => {
+    const now = { today: TODAY, startDay: 1 };
+    expect(comparisonPeriods({ kind: 'month', offset: 0 }, null, now)).toEqual({
+      current: { start: '2026-10-01', end: '2026-10-29', last: TODAY },
+      previous: { start: '2026-09-01', end: '2026-09-29', last: '2026-09-28' },
+      toDate: true,
+      days: 28
+    });
+    // в коротком прошлом месяце берётся весь месяц
+    expect(comparisonPeriods({ kind: 'month', offset: 0 }, null, { today: '2026-03-31', startDay: 1 }).previous).toEqual({ start: '2026-02-01', end: '2026-03-01', last: '2026-02-28' });
+    const finished = comparisonPeriods({ kind: 'named_month', month: 9, year: 2026 }, null, now);
+    expect(finished).toMatchObject({ toDate: false, previous: { start: '2026-08-01', last: '2026-08-31' } });
+    const explicit = comparisonPeriods({ kind: 'named_month', month: 9, year: 2026 }, { kind: 'named_month', month: 7, year: 2026 }, now);
+    expect(explicit.previous).toEqual({ start: '2026-07-01', end: '2026-08-01', last: '2026-07-31' });
+    // «в августе или в сентябре» — сравниваем более поздний с более ранним в любом порядке
+    const reversed = comparisonPeriods({ kind: 'named_month', month: 8, year: 2026 }, { kind: 'named_month', month: 9, year: 2026 }, now);
+    expect([reversed.current.start, reversed.previous.start]).toEqual(['2026-09-01', '2026-08-01']);
+    expect(previousPeriod({ kind: 'custom' }, { start: '2026-10-01', end: '2026-10-16', last: '2026-10-15' }, now)).toEqual({ start: '2026-09-16', end: '2026-10-01', last: '2026-09-30' });
+    expect(comparisonPeriods({ kind: 'all' }, null, now)).toBeNull();
+  });
+
+  test('average uses days elapsed so far, not the whole period', () => {
+    expect(elapsedDays({ start: '2026-10-01', last: '2026-10-31' }, TODAY)).toBe(28);
+    expect(elapsedDays({ start: '2026-09-01', last: '2026-09-30' }, TODAY)).toBe(30);
+    expect(elapsedDays({ start: TODAY, last: TODAY }, TODAY)).toBe(1);
+  });
+});
+
+describe('assistant fast path', () => {
+  const parse = (q) => {
+    const fast = parseFastPath(q, { today: TODAY });
+    if (!fast) return null;
+    const checked = check(fast.intent);
+    return { confident: fast.confident, usable: fast.usable, ...checked.intent, categories: checked.intent.categories.map(c => c.name) };
+  };
+
+  test.each([
+    ['? сколько я потратил на такси в сентябре', { type: 'spend_total', period: { kind: 'named_month', month: 9, year: 2026 }, terms: ['такси'] }],
+    ['Сколько я потратил в этом месяце?', { type: 'spend_total', period: { kind: 'month', offset: 0 } }],
+    ['сколько потратила в прошлом месяце', { type: 'spend_total', period: { kind: 'month', offset: -1 } }],
+    ['На что ушло больше всего в прошлом месяце?', { type: 'spend_by_category', period: { kind: 'month', offset: -1 } }],
+    ['Сколько я потратил на еду за неделю?', { type: 'spend_total', period: { kind: 'last_n_days', n: 7 }, categories: ['Еда'] }],
+    ['сколько ушло на транспорт на прошлой неделе', { type: 'spend_total', period: { kind: 'week', offset: -1 }, categories: ['Транспорт'] }],
+    ['сколько я потратил с 1 по 15 октября', { type: 'spend_total', period: { kind: 'custom', from: '2026-10-01', to: '2026-10-15' } }],
+    ['траты с 01.09 по 10.09', { type: 'spend_total', period: { kind: 'custom', from: '2026-09-01', to: '2026-09-10' } }],
+    ['Самая крупная покупка в этом году?', { type: 'largest_purchase', period: { kind: 'year', offset: 0 }, limit: 1 }],
+    ['топ 3 трат за месяц', { type: 'top_expenses', period: { kind: 'month', offset: 0 }, limit: 3 }],
+    ['Сравни этот месяц с прошлым', { type: 'compare_periods', period: { kind: 'month', offset: 0 } }],
+    ['Сколько я трачу в среднем в день?', { type: 'average_daily', period: { kind: 'month', offset: 0 } }],
+    ['сколько я заработал в прошлом месяце', { type: 'income_total', period: { kind: 'month', offset: -1 } }],
+    ['сколько у меня накоплений', { type: 'savings_status', period: null }],
+    ['мои траты вчера', { type: 'spend_total', period: { kind: 'day', offset: -1 } }],
+    ['сколько я потратил в декабре', { type: 'spend_total', period: { kind: 'named_month', month: 12, year: 2025 } }],
+    ['how much did I spend on coffee last week', { type: 'spend_total', period: { kind: 'week', offset: -1 }, terms: ['coffee'] }],
+    ['How much did I spend on food in the past week?', { type: 'spend_total', period: { kind: 'last_n_days', n: 7 }, categories: ['Еда'] }],
+    ['what did I spend the most on last month', { type: 'spend_by_category', period: { kind: 'month', offset: -1 } }],
+    ['top 3 expenses this year', { type: 'top_expenses', period: { kind: 'year', offset: 0 }, limit: 3 }],
+    ['biggest purchase in september', { type: 'largest_purchase', period: { kind: 'named_month', month: 9, year: 2026 } }],
+    ['how much did I spend in the last 30 days', { type: 'spend_total', period: { kind: 'last_n_days', n: 30 } }],
+    ['how much do I spend per day on average this month', { type: 'average_daily', period: { kind: 'month', offset: 0 } }],
+    ['how much did I spend on taxi since October 1', { type: 'spend_total', period: { kind: 'custom', from: '2026-10-01', to: TODAY }, terms: ['taxi'] }],
+    ['сколько я потратил с 1 сентября', { type: 'spend_total', period: { kind: 'custom', from: '2026-09-01', to: TODAY } }],
+    ['траты на кофе с начала августа', { type: 'spend_total', period: { kind: 'custom', from: '2026-08-01', to: TODAY }, terms: ['кофе'] }]
+  ])('%s', (question, expected) => {
+    const parsed = parse(question);
+    expect(parsed).toMatchObject({ confident: true, categories: [], terms: [], ...expected });
+  });
+
+  test('unclear leftovers are not confident: the model decides; a known type with one unknown word is a usable fallback', () => {
+    expect(parse('сколько раз я ходил в кафе в октябре')).toMatchObject({ confident: false, usable: false, type: 'count_records' });
+    expect(parse('какой у меня остаток')).toMatchObject({ confident: true, type: 'balance' });
+    expect(parse('сколько я потратил на подарки маме и папе на новый год')).toMatchObject({ confident: false, usable: false });
+    expect(parseFastPath('как дела', { today: TODAY })).toBeNull();
+    // лишнее слово рядом с поиском по описанию — скорее часть искомого: без модели не отвечаем
+    expect(parse('сколько я отдал за подарки на день рождения маме')).toMatchObject({ confident: false, usable: false });
+    expect(parse('сколько я потратил в октябре ну типа')).toMatchObject({ confident: false, usable: true });
+    expect(parseFastPath('', { today: TODAY })).toBeNull();
+  });
+
+  test('«с августом» in a comparison is not «since August»', () => {
+    expect(parse('сравни сентябрь с августом')).toMatchObject({ confident: false, period: { kind: 'named_month', month: 9 } });
+  });
+});
+
+describe('assistant text helpers', () => {
+  test('stems cover common Russian and English inflections', () => {
+    expect(stem('еду')).toBe(stem('еда'));
+    expect(stem('продуктов')).toBe(stem('продукты'));
+    expect(stem('такси')).toBe('такс');
+    expect(stem('coffees')).toBe('coffee');
+    expect(searchStem('еду')).toBe('еду'); // основа короче 3 букв ловила бы «обед», «среда»
+    expect(searchStem('Яндекс Такси')).toBe('яндекс такс');
+  });
+
+  test('own category names win over system synonyms', () => {
+    const withCustom = [...CATEGORIES, { id: 99, name: 'Продукты', icon: '🥕', label: 'Продукты' }];
+    expect(matchCategory('продукты', withCustom).id).toBe(99);
+    expect(matchCategory('продукты', CATEGORIES).name).toBe('Еда');
+    expect(matchCategory('Food', EN_CATEGORIES).name).toBe('Еда');
+    expect(matchCategory('такси', CATEGORIES)).toBeNull();
+  });
+
+  test('LIKE patterns escape % and _ from user text', () => {
+    expect(AssistantRepository.likePattern('100%_off')).toBe('%100\\%\\_off%');
+  });
+});
+
+describe('assistant prompt', () => {
+  test('static instructions and examples first, the user context and question last', () => {
+    const messages = buildMessages({ question: 'сколько на кофе', today: TODAY, startDay: 10, categories: ['Еда', 'Кофейни'] });
+    expect(messages[0].role).toBe('system');
+    const last = messages[messages.length - 1];
+    expect(last).toEqual({ role: 'user', content: 'Today: 2026-10-28 (Wednesday). Month starts on day 10.\nCategories: Еда, Кофейни\nQuestion: сколько на кофе' });
+    // примеры — валидный JSON по той же схеме
+    for (const message of messages.filter(m => m.role === 'assistant')) {
+      const parsed = JSON.parse(message.content);
+      if (parsed.type !== 'unknown') expect(check(parsed, { ...context, categories: EN_CATEGORIES }).ok).toBe(true);
+    }
+    const again = buildMessages({ question: 'x', today: '2027-01-01', startDay: 1, categories: [] });
+    expect(again.slice(0, -1)).toEqual(messages.slice(0, -1));
+  });
+});
+
+// ---------- Ответ по шаблонам ----------
+
+const localization = new LocalizationService();
+const formatter = new Formatter({ convert: async (amount) => amount });
+const sp = (text) => text.replace(/[\u00a0\u202f]/g, ' ');
+const markdownBalanced = (text) => {
+  const plain = text.replace(/`[^`]*`/g, '').replace(/\\[_*`[]/g, '');
+  return (plain.match(/\*/g) || []).length % 2 === 0 && (plain.match(/_/g) || []).length % 2 === 0;
+};
+
+describe('assistant answer composition', () => {
+  const composer = (lang = 'ru') => new AnswerComposer({ localizationService: localization, formatter, lang });
+  const intent = (fields) => check(fields).intent;
+
+  test('spend total with filters, period label and a button to the category of that period', () => {
+    const result = {
+      intent: intent({ type: 'spend_total', period: { kind: 'month', offset: -1 }, categories: ['Транспорт'] }),
+      currency: 'RUB', period: { start: '2026-09-01', end: '2026-10-01', last: '2026-09-30' }, total: 3450.5, count: 12
+    };
+    const { text: raw, keyboard } = composer().compose(result);
+    const text = sp(raw);
+    expect(text).toContain('01.09 – 30.09.2026');
+    expect(text).toContain('🚕 Транспорт');
+    expect(text).toContain('3 450,5 ₽');
+    expect(text).toContain('записей: 12');
+    expect(markdownBalanced(text)).toBe(true);
+    expect(keyboard[0][0].callback_data).toBe('oc|2|-1|0');
+    expect(keyboard[keyboard.length - 1][0].callback_data).toBe('ai');
+  });
+
+  test('description search, empty result and day button', () => {
+    const result = {
+      intent: intent({ type: 'spend_total', period: { kind: 'day', offset: 0 }, text_filter: 'кофе_*' }),
+      currency: 'RUB', period: { start: TODAY, end: '2026-10-29', last: TODAY }, total: 0, count: 0
+    };
+    const { text, keyboard } = composer().compose(result);
+    expect(text).toContain('сегодня, 28.10.2026');
+    expect(text).toContain('Таких трат');
+    expect(markdownBalanced(text)).toBe(true);
+    expect(keyboard[0][0].callback_data).toBe('dy|0|0');
+  });
+
+  test('top list escapes user descriptions; categories show shares', () => {
+    const top = composer().compose({
+      intent: intent({ type: 'top_expenses', period: { kind: 'year', offset: 0 }, limit: 2 }),
+      currency: 'RUB', period: { start: '2026-01-01', end: '2027-01-01', last: '2026-12-31' },
+      items: [
+        { amount: 100, currency: 'USD', description: 'ноут_бук *pro*', local_date: '2026-03-05', category_name: 'Покупки' },
+        { amount: 5000, currency: 'RUB', description: null, local_date: '2026-04-01', category_name: 'Еда' }
+      ]
+    });
+    expect(sp(top.text)).toContain('1. *100 $* — ноут\\_бук \\*pro\\* · 05.03');
+    expect(sp(top.text)).toContain('2. *5 000 ₽* — Еда · 01.04');
+    expect(markdownBalanced(top.text)).toBe(true);
+
+    const breakdown = composer('en').compose({
+      intent: intent({ type: 'spend_by_category', period: { kind: 'month', offset: 0 } }),
+      currency: 'RUB', period: { start: '2026-10-01', end: '2026-11-01', last: '2026-10-31' }, total: 1000, count: 3,
+      categories: [{ name: 'Еда', icon: '🍔', total: 750 }, { name: 'Транспорт', icon: '🚕', total: 250 }]
+    });
+    expect(sp(breakdown.text)).toContain('🍔 Food — 750 ₽ (75%)');
+    expect(sp(breakdown.text)).toContain('🚕 Transport — 250 ₽ (25%)');
+    expect(breakdown.keyboard[0][0].callback_data).toBe('ov|0');
+  });
+
+  test('comparison: more, less, same-days note', () => {
+    const base = {
+      intent: intent({ type: 'compare_periods', period: { kind: 'month', offset: 0 } }), currency: 'RUB',
+      period: { start: '2026-10-01', end: '2026-10-29', last: TODAY },
+      current: { period: { start: '2026-10-01', end: '2026-10-29', last: TODAY }, total: 12000 },
+      previous: { period: { start: '2026-09-01', end: '2026-09-29', last: '2026-09-28' }, total: 10000 },
+      toDate: true, days: 28
+    };
+    const more = sp(composer().compose(base).text);
+    expect(more).toContain('Больше на 2 000 ₽ (+20%)');
+    expect(more).toContain('_Сравниваю одинаковое число дней: 28_');
+    const less = sp(composer().compose({ ...base, current: { ...base.current, total: 7500 } }).text);
+    expect(less).toContain('Меньше на 2 500 ₽ (−25%)');
+    const none = composer().compose({ ...base, previous: { ...base.previous, total: 0 } }).text;
+    expect(none).toContain('В прошлом периоде трат не было');
+  });
+
+  test('balance, savings and budgets', () => {
+    const period = { start: '2026-10-01', end: '2026-11-01', last: '2026-10-31' };
+    const balance = composer().compose({
+      intent: intent({ type: 'balance', period: { kind: 'month', offset: 0 } }), currency: 'RUB', period,
+      income: 100000, expenses: 120000, balance: -20000, incomeCount: 1, expenseCount: 30
+    });
+    expect(sp(balance.text)).toContain('Остаток: *-20 000 ₽*');
+    expect(balance.text).toContain('Расходы больше доходов');
+    expect(balance.keyboard[0][0].callback_data).toBe('ov|0');
+
+    const savings = composer().compose({
+      intent: intent({ type: 'savings_status' }), currency: 'RUB',
+      total: 500000, debtTotal: 100000, netWorth: 400000, goals: [{ name: 'Машина_2', current: 500000, target: 1000000, ratio: 0.5 }], empty: false
+    });
+    expect(savings.text).toContain('🎯 Машина\\_2 — 50%');
+    expect(sp(savings.text)).toContain('капитал 400 000 ₽');
+    expect(savings.keyboard[0][0].callback_data).toBe('sv');
+
+    const locked = composer().compose({ intent: intent({ type: 'budget_status' }), currency: 'RUB', period, locked: true, spent: 1234 });
+    expect(locked.text).toContain('Бюджеты — с премиумом');
+    expect(locked.keyboard[0][0].callback_data).toBe('premium_subscription');
+    const budgets = composer().compose({
+      intent: intent({ type: 'budget_status' }), currency: 'RUB', period, locked: false,
+      budgets: [{ label: 'Общий бюджет', spent: 60000, limit: 50000, ratio: 1.2 }, { label: '🍔 Еда', spent: 8500, limit: 10000, ratio: 0.85 }]
+    });
+    expect(sp(budgets.text)).toContain('🚨 Общий бюджет: 60 000 ₽ / 50 000 ₽ (120%) · перерасход 10 000 ₽');
+    expect(sp(budgets.text)).toContain('⚠️ 🍔 Еда: 8 500 ₽ / 10 000 ₽ (85%) · осталось 1 500 ₽');
+    expect(budgets.keyboard[0][0].callback_data).toBe('bg_menu');
+  });
+
+  test('every assistant text is translated into all 13 languages with the same placeholders and balanced Markdown', () => {
+    const langs = ['ru', 'en', 'de', 'es', 'fr', 'pt', 'tr', 'ka', 'kz', 'uz', 'hi', 'jp', 'zh'];
+    const ru = require('../locales/ru');
+    const keys = Object.keys(ru).filter(k => /^(ai_|button_ai|command_ask|help_assistant)/.test(k));
+    expect(keys.length).toBeGreaterThan(60);
+    const placeholders = (s) => (s.match(/\{\w+\}/g) || []).sort().join();
+    for (const lang of langs) {
+      const locale = require(`../locales/${lang}`);
+      for (const key of keys) {
+        expect([lang, key, typeof locale[key]]).toEqual([lang, key, 'string']);
+        expect([lang, key, placeholders(locale[key])]).toEqual([lang, key, placeholders(ru[key])]);
+        expect([lang, key, markdownBalanced(locale[key])]).toEqual([lang, key, true]);
+      }
+    }
+  });
+});
+
+// ---------- Расчёт на засеянных данных ----------
+
+// Траты пользователя: фейковый репозиторий фильтрует как SQL — по датам [start, end), именам категорий и подстрокам
+function seededRepository(rows, answered = 0) {
+  return {
+    calls: [],
+    logged: [],
+    async findExpenses(userId, timezone, start, end, { categoryNames = [], terms = [] } = {}) {
+      this.calls.push({ start, end, categoryNames, terms });
+      return rows.filter(r => r.local_date >= start && r.local_date < end)
+        .filter(r => !categoryNames.length || categoryNames.includes(r.category_name))
+        .filter(r => !terms.length || terms.some(t => (r.description || '').toLowerCase().includes(t.toLowerCase())))
+        .map(r => ({ ...r, created_at_utc: `${r.local_date}T12:00:00Z` }));
+    },
+    async countAnswered() { return answered; },
+    async logAnswered(userId, date, entry) { this.logged.push(entry); }
+  };
+}
+
+const expense = (local_date, amount, description, category_name, currency = 'RUB') => ({ local_date, amount, currency, description, category_name, category_icon: '•' });
+const SEED = [
+  expense('2026-09-03', 450, 'Такси домой', 'Транспорт'),
+  expense('2026-09-15', 30, 'taxi airport', 'Транспорт', 'USD'),
+  expense('2026-09-20', 1200, 'Продукты', 'Еда'),
+  expense('2026-09-29', 999, 'кино', 'Развлечения'),
+  expense('2026-10-01', 300, 'кофе', 'Еда'),
+  expense('2026-10-10', 15000, 'Наушники', 'Покупки'),
+  expense('2026-10-22', 700, 'такси', 'Транспорт'),
+  expense('2026-10-27', 250, 'кофе', 'Еда'),
+  expense('2026-10-28', 2500, 'Продукты', 'Еда')
+];
+
+function makeService({ rows = SEED, answered = 0, isPremium = false, provider = null, startDay = 1, modelDeadlineMs } = {}) {
+  const repository = seededRepository(rows, answered);
+  const rates = { RUB: 1, USD: 90 };
+  const service = new AssistantService({
+    assistantRepository: repository,
+    provider,
+    expenseService: {
+      async getPeriodContext() {
+        return { timezone: 'Europe/Moscow', currency: 'RUB', startDay, today: TODAY, period: resolvePeriod({ kind: 'month', offset: 0 }, { today: TODAY, startDay }) };
+      },
+      async getCategories() { return CATEGORIES.map(({ id, name, icon }) => ({ id, name, icon })); },
+      async getTotals(userId, tz, period) {
+        const inPeriod = rows.filter(r => r.local_date >= period.start && r.local_date < period.end);
+        const byCurrency = {};
+        inPeriod.forEach(r => { byCurrency[r.currency] = (byCurrency[r.currency] || 0) + r.amount; });
+        return { byCurrency: Object.entries(byCurrency).map(([currency, total]) => ({ currency, total })), count: inPeriod.length };
+      }
+    },
+    incomeService: {
+      async getTotals(userId, tz, period) {
+        return period.start <= '2026-10-05' && period.end > '2026-10-05'
+          ? { byCurrency: [{ currency: 'RUB', total: 100000 }, { currency: 'USD', total: 100 }], count: 2 }
+          : { byCurrency: [], count: 0 };
+      }
+    },
+    savingsService: {
+      async getState() { return { total: 300000, debtTotal: 0, netWorth: 300000, goals: [{ name: 'Отпуск' }] }; },
+      async goalStatus() { return { current: 300000, target: 400000, ratio: 0.75 }; }
+    },
+    budgetService: {
+      async getStatus() { return [{ category_name: 'Еда', spent: 3050, limit: 3000, ratio: 3050 / 3000 }, { category_name: null, spent: 18750, limit: 50000, ratio: 0.375 }]; },
+      budgetName: (b) => (b.category_name === null ? 'Общий бюджет' : `🍔 ${b.category_name}`)
+    },
+    premiumService: { async isPremiumUser() { return isPremium; } },
+    localizationService: localization,
+    formatter,
+    currencyUtils: { async convert(amount, from, to) { return amount * rates[from] / rates[to]; } },
+    modelDeadlineMs
+  });
+  return { service, repository };
+}
+
+describe('assistant computation on seeded data', () => {
+  const ctx = (startDay = 1) => ({ userId: 1, lang: 'ru', timezone: 'Europe/Moscow', currency: 'RUB', startDay, today: TODAY, isPremium: false, categories: CATEGORIES });
+  const compute = async (raw, options = {}) => {
+    const { service, repository } = makeService(options);
+    const result = await service.compute(check(raw).intent, ctx(options.startDay));
+    return { result, repository };
+  };
+
+  test('taxi in September: description search by stem across currencies (30 USD = 2 700 ₽)', async () => {
+    const { result, repository } = await compute({ type: 'spend_total', period: { kind: 'named_month', month: 9 }, text_filter: 'такси' });
+    expect(repository.calls[0]).toEqual({ start: '2026-09-01', end: '2026-10-01', categoryNames: [], terms: ['такс'] });
+    expect(result).toMatchObject({ total: 450, count: 1 });
+    const both = await compute({ type: 'spend_total', period: { kind: 'named_month', month: 9 }, text_filter: ['такси', 'taxi'] });
+    expect(both.result).toMatchObject({ total: 450 + 2700, count: 2 });
+  });
+
+  test('category totals and breakdown in the main currency, sorted', async () => {
+    const food = await compute({ type: 'spend_total', period: { kind: 'month', offset: 0 }, categories: ['Еда'] });
+    expect(food.repository.calls[0].categoryNames).toEqual(['Еда']);
+    expect(food.result).toMatchObject({ total: 3050, count: 3 });
+    const { result } = await compute({ type: 'spend_by_category', period: { kind: 'month', offset: -1 } });
+    expect(result.total).toBe(450 + 2700 + 1200 + 999);
+    expect(result.categories.map(c => [c.name, c.total])).toEqual([['Транспорт', 3150], ['Еда', 1200], ['Развлечения', 999]]);
+  });
+
+  test('top and largest by converted value', async () => {
+    const top = await compute({ type: 'top_expenses', period: { kind: 'all' }, limit: 3 });
+    expect(top.result.items.map(i => i.description)).toEqual(['Наушники', 'taxi airport', 'Продукты']);
+    const largest = await compute({ type: 'largest_purchase', period: { kind: 'named_month', month: 9 } });
+    expect(largest.result.items).toHaveLength(1);
+    expect(largest.result.items[0].description).toBe('taxi airport');
+  });
+
+  test('average per day counts days up to today; for all time from the first record', async () => {
+    const month = await compute({ type: 'average_daily', period: { kind: 'month', offset: 0 } });
+    expect(month.result).toMatchObject({ total: 18750, days: 28 });
+    expect(month.result.average).toBeCloseTo(18750 / 28, 6);
+    const all = await compute({ type: 'average_daily', period: { kind: 'all' } });
+    expect(all.result.days).toBe(56); // 03.09 … 28.10
+  });
+
+  test('comparison of this month to date with the same days of the previous month', async () => {
+    const { result, repository } = await compute({ type: 'compare_periods', period: { kind: 'month', offset: 0 } });
+    expect(repository.calls.map(c => [c.start, c.end])).toEqual([['2026-10-01', '2026-10-29'], ['2026-09-01', '2026-09-29']]);
+    expect(result.current.total).toBe(18750);
+    expect(result.previous.total).toBe(450 + 2700 + 1200); // 29.09 не входит
+    expect(result.toDate).toBe(true);
+  });
+
+  test('user period start day shifts «this month»', async () => {
+    const { repository } = await compute({ type: 'spend_total', period: { kind: 'month', offset: 0 } }, { startDay: 10 });
+    expect(repository.calls[0]).toMatchObject({ start: '2026-10-10', end: '2026-11-10' });
+  });
+
+  test('income and balance convert every currency', async () => {
+    const income = await compute({ type: 'income_total', period: { kind: 'month', offset: 0 } });
+    expect(income.result).toMatchObject({ total: 109000, count: 2 });
+    const balance = await compute({ type: 'balance', period: { kind: 'month', offset: 0 } });
+    expect(balance.result).toMatchObject({ income: 109000, expenses: 18750, balance: 90250 });
+  });
+
+  test('display currency on request', async () => {
+    const { result } = await compute({ type: 'spend_total', period: { kind: 'named_month', month: 9 }, text_filter: 'taxi', currency: 'USD' });
+    expect(result).toMatchObject({ currency: 'USD', total: 30 });
+  });
+});
+
+describe('AssistantService.answer', () => {
+  test('a fast-path word search that finds nothing is re-asked to the model (лекарства → Здоровье)', async () => {
+    const rows = [...SEED, expense('2026-10-20', 900, 'аптека', 'Здоровье')];
+    const provider = { configured: true, complete: jest.fn(async () => ({ type: 'spend_total', period: { kind: 'month', offset: 0 }, categories: ['Здоровье'] })) };
+    const { service } = makeService({ rows, provider });
+    const result = await service.answer(1, 'сколько ушло на лекарства в этом месяце', { lang: 'ru' });
+    expect(provider.complete).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({ status: 'answered', source: 'model' });
+    expect(sp(result.text)).toContain('900 ₽');
+    // нашлось по слову — модель не нужна
+    const again = makeService({ rows, provider: { configured: true, complete: jest.fn() } });
+    expect(await again.service.answer(1, 'сколько ушло на аптеку в этом месяце', { lang: 'ru' })).toMatchObject({ source: 'fast' });
+    expect(again.service.provider.complete).not.toHaveBeenCalled();
+  });
+
+  test('fast path answers without the model and logs the answered question', async () => {
+    const provider = { configured: true, complete: jest.fn() };
+    const { service, repository } = makeService({ provider });
+    const result = await service.answer(1, '? сколько я потратил на кофе в этом месяце', { lang: 'ru' });
+    expect(provider.complete).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ status: 'answered', source: 'fast' });
+    expect(sp(result.text)).toContain('550 ₽');
+    expect(repository.logged).toEqual([expect.objectContaining({ intentType: 'spend_total', source: 'fast' })]);
+  });
+
+  test('example buttons use preset intents in any language', async () => {
+    const { service } = makeService();
+    const result = await service.answer(1, 'irrelevant', { lang: 'jp', example: 3 });
+    expect(result).toMatchObject({ status: 'answered', source: 'example' });
+    expect(result.intent).toMatchObject({ type: 'spend_total', period: { kind: 'last_n_days', n: 7 } });
+    expect(result.intent.categories.map(c => c.name)).toEqual(['Еда']);
+    expect(sp(result.text)).toContain('2 750 ₽'); // 27.10 кофе + 28.10 продукты
+    expect(Object.keys(AssistantService.EXAMPLE_INTENTS)).toHaveLength(6);
+  });
+
+  test('other questions go to the model; its JSON is validated before use', async () => {
+    const provider = { configured: true, complete: jest.fn(async () => ({ type: 'count_records', period: { kind: 'named_month', month: 10 }, text_filter: 'кофе' })) };
+    const { service } = makeService({ provider });
+    const result = await service.answer(1, 'сколько раз я покупал кофе в октябре', { lang: 'ru' });
+    expect(provider.complete).toHaveBeenCalledTimes(1);
+    const { messages } = provider.complete.mock.calls[0][0];
+    expect(messages[messages.length - 1].content).toContain('Question: сколько раз я покупал кофе в октябре');
+    expect(result).toMatchObject({ status: 'answered', source: 'model' });
+    expect(result.text).toContain('Записей: *2*');
+  });
+
+  test('model says unknown → not understood; future → future', async () => {
+    const unknown = makeService({ provider: { configured: true, complete: async () => ({ type: 'unknown' }) } });
+    expect(await unknown.service.answer(1, 'какая погода', { lang: 'ru' })).toMatchObject({ status: 'not_understood' });
+    const future = makeService({ provider: { configured: true, complete: async () => ({ type: 'spend_total', period: { kind: 'named_month', month: 12, year: 2026 } }) } });
+    expect(await future.service.answer(1, 'сколько потрачу в декабре 2026 года', { lang: 'ru' })).toMatchObject({ status: 'future' });
+    expect(unknown.repository.logged).toEqual([]);
+  });
+
+  test('model down: a usable fast-path guess still answers, otherwise model_down', async () => {
+    const down = { configured: true, complete: async () => { throw Object.assign(new Error('connect ECONNREFUSED'), { code: 'network' }); } };
+    const { service } = makeService({ provider: down });
+    expect(await service.answer(1, 'сколько я потратил в октябре ну типа', { lang: 'ru' })).toMatchObject({ status: 'answered', source: 'fallback' });
+    expect(await service.answer(1, 'сколько раз я ходил в кафе с друзьями', { lang: 'ru' })).toMatchObject({ status: 'model_down' });
+    const none = makeService({ provider: null });
+    expect(await none.service.answer(1, 'посчитай подарки маме', { lang: 'ru' })).toMatchObject({ status: 'model_down' });
+  });
+
+  test('a hanging model is abandoned at the deadline and its queue slot is released', async () => {
+    let cancelledCheck = null;
+    const hanging = { configured: true, complete: ({ isCancelled }) => { cancelledCheck = isCancelled; return new Promise(() => {}); } };
+    const { service } = makeService({ provider: hanging, modelDeadlineMs: 30 });
+    const result = await service.answer(1, 'посчитай подарки маме', { lang: 'ru' });
+    expect(result).toMatchObject({ status: 'model_down' });
+    expect(cancelledCheck()).toBe(true);
+  });
+
+  test('daily limit: 5 free, 100 with premium (trial counts as premium)', async () => {
+    expect(USER_LIMITS.regular.MAX_ASSISTANT_QUESTIONS_PER_DAY).toBe(5);
+    expect(USER_LIMITS.premium.MAX_ASSISTANT_QUESTIONS_PER_DAY).toBe(100);
+    expect(await makeService({ answered: 5 }).service.checkLimit(1, 'UTC')).toMatchObject({ used: 5, limit: 5, remaining: 0, isPremium: false });
+    expect(await makeService({ answered: 5, isPremium: true }).service.checkLimit(1, 'UTC')).toMatchObject({ limit: 100, remaining: 95 });
+  });
+});
+
+describe('assistant entry points', () => {
+  test('questions never hijack expense or income input', () => {
+    const { isQuestion } = AssistantHandlers;
+    expect(isQuestion('? сколько я потратил на такси')).toBe(true);
+    expect(isQuestion('？ 今月いくら')).toBe(true);
+    expect(isQuestion('сколько я потратил на кофе?')).toBe(true);
+    expect(isQuestion('250 кофе')).toBe(false);
+    expect(isQuestion('250 кофе?')).toBe(false);
+    expect(isQuestion('+50000 зарплата?')).toBe(false);
+    expect(isQuestion('кофе')).toBe(false);
+    expect(isQuestion('?')).toBe(false);
+    expect(isQuestion('что?')).toBe(false);
+  });
+
+  test('/ask passes command validation with a question, other commands still reject arguments', () => {
+    const validator = new EnhancedValidator();
+    expect(validator.validateCommand('/ask сколько я потратил на кофе?').isValid).toBe(true);
+    expect(validator.validateCommand('/ask@ExpensesAssistant_bot how much').isValid).toBe(true);
+    expect(validator.validateCommand('/stats extra').isValid).toBe(false);
+  });
+
+  function handlerHarness({ remaining = 5, isPremium = false } = {}) {
+    const replies = [];
+    const edits = [];
+    const assistantService = {
+      checkLimit: jest.fn(async () => ({ used: 5 - remaining, limit: isPremium ? 100 : 5, remaining, isPremium })),
+      answer: jest.fn(async () => ({ status: 'answered', text: '*ok*', keyboard: [[{ text: 'x', callback_data: 'ai' }]] })),
+      premiumLimit: 100
+    };
+    assistantService.constructor = AssistantService;
+    const handlers = new AssistantHandlers({
+      assistantService,
+      userService: { getUserLanguage: async () => 'ru', getUserTimezone: async () => 'UTC' },
+      stateService: { setUserState: jest.fn(), deleteUserState: jest.fn() },
+      localizationService: localization
+    });
+    const ctx = {
+      from: { id: 7 }, chat: { id: 7, type: 'private' },
+      reply: jest.fn(async (text, extra) => { replies.push({ text, extra }); return { message_id: 100 + replies.length }; }),
+      sendChatAction: jest.fn(async () => {}),
+      telegram: { editMessageText: jest.fn(async (chatId, messageId, inline, text, extra) => { edits.push({ messageId, text, extra }); }) }
+    };
+    return { handlers, ctx, replies, edits, assistantService };
+  }
+
+  test('a question shows «Думаю…», answers in the background and edits it into the answer with the free counter', async () => {
+    const { handlers, ctx, replies, edits } = handlerHarness({ remaining: 3 });
+    await handlers.ask(ctx, '? сколько на кофе', 'ru');
+    expect(replies[0].text).toBe('🤔 Думаю…');
+    await handlers.idle();
+    expect(edits[0].messageId).toBe(101);
+    expect(edits[0].text).toBe('*ok*\n\n_Вопросов на сегодня осталось: 2 из 5_');
+    expect(handlers.busyUsers.size).toBe(0);
+  });
+
+  test('over the limit: premium pitch, no model call; one question at a time', async () => {
+    const limited = handlerHarness({ remaining: 0 });
+    await limited.handlers.ask(limited.ctx, 'сколько на кофе?', 'ru');
+    expect(limited.replies[0].text).toContain('Вопросы на сегодня закончились: 5 из 5');
+    expect(limited.replies[0].extra.reply_markup.inline_keyboard[0][0].callback_data).toBe('premium_subscription');
+    expect(limited.assistantService.answer).not.toHaveBeenCalled();
+
+    const busy = handlerHarness();
+    busy.assistantService.answer.mockImplementation(() => new Promise(resolve => setTimeout(() => resolve({ status: 'not_understood' }), 20)));
+    await busy.handlers.ask(busy.ctx, 'вопрос раз?', 'ru');
+    await busy.handlers.ask(busy.ctx, 'вопрос два?', 'ru');
+    expect(busy.replies[1].text).toContain('Ещё думаю');
+    await busy.handlers.idle();
+    expect(busy.edits[0].text).toContain('Не понял вопрос');
+    expect(busy.edits[0].text).toContain('• Сколько я потратил в этом месяце?');
+  });
+
+  test('group chats are ignored: answers are about personal money', async () => {
+    const { handlers, ctx, replies } = handlerHarness();
+    ctx.chat.type = 'group';
+    await handlers.ask(ctx, '? сколько', 'ru');
+    expect(replies).toEqual([]);
+  });
+});
+
+describe('assistant model slots', () => {
+  test('ASSISTANT_AI_* slots win; otherwise the receipt slots with a shorter timeout; off disables the model', () => {
+    const receipt = { RECEIPT_AI_3_PROVIDER: 'openai', RECEIPT_AI_3_BASE_URL: 'http://127.0.0.1:11434/v1', RECEIPT_AI_3_MODEL: 'qwen2.5vl:3b', RECEIPT_AI_3_TIMEOUT_MS: '180000' };
+    const inherited = createAssistantProvider(receipt);
+    expect(inherited.providers).toHaveLength(1);
+    expect(inherited.providers[0]).toMatchObject({ model: 'qwen2.5vl:3b', timeoutMs: 60000 });
+    const own = createAssistantProvider({ ...receipt, ASSISTANT_AI_1_PROVIDER: 'openai', ASSISTANT_AI_1_BASE_URL: 'https://api.mistral.ai/v1', ASSISTANT_AI_1_MODEL: 'small', ASSISTANT_AI_1_API_KEY: 'k' });
+    expect(own.providers.map(p => p.model)).toEqual(['small']);
+    expect(createAssistantProvider({ ...receipt, ASSISTANT_AI_1_PROVIDER: 'off' }).configured).toBe(false);
+    // у ASSISTANT_AI нет «старых» переменных без номера
+    expect(parseSlots({ ASSISTANT_AI_PROVIDER: 'openai', ASSISTANT_AI_BASE_URL: 'http://h/v1', ASSISTANT_AI_MODEL: 'm' }, 'ASSISTANT_AI')).toEqual([]);
+  });
+
+  test('receipts and questions to the same local Ollama share one queue', () => {
+    const receipts = createChain(parseSlots({ RECEIPT_AI_1_PROVIDER: 'openai', RECEIPT_AI_1_BASE_URL: 'http://127.0.0.1:11999/v1', RECEIPT_AI_1_MODEL: 'vl' }));
+    const questions = createAssistantProvider({ RECEIPT_AI_1_PROVIDER: 'openai', RECEIPT_AI_1_BASE_URL: 'http://127.0.0.1:11999/v1/', RECEIPT_AI_1_MODEL: 'vl' });
+    expect(questions.providers[0].limiter).toBe(receipts.providers[0].limiter);
+    expect(receipts.providers[0].limiter.max).toBe(1);
+    expect(limiterFor({ provider: 'openai', baseUrl: 'https://api.mistral.ai/v1', concurrency: 0 })).not.toBe(limiterFor({ provider: 'openai', baseUrl: 'https://api.mistral.ai/v1', concurrency: 0 }));
+  });
+
+  test('text completion requests: JSON mode, temperature 0, chat messages', async () => {
+    const messages = [{ role: 'system', content: 'S' }, { role: 'user', content: 'Q' }];
+    const openai = new OpenAiCompatibleProvider({ baseUrl: 'http://127.0.0.1:11434/v1', model: 'qwen2.5vl:3b' });
+    expect(openai.buildCompletionRequest({ messages })).toEqual({
+      url: 'http://127.0.0.1:11434/v1/chat/completions',
+      headers: {},
+      body: { model: 'qwen2.5vl:3b', temperature: 0, response_format: { type: 'json_object' }, messages }
+    });
+    openai.post = async () => ({ status: 200, json: { choices: [{ message: { content: '```json\n{"type":"balance"}\n```' } }] } });
+    expect(await openai.complete({ messages })).toEqual({ type: 'balance' });
+
+    const gemini = new GeminiProvider({ apiKey: 'K' });
+    const { body } = gemini.buildCompletionRequest({ messages: [...messages, { role: 'assistant', content: 'A' }] });
+    expect(body.systemInstruction).toEqual({ parts: [{ text: 'S' }] });
+    expect(body.contents.map(c => c.role)).toEqual(['user', 'model']);
+    expect(body.generationConfig).toEqual({ responseMimeType: 'application/json', temperature: 0 });
+  });
+
+  test('a cancelled question frees its place in the queue without calling the model', async () => {
+    const chain = createChain([]);
+    const slow = { slot: 1, name: 'openai', model: 'm', limiter: new (require('../services/receipt/chain').Limiter)(1), complete: jest.fn(async () => ({ type: 'balance' })) };
+    chain.providers = [slow];
+    let release;
+    const busy = slow.limiter.run(() => new Promise(resolve => { release = resolve; }));
+    let cancelled = false;
+    const waiting = chain.complete({ messages: [], isCancelled: () => cancelled });
+    cancelled = true;
+    release();
+    await busy;
+    await expect(waiting).rejects.toMatchObject({ code: 'network' });
+    expect(slow.complete).not.toHaveBeenCalled();
+  });
+});

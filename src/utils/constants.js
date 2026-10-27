@@ -8,6 +8,7 @@ const USER_LIMITS = {
     MAX_CUSTOM_CATEGORIES: 0,
     MAX_SAVINGS_GOALS: 1,
     MAX_RECEIPTS_PER_MONTH: 10, // распознанных фото чеков в локальный календарный месяц
+    MAX_ASSISTANT_QUESTIONS_PER_DAY: 5, // отвеченных вопросов «🤖 Спроси бота» в локальный день
   },
   premium: {
     MAX_DESCRIPTION_LENGTH: 160,
@@ -15,6 +16,7 @@ const USER_LIMITS = {
     MAX_CUSTOM_CATEGORIES: 5,
     MAX_SAVINGS_GOALS: 10,
     MAX_RECEIPTS_PER_MONTH: 300,
+    MAX_ASSISTANT_QUESTIONS_PER_DAY: 100,
   }
 };
 
@@ -104,6 +106,7 @@ const LEGACY_MENU_BUTTON_KEYS = [
 function generateMoreMenu(localizationService, userLanguage, isAdmin = false) {
   const t = (key) => localizationService.getText(userLanguage, key);
   const keyboard = [
+    [{ text: t('button_ai'), callback_data: 'ai' }],
     [{ text: t('button_savings'), callback_data: 'sv' }],
     [{ text: t('button_family'), callback_data: 'family' }, { text: t('premium_subscription_title'), callback_data: 'premium_subscription' }],
     [{ text: t('button_export'), callback_data: 'export' }, { text: t('button_settings'), callback_data: 'settings' }],

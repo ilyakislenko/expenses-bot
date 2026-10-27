@@ -674,3 +674,19 @@ CREATE INDEX IF NOT EXISTS idx_receipts_user_created ON receipts(user_id, create
 
 ALTER TABLE expenses ADD COLUMN IF NOT EXISTS receipt_id INTEGER NULL REFERENCES receipts(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_expenses_receipt ON expenses(receipt_id) WHERE receipt_id IS NOT NULL;
+
+-- ==== AI ASSISTANT ====
+-- «🤖 Спроси бота»: вопросы о своих тратах обычными словами. Текст вопроса не хранится — только факт ответа
+-- (дневной лимит по локальной дате пользователя), тип ответа, кто разобрал вопрос и время ответа.
+CREATE TABLE IF NOT EXISTS assistant_questions (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    local_date DATE NOT NULL,
+    intent_type VARCHAR(30) NOT NULL,
+    source VARCHAR(10) NOT NULL,
+    duration_ms INTEGER NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+COMMENT ON TABLE assistant_questions IS 'Отвеченные вопросы боту (без текста вопроса): дневной лимит и статистика';
+COMMENT ON COLUMN assistant_questions.source IS 'Кто разобрал вопрос: example — кнопка-пример, fast — быстрый разбор, model — нейросеть, fallback — быстрый разбор, когда нейросеть не ответила';
+CREATE INDEX IF NOT EXISTS idx_assistant_questions_user_date ON assistant_questions(user_id, local_date);

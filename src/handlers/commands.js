@@ -133,8 +133,9 @@ class CommandHandlers {
     const userLanguage = await this.userService.getUserLanguage(userId);
     const t = (key) => this.localizationService.getText(userLanguage, key);
     if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
-    // Подсказка про фото чека — только если распознавание настроено
-    const text = this.receiptService && this.receiptService.configured ? `${t('help_message')}\n\n${t('help_receipt')}` : t('help_message');
+    // Подсказка про фото чека — только если распознавание настроено; вопросы боту работают всегда (частые — без нейросети)
+    const receipts = this.receiptService && this.receiptService.configured;
+    const text = `${t('help_message')}\n\n${receipts ? `${t('help_receipt')}\n` : ''}${t('help_assistant')}`;
     await respond(ctx, text, {
       parse_mode: 'Markdown',
       reply_markup: {

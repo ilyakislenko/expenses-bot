@@ -158,7 +158,8 @@ describe('CommandHandlers flows', () => {
       await handlers.help(ctx);
 
       const [text, extra] = ctx.reply.mock.calls[0];
-      expect(text).toBe(t('en', 'help_message'));
+      // без распознавания чеков: справка и строка про вопросы боту
+      expect(text).toBe(`${t('en', 'help_message')}\n\n${t('en', 'help_assistant')}`);
       expect(buttons(extra.reply_markup.inline_keyboard).map((b) => b.callback_data))
         .toEqual(['bug_report', 'back_to_menu']);
     });
@@ -169,7 +170,7 @@ describe('CommandHandlers flows', () => {
       await handlers.help(ctx);
 
       expect(ctx.answerCbQuery).toHaveBeenCalled();
-      expect(ctx.editMessageText).toHaveBeenCalledWith(t('en', 'help_message'), expect.any(Object));
+      expect(ctx.editMessageText).toHaveBeenCalledWith(`${t('en', 'help_message')}\n\n${t('en', 'help_assistant')}`, expect.any(Object));
       expect(ctx.reply).not.toHaveBeenCalled();
     });
   });
