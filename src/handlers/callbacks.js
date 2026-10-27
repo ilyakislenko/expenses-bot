@@ -4,7 +4,7 @@ const { summaryHour } = require('../services/DailySummaryService');
 const hourLabel = (hour) => `${String(hour).padStart(2, '0')}:00`;
 
 class CallbackHandlers {
-  constructor({ expenseService, premiumService, paymentService, familyService, categoryService, localizationService, formatter, stateService, userService, commandHandlers, keyboardGenerators, donationRepository, funnelService, weeklyInsightService }) {
+  constructor({ expenseService, premiumService, paymentService, familyService, categoryService, localizationService, formatter, stateService, userService, commandHandlers, keyboardGenerators, donationRepository, funnelService, weeklyInsightService, planningService = null }) {
     this.expenseService = expenseService;
     this.premiumService = premiumService;
     this.paymentService = paymentService;
@@ -19,6 +19,7 @@ class CallbackHandlers {
     this.donationRepository = donationRepository;
     this.funnelService = funnelService;
     this.weeklyInsightService = weeklyInsightService;
+    this.planningService = planningService;
   }
 
   async handleToggleReminders(ctx) {
@@ -75,6 +76,11 @@ class CallbackHandlers {
       { text: t(settings.weekly_insight_enabled ? 'button_weekly_insight_on' : 'button_weekly_insight_off'), callback_data: 'toggle_weekly_insight' },
       { text: t('button_weekly_insight_now'), callback_data: 'weekly_insight_now' }
     ]);
+    // Платежи (Планирование): утреннее напоминание о том, что спишется сегодня и завтра
+    const billsOn = this.planningService ? await this.planningService.isBillRemindersEnabled(userId) : false;
+    if (this.planningService) {
+      keyboard.push([{ text: t(billsOn ? 'pl_button_bills_on' : 'pl_button_bills_off'), callback_data: 'plct|s' }]);
+    }
     keyboard.push([{ text: backText, callback_data: 'back_to_settings' }]);
 
     const list = current.map(h => `${h.toString().padStart(2,'0')}:00`).join(', ');
@@ -82,7 +88,8 @@ class CallbackHandlers {
       ? t('settings_daily_summary_on_line', { time: hourLabel(summaryHour(settings.daily_summary_hour)) })
       : t('settings_daily_summary_off_line');
     const weeklyLine = t(settings.weekly_insight_enabled ? 'settings_weekly_insight_on_line' : 'settings_weekly_insight_off_line');
-    const newText = `🔔 *${t('reminders_title')}*\n\n${t('reminders_info')}\n\n${t('reminder_hours_info')} ${list || '-'}\n\n${t('daily_summary_info')}\n${summaryLine}\n\n${t('weekly_insight_info')}\n${weeklyLine}`;
+    let newText = `🔔 *${t('reminders_title')}*\n\n${t('reminders_info')}\n\n${t('reminder_hours_info')} ${list || '-'}\n\n${t('daily_summary_info')}\n${summaryLine}\n\n${t('weekly_insight_info')}\n${weeklyLine}`;
+    if (this.planningService) newText += `\n\n${t('pl_bills_info')}\n${t(billsOn ? 'pl_settings_bills_on_line' : 'pl_settings_bills_off_line')}`;
     await ctx.answerCbQuery().catch(() => {});
     await respond(ctx, newText, { reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown' });
   }
@@ -116,7 +123,7 @@ class CallbackHandlers {
       return ctx.answerCbQuery(this.localizationService.getText(userLanguage, 'weekly_insight_no_data'), { show_alert: true });
     }
     await ctx.answerCbQuery().catch(() => {});
-    await ctx.reply(insight.text, { parse_mode: 'Markdown', reply_markup: this.weeklyInsightService.keyboard(userLanguage) });
+    await ctx.reply(insight.text, { parse_mode: 'Markdown', reply_markup: this.weeklyInsightService.keyboard(userLanguage, insight) });
   }
 
   // «Выключить сводку недели» под сводкой: сводка остаётся, у неё пропадает кнопка выключения

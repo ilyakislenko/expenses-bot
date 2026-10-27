@@ -12,7 +12,8 @@ class ReceiptRepository extends BaseRepository {
   }
 
   // Одна транзакция: чек и по трате на каждую позицию. localAt — локальное время траты ('YYYY-MM-DD HH:MM:SS')
-  // или null (сейчас). items: [{ amount, description, categoryId }]
+  // или null (сейчас). items: [{ amount, description, categoryId, quantity, unitPrice }] — количество и цена
+  // за единицу как в чеке (NULL — не распознаны), по ним считается личная инфляция
   async create(userId, { merchant, date, time, currency, total, itemsTotal, localAt, timezone, familyId, items }) {
     return this.transaction(async (client) => {
       const created = await client.query(`
@@ -22,13 +23,16 @@ class ReceiptRepository extends BaseRepository {
       `, [userId, merchant, date, time, currency, total, itemsTotal, items.length]);
       const receiptId = created.rows[0].id;
       await client.query(`
-        INSERT INTO expenses (user_id, amount, description, category_id, currency, family_id, created_at_utc, receipt_id)
+        INSERT INTO expenses (user_id, amount, description, category_id, currency, family_id, created_at_utc, receipt_id, quantity, unit_price)
         SELECT $1::bigint, t.amount, t.description, t.category_id, $3::varchar, $4::int,
-          COALESCE($5::timestamp AT TIME ZONE $6::text, NOW()), $2::int
-        FROM unnest($7::numeric[], $8::text[], $9::int[]) WITH ORDINALITY AS t(amount, description, category_id, position)
+          COALESCE($5::timestamp AT TIME ZONE $6::text, NOW()), $2::int, t.quantity, t.unit_price
+        FROM unnest($7::numeric[], $8::text[], $9::int[], $10::numeric[], $11::numeric[])
+          WITH ORDINALITY AS t(amount, description, category_id, quantity, unit_price, position)
         ORDER BY t.position
       `, [userId, receiptId, currency, familyId, localAt, timezone,
-        items.map(item => item.amount), items.map(item => item.description || null), items.map(item => item.categoryId)]);
+        items.map(item => item.amount), items.map(item => item.description || null), items.map(item => item.categoryId),
+        items.map(item => (Number(item.quantity) > 0 ? item.quantity : null)),
+        items.map(item => (Number(item.unitPrice) > 0 ? item.unitPrice : null))]);
       return receiptId;
     });
   }

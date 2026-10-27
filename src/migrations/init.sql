@@ -489,3 +489,32 @@ CREATE INDEX IF NOT EXISTS idx_receipts_user_created ON receipts(user_id, create
 
 ALTER TABLE expenses ADD COLUMN IF NOT EXISTS receipt_id INTEGER NULL REFERENCES receipts(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_expenses_receipt ON expenses(receipt_id) WHERE receipt_id IS NOT NULL;
+
+-- ==== PLANNING ====
+-- «🧭 Планирование»: число платежа по долгу (календарь платежей), количество и цена позиций чека (личная инфляция),
+-- утренние напоминания о платежах и отметки найденных подписок («это подписка» / «не подписка»).
+ALTER TABLE savings_pots ADD COLUMN IF NOT EXISTS due_day SMALLINT NULL;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'savings_pots_due_day_check') THEN
+    ALTER TABLE savings_pots ADD CONSTRAINT savings_pots_due_day_check CHECK (due_day IS NULL OR due_day BETWEEN 1 AND 31);
+  END IF;
+END $$;
+COMMENT ON COLUMN savings_pots.due_day IS 'Долг: число месяца планового платежа (1-31, в коротких месяцах — последний день); NULL — не задано';
+
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS quantity DECIMAL(12,3) NULL;
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS unit_price DECIMAL(12,2) NULL;
+COMMENT ON COLUMN expenses.quantity IS 'Позиция чека: количество (шт/кг/л) как в чеке; NULL — не из чека или не распознано';
+COMMENT ON COLUMN expenses.unit_price IS 'Позиция чека: цена за единицу как в чеке; NULL — не из чека или не распознана';
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS bill_reminders_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+COMMENT ON COLUMN users.bill_reminders_enabled IS 'Утреннее напоминание о платежах сегодня и завтра (user_notifications bill_reminder)';
+
+CREATE TABLE IF NOT EXISTS subscription_marks (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    merchant_key VARCHAR(60) NOT NULL,
+    status VARCHAR(10) NOT NULL CHECK (status IN ('confirmed', 'dismissed')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, merchant_key)
+);
+COMMENT ON TABLE subscription_marks IS 'Найденные подписки: merchant_key — нормализованное описание траты; confirmed — отмечена подпиской, dismissed — скрыта';

@@ -1,5 +1,5 @@
 module.exports = function registerBotRoutes(bot, handlers) {
-  const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, importHandlers, receiptHandlers, savingsHandlers, stateService } = handlers;
+  const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, importHandlers, receiptHandlers, savingsHandlers, planningHandlers, stateService } = handlers;
   const ReceiptHandlers = require('./handlers/ReceiptHandlers');
   const { BACK_VIEW_PATTERN } = require('./handlers/ExpenseHandlers');
 
@@ -141,6 +141,20 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^svo\|(m|ma|i|y|g)$/, errorHandler((ctx) => savingsHandlers.settingsAction(ctx)));
   // Устаревшие или неизвестные кнопки раздела (старые сообщения) — главный экран накоплений
   bot.action(/^sv/, errorHandler((ctx) => savingsHandlers.showMenu(ctx)));
+
+  // Планирование: хаб, можно потратить сегодня, платежи на 30 дней, найденные подписки, личная инфляция
+  bot.action('pl', errorHandler((ctx) => planningHandlers.showHub(ctx)));
+  bot.action('pla', errorHandler((ctx) => planningHandlers.showAllowance(ctx)));
+  bot.action('plc', errorHandler((ctx) => planningHandlers.showCalendar(ctx)));
+  bot.action(/^plct\|([cs])$/, errorHandler((ctx) => planningHandlers.toggleBillReminders(ctx, (c) => callbackHandlers.handleConfigureReminderHours(c))));
+  bot.action(/^plcd\|(\d+)$/, errorHandler((ctx) => planningHandlers.startDueDay(ctx)));
+  bot.action('pls', errorHandler((ctx) => planningHandlers.showSubscriptions(ctx)));
+  bot.action(/^plsy\|([0-9a-f]{10})$/, errorHandler((ctx) => planningHandlers.confirmSubscription(ctx)));
+  bot.action(/^plsn\|([0-9a-f]{10})$/, errorHandler((ctx) => planningHandlers.dismissSubscription(ctx)));
+  bot.action('plsr', errorHandler((ctx) => planningHandlers.restoreSubscriptions(ctx)));
+  bot.action('pli', errorHandler((ctx) => planningHandlers.showInflation(ctx)));
+  // Устаревшие или неизвестные кнопки раздела — хаб
+  bot.action(/^pl/, errorHandler((ctx) => planningHandlers.showHub(ctx)));
 
   // Текстовые сообщения
   bot.on('text', errorHandler((ctx) => messageHandlers.handleExpense(ctx))); // ввод трат, доходов и кнопки клавиатуры

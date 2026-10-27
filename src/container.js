@@ -41,6 +41,7 @@ const UserNotificationRepository = require('./repositories/UserNotificationRepos
 const BudgetRepository = require('./repositories/BudgetRepository');
 const ImportRepository = require('./repositories/ImportRepository');
 const ReceiptRepository = require('./repositories/ReceiptRepository');
+const PlanningRepository = require('./repositories/PlanningRepository');
 
 // Services
 const ExpenseService = require('./services/ExpenseService');
@@ -63,6 +64,7 @@ const DailySummaryService = require('./services/DailySummaryService');
 const WeeklyInsightService = require('./services/WeeklyInsightService');
 const ImportService = require('./services/ImportService');
 const ReceiptService = require('./services/ReceiptService');
+const PlanningService = require('./services/PlanningService');
 const { createProviderFromEnv: createReceiptProvider } = require('./services/receipt/chain');
 
 // Handlers
@@ -78,6 +80,7 @@ const BudgetHandlers = require('./handlers/BudgetHandlers');
 const ExportHandlers = require('./handlers/ExportHandlers');
 const ImportHandlers = require('./handlers/ImportHandlers');
 const ReceiptHandlers = require('./handlers/ReceiptHandlers');
+const PlanningHandlers = require('./handlers/PlanningHandlers');
 
 // State management
 const StateService = require('./services/StateService');
@@ -190,6 +193,33 @@ class Container {
           formatter: this.get('formatter')
         });
 
+      case 'planningRepository':
+        return new PlanningRepository();
+
+      case 'planningService':
+        return new PlanningService({
+          planningRepository: this.get('planningRepository'),
+          expenseService: this.get('expenseService'),
+          recurringExpenseService: this.get('recurringExpenseService'),
+          budgetService: this.get('budgetService'),
+          premiumService: this.get('premiumService'),
+          userService: this.get('userService'),
+          userNotificationRepository: this.get('userNotificationRepository'),
+          notificationService: this.get('notificationService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter'),
+          currencyUtils: this.get('currencyUtils')
+        });
+
+      case 'planningHandlers':
+        return new PlanningHandlers({
+          planningService: this.get('planningService'),
+          userService: this.get('userService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter'),
+          stateService: this.get('stateService')
+        });
+
       case 'currencyUtils':
         return createCurrencyUtils(this.get('currencyRepository'));
 
@@ -286,7 +316,8 @@ class Container {
           userNotificationRepository: this.get('userNotificationRepository'),
           notificationService: this.get('notificationService'),
           localizationService: this.get('localizationService'),
-          formatter: this.get('formatter')
+          formatter: this.get('formatter'),
+          planningService: this.get('planningService')
         });
 
       case 'expenseService':
@@ -427,7 +458,8 @@ class Container {
           expenseHandlers: this.get('expenseHandlers'),
           budgetHandlers: this.get('budgetHandlers'),
           exportHandlers: this.get('exportHandlers'),
-          savingsHandlers: this.get('savingsHandlers')
+          savingsHandlers: this.get('savingsHandlers'),
+          planningHandlers: this.get('planningHandlers')
         });
 
       case 'callbackHandlers':
@@ -445,7 +477,8 @@ class Container {
           keyboardGenerators: this.get('keyboardGenerators'),
           donationRepository: this.get('donationRepository'),
           funnelService: this.get('funnelService'),
-          weeklyInsightService: this.get('weeklyInsightService')
+          weeklyInsightService: this.get('weeklyInsightService'),
+          planningService: this.get('planningService')
         });
 
       case 'adminHandlers':
@@ -472,7 +505,8 @@ class Container {
           stateService: this.get('stateService'),
           validator: this.get('enhancedValidator'),
           budgetService: this.get('budgetService'),
-          reportService: this.get('reportService')
+          reportService: this.get('reportService'),
+          planningService: this.get('planningService')
         });
 
       case 'budgetHandlers':
@@ -588,6 +622,8 @@ class Container {
       importHandlers: this.get('importHandlers'),
       receiptHandlers: this.get('receiptHandlers'),
       savingsHandlers: this.get('savingsHandlers'),
+      planningHandlers: this.get('planningHandlers'),
+      planningService: this.get('planningService'),
       reportService: this.get('reportService'),
       dailySummaryService: this.get('dailySummaryService'),
       weeklyInsightService: this.get('weeklyInsightService'),

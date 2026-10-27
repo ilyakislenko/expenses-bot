@@ -33,8 +33,9 @@ class RecurringExpenseService {
   }
 
   // Создаёт регулярную трату. Если число списания в этом месяце уже прошло — первое списание в следующем месяце;
-  // если оно сегодня — трата записывается сразу.
-  async create(userId, { amount, currency, description, dayOfMonth, categoryId }) {
+  // если оно сегодня — трата записывается сразу. paidThisMonth — за этот месяц уже заплачено (найденная подписка,
+  // списание которой уже есть в тратах): первое списание — в следующем месяце.
+  async create(userId, { amount, currency, description, dayOfMonth, categoryId, paidThisMonth = false }) {
     const count = await this.recurringExpenseRepository.countByUser(userId);
     if (count >= MAX_RECURRING_PER_USER) {
       const error = new Error('recurring_limit');
@@ -47,7 +48,7 @@ class RecurringExpenseService {
     const today = localToday(timezone);
     const t = parseYmd(today);
     const thisMonth = ymd(t.y, t.m, 1);
-    const lastChargedMonth = clampDay(t.y, t.m, dayOfMonth) < t.d ? thisMonth : null;
+    const lastChargedMonth = paidThisMonth || clampDay(t.y, t.m, dayOfMonth) < t.d ? thisMonth : null;
 
     const { id } = await this.recurringExpenseRepository.create(userId, {
       amount, currency: resolvedCurrency, categoryId, description, dayOfMonth, lastChargedMonth

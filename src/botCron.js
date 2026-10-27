@@ -50,7 +50,7 @@ async function sendReminders({ userService, expenseService, notificationService 
   return sent;
 }
 
-function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, recurringExpenseService, premiumLifecycleService, reportService, dailySummaryService, weeklyInsightService, supportedCurrencies = currencyConfig.SUPPORTED_CURRENCIES) {
+function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, recurringExpenseService, premiumLifecycleService, reportService, dailySummaryService, weeklyInsightService, planningService, supportedCurrencies = currencyConfig.SUPPORTED_CURRENCIES) {
   // Проверяем, нужно ли обновлять курсы при запуске
   (async () => {
     try {
@@ -152,6 +152,19 @@ function setupBotCron(cron, currencyUtils, donationRepository, userService, expe
       }
     } catch (err) {
       console.error('Ошибка при отправке сводки недели:', err);
+    }
+  });
+
+  // Платежи сегодня и завтра (Планирование): в 9:00 по местному времени включившим напоминания, по разу за день.
+  // В :05 — не в одну минуту с рассылками в :00. Сегодняшние регулярные к 9:00 уже списаны — в тексте «✅ списано»
+  cron.schedule('5 * * * *', async () => {
+    try {
+      const sent = await planningService.processBillReminders();
+      if (sent > 0) {
+        console.log(`Напоминания о платежах: отправлено ${sent}`);
+      }
+    } catch (err) {
+      console.error('Ошибка при отправке напоминаний о платежах:', err);
     }
   });
 

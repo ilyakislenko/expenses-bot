@@ -8,6 +8,8 @@ const USER_LIMITS = {
     MAX_CUSTOM_CATEGORIES: 0,
     MAX_SAVINGS_GOALS: 1,
     MAX_RECEIPTS_PER_MONTH: 10, // распознанных фото чеков в локальный календарный месяц
+    PLANNING_SUBSCRIPTIONS: 3, // найденных подписок в списке (остальные — числом и суммой)
+    PLANNING_INFLATION_ITEMS: 1, // «Моя инфляция»: тизер — одна позиция, без процента корзины
   },
   premium: {
     MAX_DESCRIPTION_LENGTH: 160,
@@ -15,6 +17,8 @@ const USER_LIMITS = {
     MAX_CUSTOM_CATEGORIES: 5,
     MAX_SAVINGS_GOALS: 10,
     MAX_RECEIPTS_PER_MONTH: 300,
+    PLANNING_SUBSCRIPTIONS: 20,
+    PLANNING_INFLATION_ITEMS: 10, // в списках «подорожало» / «подешевело»
   }
 };
 
@@ -105,6 +109,7 @@ function generateMoreMenu(localizationService, userLanguage, isAdmin = false) {
   const t = (key) => localizationService.getText(userLanguage, key);
   const keyboard = [
     [{ text: t('button_savings'), callback_data: 'sv' }],
+    [{ text: t('button_planning'), callback_data: 'pl' }],
     [{ text: t('button_family'), callback_data: 'family' }, { text: t('premium_subscription_title'), callback_data: 'premium_subscription' }],
     [{ text: t('button_export'), callback_data: 'export' }, { text: t('button_settings'), callback_data: 'settings' }],
     [{ text: t('button_import'), callback_data: 'import' }],

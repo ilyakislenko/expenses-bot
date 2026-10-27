@@ -190,16 +190,16 @@ describe('ReceiptService', () => {
     expect(receipt.currency).toBe('USD');
   });
 
-  it('records descriptions within the user\'s description limit', async () => {
+  it('records descriptions within the user\'s description limit, with quantity and unit price per line', async () => {
     const { service, receiptRepository } = createService();
     await service.record(777, { merchant: 'X', date: null, time: null, currency: 'RUB', total: null, itemsTotal: 3, items: [
-      { name: 'Очень длинное название товара', amount: 1, categoryId: 1 },
-      { name: '', amount: 2, categoryId: 6 }
+      { name: 'Очень длинное название товара', amount: 1, categoryId: 1, quantity: 0.5, price: 2 },
+      { name: '', amount: 2, categoryId: 6, quantity: 1, price: null }
     ] }, { timezone: 'UTC', familyId: null });
     const [, data] = receiptRepository.create.mock.calls[0];
     expect(data.items).toEqual([
-      { amount: 1, categoryId: 1, description: 'Очень длин' },
-      { amount: 2, categoryId: 6, description: null }
+      { amount: 1, categoryId: 1, description: 'Очень длин', quantity: 0.5, unitPrice: 2 },
+      { amount: 2, categoryId: 6, description: null, quantity: 1, unitPrice: null }
     ]);
     expect(data.localAt).toBeNull();
   });

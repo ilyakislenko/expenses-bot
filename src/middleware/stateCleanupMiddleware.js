@@ -28,7 +28,7 @@ function stateCleanupMiddleware(handlers) {
         'export_date_range'
       ];
       // Состояния с параметром после двоеточия (например, setting_budget:<цель>)
-      const autoResetPrefixes = ['setting_budget:', 'renaming_custom_category:', 'admin_refund_search:', 'editing_income:', 'sv_in:'];
+      const autoResetPrefixes = ['setting_budget:', 'renaming_custom_category:', 'admin_refund_search:', 'editing_income:', 'sv_in:', 'pl_in:'];
       // Найденная транзакция для возврата живёт только до кнопки «Вернуть» на её карточке
       const isStaleRefundConfirm = userState?.type === 'admin_refund_confirm'
         && ctx.callbackQuery?.data !== 'panel_refund_exec';

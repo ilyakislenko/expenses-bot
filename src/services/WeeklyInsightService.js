@@ -121,7 +121,7 @@ function projectPace({ spent, period, today }) {
 }
 
 class WeeklyInsightService {
-  constructor({ expenseService, incomeService, reportService, budgetService, userNotificationRepository, notificationService, localizationService, formatter }) {
+  constructor({ expenseService, incomeService, reportService, budgetService, userNotificationRepository, notificationService, localizationService, formatter, planningService = null }) {
     this.expenseService = expenseService;
     this.incomeService = incomeService;
     this.reportService = reportService;
@@ -130,20 +130,19 @@ class WeeklyInsightService {
     this.notificationService = notificationService;
     this.localizationService = localizationService;
     this.formatter = formatter;
+    this.planningService = planningService; // новые найденные подписки — строкой в конце сводки, один раз
   }
 
   t(lang, key, params) {
     return this.localizationService.getText(lang, key, params);
   }
 
-  // Кнопки под каждой сводкой недели
-  keyboard(lang) {
-    return {
-      inline_keyboard: [
-        [{ text: this.t(lang, 'button_weekly_insight_overview'), callback_data: 'ov|0' }],
-        [{ text: this.t(lang, 'button_weekly_insight_disable'), callback_data: 'weekly_insight_off' }]
-      ]
-    };
+  // Кнопки под каждой сводкой недели; subscriptions — в сводке есть строка о найденных подписках
+  keyboard(lang, { subscriptions = false } = {}) {
+    const rows = [[{ text: this.t(lang, 'button_weekly_insight_overview'), callback_data: 'ov|0' }]];
+    if (subscriptions) rows.push([{ text: this.t(lang, 'pl_button_subs'), callback_data: 'pls' }]);
+    rows.push([{ text: this.t(lang, 'button_weekly_insight_disable'), callback_data: 'weekly_insight_off' }]);
+    return { inline_keyboard: rows };
   }
 
   // Траты недели в основной валюте — так же, как в обзоре (getTotals + categoryBreakdown)
@@ -194,7 +193,9 @@ class WeeklyInsightService {
     }
 
     lines.push(...await this.periodLines(userId, lang, { timezone, currency, startDay, today, money }));
-    return { text: lines.join('\n'), weekKey: thisMonday };
+    const nudge = this.planningService ? await this.planningService.subscriptionNudge(userId, lang) : '';
+    if (nudge) lines.push('', nudge);
+    return { text: lines.join('\n'), weekKey: thisMonday, subscriptions: !!nudge };
   }
 
   // Текущий период: потрачено, прогноз при текущем темпе, прошлый период, общий бюджет, доход − расходы
@@ -253,7 +254,7 @@ class WeeklyInsightService {
         if (!insight) continue;
         if (!(await this.userNotificationRepository.markSent(candidate.id, 'weekly_insight', insight.weekKey))) continue;
 
-        await this.notificationService.sendMessage(candidate.id, insight.text, { parse_mode: 'Markdown', reply_markup: this.keyboard(lang) });
+        await this.notificationService.sendMessage(candidate.id, insight.text, { parse_mode: 'Markdown', reply_markup: this.keyboard(lang, insight) });
         sent++;
       } catch (error) {
         logger.warn('Weekly insight not delivered', { userId: candidate.id, error: error.message });

@@ -151,7 +151,9 @@ class ReceiptService {
     const items = receipt.items.map(item => ({
       amount: item.amount,
       categoryId: item.categoryId,
-      description: item.name ? item.name.slice(0, limits.MAX_DESCRIPTION_LENGTH).trim() : null
+      description: item.name ? item.name.slice(0, limits.MAX_DESCRIPTION_LENGTH).trim() : null,
+      quantity: item.quantity,
+      unitPrice: item.price
     }));
     const receiptId = await this.receiptRepository.create(userId, {
       merchant: receipt.merchant,

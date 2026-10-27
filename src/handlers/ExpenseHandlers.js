@@ -29,7 +29,7 @@ function groupByCurrency(expenses) {
 }
 
 class ExpenseHandlers {
-  constructor({ expenseService, incomeService, recurringExpenseService, familyService, premiumService, userService, localizationService, formatter, stateService, validator, budgetService, reportService }) {
+  constructor({ expenseService, incomeService, recurringExpenseService, familyService, premiumService, userService, localizationService, formatter, stateService, validator, budgetService, reportService, planningService = null }) {
     this.expenseService = expenseService;
     this.incomeService = incomeService;
     this.recurringExpenseService = recurringExpenseService;
@@ -42,6 +42,7 @@ class ExpenseHandlers {
     this.validator = validator;
     this.budgetService = budgetService;
     this.reportService = reportService;
+    this.planningService = planningService; // строка «💸 Можно сегодня» в «Сегодня» и обзоре текущего периода
     this.backViews = {}; // экраны других разделов: kind → (ctx, args) => …, см. registerBackView
   }
 
@@ -407,9 +408,12 @@ class ExpenseHandlers {
       text += lines.join('\n');
       text += `\n\n${this.t(lang, 'list_tap_number')}`;
     }
+    const allowanceLine = offset === 0 && this.planningService ? await this.planningService.allowanceLine(userId, lang) : null;
+    if (allowanceLine) text += `\n\n${allowanceLine}`;
 
     const nav = [{ text: this.t(lang, 'button_prev_day'), callback_data: `dy|${offset - 1}|0` }];
     if (offset < 0) nav.push({ text: this.t(lang, 'button_next_day'), callback_data: `dy|${offset + 1}|0` });
+    if (allowanceLine) nav.push({ text: this.t(lang, 'pl_button_allowance'), callback_data: 'pla' });
     keyboard.push(nav);
     await respond(ctx, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
   }
@@ -442,6 +446,10 @@ class ExpenseHandlers {
     }
     const incomeSummary = await this.formatter.formatIncomeSummary(incomeTotals, totals, currency, this.localizationService, lang);
     if (incomeSummary) text += `\n${incomeSummary}`;
+    if (offset === 0 && this.planningService) {
+      const allowanceLine = await this.planningService.allowanceLine(userId, lang, { hintForNew: false });
+      if (allowanceLine) text += `\n${allowanceLine}`;
+    }
 
     // Категории: суммы в основной валюте, по убыванию; у категорий с бюджетом — лимит (процент от лимита — в «🎯 Бюджеты»)
     const categorySum = categories.reduce((sum, c) => sum + c.total, 0);
