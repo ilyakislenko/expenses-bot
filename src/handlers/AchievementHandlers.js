@@ -180,7 +180,8 @@ class AchievementHandlers {
         lines.push(`${CHALLENGE_ICONS[challenge.kind]} ${this.achievementService.challengeName(lang, challenge)} — ${status}`);
       }
     }
-    lines.push('', this.t(lang, 'ach_ch_limit_hint'));
+    // Подсказка про лимит — только без премиума (у премиума челленджи без ограничений)
+    if (Number.isFinite(overview.snap.limits.MAX_ACTIVE_CHALLENGES)) lines.push('', this.t(lang, 'ach_ch_limit_hint'));
 
     const activeKinds = new Set(overview.active.map(item => item.challenge.kind));
     const keyboard = [];

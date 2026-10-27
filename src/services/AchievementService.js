@@ -387,8 +387,10 @@ class AchievementService {
     const recent = await this.reportService.categoryBreakdown(userId, timezone, lastDaysPeriod(today, 30), currency);
     const categories = await this.expenseService.getCategories(userId);
     const byName = new Map(categories.map(c => [c.name, c]));
+    // Сначала категории с недавними тратами (по сумме), затем остальные доступные
     const picked = recent.map(c => byName.get(c.name)).filter(Boolean);
-    return (picked.length ? picked : categories).slice(0, 8);
+    const rest = categories.filter(c => !picked.includes(c));
+    return [...picked, ...rest].slice(0, 8);
   }
 
   // ========================================
