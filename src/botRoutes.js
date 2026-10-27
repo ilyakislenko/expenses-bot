@@ -184,6 +184,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^rvx\|(\d+)$/, errorHandler((ctx) => receiptHandlers.askUndo(ctx, parseInt(ctx.match[1], 10))));
   bot.action(/^rvxc\|(\d+)$/, errorHandler((ctx) => receiptHandlers.undo(ctx, parseInt(ctx.match[1], 10))));
   bot.action(/^rvd\|([01])$/, errorHandler((ctx) => receiptHandlers.resolveDraft(ctx, ctx.match[1] === '1'))); // черновик: записать / отмена
+  bot.action('rvr', errorHandler((ctx) => receiptHandlers.rotateAndRetry(ctx))); // повернуть кадр на 90° и распознать снова
   bot.action('limits', errorHandler(async (ctx) => {
     await ctx.answerCbQuery();
     await commandHandlers.premiumSubscription(ctx);

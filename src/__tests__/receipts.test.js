@@ -55,9 +55,9 @@ describe('receipt JSON normalization', () => {
     expect(sum(normalize({ is_receipt: true, discount: 10, items: [{ name: 'A', amount: 60 }, { name: 'B', amount: 40 }] }))).toBe(90);
   });
 
-  it('fixes rounding within 1% so the sum equals the printed total exactly', () => {
+  it('does not spread a residual across lines: amounts stay as read within a kopeck of the total', () => {
     const receipt = normalize({ is_receipt: true, total: 100, items: [{ name: 'A', amount: 33.33 }, { name: 'B', amount: 33.33 }, { name: 'C', amount: 33.33 }] });
-    expect(sum(receipt)).toBe(100);
+    expect(amounts(receipt)).toEqual([33.33, 33.33, 33.33]);
     expect(receipt.mismatch).toBe(false);
   });
 
@@ -337,7 +337,8 @@ describe('telegram images', () => {
   it('takes the largest photo size within the limit', () => {
     const sizes = [{ file_id: 's', file_size: 1000 }, { file_id: 'm', file_size: 90000 }, { file_id: 'l', file_size: 400000 }];
     expect(ReceiptHandlers.pickPhotoSize(sizes).file_id).toBe('l');
-    expect(ReceiptHandlers.pickPhotoSize([...sizes, { file_id: 'xl', file_size: 5 * 1024 * 1024 }]).file_id).toBe('l');
+    expect(ReceiptHandlers.pickPhotoSize([...sizes, { file_id: 'xl', file_size: 5 * 1024 * 1024 }]).file_id).toBe('xl');
+    expect(ReceiptHandlers.pickPhotoSize([...sizes, { file_id: 'huge', file_size: 25 * 1024 * 1024 }]).file_id).toBe('l');
   });
 
   it('recognizes image documents by MIME type or extension', () => {
@@ -619,6 +620,8 @@ describe('confidence gate and prompt', () => {
 
 describe('ReceiptHandlers background recognition', () => {
   const Formatter = require('../utils/formatter');
+  const jpegJs = require('jpeg-js');
+  const tinyJpeg = (width, height) => Buffer.from(jpegJs.encode({ data: Buffer.alloc(width * height * 4, 200), width, height }, 80).data);
 
   function setup() {
     let finish;
@@ -628,7 +631,7 @@ describe('ReceiptHandlers background recognition', () => {
       provider: { acceptsHeic: false },
       premiumLimit: 300,
       checkLimit: jest.fn(async () => ({ isPremium: false, limit: 10, used: 0, remaining: 10 })),
-      recognize: jest.fn(() => recognition),
+      recognizePhoto: jest.fn(() => recognition),
       record: jest.fn(async () => 1),
       getReceipt: jest.fn(async () => ({ id: 1, merchant: 'Ярче', purchased_day: '2026-10-27', purchased_hm: '11:47', status: 'active', printed_total: '45', items_total: '45', currency: 'RUB' })),
       getExpenses: jest.fn(async () => [{ id: 5, amount: '45', currency: 'RUB', description: 'Хлеб', category_name: 'Еда', category_icon: '🍕' }]),
@@ -652,22 +655,23 @@ describe('ReceiptHandlers background recognition', () => {
       telegram: { editMessageText: jest.fn(async () => true) }
     };
     const receipt = (overrides = {}) => ({ merchant: 'Ярче', date: '2026-10-27', time: '11:47', currency: 'RUB', total: 45, itemsTotal: 45, mismatch: false, lowConfidence: false, items: [{ name: 'Хлеб', amount: 45, categoryId: 1 }], ...overrides });
-    return { handlers, receiptService, ctx, finish, receipt };
+    const ok = (value, image = tinyJpeg(16, 32)) => ({ receipt: value, image, mimeType: 'image/jpeg', attempts: 1 });
+    return { handlers, receiptService, ctx, finish, receipt, ok };
   }
   const t = (key, params) => new LocalizationService().getText('ru', key, params);
 
   it('the photo handler returns before recognition completes; one receipt per user at a time', async () => {
-    const { handlers, receiptService, ctx, finish, receipt } = setup();
+    const { handlers, receiptService, ctx, finish, receipt, ok } = setup();
     await handlers.processImage(ctx, { fileId: 'f', fileSize: 1000, mimeType: 'image/jpeg' });
     expect(ctx.reply).toHaveBeenLastCalledWith(t('receipt_recognizing'));
-    expect(receiptService.recognize).toHaveBeenCalled();
+    expect(receiptService.recognizePhoto).toHaveBeenCalledWith(7, expect.objectContaining({ image: Buffer.from('image'), prepared: false, retry: true }));
     expect(receiptService.record).not.toHaveBeenCalled();
 
     await handlers.processImage(ctx, { fileId: 'g', fileSize: 1000, mimeType: 'image/jpeg' });
     expect(ctx.reply).toHaveBeenLastCalledWith(t('receipt_busy'));
-    expect(receiptService.recognize).toHaveBeenCalledTimes(1);
+    expect(receiptService.recognizePhoto).toHaveBeenCalledTimes(1);
 
-    finish(receipt());
+    finish(ok(receipt()));
     await handlers.idle();
     expect(receiptService.record).toHaveBeenCalled();
     const [, messageId, , text] = ctx.telegram.editMessageText.mock.calls.pop();
@@ -676,30 +680,32 @@ describe('ReceiptHandlers background recognition', () => {
     expect(handlers.busyUsers.size).toBe(0);
   });
 
-  it('shows the local-model hint and queue position while waiting', async () => {
-    const { handlers, receiptService, ctx, finish, receipt } = setup();
-    receiptService.recognize.mockImplementation(async (userId, { onStatus }) => {
+  it('shows the queue, the local-model hint and «rotating and trying again»', async () => {
+    const { handlers, receiptService, ctx, receipt, ok } = setup();
+    receiptService.recognizePhoto.mockImplementation(async (userId, { onStatus, onRetry }) => {
       onStatus({ position: 2, local: true });
       onStatus({ position: 0, local: true });
-      return receipt();
+      await onRetry();
+      onStatus({ position: 0, local: true });
+      return ok(receipt());
     });
     await handlers.processImage(ctx, { fileId: 'f', fileSize: 1000, mimeType: 'image/jpeg' });
     await handlers.idle();
-    void finish;
     const texts = ctx.telegram.editMessageText.mock.calls.map(call => call[3]);
-    expect(texts.slice(0, 2)).toEqual([t('receipt_queued', { position: 2 }), t('receipt_recognizing_slow')]);
-    expect(texts[2]).toContain('Хлеб');
+    expect(texts.slice(0, 3)).toEqual([t('receipt_queued', { position: 2 }), t('receipt_recognizing_slow'), t('receipt_retrying')]);
+    expect(texts[3]).toContain('Хлеб');
   });
 
-  it('low-confidence results become a draft: nothing recorded until «Записать как есть»', async () => {
-    const { handlers, receiptService, ctx, finish, receipt } = setup();
+  it('low-confidence results become a draft with tips and «rotate»; nothing recorded until «Записать как есть»', async () => {
+    const { handlers, receiptService, ctx, finish, receipt, ok } = setup();
     await handlers.processImage(ctx, { fileId: 'f', fileSize: 1000, mimeType: 'image/jpeg' });
-    finish(receipt({ lowConfidence: true, total: 100 }));
+    finish(ok(receipt({ lowConfidence: true, total: 100 })));
     await handlers.idle();
     expect(receiptService.record).not.toHaveBeenCalled();
     const [, , , text, extra] = ctx.telegram.editMessageText.mock.calls.pop();
     expect(text).toContain(t('receipt_low_confidence', { total: '100 ₽'.replace(' ', '\u00a0') }));
-    expect(extra.reply_markup.inline_keyboard.flat().map(b => b.callback_data)).toEqual(['rvd|1', 'rvd|0']);
+    expect(text).toContain(t('receipt_photo_tips'));
+    expect(extra.reply_markup.inline_keyboard.flat().map(b => b.callback_data)).toEqual(['rvd|1', 'rvr', 'rvd|0']);
 
     const callbackCtx = { ...ctx, callbackQuery: { message: { message_id: 101 } }, answerCbQuery: jest.fn(async () => true), editMessageText: jest.fn(async () => true) };
     await handlers.resolveDraft(callbackCtx, true);
@@ -707,17 +713,349 @@ describe('ReceiptHandlers background recognition', () => {
     await handlers.resolveDraft(callbackCtx, true);
     expect(receiptService.record).toHaveBeenCalledTimes(1);
     expect(callbackCtx.answerCbQuery).toHaveBeenLastCalledWith(t('receipt_draft_outdated'), { show_alert: true });
+    await handlers.rotateAndRetry(callbackCtx);
+    expect(callbackCtx.answerCbQuery).toHaveBeenLastCalledWith(t('receipt_rotate_outdated'), { show_alert: true });
   });
 
-  it('asks to send a rotated image file as a photo instead', async () => {
-    const { handlers, receiptService, ctx } = setup();
-    const { jpegOrientation } = require('../services/receipt/image');
-    const rotated = Buffer.from('ffd8ffe100224578696600004d4d002a00000008000101120003000000010006000000000000ffda0002', 'hex');
-    expect(jpegOrientation(rotated)).toBe(6);
-    handlers.download = jest.fn(async () => rotated);
-    await handlers.handleImageDocument({ ...ctx, message: { document: { file_id: 'd', file_name: 'IMG.jpg', mime_type: 'image/jpeg', file_size: 400000 } } });
+  it('unreadable: tips and «rotate 90°» re-run the cached prepared image rotated, one attempt, single-flight respected', async () => {
+    const { handlers, receiptService, ctx, finish, receipt, ok } = setup();
+    const { ReceiptError } = require('../services/receipt/errors');
+    await handlers.processImage(ctx, { fileId: 'f', fileSize: 1000, mimeType: 'image/jpeg' });
+    finish({ error: new ReceiptError('unreadable'), image: tinyJpeg(16, 32), mimeType: 'image/jpeg', attempts: 2 });
+    await handlers.idle();
+    const [, , , text, extra] = ctx.telegram.editMessageText.mock.calls.pop();
+    expect(text).toBe(`${t('receipt_unreadable')}\n\n${t('receipt_photo_tips')}`);
+    expect(extra.reply_markup.inline_keyboard.flat().map(b => b.callback_data)).toEqual(['rvr']);
+
+    let release;
+    receiptService.recognizePhoto.mockImplementation(() => new Promise(resolve => { release = () => resolve(ok(receipt())); }));
+    const callbackCtx = { ...ctx, callbackQuery: { message: { message_id: 101 } }, answerCbQuery: jest.fn(async () => true), editMessageText: jest.fn(async () => true) };
+    await handlers.rotateAndRetry(callbackCtx);
+    expect(callbackCtx.editMessageText).toHaveBeenCalledWith(t('receipt_retrying'), expect.anything());
+    const [, options] = receiptService.recognizePhoto.mock.calls[receiptService.recognizePhoto.mock.calls.length - 1];
+    expect(options).toMatchObject({ prepared: true, retry: false });
+    const rotated = jpegJs.decode(options.image);
+    expect([rotated.width, rotated.height]).toEqual([32, 16]);
+
+    await handlers.processImage(ctx, { fileId: 'g', fileSize: 1000, mimeType: 'image/jpeg' });
+    expect(ctx.reply).toHaveBeenLastCalledWith(t('receipt_busy'));
+    release();
+    await handlers.idle();
+    expect(receiptService.record).toHaveBeenCalledTimes(1);
+    await handlers.rotateAndRetry(callbackCtx);
+    expect(callbackCtx.answerCbQuery).toHaveBeenLastCalledWith(t('receipt_rotate_outdated'), { show_alert: true });
+  });
+
+  it('accepts JPEG files up to 20 MB at full resolution; HEIC, huge files and big non-JPEG get a hint', async () => {
+    const { handlers, receiptService, ctx, finish, receipt, ok } = setup();
+    const doc = (document) => handlers.handleImageDocument({ ...ctx, message: { document } });
+    await doc({ file_id: 'big', file_name: 'IMG_1.jpg', mime_type: 'image/jpeg', file_size: 8 * 1024 * 1024 });
+    expect(receiptService.recognizePhoto).toHaveBeenCalledTimes(1);
+    finish(ok(receipt()));
+    await handlers.idle();
+    await doc({ file_id: 'h', file_name: 'IMG_2.HEIC', mime_type: 'image/heic', file_size: 300000 });
+    expect(ctx.reply).toHaveBeenLastCalledWith(t('receipt_heic_unsupported'));
+    await doc({ file_id: 'x', file_name: 'IMG_3.jpg', mime_type: 'image/jpeg', file_size: 25 * 1024 * 1024 });
+    expect(ctx.reply).toHaveBeenLastCalledWith(t('receipt_file_too_big'));
+    await doc({ file_id: 'p', file_name: 'scan.png', mime_type: 'image/png', file_size: 3 * 1024 * 1024 });
     expect(ctx.reply).toHaveBeenLastCalledWith(t('receipt_send_as_photo'));
-    expect(receiptService.recognize).not.toHaveBeenCalled();
+    expect(receiptService.recognizePhoto).toHaveBeenCalledTimes(1);
     expect(handlers.busyUsers.size).toBe(0);
+  });
+});
+
+describe('receipt image preparation', () => {
+  const jpegJs = require('jpeg-js');
+  const { prepareReceiptImage, rotateJpeg, orientedView } = require('../services/receipt/imagePrep');
+  const { runImageTask } = require('../services/receipt/imageWorker');
+
+  // Кадр: тёмный шумный фон и белый «чек» со строками «слов» (тёмные отрезки), строки горизонтальные или вертикальные
+  function receiptPhoto({ width, height, paper, vertical = false, seed = 1 }) {
+    let state = seed;
+    const random = () => ((state = (state * 1103515245 + 12345) % 2147483648) / 2147483648);
+    const data = Buffer.alloc(width * height * 4, 255);
+    const set = (x, y, v) => {
+      const i = (y * width + x) * 4;
+      data[i] = v;
+      data[i + 1] = v * 0.95;
+      data[i + 2] = v * 0.85;
+    };
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) set(x, y, 95 + (random() - 0.5) * 20);
+    const { x: px, y: py, w: pw, h: ph } = paper;
+    for (let y = py; y < py + ph; y++) for (let x = px; x < px + pw; x++) set(x, y, 235);
+    const along = vertical ? ph : pw;
+    const across = vertical ? pw : ph;
+    const unit = Math.max(2, Math.round(Math.min(pw, ph) / 60));
+    for (let line = unit * 3; line + unit * 2 < across - unit * 2; line += unit * 4) {
+      for (let pos = unit * 2; pos < along - unit * 2;) {
+        const word = unit * (3 + Math.floor(random() * 6));
+        for (let a = pos; a < Math.min(pos + word, along - unit * 2); a++) {
+          for (let b = line; b < line + unit * 2; b++) {
+            if (random() < 0.75) set(vertical ? px + b : px + a, vertical ? py + a : py + b, 30);
+          }
+        }
+        pos += word + unit * 2;
+      }
+    }
+    return Buffer.from(jpegJs.encode({ data, width, height }, 90).data);
+  }
+
+  function withOrientation(buffer, value) {
+    const tiff = Buffer.alloc(26);
+    tiff.write('MM', 0, 'ascii');
+    tiff.writeUInt16BE(42, 2); tiff.writeUInt32BE(8, 4); tiff.writeUInt16BE(1, 8);
+    tiff.writeUInt16BE(0x0112, 10); tiff.writeUInt16BE(3, 12); tiff.writeUInt32BE(1, 14); tiff.writeUInt16BE(value, 18);
+    const exif = Buffer.concat([Buffer.from('Exif\0\0', 'ascii'), tiff]);
+    const head = Buffer.alloc(4);
+    head.writeUInt16BE(0xffe1, 0);
+    head.writeUInt16BE(exif.length + 2, 2);
+    return Buffer.concat([buffer.subarray(0, 2), head, exif, buffer.subarray(2)]);
+  }
+
+  const contains = (crop, paper) => crop.x <= paper.x && crop.y <= paper.y
+    && crop.x + crop.width >= paper.x + paper.w && crop.y + crop.height >= paper.y + paper.h;
+
+  it('crops a small receipt out of a large frame and keeps horizontal lines as they are', () => {
+    const paper = { x: 700, y: 150, w: 420, h: 1100 };
+    const { info } = prepareReceiptImage(receiptPhoto({ width: 2000, height: 1500, paper }));
+    expect(info.prepared).toBe(true);
+    expect(info.crop.cropped).toBe(true);
+    expect(contains(info.crop, { ...paper, x: paper.x + 10, y: paper.y + 10, w: paper.w - 20, h: paper.h - 20 })).toBe(true);
+    expect(info.crop.width * info.crop.height).toBeLessThan(2000 * 1500 * 0.3);
+    expect(info.rotation).toBe(0);
+    expect(Math.max(info.width, info.height)).toBeLessThanOrEqual(1280);
+    expect(info).toMatchObject({ small: false, lowResolution: false, reencoded: true });
+  });
+
+  it('enlarges a far-away receipt and turns vertical lines horizontal', () => {
+    const paper = { x: 380, y: 350, w: 260, h: 140 };
+    const { image, info } = prepareReceiptImage(receiptPhoto({ width: 1000, height: 800, paper, vertical: true, seed: 7 }));
+    expect(info.crop.cropped).toBe(true);
+    expect(contains(info.crop, { ...paper, x: paper.x + 6, y: paper.y + 6, w: paper.w - 12, h: paper.h - 12 })).toBe(true);
+    expect(info.rotation).toBe(90);
+    expect(info.height).toBeGreaterThan(info.width); // строки шли вдоль короткой стороны чека
+    const decoded = jpegJs.decode(image);
+    expect(Math.max(decoded.width, decoded.height)).toBeGreaterThanOrEqual(1024);
+    expect(info).toMatchObject({ small: true, lowResolution: true }); // сжатое фото с мелким чеком — «пришли файлом»
+  });
+
+  it('passes an upright receipt that fills a Telegram-size frame through without re-encoding', () => {
+    const photo = receiptPhoto({ width: 960, height: 1280, paper: { x: 0, y: 0, w: 960, h: 1280 }, seed: 5 });
+    const { image, info } = prepareReceiptImage(photo);
+    expect(info).toMatchObject({ prepared: true, reencoded: false, rotation: 0, small: false, crop: { cropped: false } });
+    expect(image).toBe(photo);
+  });
+
+  it('applies EXIF orientation before looking for the receipt', () => {
+    // Сохранено «боком» (строки вертикальные) с EXIF 6 — для человека чек ровный
+    const stored = receiptPhoto({ width: 1200, height: 900, paper: { x: 150, y: 250, w: 900, h: 400 }, vertical: true, seed: 3 });
+    const asIs = prepareReceiptImage(stored).info;
+    const tagged = prepareReceiptImage(withOrientation(stored, 6)).info;
+    expect(asIs.source.orientation).toBe(1);
+    expect(asIs.rotation).toBe(90);
+    expect(tagged.source.orientation).toBe(6);
+    expect(tagged.rotation).toBe(0);
+    expect(tagged.height).toBeGreaterThan(tagged.width);
+    const view = orientedView(4032, 3024, 6);
+    expect([view.width, view.height]).toEqual([3024, 4032]);
+    expect(view.map(0, 0)).toEqual([0, 3024]);
+    expect(orientedView(4032, 3024, 8).map(0, 0)).toEqual([4032, 0]);
+  });
+
+  it('passes non-JPEG and broken files through untouched', () => {
+    const png = Buffer.from('89504e470d0a1a0a0000', 'hex');
+    expect(prepareReceiptImage(png, { mimeType: 'image/png' })).toMatchObject({ image: png, mimeType: 'image/png', info: { prepared: false } });
+    const broken = Buffer.from('ffd8ffe000104a464946', 'hex');
+    expect(prepareReceiptImage(broken).image).toBe(broken);
+  });
+
+  it('rotates a prepared JPEG and runs the work in a worker thread', async () => {
+    const source = Buffer.from(jpegJs.encode({ data: Buffer.alloc(20 * 10 * 4, 128), width: 20, height: 10 }, 80).data);
+    const rotated = jpegJs.decode(rotateJpeg(source, 90));
+    expect([rotated.width, rotated.height]).toEqual([10, 20]);
+    const viaWorker = await runImageTask('rotate', source, { degrees: 270 });
+    const decoded = jpegJs.decode(viaWorker.image);
+    expect([decoded.width, decoded.height]).toEqual([10, 20]);
+    const prepared = await runImageTask('prepare', receiptPhoto({ width: 800, height: 600, paper: { x: 300, y: 50, w: 200, h: 500 } }), {});
+    expect(prepared.info.prepared).toBe(true);
+    expect(Buffer.isBuffer(prepared.image)).toBe(true);
+  });
+});
+
+describe('reconciling items with the printed total', () => {
+  const categoriesList = [{ id: 1, names: ['Еда'] }, { id: 6, names: ['Другое'] }];
+  const check = (raw) => normalizeReceipt(raw, { categories: categoriesList, fallbackCategoryId: 6, defaultCurrency: 'RUB', supportedCurrencies: SUPPORTED_CURRENCIES });
+  const line = (name, quantity, price, amount) => ({ name, quantity, price, amount });
+
+  it('fixes exactly the lines whose amount ≠ quantity × price when that explains the total', () => {
+    const receipt = check({ is_receipt: true, total: 345.35, items: [
+      line('Рагу', 2, 139.99, 279.94), line('Морковь', 0.522, 24.99, 13.04), line('Лук', 0.62, 33.99, 21.70), line('Соус', 1, 31.26, 31.26)
+    ] });
+    expect(receipt.items.map(item => item.amount)).toEqual([279.98, 13.04, 21.07, 31.26]);
+    expect(receipt).toMatchObject({ mismatch: false, itemsTotal: 345.35, checks: { corrected: 2, badLines: 0 } });
+  });
+
+  it('fixes a single line that explains the residual and leaves correct lines alone', () => {
+    const receipt = check({ is_receipt: true, total: 1160.61, items: [
+      line('Пакет', 1, 8, 8), line('Рагу', 2, 139.99, 279.94), line('Молоко', 9, 74.99, 74.99), line('Остальное', 1, 797.64, 797.64)
+    ] });
+    // Молоко 9×74.99 — ошибка количества, сумму 74.99 оставляем; виновата строка «Рагу»
+    expect(receipt.items.map(item => item.amount)).toEqual([8, 279.98, 74.99, 797.64]);
+    expect(receipt).toMatchObject({ mismatch: false, itemsTotal: 1160.61, checks: { corrected: 1, badLines: 1 } });
+  });
+
+  it('keeps amounts as read and warns when no line correction explains the difference', () => {
+    const receipt = check({ is_receipt: true, total: 300, items: [line('A', 1, 100, 100), line('B', 1, 150, 150)] });
+    expect(receipt.items.map(item => item.amount)).toEqual([100, 150]);
+    expect(receipt).toMatchObject({ mismatch: true, lowConfidence: true, checks: { corrected: 0 } });
+    const close = check({ is_receipt: true, total: 251, items: [line('A', 1, 100, 100), line('B', 1, 150, 150)] });
+    expect(close).toMatchObject({ mismatch: true, lowConfidence: false });
+    expect(close.items.map(item => item.amount)).toEqual([100, 150]);
+  });
+
+  it('still spreads an explicit receipt-level discount line proportionally', () => {
+    const receipt = check({ is_receipt: true, total: 270, items: [{ name: 'A', amount: 100 }, { name: 'B', amount: 200 }, { name: 'Скидка', amount: -30 }] });
+    expect(receipt.items.map(item => item.amount)).toEqual([90, 180]);
+    expect(receipt.mismatch).toBe(false);
+  });
+});
+
+describe('retry selection', () => {
+  const { ReceiptError } = require('../services/receipt/errors');
+  const r = (lowConfidence, items, sumDeviation = 0) => ({ receipt: { lowConfidence, items, checks: { sumDeviation } } });
+  const good = { name: 'a', quantity: 2, price: 10, amount: 20 };
+  const bad = { name: 'b', quantity: 2, price: 10, amount: 25 };
+
+  it('retries on unreadable answers and low confidence only', () => {
+    expect(ReceiptService.needsRetry({ error: new ReceiptError('unreadable') })).toBe(true);
+    expect(ReceiptService.needsRetry({ error: new ReceiptError('not_receipt') })).toBe(false);
+    expect(ReceiptService.needsRetry({ error: new ReceiptError('network') })).toBe(false);
+    expect(ReceiptService.needsRetry(r(true, [good]))).toBe(true);
+    expect(ReceiptService.needsRetry(r(false, [good]))).toBe(false);
+  });
+
+  it('keeps the better result: recognized over error, confident over draft, more exact lines, closer sum', () => {
+    const error = { error: new ReceiptError('unreadable') };
+    expect(ReceiptService.pickBetter(error, r(true, [bad]))).toEqual(r(true, [bad]));
+    expect(ReceiptService.pickBetter(r(true, [good]), error)).toEqual(r(true, [good]));
+    const confident = r(false, [bad]);
+    expect(ReceiptService.pickBetter(r(true, [good, good]), confident)).toBe(confident);
+    const exact = r(true, [good, good]);
+    expect(ReceiptService.pickBetter(r(true, [good, bad]), exact)).toBe(exact);
+    const closer = r(true, [good], 0.04);
+    expect(ReceiptService.pickBetter(r(true, [good], 0.2), closer)).toBe(closer);
+    const first = r(true, [good], 0.1);
+    expect(ReceiptService.pickBetter(first, r(true, [good], 0.1))).toBe(first);
+  });
+
+  it('recognizePhoto prepares the image, retries rotated by 180° once and keeps the better answer', async () => {
+    const jpegJs = require('jpeg-js');
+    const pixels = Buffer.alloc(40 * 80 * 4, 255);
+    for (let i = 0; i < 40 * 80; i++) pixels[i * 4] = pixels[i * 4 + 1] = pixels[i * 4 + 2] = (i / (40 * 80)) * 255; // градиент: поворот меняет кадр
+    const photo = Buffer.from(jpegJs.encode({ data: pixels, width: 40, height: 80 }, 80).data);
+    const answers = [
+      () => { throw new ReceiptError('unreadable', 'invalid JSON'); },
+      () => ({ is_receipt: true, total: 20, items: [{ name: 'Хлеб', quantity: 2, price: 10, amount: 20 }] })
+    ];
+    const provider = { name: 'fake', configured: true, recognize: jest.fn(async () => answers.shift()()) };
+    const service = new ReceiptService({
+      receiptRepository: {},
+      provider,
+      expenseService: {
+        getCategories: jest.fn(async () => [{ id: 6, user_id: 0, name: 'Другое' }]),
+        getDefaultCategory: jest.fn(async () => ({ id: 6, name: 'Другое' })),
+        translateCategoryName: (name) => name
+      },
+      premiumService: {},
+      localizationService: new LocalizationService(),
+      funnelService: {}
+    });
+    const onRetry = jest.fn();
+    const result = await service.recognizePhoto(777, { image: photo, mimeType: 'image/jpeg', lang: 'ru', currency: 'RUB', timezone: 'UTC', onRetry });
+    expect(result.attempts).toBe(2);
+    expect(onRetry).toHaveBeenCalledTimes(1);
+    expect(result.receipt.items[0]).toMatchObject({ name: 'Хлеб', amount: 20 });
+    expect(result).toMatchObject({ small: true, receipt: { lowConfidence: true, checks: { smallImage: true } } }); // кадр 40×80 — «мелкий чек»
+    const [firstCall, secondCall] = provider.recognize.mock.calls.map(call => call[0].image);
+    const a = jpegJs.decode(firstCall);
+    const b = jpegJs.decode(secondCall);
+    expect([b.width, b.height]).toEqual([a.width, a.height]);
+    expect(Buffer.compare(firstCall, secondCall)).not.toBe(0);
+
+    const three = [{ name: 'Хлеб', quantity: 2, price: 10, amount: 20 }, { name: 'Молоко', quantity: 1, price: 80, amount: 80 }, { name: 'Сыр', quantity: 1, price: 200, amount: 200 }];
+    provider.recognize.mockImplementation(async () => ({ is_receipt: true, total: 300, items: three }));
+    const once = await service.recognizePhoto(777, { image: photo, mimeType: 'image/jpeg', lang: 'ru', currency: 'RUB', timezone: 'UTC', onRetry });
+    expect(once.attempts).toBe(1);
+    const noRetry = await service.recognizePhoto(777, { image: Buffer.from('png'), mimeType: 'image/png', lang: 'ru', currency: 'RUB', timezone: 'UTC', retry: true });
+    expect(noRetry.mimeType).toBe('image/png');
+  });
+});
+
+describe('small receipt with one or two lines', () => {
+  const categoriesList = [{ id: 1, names: ['Еда'] }, { id: 6, names: ['Другое'] }];
+  const check = (raw) => normalizeReceipt(raw, { categories: categoriesList, fallbackCategoryId: 6, defaultCurrency: 'RUB', supportedCurrencies: SUPPORTED_CURRENCIES });
+  // Ответ qwen2.5vl:3b на далёкое фото чека «Ярче» (13 позиций): одна выдуманная строка на весь итог
+  const invented = { is_receipt: true, merchant: 'Магазин', date: '2026-10-27', time: '18:30', currency: 'RUB', total: 1160.55, items: [{ name: 'Кофейная чашка', quantity: 1, price: 1160.55, amount: 1160.55, category: 'Еда' }] };
+
+  it('the invented single line passes every arithmetic check on its own', () => {
+    expect(check(invented)).toMatchObject({ lowConfidence: false, mismatch: false });
+  });
+
+  it('becomes a draft when the receipt is small in the frame', () => {
+    const result = ReceiptService.distrustSparse({ receipt: check(invented) }, true);
+    expect(result.receipt).toMatchObject({ lowConfidence: true, checks: { smallImage: true } });
+    expect(ReceiptService.distrustSparse({ receipt: check(invented) }, false).receipt.lowConfidence).toBe(false);
+    const withoutPrice = check({ ...invented, items: [{ name: 'Кофейная чашка', amount: 1160.55 }] });
+    expect(ReceiptService.distrustSparse({ receipt: withoutPrice }, true).receipt.lowConfidence).toBe(true);
+  });
+
+  it('keeps small receipts with several consistent lines, and errors, as they are', () => {
+    const three = check({ ...invented, total: 30, items: [{ name: 'A', amount: 10 }, { name: 'B', amount: 10 }, { name: 'C', amount: 10 }] });
+    expect(ReceiptService.distrustSparse({ receipt: three }, true).receipt.lowConfidence).toBe(false);
+    const { ReceiptError } = require('../services/receipt/errors');
+    const error = { error: new ReceiptError('unreadable') };
+    expect(ReceiptService.distrustSparse(error, true)).toBe(error);
+  });
+
+  it('a compressed photo of a small receipt suggests sending a file, and «rotate» keeps that hint', async () => {
+    const jpegJs = require('jpeg-js');
+    const frame = Buffer.from(jpegJs.encode({ data: Buffer.alloc(16 * 32 * 4, 200), width: 16, height: 32 }, 80).data);
+    const Formatter = require('../utils/formatter');
+    const receiptService = {
+      configured: true,
+      provider: { acceptsHeic: false },
+      checkLimit: jest.fn(async () => ({ isPremium: false, limit: 10, used: 0, remaining: 10 })),
+      recognizePhoto: jest.fn(async () => ({ receipt: ReceiptService.distrustSparse({ receipt: check(invented) }, true).receipt, image: frame, mimeType: 'image/jpeg', attempts: 2, small: true, lowResolution: true })),
+      record: jest.fn(async () => 1),
+      categoriesById: jest.fn(async () => new Map([[1, { id: 1, name: 'Еда', icon: '🍕' }]]))
+    };
+    const handlers = new ReceiptHandlers({
+      receiptService,
+      expenseHandlers: { registerBackView: jest.fn(), familyModeTarget: jest.fn(async () => null) },
+      budgetService: { checkAfterExpense: jest.fn(async () => []) },
+      userService: { getUserLanguage: async () => 'ru', getUserTimezone: async () => 'Europe/Moscow', getUserCurrency: async () => 'RUB' },
+      localizationService: new LocalizationService(),
+      formatter: new Formatter({ convert: async (amount) => amount })
+    });
+    handlers.download = jest.fn(async () => frame);
+    const ctx = {
+      chat: { id: 7, type: 'private' },
+      from: { id: 7 },
+      reply: jest.fn(async () => ({ message_id: 101 })),
+      sendChatAction: jest.fn(async () => true),
+      telegram: { editMessageText: jest.fn(async () => true) }
+    };
+    const t = (key) => new LocalizationService().getText('ru', key);
+    await handlers.processImage(ctx, { fileId: 'f', fileSize: 1000, mimeType: 'image/jpeg' });
+    await handlers.idle();
+    expect(receiptService.record).not.toHaveBeenCalled();
+    const [, , , text, extra] = ctx.telegram.editMessageText.mock.calls.pop();
+    expect(text).toContain(`${t('receipt_photo_tips')}\n${t('receipt_small_photo_tip')}`);
+    expect(extra.reply_markup.inline_keyboard.flat().map(b => b.callback_data)).toEqual(['rvd|1', 'rvr', 'rvd|0']);
+
+    const callbackCtx = { ...ctx, callbackQuery: { message: { message_id: 101 } }, answerCbQuery: jest.fn(async () => true), editMessageText: jest.fn(async () => true) };
+    await handlers.rotateAndRetry(callbackCtx);
+    await handlers.idle();
+    expect(receiptService.recognizePhoto).toHaveBeenLastCalledWith(7, expect.objectContaining({ prepared: true, retry: false, small: true, lowResolution: true }));
   });
 });

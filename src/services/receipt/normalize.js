@@ -7,7 +7,7 @@ const MAX_ITEMS = 100;
 const MERCHANT_MAX = 60;
 const NAME_MAX = 200;
 const RECEIPT_MAX_AGE_DAYS = 60;
-const TOTAL_TOLERANCE = 0.01; // 1%: в пределах — подгоняем позиции к итогу, больше — предупреждаем
+const SUM_TOLERANCE = 0.01; // копейка на округление: больше — «сверь суммы»
 const LOW_CONFIDENCE_SUM = 0.03; // позиции расходятся с итогом больше чем на 3% — черновик, а не запись
 const LOW_CONFIDENCE_LINES = 0.2; // больше 20% строк, где сумма ≠ количество × цена
 const LINE_TOLERANCE = 1; // единица валюты на округление в строке
@@ -66,6 +66,35 @@ function normalizeDate(rawDate, rawTime) {
   return { date: parsed.slice(0, 10), time };
 }
 
+// Сумма строки по количеству и цене (null — цены нет)
+function lineExpected(item) {
+  return item.price !== null ? round2(item.quantity * item.price) : null;
+}
+
+// Позиции не сходятся с итогом: если все строки, где сумма ≠ round(количество × цена), после исправления дают итог —
+// исправляем их; иначе если одна такая строка объясняет расхождение — только её; иначе ничего не трогаем
+// (верные строки не портим пропорциональной подгонкой). Возвращает { items, fixed: индексы исправленных }
+function reconcileWithTotal(items, total) {
+  if (total === null || Math.abs(total - sumOf(items)) <= SUM_TOLERANCE / 2) return { items, fixed: [] };
+  const wrong = items
+    .map((item, index) => ({ index, expected: lineExpected(item) }))
+    .filter(({ index, expected }) => expected !== null && expected > 0 && Math.abs(expected - items[index].amount) >= SUM_TOLERANCE / 2);
+  const fix = (indexes) => items.map((item, index) => (indexes.includes(index)
+    ? { ...item, amount: lineExpected(item), lineMismatch: false }
+    : item));
+  const fits = (candidate) => Math.abs(sumOf(candidate) - total) <= SUM_TOLERANCE;
+  if (wrong.length) {
+    const all = wrong.map(entry => entry.index);
+    const fixedAll = fix(all);
+    if (fits(fixedAll)) return { items: fixedAll, fixed: all };
+    for (const { index } of wrong) {
+      const fixedOne = fix([index]);
+      if (fits(fixedOne)) return { items: fixedOne, fixed: [index] };
+    }
+  }
+  return { items, fixed: [] };
+}
+
 // raw — JSON модели. categories: [{ id, names: [название, перевод…] }], fallbackCategoryId — «Другое».
 // Возвращает { merchant, date, time, currency, total (напечатанный или null), itemsTotal, mismatch, lowConfidence, checks, items }.
 // lowConfidence — ответу нельзя верить без проверки: позиции расходятся с итогом больше чем на 3% или у больше чем 20%
@@ -122,16 +151,14 @@ function normalizeReceipt(raw, { categories = [], fallbackCategoryId, defaultCur
     if (total === null || Math.abs(withDiscount - total) <= Math.abs(rawSum - total)) items = scaleTo(items, withDiscount);
   }
 
-  const sumDeviation = total !== null ? Math.abs(total - sumOf(items)) / total : null;
+  // Итог: правим только строки, где сумма ≠ количество × цена, если это объясняет расхождение; иначе — как прочитано
+  const reconciled = reconcileWithTotal(items, total);
+  items = reconciled.items;
+  const residual = total !== null ? round2(Math.abs(total - sumOf(items))) : 0;
+  const mismatch = residual > SUM_TOLERANCE;
+  const sumDeviation = total !== null ? residual / total : null;
   const badLines = items.filter(item => item.lineMismatch).length;
   const lowConfidence = (sumDeviation !== null && sumDeviation > LOW_CONFIDENCE_SUM) || badLines / items.length > LOW_CONFIDENCE_LINES;
-
-  let mismatch = false;
-  if (total !== null) {
-    const diff = Math.abs(total - sumOf(items));
-    if (!truncated && diff > 0 && diff <= Math.max(0.01, total * TOTAL_TOLERANCE)) items = scaleTo(items, total);
-    else if (diff > total * TOTAL_TOLERANCE) mismatch = true;
-  }
 
   const currencyText = String(raw.currency || '').trim();
   const currency = normalizeCurrency(currencyText, defaultCurrency);
@@ -145,7 +172,7 @@ function normalizeReceipt(raw, { categories = [], fallbackCategoryId, defaultCur
     .slice(0, MERCHANT_MAX) || null;
   return {
     merchant, ...normalizeDate(raw.date, raw.time), currency, total, itemsTotal: sumOf(items), mismatch,
-    lowConfidence, checks: { sumDeviation, badLines, lines: items.length }, items
+    lowConfidence, checks: { sumDeviation, badLines, lines: items.length, corrected: reconciled.fixed.length }, items
   };
 }
 
