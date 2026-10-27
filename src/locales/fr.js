@@ -340,15 +340,7 @@ Toutes tes dépenses seront désormais affichées à ton heure locale.`,
     status_regular: '👤 Standard',
     status_premium: '💎 Premium',
     max_description_length: '<b>Longueur max. de description :</b> {length} caractères',
-    premium_benefits: `💎 <b>Avantages premium :</b>
-  • 🎯 Budgets mensuels et par catégorie avec alertes à 80 % et en cas de dépassement
-  • 📄 Bilan complet de la période : chaque catégorie comparée au mois précédent, budgets, dépense moyenne par jour
-  • 160 caractères dans la description (au lieu de 80)
-  • Jusqu’à 5 catégories personnalisées
-  • Budget familial
-  • Modification du montant et de la description de n’importe quelle entrée
-
-  L’enregistrement des dépenses et des revenus est gratuit et illimité.`,
+    premium_benefits: '💎 <b>Avantages premium :</b>\n  • 🎯 Budgets mensuels et par catégorie avec alertes à 80 % et en cas de dépassement\n  • 📄 Bilan complet de la période : chaque catégorie comparée au mois précédent, budgets, dépense moyenne par jour\n  • 160 caractères dans la description (au lieu de 80)\n  • Jusqu’à 5 catégories personnalisées\n  • Budget familial\n  • Jusqu’à 10 objectifs d’épargne (sans premium — 1)\n\n  L’enregistrement des dépenses et des revenus est gratuit et illimité.',
     
     // Abonnement premium
     premium_subscription_title: '⭐️ Abonnement',
@@ -709,11 +701,11 @@ Toutes tes dépenses seront désormais affichées à ton heure locale.`,
     subscription_active_info: '🔁 L’abonnement mensuel est payé jusqu’au {date} et se renouvelle automatiquement. Pour l’annuler : Telegram → Paramètres → Mes étoiles → Mes abonnements.',
     subscription_renewed: '🔁 Abonnement renouvelé. Premium actif jusqu’au {date}.',
     button_view_tariffs: '⭐️ Tarifs',
-    premium_expiring_trial: '⏳ Ton essai premium se termine le {date}.\n\nEnsuite, les budgets, le bilan complet de la période, les catégories personnalisées, le budget familial et la modification des entrées ne fonctionneront plus. Tout ce que tu as enregistré est conservé, et le suivi des dépenses est gratuit.',
+    premium_expiring_trial: '⏳ Ton essai premium se termine le {date}.\n\nEnsuite, les budgets, le bilan complet de la période, les catégories personnalisées et le budget familial ne fonctionneront plus. Tout ce que tu as enregistré est conservé, et le suivi des dépenses est gratuit.',
     premium_expiring_paid: '⏳ Premium se termine le {date}. Tu peux renouveler à l’avance — les jours restants sont conservés.',
-    premium_expired_trial: '🌙 Ton essai premium est terminé. Le suivi des dépenses et des revenus reste gratuit ; les budgets, le bilan complet, les catégories personnalisées, la famille et la modification des entrées sont inclus avec premium.',
+    premium_expired_trial: '🌙 Ton essai premium est terminé. Le suivi des dépenses et des revenus reste gratuit ; les budgets, le bilan complet, les catégories personnalisées et la famille sont inclus avec premium.',
     premium_expired_paid: '🌙 Premium est terminé. Merci de soutenir le projet ! Tu peux renouveler à tout moment.',
-    premium_winback: '👋 Ton premium a pris fin il y a une semaine. Si tu veux retrouver les budgets, le bilan complet, les catégories personnalisées, le budget familial et la modification des entrées — consulte les tarifs ci-dessous.',
+    premium_winback: '👋 Ton premium a pris fin il y a une semaine. Si tu veux retrouver les budgets, le bilan complet, les catégories personnalisées et le budget familial — consulte les tarifs ci-dessous.',
     start_reminders_note: '🔔 Si tu n’enregistres rien pendant la journée, je te le rappellerai (jusqu’à 3 fois par jour). Modifier les heures ou désactiver : ☰ Plus → ⚙️ Paramètres → 🔔.',
     per_month: 'par mois',
 
@@ -810,7 +802,7 @@ Toutes tes dépenses seront désormais affichées à ton heure locale.`,
     export_dates_order: '❌ La date de début est postérieure à la date de fin. Exemple : `01.03.2026 - 15.03.2026`.',
     total_by_categories: 'Total par catégories :',
     bot_short_description: 'Note tes dépenses en deux taps : écris "250 café". Revenus, budgets, bilan mensuel, budget familial.',
-    bot_description: 'Suivi des dépenses et revenus directement dans Telegram.\n\nÉcris "250 café" — la dépense est enregistrée et la catégorie mémorisée.\n\n• Aperçu du mois par catégorie et comparaison avec le mois précédent\n• Revenus et solde : "+50000 salaire"\n• Dépenses récurrentes : loyer et abonnements enregistrés automatiquement\n• Budgets avec alertes, résumé quotidien, rappels\n• Budget familial, plusieurs devises, export CSV\n\nL\'essentiel est gratuit. Les nouveaux utilisateurs ont 14 jours de premium.',
+    bot_description: 'Dépenses et revenus directement dans Telegram.\n\nÉcris "250 café" — dépense enregistrée, catégorie mémorisée.\n\n• Aperçu du mois par catégorie, bilan de la période\n• Revenus et solde : "+50000 salaire"\n• Loyer et abonnements enregistrés automatiquement\n• Import de relevés : T-Bank, Sber, Kaspi, CSV\n• Épargne, objectifs, dettes, prévision avec inflation\n• Budgets avec alertes, résumés quotidiens et hebdo, rappels\n• Budget familial, devises, export CSV\n\nL\'essentiel est gratuit. Nouveaux : 14 jours de premium.',
     command_start: 'Menu principal',
     command_stats: 'Aperçu du mois',
     command_history: 'Entrées du jour',
@@ -836,5 +828,5 @@ Toutes tes dépenses seront désormais affichées à ton heure locale.`,
     admin_bug_reports_empty: 'Aucun rapport.',
     payment_subscription_already_active: '🔁 Tu as déjà un abonnement mensuel actif, inutile d’en prendre un deuxième. Pour prolonger premium à l’avance, choisis un tarif à paiement unique : /limits',
     payment_foreign_payer: '⚠️ Ce lien de paiement a été créé pour un autre utilisateur. Ouvre toi-même les tarifs dans le bot — /limits',
-    premium_expired_granted: '🌙 Ton premium est terminé. Le suivi des dépenses et des revenus reste gratuit ; les budgets, le bilan complet, les catégories personnalisées, la famille et la modification des entrées sont inclus avec premium. Tu peux le prolonger à tout moment.'
+    premium_expired_granted: '🌙 Ton premium est terminé. Le suivi des dépenses et des revenus reste gratuit ; les budgets, le bilan complet, les catégories personnalisées et la famille sont inclus avec premium. Tu peux le prolonger à tout moment.',
 };

@@ -342,15 +342,7 @@ Artık tüm harcamalar yerel saatte gösterilecek.`,
     status_regular: '👤 Standart',
     status_premium: '💎 Premium',
     max_description_length: '<b>Maks açıklama uzunluğu:</b> {length} karakter',
-    premium_benefits: `💎 <b>Premium avantajları:</b>
-  • 🎯 %80’de ve aşıldığında uyarılı aylık ve kategori bütçeleri
-  • 📄 Tam dönem özeti: her kategori geçen ayla karşılaştırmalı, bütçeler, günlük ortalama harcama
-  • 5 adede kadar özel kategori
-  • Aile bütçesi
-  • Herhangi bir kaydın tutarını ve açıklamasını düzenleme
-  • 160 karakter açıklama (80 yerine)
-
-Gider ve gelir kaydı ücretsiz ve sınırsızdır.`,
+    premium_benefits: '💎 <b>Premium avantajları:</b>\n  • 🎯 %80’de ve aşıldığında uyarılı aylık ve kategori bütçeleri\n  • 📄 Tam dönem özeti: her kategori geçen ayla karşılaştırmalı, bütçeler, günlük ortalama harcama\n  • 5 adede kadar özel kategori\n  • Aile bütçesi\n  • 10 adede kadar birikim hedefi (premium olmadan — 1)\n  • 160 karakter açıklama (80 yerine)\n\nGider ve gelir kaydı ücretsiz ve sınırsızdır.',
     
     // Premium abonelik
     premium_subscription_title: '⭐️ Abonelik',
@@ -709,11 +701,11 @@ Gider ve gelir kaydı ücretsiz ve sınırsızdır.`,
   subscription_active_info: '🔁 Aylık abonelik {date} tarihine kadar ödendi ve otomatik olarak yenilenir. İptal etmek için: Telegram → Ayarlar → Yıldızlarım → Aboneliklerim.',
   subscription_renewed: '🔁 Abonelik yenilendi. Premium {date} tarihine kadar aktif.',
   button_view_tariffs: '⭐️ Planlar',
-  premium_expiring_trial: '⏳ Premium deneme süreniz {date} tarihinde bitiyor.\n\nBundan sonra bütçeler, tam dönem özeti, özel kategoriler, aile bütçesi ve kayıt düzenleme çalışmayacak. Kaydettiğiniz her şey kalır, harcama takibi ücretsizdir.',
+  premium_expiring_trial: '⏳ Premium deneme süreniz {date} tarihinde bitiyor.\n\nBundan sonra bütçeler, tam dönem özeti, özel kategoriler ve aile bütçesi çalışmayacak. Kaydettiğiniz her şey kalır, harcama takibi ücretsizdir.',
   premium_expiring_paid: '⏳ Premium {date} tarihinde bitiyor. Önceden yenileyebilirsiniz — kalan günler korunur.',
-  premium_expired_trial: '🌙 Premium deneme süreniz sona erdi. Gider ve gelir takibi ücretsiz kalır; bütçeler, tam özet, özel kategoriler, aile ve kayıt düzenleme Premium ile kullanılabilir.',
+  premium_expired_trial: '🌙 Premium deneme süreniz sona erdi. Gider ve gelir takibi ücretsiz kalır; bütçeler, tam özet, özel kategoriler ve aile Premium ile kullanılabilir.',
   premium_expired_paid: '🌙 Premium sona erdi. Projeyi desteklediğiniz için teşekkürler! İstediğiniz zaman yenileyebilirsiniz.',
-  premium_winback: '👋 Premium’unuz bir hafta önce sona erdi. Bütçeleri, tam özeti, özel kategorileri, aile bütçesini ve kayıt düzenlemeyi geri istiyorsanız aşağıdaki planlara göz atın.',
+  premium_winback: '👋 Premium’unuz bir hafta önce sona erdi. Bütçeleri, tam özeti, özel kategorileri ve aile bütçesini geri istiyorsanız aşağıdaki planlara göz atın.',
   start_reminders_note: '🔔 Gün içinde hiçbir şey kaydetmezseniz size hatırlatırım (günde en fazla 3 kez). Saatleri değiştirmek veya kapatmak için: ☰ Daha fazla → ⚙️ Ayarlar → 🔔.',
   bug_report_suspicious: '⚠️ Mesaj yasaklı karakterler veya şüpheli içerik içeriyor',
 
@@ -808,7 +800,7 @@ Gider ve gelir kaydı ücretsiz ve sınırsızdır.`,
   export_dates_order: '❌ Başlangıç tarihi bitiş tarihinden sonra. Örnek: `01.03.2026 - 15.03.2026`.',
   total_by_categories: 'Kategorilere göre toplam:',
   bot_short_description: 'Harcamaları birkaç dokunuşla takip edin: "250 kahve" yazın. Gelir, bütçeler, aylık özet, aile bütçesi.',
-  bot_description: 'Gider ve gelir takibi doğrudan Telegram\'da.\n\n"250 kahve" yazın — gider kaydedilir ve kategori hatırlanır.\n\n• Kategorilere göre ay özeti ve geçen ayla karşılaştırma\n• Gelir ve bakiye: "+50000 maaş"\n• Düzenli giderler: kira ve abonelikler otomatik kaydedilir\n• Uyarılı bütçeler, günlük özet, hatırlatıcılar\n• Aile bütçesi, birden fazla para birimi, CSV dışa aktarma\n\nTemel özellikler ücretsizdir. Yeni kullanıcılara 14 gün premium.',
+  bot_description: 'Gider ve gelir takibi doğrudan Telegram\'da.\n\n"250 kahve" yazın — gider kaydedilir, kategori hatırlanır.\n\n• Kategorilere göre ay ve dönem özeti\n• Gelir ve bakiye: "+50000 maaş"\n• Kira ve abonelikler otomatik kaydedilir\n• Hesap dökümü içe aktarma: T-Bank, Sber, Kaspi, CSV\n• Birikimler, hedefler, borçlar ve enflasyonlu tahmin\n• Uyarılı bütçeler, günlük ve haftalık özetler, hatırlatıcılar\n• Aile bütçesi, para birimleri, CSV\n\nTemel özellikler ücretsiz. Yeni kullanıcılara 14 gün premium.',
   command_start: 'Ana menü',
   command_stats: 'Ay özeti',
   command_history: 'Bugünün kayıtları',
@@ -834,5 +826,5 @@ Gider ve gelir kaydı ücretsiz ve sınırsızdır.`,
   admin_bug_reports_empty: 'Rapor yok.',
   payment_subscription_already_active: '🔁 Zaten aktif bir aylık aboneliğiniz var, ikincisine gerek yok. Premium\'u önceden uzatmak için tek seferlik bir tarife seçin: /limits',
   payment_foreign_payer: '⚠️ Bu ödeme bağlantısı başka bir kullanıcı için oluşturuldu. Tarifeleri botta kendiniz açın — /limits',
-  premium_expired_granted: '🌙 Premium süreniz sona erdi. Gider ve gelir takibi ücretsiz kalır; bütçeler, tam özet, özel kategoriler, aile ve kayıt düzenleme Premium ile kullanılabilir. İstediğiniz zaman uzatabilirsiniz.'
+  premium_expired_granted: '🌙 Premium süreniz sona erdi. Gider ve gelir takibi ücretsiz kalır; bütçeler, tam özet, özel kategoriler ve aile Premium ile kullanılabilir. İstediğiniz zaman uzatabilirsiniz.',
 };

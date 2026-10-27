@@ -343,15 +343,7 @@ Ab jetzt werden alle Ausgaben in deiner Ortszeit angezeigt.`,
     status_regular: '👤 Standard',
     status_premium: '💎 Premium',
     max_description_length: '<b>Maximale Beschreibungslänge:</b> {length} Zeichen',
-    premium_benefits: `💎 <b>Premium-Vorteile:</b>
-  • 🎯 Monats- und Kategorienbudgets mit Warnungen bei 80 % und bei Überschreitung
-  • 📄 Vollständige Zusammenfassung des Zeitraums: jede Kategorie im Vergleich zum Vormonat, Budgets, Durchschnittsausgaben pro Tag
-  • Beschreibung bis zu 160 Zeichen (statt 80)
-  • Bis zu 5 eigene Kategorien
-  • Familienbudget
-  • Betrag und Beschreibung jedes Eintrags bearbeiten
-
-  Das Erfassen von Ausgaben und Einnahmen ist kostenlos und unbegrenzt.`,
+    premium_benefits: '💎 <b>Premium-Vorteile:</b>\n  • 🎯 Monats- und Kategorienbudgets mit Warnungen bei 80 % und bei Überschreitung\n  • 📄 Vollständige Zusammenfassung des Zeitraums: jede Kategorie im Vergleich zum Vormonat, Budgets, Durchschnittsausgaben pro Tag\n  • Beschreibung bis zu 160 Zeichen (statt 80)\n  • Bis zu 5 eigene Kategorien\n  • Familienbudget\n  • Bis zu 10 Sparziele (ohne Premium — 1)\n\n  Das Erfassen von Ausgaben und Einnahmen ist kostenlos und unbegrenzt.',
     
     // Premium-Abonnement
     premium_subscription_title: '⭐️ Abonnement',
@@ -713,11 +705,11 @@ Ab jetzt werden alle Ausgaben in deiner Ortszeit angezeigt.`,
     subscription_active_info: '🔁 Das Monatsabo ist bis {date} bezahlt und verlängert sich automatisch. Kündigen: Telegram → Einstellungen → Meine Sterne → Meine Abos.',
     subscription_renewed: '🔁 Abo verlängert. Premium ist aktiv bis {date}.',
     button_view_tariffs: '⭐️ Tarife',
-    premium_expiring_trial: '⏳ Deine Premium-Testphase endet am {date}.\n\nDanach funktionieren Budgets, die vollständige Zusammenfassung, eigene Kategorien, das Familienbudget und das Bearbeiten von Einträgen nicht mehr. Alle Einträge bleiben erhalten, und das Erfassen von Ausgaben ist kostenlos.',
+    premium_expiring_trial: '⏳ Deine Premium-Testphase endet am {date}.\n\nDanach funktionieren Budgets, die vollständige Zusammenfassung, eigene Kategorien und das Familienbudget nicht mehr. Alle Einträge bleiben erhalten, und das Erfassen von Ausgaben ist kostenlos.',
     premium_expiring_paid: '⏳ Premium endet am {date}. Du kannst im Voraus verlängern — die verbleibenden Tage bleiben erhalten.',
-    premium_expired_trial: '🌙 Deine Premium-Testphase ist beendet. Ausgaben und Einnahmen erfassen bleibt kostenlos; Budgets, die vollständige Zusammenfassung, eigene Kategorien, Familie und das Bearbeiten von Einträgen gibt es mit Premium.',
+    premium_expired_trial: '🌙 Deine Premium-Testphase ist beendet. Ausgaben und Einnahmen erfassen bleibt kostenlos; Budgets, die vollständige Zusammenfassung, eigene Kategorien und Familie gibt es mit Premium.',
     premium_expired_paid: '🌙 Premium ist abgelaufen. Danke, dass du das Projekt unterstützt! Du kannst jederzeit verlängern.',
-    premium_winback: '👋 Dein Premium ist vor einer Woche abgelaufen. Wenn du Budgets, die vollständige Zusammenfassung, eigene Kategorien, das Familienbudget und das Bearbeiten von Einträgen zurückhaben möchtest — sieh dir die Tarife unten an.',
+    premium_winback: '👋 Dein Premium ist vor einer Woche abgelaufen. Wenn du Budgets, die vollständige Zusammenfassung, eigene Kategorien und das Familienbudget zurückhaben möchtest — sieh dir die Tarife unten an.',
     start_reminders_note: '🔔 Wenn du tagsüber nichts erfasst, erinnere ich dich (bis zu 3 Mal am Tag). Uhrzeiten ändern oder ausschalten: ☰ Mehr → ⚙️ Einstellungen → 🔔.',
 
     // Budgets
@@ -813,7 +805,7 @@ Ab jetzt werden alle Ausgaben in deiner Ortszeit angezeigt.`,
     export_dates_order: '❌ Das Startdatum liegt nach dem Enddatum. Beispiel: `01.03.2026 - 15.03.2026`.',
     total_by_categories: 'Gesamt nach Kategorien:',
     bot_short_description: 'Ausgaben in wenigen Taps erfassen: tippe "250 Kaffee". Einnahmen, Budgets, Monatsübersicht, Familienbudget.',
-    bot_description: 'Ausgaben und Einnahmen direkt in Telegram erfassen.\n\nTippe "250 Kaffee" — die Ausgabe wird gespeichert und die Kategorie gemerkt.\n\n• Monatsübersicht nach Kategorien und Vergleich zum Vormonat\n• Einnahmen und Saldo: "+50000 Gehalt"\n• Wiederkehrende Ausgaben: Miete und Abos werden automatisch erfasst\n• Budgets mit Warnungen, Tageszusammenfassung, Erinnerungen\n• Familienbudget, mehrere Währungen, Export als CSV\n\nDie Grundfunktionen sind kostenlos. Neue Nutzer erhalten 14 Tage Premium.',
+    bot_description: 'Ausgaben und Einnahmen in Telegram erfassen.\n\nTippe "250 Kaffee" — Ausgabe gespeichert, Kategorie gemerkt.\n\n• Monatsübersicht nach Kategorien, Periodenbilanz\n• Einnahmen und Saldo: "+50000 Gehalt"\n• Miete und Abos werden automatisch erfasst\n• Kontoauszug-Import: T-Bank, Sber, Kaspi, CSV\n• Ersparnisse, Ziele, Schulden, Prognose mit Inflation\n• Budgets mit Warnungen, Tages- und Wochenübersicht, Erinnerungen\n• Familienbudget, Währungen, CSV-Export\n\nGrundfunktionen kostenlos. Neue Nutzer: 14 Tage Premium.',
     command_start: 'Hauptmenü',
     command_stats: 'Monatsübersicht',
     command_history: 'Heutige Einträge',
@@ -839,5 +831,5 @@ Ab jetzt werden alle Ausgaben in deiner Ortszeit angezeigt.`,
     admin_bug_reports_empty: 'Keine Berichte.',
     payment_subscription_already_active: '🔁 Du hast bereits ein aktives Monatsabo — ein zweites brauchst du nicht. Um Premium im Voraus zu verlängern, wähle einen Einmal-Tarif: /limits',
     payment_foreign_payer: '⚠️ Dieser Zahlungslink wurde für einen anderen Benutzer erstellt. Öffne die Tarife selbst im Bot — /limits',
-    premium_expired_granted: '🌙 Dein Premium ist beendet. Ausgaben und Einnahmen erfassen bleibt kostenlos; Budgets, die vollständige Zusammenfassung, eigene Kategorien, Familie und das Bearbeiten von Einträgen gibt es mit Premium. Du kannst es jederzeit verlängern.'
+    premium_expired_granted: '🌙 Dein Premium ist beendet. Ausgaben und Einnahmen erfassen bleibt kostenlos; Budgets, die vollständige Zusammenfassung, eigene Kategorien und Familie gibt es mit Premium. Du kannst es jederzeit verlängern.',
 };

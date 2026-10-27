@@ -323,15 +323,7 @@ Endi barcha xarajatlaringiz mahalliy vaqt bo‘yicha ko‘rsatiladi.`,
     status_regular: '👤 Oddiy',
     status_premium: '💎 Premium',
     max_description_length: '<b>Izoh uzunligi limiti:</b> {length} belgi',
-    premium_benefits: `💎 <b>Premium afzalliklari:</b>
-  • 🎯 80% da va oshganda ogohlantiruvchi oylik va kategoriya byudjetlari
-  • 📄 Davrning to‘liq xulosasi: har bir kategoriya o‘tgan oy bilan taqqoslab, byudjetlar, kunlik o‘rtacha xarajat
-  • 5 tagacha maxsus kategoriya
-  • Oilaviy byudjet
-  • Har qanday yozuvning summasi va izohini tahrirlash
-  • Izoh 160 belgi (oddiyda 80 belgi)
-
-Xarajat va daromadlarni yozish bepul va cheklanmagan.`,
+    premium_benefits: '💎 <b>Premium afzalliklari:</b>\n  • 🎯 80% da va oshganda ogohlantiruvchi oylik va kategoriya byudjetlari\n  • 📄 Davrning to‘liq xulosasi: har bir kategoriya o‘tgan oy bilan taqqoslab, byudjetlar, kunlik o‘rtacha xarajat\n  • 5 tagacha maxsus kategoriya\n  • Oilaviy byudjet\n  • 10 tagacha jamg‘arma maqsadi (premiumsiz — 1)\n  • Izoh 160 belgi (oddiyda 80 belgi)\n\nXarajat va daromadlarni yozish bepul va cheklanmagan.',
     
     // Premium obuna
     premium_subscription_title: '⭐️ Obuna',
@@ -692,11 +684,11 @@ Xarajat va daromadlarni yozish bepul va cheklanmagan.`,
   subscription_active_info: '🔁 Oylik obuna {date} gacha to‘langan va avtomatik uzaytiriladi. Bekor qilish: Telegram → Sozlamalar → Yulduzlarim → Obunalarim.',
   subscription_renewed: '🔁 Obuna uzaytirildi. Premium {date} gacha faol.',
   button_view_tariffs: '⭐️ Tariflar',
-  premium_expiring_trial: '⏳ Premium sinov muddati {date} da tugaydi.\n\nShundan so‘ng byudjetlar, davrning to‘liq xulosasi, maxsus kategoriyalar, oilaviy byudjet va yozuvlarni tahrirlash ishlamaydi. Barcha yozuvlaringiz saqlanadi, xarajatlarni hisobga olish esa bepul.',
+  premium_expiring_trial: '⏳ Premium sinov muddati {date} da tugaydi.\n\nShundan so‘ng byudjetlar, davrning to‘liq xulosasi, maxsus kategoriyalar va oilaviy byudjet ishlamaydi. Barcha yozuvlaringiz saqlanadi, xarajatlarni hisobga olish esa bepul.',
   premium_expiring_paid: '⏳ Premium {date} da tugaydi. Oldindan uzaytirishingiz mumkin — qolgan kunlar saqlanadi.',
-  premium_expired_trial: '🌙 Premium sinov muddati tugadi. Xarajat va daromadlarni hisobga olish bepul qoladi; byudjetlar, to‘liq xulosa, maxsus kategoriyalar, oila va yozuvlarni tahrirlash — Premium bilan.',
+  premium_expired_trial: '🌙 Premium sinov muddati tugadi. Xarajat va daromadlarni hisobga olish bepul qoladi; byudjetlar, to‘liq xulosa, maxsus kategoriyalar va oila — Premium bilan.',
   premium_expired_paid: '🌙 Premium tugadi. Loyihani qo‘llab-quvvatlaganingiz uchun rahmat! Istalgan vaqtda uzaytirishingiz mumkin.',
-  premium_winback: '👋 Premium bir hafta oldin tugadi. Byudjetlar, to‘liq xulosa, maxsus kategoriyalar, oilaviy byudjet va yozuvlarni tahrirlashni qaytarmoqchi bo‘lsangiz — quyidagi tariflarni ko‘ring.',
+  premium_winback: '👋 Premium bir hafta oldin tugadi. Byudjetlar, to‘liq xulosa, maxsus kategoriyalar va oilaviy byudjetni qaytarmoqchi bo‘lsangiz — quyidagi tariflarni ko‘ring.',
   start_reminders_note: '🔔 Kun davomida hech narsa yozmasangiz, eslatib qo‘yaman (kuniga 3 martagacha). Soatlarni o‘zgartirish yoki o‘chirish: ☰ Yana → ⚙️ Sozlamalar → 🔔.',
 
   // Budgets
@@ -790,7 +782,7 @@ Xarajat va daromadlarni yozish bepul va cheklanmagan.`,
   export_dates_order: '❌ Boshlanish sanasi tugash sanasidan keyin. Misol: `01.03.2026 - 15.03.2026`.',
   total_by_categories: 'Kategoriyalar bo‘yicha jami:',
   bot_short_description: 'Xarajatlarni bir necha bosishda hisoblang: "250 qahva" deb yozing. Daromad, byudjetlar, oila byudjeti.',
-  bot_description: 'Xarajat va daromadlarni to‘g‘ridan-to‘g‘ri Telegram’da hisobga olish.\n\n"250 qahva" deb yozing — xarajat yoziladi va kategoriya eslab qolinadi.\n\n• Kategoriyalar bo‘yicha oy sharhi va o‘tgan oy bilan taqqoslash\n• Daromad va balans: "+50000 maosh"\n• Doimiy xarajatlar: ijara va obunalar avtomatik yoziladi\n• Ogohlantirishli byudjetlar, kunlik xulosa, eslatmalar\n• Oila byudjeti, bir nechta valyuta, CSV ga eksport\n\nAsosiy imkoniyatlar bepul. Yangi foydalanuvchilarga 14 kun Premium.',
+  bot_description: 'Xarajat va daromadlarni Telegram’da hisobga olish.\n\n"250 qahva" deb yozing — xarajat yoziladi, kategoriya eslab qolinadi.\n\n• Kategoriyalar bo‘yicha oy sharhi va davr xulosasi\n• Daromad va balans: "+50000 maosh"\n• Ijara va obunalar avtomatik yoziladi\n• Ko‘chirma importi: T-Bank, Sber, Kaspi, CSV\n• Jamg‘armalar, maqsadlar, qarzlar, inflyatsiyali prognoz\n• Byudjetlar, kunlik va haftalik xulosa, eslatmalar\n• Oila byudjeti, valyutalar, CSV eksport\n\nAsosiysi bepul. Yangi foydalanuvchilarga 14 kun Premium.',
   command_start: 'Asosiy menyu',
   command_stats: 'Oy sharhi',
   command_history: 'Bugungi yozuvlar',
@@ -816,5 +808,5 @@ Xarajat va daromadlarni yozish bepul va cheklanmagan.`,
   admin_bug_reports_empty: 'Xabarlar yo‘q.',
   payment_subscription_already_active: '🔁 Sizda faol oylik obuna allaqachon bor — ikkinchisi kerak emas. Premiumni oldindan uzaytirish uchun bir martalik tarifni tanlang: /limits',
   payment_foreign_payer: '⚠️ Bu to‘lov havolasi boshqa foydalanuvchi uchun yaratilgan. Tariflarni botda o‘zingiz oching — /limits',
-  premium_expired_granted: '🌙 Premium muddati tugadi. Xarajat va daromadlarni hisobga olish bepul qoladi; byudjetlar, to‘liq xulosa, maxsus kategoriyalar, oila va yozuvlarni tahrirlash — Premium bilan. Istalgan vaqtda uzaytirishingiz mumkin.'
+  premium_expired_granted: '🌙 Premium muddati tugadi. Xarajat va daromadlarni hisobga olish bepul qoladi; byudjetlar, to‘liq xulosa, maxsus kategoriyalar va oila — Premium bilan. Istalgan vaqtda uzaytirishingiz mumkin.',
 };

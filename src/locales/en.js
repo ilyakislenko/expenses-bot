@@ -249,15 +249,7 @@ Now all your expenses will be correctly displayed in your local time.`,
   status_regular: '👤 Standard',
   status_premium: '💎 Premium',
   max_description_length: '<b>Max description length:</b> {length} characters',
-  premium_benefits: `💎 <b>Premium benefits:</b>
-• 🎯 Monthly and per-category budgets with alerts at 80% and when exceeded
-• 📄 Full period summary: every category vs last month, budgets, average spending per day
-• Up to 5 custom categories
-• Family budget
-• Editing the amount and description of any record
-• 160 characters in description (instead of 80)
-
-Recording expenses and income is free and unlimited.`,
+  premium_benefits: '💎 <b>Premium benefits:</b>\n• 🎯 Monthly and per-category budgets with alerts at 80% and when exceeded\n• 📄 Full period summary: every category vs last month, budgets, average spending per day\n• Up to 5 custom categories\n• Family budget\n• Up to 10 savings goals (1 without premium)\n• 160 characters in description (instead of 80)\n\nRecording expenses and income is free and unlimited.',
   
   // Validation errors
   error_too_long_regular: '❌ Description is too long!\nMaximum 80 characters for regular users.',
@@ -726,11 +718,11 @@ Recording expenses and income is free and unlimited.`,
   subscription_active_info: '🔁 The monthly subscription is paid until {date} and renews automatically. To cancel: Telegram → Settings → My Stars → My subscriptions.',
   subscription_renewed: '🔁 Subscription renewed. Premium is active until {date}.',
   button_view_tariffs: '⭐️ Plans',
-  premium_expiring_trial: '⏳ Your premium trial ends on {date}.\n\nAfter that budgets, the full period summary, custom categories, the family budget and editing records will stop working. Everything you recorded stays, and expense tracking is free.',
+  premium_expiring_trial: '⏳ Your premium trial ends on {date}.\n\nAfter that budgets, the full period summary, custom categories and the family budget will stop working. Everything you recorded stays, and expense tracking is free.',
   premium_expiring_paid: '⏳ Premium ends on {date}. You can renew in advance — the remaining days are kept.',
-  premium_expired_trial: '🌙 Your premium trial has ended. Tracking expenses and income stays free; budgets, the full summary, custom categories, family and editing records come with premium.',
+  premium_expired_trial: '🌙 Your premium trial has ended. Tracking expenses and income stays free; budgets, the full summary, custom categories and family come with premium.',
   premium_expired_paid: '🌙 Premium has ended. Thank you for supporting the project! You can renew any time.',
-  premium_winback: '👋 Your premium ended a week ago. If you want budgets, the full summary, custom categories, the family budget and editing records back — see the plans below.',
+  premium_winback: '👋 Your premium ended a week ago. If you want budgets, the full summary, custom categories and the family budget back — see the plans below.',
   start_reminders_note: '🔔 If you record nothing during the day, I will remind you (up to 3 times a day). Change hours or turn off: ☰ More → ⚙️ Settings → 🔔.',
 
   // Budgets
@@ -828,7 +820,7 @@ Recording expenses and income is free and unlimited.`,
 
   // Bot profile in Telegram (scripts/set-bot-profile.js): description before /start, short description, command menu
   bot_short_description: 'Track spending in a couple of taps: type "250 coffee". Income, budgets, monthly summary, family budget.',
-  bot_description: 'Expense and income tracking right in Telegram.\n\nType "250 coffee" — the expense is recorded and the category is remembered.\n\n• Month overview by category and a summary vs last month\n• Income and balance: "+50000 salary"\n• Recurring expenses: rent and subscriptions are recorded automatically\n• Budgets with alerts, daily summary, reminders\n• Family budget, multiple currencies, CSV export\n\nThe basics are free. New users get 14 days of premium.',
+  bot_description: 'Expense and income tracking in Telegram.\n\nType "250 coffee" — saved, and the category is remembered.\n\n• Month overview by category and period summary\n• Income and balance: "+50000 salary"\n• Recurring expenses: rent and subscriptions added automatically\n• Bank statement import: T-Bank, Sber, Kaspi, CSV\n• Savings, goals, debts, forecast with inflation\n• Budgets with alerts, daily and weekly summaries, reminders\n• Family budget, currencies, CSV export\n\nThe basics are free. New users get 14 days of premium.',
   command_start: 'Main menu',
   command_stats: 'Month overview',
   command_history: 'Today\'s records',
@@ -854,5 +846,5 @@ Recording expenses and income is free and unlimited.`,
   admin_bug_reports_empty: 'No reports.',
   payment_subscription_already_active: '🔁 You already have an active monthly subscription — no need for a second one. To extend premium in advance, pick a one-time plan: /limits',
   payment_foreign_payer: '⚠️ This payment link was created for another user. Open the plans in the bot yourself — /limits',
-  premium_expired_granted: '🌙 Your premium has ended. Tracking expenses and income stays free; budgets, the full summary, custom categories, family and editing records come with premium. You can extend it any time.'
+  premium_expired_granted: '🌙 Your premium has ended. Tracking expenses and income stays free; budgets, the full summary, custom categories and family come with premium. You can extend it any time.',
 }; 

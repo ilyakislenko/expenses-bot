@@ -341,15 +341,7 @@ module.exports = {
     status_regular: '👤 普通',
     status_premium: '💎 高级',
     max_description_length: '<b>描述最大长度:</b> {length} 个字符',
-    premium_benefits: `💎 <b>高级用户优势:</b>
-• 🎯 月度和分类预算，达到80%和超支时提醒
-• 📄 完整期间总结：每个类别与上月对比、预算、每日平均支出
-• 描述160字符（而非80）
-• 最多5个自定义类别
-• 家庭预算
-• 编辑任意记录的金额和描述
-
-记录支出和收入免费且不限次数。`,
+    premium_benefits: '💎 <b>高级用户优势:</b>\n• 🎯 月度和分类预算，达到80%和超支时提醒\n• 📄 完整期间总结：每个类别与上月对比、预算、每日平均支出\n• 描述160字符（而非80）\n• 最多5个自定义类别\n• 家庭预算\n• 最多10个储蓄目标（非高级版为1个）\n\n记录支出和收入免费且不限次数。',
     
     // 高级订阅
     premium_subscription_title: '⭐️ 订阅',
@@ -709,11 +701,11 @@ module.exports = {
     subscription_active_info: '🔁 月度订阅已支付至 {date}，并将自动续费。取消方式：Telegram → 设置 → 我的星星 → 我的订阅（英文界面：Settings → My Stars → My subscriptions）。',
     subscription_renewed: '🔁 订阅已续费。高级版有效期至 {date}。',
     button_view_tariffs: '⭐️ 方案',
-    premium_expiring_trial: '⏳ 你的高级版试用将于 {date} 结束。\n\n之后预算、完整期间总结、自定义类别、家庭预算和编辑记录将无法使用。你记录的所有内容都会保留，记录支出仍然免费。',
+    premium_expiring_trial: '⏳ 你的高级版试用将于 {date} 结束。\n\n之后预算、完整期间总结、自定义类别和家庭预算将无法使用。你记录的所有内容都会保留，记录支出仍然免费。',
     premium_expiring_paid: '⏳ 高级版将于 {date} 结束。你可以提前续费 — 剩余天数会保留。',
-    premium_expired_trial: '🌙 你的高级版试用已结束。记录支出和收入仍然免费；预算、完整总结、自定义类别、家庭和编辑记录需要高级版。',
+    premium_expired_trial: '🌙 你的高级版试用已结束。记录支出和收入仍然免费；预算、完整总结、自定义类别和家庭需要高级版。',
     premium_expired_paid: '🌙 高级版已结束。感谢你对项目的支持！你可以随时续费。',
-    premium_winback: '👋 你的高级版已结束一周。如果想重新使用预算、完整总结、自定义类别、家庭预算和编辑记录 — 请查看下方方案。',
+    premium_winback: '👋 你的高级版已结束一周。如果想重新使用预算、完整总结、自定义类别和家庭预算 — 请查看下方方案。',
     start_reminders_note: '🔔 如果你一天内没有任何记录，我会提醒你（每天最多3次）。更改时间或关闭：☰ 更多 → ⚙️ 设置 → 🔔。',
 
     // 预算
@@ -809,7 +801,7 @@ module.exports = {
     export_dates_order: '❌ 开始日期晚于结束日期。示例：`01.03.2026 - 15.03.2026`。',
     total_by_categories: '按类别总计：',
     bot_short_description: '轻点几下即可记账：输入“250 咖啡”。收入、预算、月度总结、家庭预算。',
-    bot_description: '直接在 Telegram 中记录支出和收入。\n\n输入“250 咖啡”——支出即被记录，类别也会被记住。\n\n• 按类别的月度概览及与上月的对比\n• 收入和余额：“+50000 工资”\n• 定期支出：房租和订阅自动记录\n• 带预警的预算、每日总结、提醒\n• 家庭预算、多种货币、导出为 CSV\n\n基础功能免费。新用户可获得 14 天高级版。',
+    bot_description: '直接在 Telegram 中记录支出和收入。\n\n输入“250 咖啡”——支出即被记录，类别也会被记住。\n\n• 按类别的月度概览和期间总结\n• 收入和余额：“+50000 工资”\n• 定期支出：房租和订阅自动记录\n• 导入银行流水：T-Bank、Sber、Kaspi、CSV\n• 储蓄、目标、债务及考虑通胀的预测\n• 带预警的预算、每日和每周总结、提醒\n• 家庭预算、多种货币、导出为 CSV\n\n基础功能免费。新用户可获得 14 天高级版。',
     command_start: '主菜单',
     command_stats: '月度概览',
     command_history: '今日记录',
@@ -835,5 +827,5 @@ module.exports = {
     admin_bug_reports_empty: '暂无报告。',
     payment_subscription_already_active: '🔁 你已经有一个有效的月度订阅，无需再订一个。想提前延长高级版，请选择一次性套餐：/limits',
     payment_foreign_payer: '⚠️ 此付款链接是为其他用户创建的。请你在机器人中自行打开套餐 — /limits',
-    premium_expired_granted: '🌙 你的高级版已到期。记录支出和收入仍然免费；预算、完整总结、自定义类别、家庭和编辑记录需要高级版。你可以随时续费。'
+    premium_expired_granted: '🌙 你的高级版已到期。记录支出和收入仍然免费；预算、完整总结、自定义类别和家庭需要高级版。你可以随时续费。',
 };

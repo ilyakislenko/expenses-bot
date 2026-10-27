@@ -341,15 +341,7 @@ Agora todas as suas despesas serão exibidas no horário local.`,
     status_regular: '👤 Padrão',
     status_premium: '💎 Premium',
     max_description_length: '<b>Comprimento máx. da descrição:</b> {length} caracteres',
-    premium_benefits: `💎 <b>Vantagens premium:</b>
-  • 🎯 Orçamentos mensais e por categoria com alertas em 80% e quando ultrapassados
-  • 📄 Resumo completo do período: cada categoria comparada ao mês anterior, orçamentos, gasto médio por dia
-  • 160 caracteres na descrição (em vez de 80)
-  • Até 5 categorias próprias
-  • Orçamento familiar
-  • Editar o valor e a descrição de qualquer registro
-
-  Registrar despesas e receitas é gratuito e ilimitado.`,
+    premium_benefits: '💎 <b>Vantagens premium:</b>\n  • 🎯 Orçamentos mensais e por categoria com alertas em 80% e quando ultrapassados\n  • 📄 Resumo completo do período: cada categoria comparada ao mês anterior, orçamentos, gasto médio por dia\n  • 160 caracteres na descrição (em vez de 80)\n  • Até 5 categorias próprias\n  • Orçamento familiar\n  • Até 10 metas de poupança (sem premium — 1)\n\n  Registrar despesas e receitas é gratuito e ilimitado.',
     
     // Assinatura premium
     premium_subscription_title: '⭐️ Assinatura',
@@ -711,11 +703,11 @@ Agora todas as suas despesas serão exibidas no horário local.`,
     subscription_active_info: '🔁 A assinatura mensal está paga até {date} e é renovada automaticamente. Para cancelar: Telegram → Configurações → Minhas Estrelas → Minhas assinaturas.',
     subscription_renewed: '🔁 Assinatura renovada. Premium ativo até {date}.',
     button_view_tariffs: '⭐️ Planos',
-    premium_expiring_trial: '⏳ Seu teste premium termina em {date}.\n\nDepois disso, orçamentos, o resumo completo do período, categorias próprias, o orçamento familiar e a edição de registros deixarão de funcionar. Tudo o que você registrou continua salvo, e o controle de despesas é gratuito.',
+    premium_expiring_trial: '⏳ Seu teste premium termina em {date}.\n\nDepois disso, orçamentos, o resumo completo do período, categorias próprias e o orçamento familiar deixarão de funcionar. Tudo o que você registrou continua salvo, e o controle de despesas é gratuito.',
     premium_expiring_paid: '⏳ O premium termina em {date}. Você pode renovar com antecedência — os dias restantes são mantidos.',
-    premium_expired_trial: '🌙 Seu teste premium terminou. Registrar despesas e receitas continua gratuito; orçamentos, o resumo completo, categorias próprias, família e edição de registros vêm com o premium.',
+    premium_expired_trial: '🌙 Seu teste premium terminou. Registrar despesas e receitas continua gratuito; orçamentos, o resumo completo, categorias próprias e família vêm com o premium.',
     premium_expired_paid: '🌙 O premium terminou. Obrigado por apoiar o projeto! Você pode renovar a qualquer momento.',
-    premium_winback: '👋 Seu premium terminou há uma semana. Se quiser de volta os orçamentos, o resumo completo, as categorias próprias, o orçamento familiar e a edição de registros — veja os planos abaixo.',
+    premium_winback: '👋 Seu premium terminou há uma semana. Se quiser de volta os orçamentos, o resumo completo, as categorias próprias e o orçamento familiar — veja os planos abaixo.',
     start_reminders_note: '🔔 Se você não registrar nada durante o dia, vou te lembrar (até 3 vezes por dia). Alterar horários ou desativar: ☰ Mais → ⚙️ Configurações → 🔔.',
 
     // Budgets
@@ -811,7 +803,7 @@ Agora todas as suas despesas serão exibidas no horário local.`,
     export_dates_order: '❌ A data inicial é posterior à data final. Exemplo: `01.03.2026 - 15.03.2026`.',
     total_by_categories: 'Total por categorias:',
     bot_short_description: 'Registre gastos em poucos toques: digite "250 café". Receitas, orçamentos, resumo mensal, orçamento familiar.',
-    bot_description: 'Controle de despesas e receitas direto no Telegram.\n\nDigite "250 café" — a despesa é registrada e a categoria é lembrada.\n\n• Visão do mês por categoria e comparação com o mês anterior\n• Receitas e saldo: "+50000 salário"\n• Despesas recorrentes: aluguel e assinaturas registrados automaticamente\n• Orçamentos com alertas, resumo diário, lembretes\n• Orçamento familiar, várias moedas, exportar para CSV\n\nO básico é grátis. Novos usuários ganham 14 dias de premium.',
+    bot_description: 'Despesas e receitas direto no Telegram.\n\nDigite "250 café" — a despesa é registrada e a categoria lembrada.\n\n• Visão do mês por categoria e resumo do período\n• Receitas e saldo: "+50000 salário"\n• Aluguel e assinaturas registrados sozinhos\n• Importação de extratos: T-Bank, Sber, Kaspi, CSV\n• Poupança, metas, dívidas e previsão com inflação\n• Orçamentos com alertas, resumos diários e semanais, lembretes\n• Orçamento familiar, moedas, CSV\n\nO básico é grátis. Novos usuários: 14 dias de premium.',
     command_start: 'Menu principal',
     command_stats: 'Visão do mês',
     command_history: 'Registros de hoje',
@@ -837,5 +829,5 @@ Agora todas as suas despesas serão exibidas no horário local.`,
     admin_bug_reports_empty: 'Nenhum relatório.',
     payment_subscription_already_active: '🔁 Você já tem uma assinatura mensal ativa, não precisa de outra. Para estender o premium antecipadamente, escolha um plano avulso: /limits',
     payment_foreign_payer: '⚠️ Este link de pagamento foi criado para outro usuário. Abra você mesmo os planos no bot — /limits',
-    premium_expired_granted: '🌙 Seu premium terminou. Registrar despesas e receitas continua gratuito; orçamentos, o resumo completo, categorias próprias, família e edição de registros vêm com o premium. Você pode renovar a qualquer momento.'
+    premium_expired_granted: '🌙 Seu premium terminou. Registrar despesas e receitas continua gratuito; orçamentos, o resumo completo, categorias próprias e família vêm com o premium. Você pode renovar a qualquer momento.',
 };
