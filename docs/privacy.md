@@ -6,6 +6,7 @@
 ## Какие данные бот хранит
 - Из Telegram: ID, имя, username, язык.
 - То, что ты вводишь: траты, доходы, регулярные траты, бюджеты, категории, описания, накопления и цели (суммы, названия, сроки, история пополнений), долги (суммы, названия, ставки, платежи в месяц, история изменений), параметры прогноза, настройки (валюта, часовой пояс, начало периода, напоминания, сводка).
+- Импорт банковской выписки: из присланного файла сохраняются только операции — дата, сумма, валюта, описание (обычно название магазина или получателя перевода) и категория. Сам файл, номера карт и счетов, остатки и прочие строки выписки не сохраняются: файл разбирается в памяти и удаляется сразу после обработки.
 - Семья: участие в семье и приглашения. Семейные траты видят участники семьи.
 - Покупки в Telegram Stars: тариф, сумма в звёздах, идентификатор платежа Telegram. Данные карт и счетов бот не получает — оплата проходит внутри Telegram.
 - Сообщения в поддержку и баг-репорты.
@@ -32,6 +33,7 @@ Version of 27.10.2026. Data controller: IE KISLENKO (Republic of Kazakhstan), II
 ## What the bot stores
 - From Telegram: ID, name, username, language.
 - What you enter: expenses, income, recurring expenses, budgets, categories, descriptions, savings and goals (amounts, names, deadlines, deposit history), debts (amounts, names, rates, monthly payments, change history), forecast parameters, settings (currency, time zone, period start, reminders, summary).
+- Bank statement import: only the operations from the file you send are stored — date, amount, currency, description (usually the merchant or transfer recipient) and category. The file itself, card and account numbers, balances and the rest of the statement are not stored: the file is processed in memory and discarded right after.
 - Family: membership and invitations. Family expenses are visible to family members.
 - Telegram Stars purchases: plan, amount in Stars, Telegram payment ID. The bot never receives card or bank details — payment happens inside Telegram.
 - Support messages and bug reports.

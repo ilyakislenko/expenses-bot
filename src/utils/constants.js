@@ -105,6 +105,7 @@ function generateMoreMenu(localizationService, userLanguage, isAdmin = false) {
     [{ text: t('button_savings'), callback_data: 'sv' }],
     [{ text: t('button_family'), callback_data: 'family' }, { text: t('premium_subscription_title'), callback_data: 'premium_subscription' }],
     [{ text: t('button_export'), callback_data: 'export' }, { text: t('button_settings'), callback_data: 'settings' }],
+    [{ text: t('button_import'), callback_data: 'import' }],
     [{ text: t('button_help'), callback_data: 'help' }]
   ];
   if (isAdmin) {

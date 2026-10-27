@@ -29,6 +29,11 @@ class RateLimiter {
         requests: 5,
         windowMs: 300000 // 5 минут
       },
+      // Лимиты для импорта выписок (файл скачивается и разбирается)
+      import: {
+        requests: 10,
+        windowMs: 600000 // 10 минут
+      },
       // Лимиты для баг-репортов
       bug_report: {
         requests: 3,

@@ -109,6 +109,11 @@ class SecurityMiddleware {
       limitType = 'export';
     }
 
+    // Файлы выписок (скачивание и разбор PDF/CSV) — отдельный лимит
+    if (ctx.message?.document) {
+      limitType = 'import';
+    }
+
     // Специальная проверка для баг-репортов
     if (ctx.callbackQuery?.data === 'bug_report') {
       limitType = 'bug_report';

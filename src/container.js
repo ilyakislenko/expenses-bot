@@ -39,6 +39,7 @@ const RecurringExpenseRepository = require('./repositories/RecurringExpenseRepos
 const FunnelRepository = require('./repositories/FunnelRepository');
 const UserNotificationRepository = require('./repositories/UserNotificationRepository');
 const BudgetRepository = require('./repositories/BudgetRepository');
+const ImportRepository = require('./repositories/ImportRepository');
 
 // Services
 const ExpenseService = require('./services/ExpenseService');
@@ -59,6 +60,7 @@ const BudgetService = require('./services/BudgetService');
 const ReportService = require('./services/ReportService');
 const DailySummaryService = require('./services/DailySummaryService');
 const WeeklyInsightService = require('./services/WeeklyInsightService');
+const ImportService = require('./services/ImportService');
 
 // Handlers
 const CommandHandlers = require('./handlers/commands');
@@ -71,6 +73,7 @@ const RecurringExpenseHandlers = require('./handlers/RecurringExpenseHandlers');
 const ExpenseHandlers = require('./handlers/ExpenseHandlers');
 const BudgetHandlers = require('./handlers/BudgetHandlers');
 const ExportHandlers = require('./handlers/ExportHandlers');
+const ImportHandlers = require('./handlers/ImportHandlers');
 
 // State management
 const StateService = require('./services/StateService');
@@ -134,6 +137,26 @@ class Container {
 
       case 'recurringExpenseRepository':
         return new RecurringExpenseRepository();
+
+      case 'importRepository':
+        return new ImportRepository();
+
+      case 'importService':
+        return new ImportService({
+          importRepository: this.get('importRepository'),
+          expenseService: this.get('expenseService'),
+          userService: this.get('userService'),
+          currencyUtils: this.get('currencyUtils')
+        });
+
+      case 'importHandlers':
+        return new ImportHandlers({
+          importService: this.get('importService'),
+          expenseService: this.get('expenseService'),
+          userService: this.get('userService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter')
+        });
 
       case 'currencyUtils':
         return createCurrencyUtils(this.get('currencyRepository'));
@@ -529,6 +552,7 @@ class Container {
       expenseHandlers: this.get('expenseHandlers'),
       budgetHandlers: this.get('budgetHandlers'),
       exportHandlers: this.get('exportHandlers'),
+      importHandlers: this.get('importHandlers'),
       savingsHandlers: this.get('savingsHandlers'),
       reportService: this.get('reportService'),
       dailySummaryService: this.get('dailySummaryService'),

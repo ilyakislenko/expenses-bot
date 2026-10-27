@@ -435,3 +435,25 @@ ALTER TABLE savings_pots ADD CONSTRAINT savings_pots_fields_check CHECK (
 ALTER TABLE savings_pots ADD CONSTRAINT savings_pots_monthly_payment_check CHECK (
     monthly_payment IS NULL OR (kind = 'debt' AND monthly_payment > 0)
 );
+-- ==== BANK IMPORT ====
+-- Импорт банковских выписок: партия импорта (для отмены) и отпечаток операции (дедупликация).
+-- Сами файлы не хранятся — только записанные из них траты и доходы.
+CREATE TABLE IF NOT EXISTS imports (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    source VARCHAR(10) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+COMMENT ON COLUMN imports.source IS 'Формат выписки: tbank, sber, kaspi, csv';
+CREATE INDEX IF NOT EXISTS idx_imports_user ON imports(user_id);
+
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS import_id INTEGER NULL REFERENCES imports(id) ON DELETE SET NULL;
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS import_hash VARCHAR(64) NULL;
+ALTER TABLE incomes ADD COLUMN IF NOT EXISTS import_id INTEGER NULL REFERENCES imports(id) ON DELETE SET NULL;
+ALTER TABLE incomes ADD COLUMN IF NOT EXISTS import_hash VARCHAR(64) NULL;
+COMMENT ON COLUMN expenses.import_hash IS 'sha256 операции выписки (дата, сумма, валюта, описание, вид); NULL — запись не из импорта';
+COMMENT ON COLUMN incomes.import_hash IS 'sha256 операции выписки (дата, сумма, валюта, описание, вид); NULL — запись не из импорта';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_expenses_user_import_hash ON expenses(user_id, import_hash) WHERE import_hash IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_incomes_user_import_hash ON incomes(user_id, import_hash) WHERE import_hash IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_expenses_import ON expenses(import_id) WHERE import_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_incomes_import ON incomes(import_id) WHERE import_id IS NOT NULL;
