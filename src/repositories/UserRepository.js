@@ -98,6 +98,10 @@ class UserRepository extends BaseRepository {
     await this.query(query, [userId, !!enabled]);
   }
 
+  async setFamilyMode(userId, enabled) {
+    await this.query('UPDATE users SET family_mode = $2 WHERE id = $1', [userId, !!enabled]);
+  }
+
   async updateLastReminderLocalDate(userId, dateStr) {
     const query = 'UPDATE users SET last_reminder_local_date = $2 WHERE id = $1';
     await this.query(query, [userId, dateStr]);

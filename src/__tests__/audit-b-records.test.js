@@ -116,7 +116,7 @@ describe('Markdown in statistics and category screen (TG-1, TG-2)', () => {
 });
 
 // Обработчики трат с заглушками сервисов; черновики — в настоящем StateService
-function buildExpenseFlow({ stateService = new StateService(), categories } = {}) {
+function buildExpenseFlow({ stateService = new StateService(), categories, familyMode = false, premium = false, family = null } = {}) {
   let nextMessageId = 100;
   const expenses = [];
   const cats = categories || [{ id: 13, name: 'Еда', icon: '🍔', user_id: 0 }, { id: 14, name: 'Транспорт', icon: '🚕', user_id: 0 }];
@@ -138,17 +138,18 @@ function buildExpenseFlow({ stateService = new StateService(), categories } = {}
   const userService = {
     getUserLanguage: jest.fn(async () => 'ru'),
     getUserCurrency: jest.fn(async () => 'RUB'),
-    getUserTimezone: jest.fn(async () => 'UTC')
+    getUserTimezone: jest.fn(async () => 'UTC'),
+    getUserById: jest.fn(async (id) => ({ id, family_mode: familyMode }))
   };
   const premiumService = {
     getUserLimits: jest.fn(async () => ({ MAX_DESCRIPTION_LENGTH: 60 })),
-    isPremiumUser: jest.fn(async () => false)
+    isPremiumUser: jest.fn(async () => premium)
   };
   const expenseHandlers = new ExpenseHandlers({
     expenseService,
     userService,
     premiumService,
-    familyService: { getUserFamily: jest.fn(async () => null) },
+    familyService: { getUserFamily: jest.fn(async () => family) },
     localizationService,
     formatter: new Formatter(identityRates),
     stateService,
@@ -254,6 +255,33 @@ describe('expense draft is bound to its category card (REC-2, TG-4, PLT-4)', () 
     expect(stateService.pendingExpenses.get(7).size).toBe(20);
     expect(stateService.takePendingExpense(7, 49)).toEqual({ amount: 49 });
     expect(stateService.takePendingExpense(7, 0)).toBeUndefined();
+  });
+});
+
+describe('family mode: all new expenses go to the family', () => {
+  const recordedFamily = async (options, familyId) => {
+    const flow = buildExpenseFlow(options);
+    const ctx = { from: { id: 7 }, message: { text: '250 кофе' }, reply: jest.fn(async () => ({ message_id: 900 })) };
+    await flow.expenseHandlers.handleExpenseInput(ctx, '250 кофе', 'ru', familyId);
+    await flow.tap(13, 900);
+    return flow.expenses[0].familyId;
+  };
+
+  test('plain input is recorded to the family when the mode is on', async () => {
+    expect(await recordedFamily({ familyMode: true, premium: true, family: { id: 5 } })).toBe(5);
+  });
+
+  test('the mode does nothing without premium or without a family', async () => {
+    expect(await recordedFamily({ familyMode: true, premium: false, family: { id: 5 } })).toBeNull();
+    expect(await recordedFamily({ familyMode: true, premium: true, family: null })).toBeNull();
+  });
+
+  test('mode off keeps plain input personal', async () => {
+    expect(await recordedFamily({ familyMode: false, premium: true, family: { id: 5 } })).toBeNull();
+  });
+
+  test('the personal-expense button overrides the mode', async () => {
+    expect(await recordedFamily({ familyMode: true, premium: true, family: { id: 5 } }, null)).toBeNull();
   });
 });
 

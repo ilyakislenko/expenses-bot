@@ -41,7 +41,8 @@ constructor({ expenseService, userService, premiumService, familyService, catego
         [t('button_income')]: () => this.incomeHandlers.showMenu(ctx),
         [t('button_recurring')]: () => this.recurringExpenseHandlers.showMenu(ctx),
         [t('button_more')]: () => this.commandHandlers.mainMenu(ctx),
-        [t('family_add_expense')]: () => this.startFamilyExpense(ctx, userLanguage)
+        [t('family_add_expense')]: () => this.startFamilyExpense(ctx, userLanguage),
+        [t('button_personal_expense')]: () => this.startPersonalExpense(ctx, userLanguage)
       };
       if (Object.prototype.hasOwnProperty.call(mainButtons, text)) {
         await mainButtons[text]();
@@ -72,6 +73,12 @@ constructor({ expenseService, userService, premiumService, familyService, catego
         
         if (userState === 'adding_family_expense') {
           return await this.handleAddFamilyExpense(ctx, text, userLanguage);
+        }
+
+        if (userState === 'adding_personal_expense') {
+          const accepted = await this.expenseHandlers.handleExpenseInput(ctx, text, userLanguage, null);
+          if (accepted) this.stateService.deleteUserState(userId);
+          return;
         }
         
         if (userState === 'inviting_member') {
@@ -211,6 +218,16 @@ constructor({ expenseService, userService, premiumService, familyService, catego
     }
     this.stateService.setUserState(userId, 'adding_family_expense');
     await ctx.reply(this.localizationService.getText(userLanguage, 'enter_expense_amount'), {
+      reply_markup: {
+        inline_keyboard: [[{ text: this.localizationService.getText(userLanguage, 'family_cancel'), callback_data: 'family_cancel' }]]
+      }
+    });
+  }
+
+  // Кнопка «Личная трата» (при режиме «все траты в семью»): следующая трата — личная
+  async startPersonalExpense(ctx, userLanguage) {
+    this.stateService.setUserState(ctx.from.id, 'adding_personal_expense');
+    await ctx.reply(this.localizationService.getText(userLanguage, 'enter_personal_expense'), {
       reply_markup: {
         inline_keyboard: [[{ text: this.localizationService.getText(userLanguage, 'family_cancel'), callback_data: 'family_cancel' }]]
       }

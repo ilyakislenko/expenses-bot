@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="13" failures="0" errors="0" time="0.255">
+  <testsuite name="CommandHandlers flows" errors="0" failures="0" skipped="12" timestamp="2026-10-27T05:50:14" time="0.23" tests="13">
+    <testcase classname="CommandHandlers flows start new user: registers, records source and starts onboarding with language picker" name="CommandHandlers flows start new user: registers, records source and starts onboarding with language picker" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="CommandHandlers flows start new user with unsupported Telegram language gets English onboarding" name="CommandHandlers flows start new user with unsupported Telegram language gets English onboarding" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="CommandHandlers flows start returning user: greeted in own language with main menu, no onboarding" name="CommandHandlers flows start returning user: greeted in own language with main menu, no onboarding" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="CommandHandlers flows start after onboarding: completes funnel step and sends the full welcome" name="CommandHandlers flows start after onboarding: completes funnel step and sends the full welcome" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="CommandHandlers flows start main menu shows family expense button only for premium users in a family" name="CommandHandlers flows start main menu shows family expense button only for premium users in a family" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="CommandHandlers flows start with the family mode on the quick button becomes «personal expense»" name="CommandHandlers flows start with the family mode on the quick button becomes «personal expense»" time="0.002">
+    </testcase>
+    <testcase classname="CommandHandlers flows help command: replies with help text and bug report / back buttons" name="CommandHandlers flows help command: replies with help text and bug report / back buttons" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="CommandHandlers flows help button: edits the current message instead of sending a new one" name="CommandHandlers flows help button: edits the current message instead of sending a new one" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="CommandHandlers flows currency: offers set_currency buttons for supported currencies and a back button" name="CommandHandlers flows currency: offers set_currency buttons for supported currencies and a back button" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="CommandHandlers flows settings shows current currencies, timezone with its UTC offset, period start and sorted reminder hours" name="CommandHandlers flows settings shows current currencies, timezone with its UTC offset, period start and sorted reminder hours" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="CommandHandlers flows settings shows reminders as disabled when turned off" name="CommandHandlers flows settings shows reminders as disabled when turned off" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="ExpenseService.getCategories passes premium status so custom categories are included only for premium" name="ExpenseService.getCategories passes premium status so custom categories are included only for premium" time="0">
+      <skipped/>
+    </testcase>
+    <testcase classname="ExpenseService.getCategories translates built-in category names and keeps custom ones" name="ExpenseService.getCategories translates built-in category names and keeps custom ones" time="0">
+      <skipped/>
+    </testcase>
+  </testsuite>
+</testsuites>

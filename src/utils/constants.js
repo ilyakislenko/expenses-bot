@@ -65,15 +65,17 @@ function tariffDiscount(tariff) {
 
 
 // Главная reply-клавиатура: только частые разделы, остальное — в «☰ Ещё».
-// showFamilyExpense — у пользователя премиум и семья (быстрая кнопка семейной траты)
-function generateMainMenuKeyboard(localizationService, userLanguage, showFamilyExpense = false) {
+// quickExpense — быстрая кнопка-исключение: 'family' (траты по умолчанию личные) или 'personal'
+// (включён режим «все траты в семью»); null — без кнопки (нет премиума или семьи)
+function generateMainMenuKeyboard(localizationService, userLanguage, quickExpense = null) {
   const t = (key) => localizationService.getText(userLanguage, key);
   const keyboard = [
     [{ text: t('button_overview') }, { text: t('button_today') }],
     [{ text: t('button_income') }, { text: t('button_recurring') }]
   ];
-  if (showFamilyExpense) {
-    keyboard.push([{ text: t('family_add_expense') }, { text: t('button_more') }]);
+  const quickKey = { family: 'family_add_expense', personal: 'button_personal_expense' }[quickExpense];
+  if (quickKey) {
+    keyboard.push([{ text: t(quickKey) }, { text: t('button_more') }]);
   } else {
     keyboard.push([{ text: t('button_more') }]);
   }

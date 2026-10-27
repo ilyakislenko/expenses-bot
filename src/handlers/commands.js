@@ -100,17 +100,21 @@ class CommandHandlers {
     });
   }
 
-  // Reply-клавиатура главного меню (кнопка семейной траты — только премиум с семьёй)
+  // Reply-клавиатура главного меню. Премиум с семьёй получает кнопку-исключение:
+  // «Семейная трата», а при режиме «все траты в семью» — «Личная трата»
   async mainKeyboardMarkup(userId, userLanguage) {
-    let showFamilyExpense = false;
+    let quickExpense = null;
     try {
       const isPremium = await this.premiumService.isPremiumUser(userId);
-      showFamilyExpense = isPremium && !!(await this.familyService.getUserFamily(userId));
+      if (isPremium && await this.familyService.getUserFamily(userId)) {
+        const user = await this.userService.getUserById(userId);
+        quickExpense = user && user.family_mode ? 'personal' : 'family';
+      }
     } catch (error) {
       // В случае ошибки показываем базовое меню
     }
     return {
-      keyboard: this.keyboardGenerators.generateMainMenuKeyboard(userLanguage, showFamilyExpense),
+      keyboard: this.keyboardGenerators.generateMainMenuKeyboard(userLanguage, quickExpense),
       resize_keyboard: true,
       one_time_keyboard: false
     };
@@ -366,6 +370,14 @@ class CommandHandlers {
             [{ text: leaveText, callback_data: 'family_leave' }]
           ];
         }
+
+        // Режим «все траты в семью»: строка состояния и переключатель первой кнопкой
+        const familyMode = !!(await this.userService.getUserById(userId))?.family_mode;
+        message += `\n\n${this.localizationService.getText(userLanguage, familyMode ? 'family_mode_line_on' : 'family_mode_line_off')}`;
+        keyboard.unshift([{
+          text: this.localizationService.getText(userLanguage, familyMode ? 'family_mode_button_on' : 'family_mode_button_off'),
+          callback_data: 'family_mode_toggle'
+        }]);
       } else {
         // Пользователь не в семье
         const familyInfoText = this.localizationService.getText(userLanguage, 'family_info');
@@ -395,6 +407,25 @@ class CommandHandlers {
       const errorText = this.localizationService.getText(userLanguage, 'error');
       await ctx.reply(errorText);
     }
+  }
+
+  // Переключатель «все траты в семью»: обновляем меню семьи и присылаем reply-клавиатуру
+  // с новой кнопкой-исключением (её текст меняется только новым сообщением)
+  async toggleFamilyMode(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const t = (key, params) => this.localizationService.getText(userLanguage, key, params);
+    if (!(await this.premiumService.isPremiumUser(userId)) || !(await this.familyService.getUserFamily(userId))) {
+      return this.family(ctx);
+    }
+    const user = await this.userService.getUserById(userId);
+    const enabled = !(user && user.family_mode);
+    await this.userService.setFamilyMode(userId, enabled);
+    await this.family(ctx);
+    const notice = enabled
+      ? t('family_mode_enabled', { personalButton: t('button_personal_expense'), removeButton: t('button_remove_from_family') })
+      : t('family_mode_disabled', { familyButton: t('family_add_expense'), addButton: t('button_mark_as_family') });
+    await ctx.reply(notice, { reply_markup: await this.mainKeyboardMarkup(userId, userLanguage) });
   }
 
   async familyStats(ctx) {

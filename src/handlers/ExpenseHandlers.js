@@ -54,10 +54,12 @@ class ExpenseHandlers {
   // ВВОД ТРАТЫ
   // ========================================
 
-  // "250 кофе", "20 USD такси", "300" — familyId задан для семейной траты.
+  // "250 кофе", "20 USD такси", "300". familyId: id семьи — семейная трата, null — личная,
+  // не задан — по режиму «все траты в семью» (users.family_mode).
   // Возвращает true, если ввод принят (трата записана или показан выбор категории).
-  async handleExpenseInput(ctx, text, lang, familyId = null) {
+  async handleExpenseInput(ctx, text, lang, familyId = undefined) {
     const userId = ctx.from.id;
+    if (familyId === undefined) familyId = await this.familyModeTarget(userId);
     const limits = await this.premiumService.getUserLimits(userId);
     const parsed = this.validator.parseMoneyInput(text, {
       maxAmount: this.validator.limits.maxAmount,
@@ -98,6 +100,15 @@ class ExpenseHandlers {
     const card = await ctx.reply(message, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
     this.stateService.setPendingExpense(userId, card.message_id, draft);
     return true;
+  }
+
+  // Семья, куда по умолчанию записываются траты: режим включён, есть премиум и семья. Иначе null (личная).
+  async familyModeTarget(userId) {
+    const user = await this.userService.getUserById(userId);
+    if (!user || !user.family_mode) return null;
+    if (!(await this.premiumService.isPremiumUser(userId))) return null;
+    const family = await this.familyService.getUserFamily(userId);
+    return family ? family.id : null;
   }
 
   async inputErrorText(userId, lang, error) {

@@ -20,6 +20,7 @@ function stateCleanupMiddleware(handlers) {
         'creating_family',
         'joining_family',
         'adding_family_expense',
+        'adding_personal_expense',
         'inviting_member',
         'adding_income',
         'adding_recurring',

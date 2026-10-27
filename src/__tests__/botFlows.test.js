@@ -41,7 +41,8 @@ describe('CommandHandlers flows', () => {
       // Без летнего времени (UTC-3) и с "_", который в Markdown нужно экранировать
       getUserTimezone: jest.fn().mockResolvedValue('America/Sao_Paulo'),
       getUserPeriodStartDay: jest.fn().mockResolvedValue(5),
-      getReminderSettings: jest.fn().mockResolvedValue({ reminder_enabled: true, reminder_hours: [18, 9] })
+      getReminderSettings: jest.fn().mockResolvedValue({ reminder_enabled: true, reminder_hours: [18, 9] }),
+      getUserById: jest.fn().mockResolvedValue({ id: 1, family_mode: false })
     };
     funnelService = { registerSource: jest.fn(), track: jest.fn() };
     stateService = { setUserState: jest.fn(), getUserState: jest.fn(), clearUserState: jest.fn() };
@@ -134,6 +135,19 @@ describe('CommandHandlers flows', () => {
       await handlers.start(ctx2);
       expect(ctx2.reply.mock.calls[0][1].reply_markup.keyboard.flat().map((b) => b.text))
         .not.toContain(t('en', 'family_add_expense'));
+    });
+
+    test('with the family mode on the quick button becomes «personal expense»', async () => {
+      premiumService.isPremiumUser.mockResolvedValue(true);
+      familyService.getUserFamily.mockResolvedValue({ id: 7 });
+      userService.getUserById.mockResolvedValue({ id: 1, family_mode: true });
+      const ctx = createCtx();
+
+      await handlers.start(ctx);
+
+      const buttons = ctx.reply.mock.calls[0][1].reply_markup.keyboard.flat().map((b) => b.text);
+      expect(buttons).toContain(t('en', 'button_personal_expense'));
+      expect(buttons).not.toContain(t('en', 'family_add_expense'));
     });
   });
 

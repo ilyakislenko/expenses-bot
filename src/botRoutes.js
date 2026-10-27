@@ -188,6 +188,10 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('family_daily_history', errorHandler((ctx) => expenseHandlers.showFamilyDay(ctx, 0)));
   bot.action('family_export', errorHandler((ctx) => callbackHandlers.handleFamilyExport(ctx)));
   bot.action('family_add_expense', errorHandler((ctx) => callbackHandlers.handleFamilyAddExpense(ctx)));
+  bot.action('family_mode_toggle', errorHandler(async (ctx) => {
+    await ctx.answerCbQuery();
+    await commandHandlers.toggleFamilyMode(ctx);
+  }));
   bot.action('family_delete', errorHandler((ctx) => callbackHandlers.handleFamilyDelete(ctx)));
   bot.action('family_delete_confirm', errorHandler((ctx) => callbackHandlers.handleFamilyDeleteConfirm(ctx)));
   bot.action('family_leave', errorHandler((ctx) => callbackHandlers.handleFamilyLeave(ctx)));

@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS users (
     last_reminder_local_date DATE NULL,
     reminder_hours INTEGER[] DEFAULT NULL,
     reminder_sent_today_hours INTEGER[] DEFAULT NULL,
-    is_admin BOOLEAN NOT NULL DEFAULT FALSE
+    is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+    family_mode BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 -- Create indexes for premium subscription fields
@@ -39,6 +40,7 @@ COMMENT ON COLUMN users.reminder_enabled IS 'Флаг включения еже�
 COMMENT ON COLUMN users.last_reminder_local_date IS 'Дата последней отправленной напоминалки в локальном дне пользователя';
 COMMENT ON COLUMN users.reminder_hours IS 'Часы отправки напоминалок в локальном времени пользователя (0-23), максимум 3';
 COMMENT ON COLUMN users.reminder_sent_today_hours IS 'Часы, по которым напоминалки уже отправлены в текущий локальный день пользователя';
+COMMENT ON COLUMN users.family_mode IS 'Режим «все траты в семью»: новые траты по умолчанию записываются в семью пользователя';
 
 DO $$
 BEGIN

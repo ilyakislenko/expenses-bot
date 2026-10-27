@@ -110,6 +110,10 @@ class UserService {
     return this.userRepository.setReminderEnabled(userId, enabled);
   }
 
+  async setFamilyMode(userId, enabled) {
+    return this.userRepository.setFamilyMode(userId, enabled);
+  }
+
   async updateLastReminderLocalDate(userId, dateStr) {
     return this.userRepository.updateLastReminderLocalDate(userId, dateStr);
   }
@@ -461,10 +465,6 @@ class UserService {
 
   async getAllAdmins() {
     return this.userRepository.getAllAdmins();
-  }
-
-  async getUserById(userId) {
-    return this.userRepository.getUserById(userId);
   }
 
   async getAllUsers(limit = 50, offset = 0) {

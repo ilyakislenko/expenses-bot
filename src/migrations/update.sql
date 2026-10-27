@@ -518,3 +518,10 @@ END $$;
 -- Гонка «создать семью / принять приглашение» не должна оставлять человека в двух семьях
 -- (getUserFamily вернул бы случайную). Дубликатов в данных нет (проверено).
 CREATE UNIQUE INDEX IF NOT EXISTS idx_family_user_user_id_unique ON family_user(user_id);
+
+-- ========================================
+-- FAMILY MODE: все новые траты в семью
+-- ========================================
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS family_mode BOOLEAN NOT NULL DEFAULT FALSE;
+COMMENT ON COLUMN users.family_mode IS 'Режим «все траты в семью»: новые траты по умолчанию записываются в семью пользователя';
