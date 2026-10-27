@@ -5,7 +5,8 @@ const BaseRepository = require('./BaseRepository');
 class SavingsRepository extends BaseRepository {
   async getPots(userId) {
     const result = await this.query(
-      `SELECT * FROM savings_pots WHERE user_id = $1 ORDER BY (kind = 'general') DESC, created_at, id`,
+      `SELECT * FROM savings_pots WHERE user_id = $1
+       ORDER BY CASE kind WHEN 'general' THEN 0 WHEN 'account' THEN 1 ELSE 2 END, created_at, id`,
       [userId]
     );
     return result.rows;
@@ -30,6 +31,32 @@ class SavingsRepository extends BaseRepository {
   async countGoals(userId) {
     const result = await this.query(`SELECT COUNT(*)::int AS n FROM savings_pots WHERE user_id = $1 AND kind = 'goal'`, [userId]);
     return result.rows[0].n;
+  }
+
+  async countAccounts(userId) {
+    const result = await this.query(`SELECT COUNT(*)::int AS n FROM savings_pots WHERE user_id = $1 AND kind = 'account'`, [userId]);
+    return result.rows[0].n;
+  }
+
+  async createAccount(userId, { name, currency, yieldRate }) {
+    const result = await this.query(
+      `INSERT INTO savings_pots (user_id, kind, name, currency, yield_rate) VALUES ($1, 'account', $2, $3, $4) RETURNING *`,
+      [userId, name, currency, yieldRate]
+    );
+    return result.rows[0];
+  }
+
+  // fields: name, yield_rate — для счетов и общей копилки (у общей name NULL — название по умолчанию)
+  async updateAccount(userId, potId, fields) {
+    const allowed = ['name', 'yield_rate'];
+    const keys = Object.keys(fields).filter(key => allowed.includes(key));
+    if (!keys.length) return this.getPot(userId, potId);
+    const set = keys.map((key, index) => `${key} = $${index + 3}`).join(', ');
+    const result = await this.query(
+      `UPDATE savings_pots SET ${set} WHERE id = $1 AND user_id = $2 AND kind IN ('general', 'account') RETURNING *`,
+      [potId, userId, ...keys.map(key => fields[key])]
+    );
+    return result.rows[0];
   }
 
   async createGoal(userId, { name, targetAmount, currency }) {
@@ -94,32 +121,32 @@ class SavingsRepository extends BaseRepository {
     });
   }
 
-  // Деньги цели уходят в общую копилку (toGeneral — сумма в валюте общей); вызывается внутри транзакции
-  async moveGoalBalanceToGeneral(client, userId, goal, toGeneral) {
-    if (Number(goal.balance) <= 0) return;
+  // Деньги цели или счёта уходят в общую копилку (toGeneral — сумма в валюте общей); вызывается внутри транзакции
+  async moveBalanceToGeneral(client, userId, pot, toGeneral) {
+    if (Number(pot.balance) <= 0) return;
     const general = await client.query(
       `UPDATE savings_pots SET balance = balance + $2 WHERE user_id = $1 AND kind = 'general' RETURNING id`,
       [userId, toGeneral]
     );
-    await client.query('UPDATE savings_pots SET balance = 0 WHERE id = $1', [goal.id]);
+    await client.query('UPDATE savings_pots SET balance = 0 WHERE id = $1', [pot.id]);
     await client.query(
       `INSERT INTO savings_operations (user_id, pot_id, amount, kind) VALUES ($1, $2, $3, 'transfer'), ($1, $4, $5, 'transfer')`,
-      [userId, goal.id, -Number(goal.balance), general.rows[0].id, toGeneral]
+      [userId, pot.id, -Number(pot.balance), general.rows[0].id, toGeneral]
     );
   }
 
-  // Удаление цели: накопленное в ней не пропадает — переходит в общую копилку.
+  // Удаление цели или счёта (kind 'goal' | 'account'): деньги не пропадают — переходят в общую копилку.
   // convertToGeneral(amount, currency) — сумма в валюте общей копилки.
-  async deleteGoal(userId, potId, convertToGeneral) {
-    const goal = await this.getPot(userId, potId);
-    if (!goal || goal.kind !== 'goal') return null;
-    const toGeneral = await convertToGeneral(Number(goal.balance), goal.currency);
+  async deletePot(userId, potId, kind, convertToGeneral) {
+    const pot = await this.getPot(userId, potId);
+    if (!pot || pot.kind !== kind) return null;
+    const toGeneral = await convertToGeneral(Number(pot.balance), pot.currency);
     return this.transaction(async (client) => {
-      const locked = await client.query(`SELECT * FROM savings_pots WHERE id = $1 AND user_id = $2 AND kind = 'goal' FOR UPDATE`, [potId, userId]);
+      const locked = await client.query('SELECT * FROM savings_pots WHERE id = $1 AND user_id = $2 AND kind = $3 FOR UPDATE', [potId, userId, kind]);
       if (!locked.rows[0]) return null;
-      await this.moveGoalBalanceToGeneral(client, userId, locked.rows[0], toGeneral);
+      await this.moveBalanceToGeneral(client, userId, locked.rows[0], toGeneral);
       await client.query('DELETE FROM savings_pots WHERE id = $1', [potId]);
-      return { goal: locked.rows[0], moved: Number(locked.rows[0].balance) };
+      return { pot: locked.rows[0], moved: Number(locked.rows[0].balance) };
     });
   }
 
@@ -132,7 +159,7 @@ class SavingsRepository extends BaseRepository {
       const locked = await client.query(`SELECT * FROM savings_pots WHERE id = $1 AND user_id = $2 AND kind = 'goal' FOR UPDATE`, [potId, userId]);
       if (!locked.rows[0]) return null;
       const moved = mode === 'total' ? Number(locked.rows[0].balance) : 0;
-      if (moved > 0) await this.moveGoalBalanceToGeneral(client, userId, locked.rows[0], toGeneral);
+      if (moved > 0) await this.moveBalanceToGeneral(client, userId, locked.rows[0], toGeneral);
       const updated = await client.query('UPDATE savings_pots SET goal_mode = $2 WHERE id = $1 RETURNING *', [potId, mode]);
       return { goal: updated.rows[0], moved };
     });

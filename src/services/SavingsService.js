@@ -3,6 +3,7 @@ const { monthsToTarget, requiredMonthly } = require('../utils/savingsForecast');
 const { localToday } = require('../utils/period');
 
 const AUTO_PERIODS = 3; // взнос «авто» — среднее (доходы − траты) за столько последних полных периодов
+const MAX_ACCOUNTS = 10; // дополнительных счетов (наличные, вклад, крипта…) — бесплатно
 
 // Полные месяцы от today до даты 'YYYY-MM-DD' — столько ежемесячных взносов успеет поступить (прошедшая дата — 0)
 function monthsUntil(today, date) {
@@ -88,6 +89,7 @@ class SavingsService {
       balance: Number(pot.balance),
       target_amount: pot.target_amount === null ? null : Number(pot.target_amount),
       target_date: dateOnly(pot.target_date),
+      yield_rate: pot.yield_rate === null || pot.yield_rate === undefined ? null : Number(pot.yield_rate),
       balanceMain: await this.toCurrency(Number(pot.balance), pot.currency, currency)
     })));
     const settings = this.normalizeSettings(settingsRow);
@@ -98,8 +100,11 @@ class SavingsService {
       today: localToday(timezone),
       pots,
       general: pots.find(p => p.kind === 'general'),
+      accounts: pots.filter(p => p.kind !== 'goal'),
       goals: pots.filter(p => p.kind === 'goal'),
       total: pots.reduce((sum, p) => sum + p.balanceMain, 0),
+      // Части для прогноза: счета со своей ставкой (null — ставка из параметров), деньги целей — по ставке параметров
+      parts: pots.filter(p => p.balanceMain > 0).map(p => ({ balance: p.balanceMain, yieldRate: p.kind === 'goal' ? null : p.yield_rate })),
       settings,
       auto,
       monthly
@@ -113,6 +118,8 @@ class SavingsService {
     const current = goal.goal_mode === 'total' ? state.total : goal.balanceMain;
     const target = await this.toCurrency(goal.target_amount, goal.currency, currency);
     const rates = { yieldRate: settings.yieldRate, inflationRate: settings.inflationRate, contributionGrowth: settings.contributionGrowth };
+    // «От всех накоплений» — растут все счета по своим ставкам; своя копилка — по ставке параметров
+    const parts = goal.goal_mode === 'total' ? state.parts : [{ balance: current, yieldRate: null }];
     const status = {
       current,
       target,
@@ -127,13 +134,13 @@ class SavingsService {
     };
     if (status.achieved) return status;
     if (monthly !== null) {
-      status.etaNominal = monthsToTarget({ balance: current, monthly, ...rates, target });
-      if (settings.inflationRate > 0) status.etaReal = monthsToTarget({ balance: current, monthly, ...rates, target, inToday: true });
+      status.etaNominal = monthsToTarget({ parts, monthly, ...rates, target });
+      if (settings.inflationRate > 0) status.etaReal = monthsToTarget({ parts, monthly, ...rates, target, inToday: true });
     }
     if (status.monthsLeft > 0) {
-      status.requiredNominal = requiredMonthly({ balance: current, target, months: status.monthsLeft, ...rates });
+      status.requiredNominal = requiredMonthly({ parts, target, months: status.monthsLeft, ...rates });
       if (settings.inflationRate > 0) {
-        status.requiredReal = requiredMonthly({ balance: current, target, months: status.monthsLeft, ...rates, inToday: true });
+        status.requiredReal = requiredMonthly({ parts, target, months: status.monthsLeft, ...rates, inToday: true });
       }
     }
     return status;
@@ -213,10 +220,30 @@ class SavingsService {
     return { ...result, achieved: await this.checkAchievements(userId) };
   }
 
-  // Удаление цели: её деньги переходят в общую копилку. { goal, moved } или null
+  // Удаление цели: её деньги переходят в общую копилку. { pot, moved } или null
   async deleteGoal(userId, goalId) {
-    const result = await this.savingsRepository.deleteGoal(userId, goalId, this.generalConverter(userId));
+    const result = await this.savingsRepository.deletePot(userId, goalId, 'goal', this.generalConverter(userId));
     if (result) logger.info('Savings goal deleted', { userId, goalId, moved: result.moved });
+    return result;
+  }
+
+  // { pot } или { error: 'limit', limit }. yieldRate null — ставка из параметров прогноза
+  async createAccount(userId, { name, currency, yieldRate }) {
+    if (await this.savingsRepository.countAccounts(userId) >= MAX_ACCOUNTS) return { error: 'limit', limit: MAX_ACCOUNTS };
+    const pot = await this.savingsRepository.createAccount(userId, { name, currency, yieldRate });
+    logger.info('Savings account created', { userId, potId: pot.id, currency });
+    return { pot };
+  }
+
+  // fields: name, yield_rate (null — ставка из параметров)
+  async updateAccount(userId, potId, fields) {
+    return this.savingsRepository.updateAccount(userId, potId, fields);
+  }
+
+  // Удаление счёта: деньги переходят в общую копилку (общую удалить нельзя). { pot, moved } или null
+  async deleteAccount(userId, potId) {
+    const result = await this.savingsRepository.deletePot(userId, potId, 'account', this.generalConverter(userId));
+    if (result) logger.info('Savings account deleted', { userId, potId, moved: result.moved });
     return result;
   }
 

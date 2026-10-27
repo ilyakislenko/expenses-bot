@@ -54,6 +54,17 @@ describe('savings forecast', () => {
     const { points } = simulate({ balance: 50000, monthly, ...rates, months: 30 });
     near(points[30].real, 1500000);
   });
+
+  test('each account grows at its own rate; accounts without a rate and new contributions use the default', () => {
+    const parts = [{ balance: 100000, yieldRate: 0 }, { balance: 100000, yieldRate: 12 }, { balance: 100000, yieldRate: null }];
+    const { points } = simulate({ parts, monthly: 10000, yieldRate: 24, months: 12 });
+    const contributions = 10000 * (1.02 ** 12 - 1) / 0.02;
+    near(points[12].nominal, 100000 + 100000 * 1.01 ** 12 + 100000 * 1.02 ** 12 + contributions);
+    expect(points[12].simple).toBe(300000 + 120000);
+    const monthly = requiredMonthly({ parts, target: 1000000, months: 24, yieldRate: 24 });
+    near(simulate({ parts, monthly, yieldRate: 24, months: 24 }).points[24].nominal, 1000000);
+    expect(monthsToTarget({ parts: [{ balance: 100000, yieldRate: 0 }], monthly: 0, yieldRate: 50, target: 100001 })).toBeNull();
+  });
 });
 
 describe('SavingsService', () => {
@@ -106,6 +117,7 @@ describe('SavingsService', () => {
     total: 1000000,
     monthly: 50000,
     settings: { yieldRate: 0, inflationRate: 0, contributionGrowth: 0 },
+    parts: [{ balance: 1000000, yieldRate: null }],
     ...overrides
   });
   const service = new SavingsService({ currencyUtils: { convert: async (amount) => amount } });
@@ -132,6 +144,14 @@ describe('SavingsService', () => {
     const status = await service.goalStatus(goal, state({ monthly: null }));
     expect(status.etaNominal).toBeNull();
     near(status.requiredNominal, 10000);
+  });
+
+  test('a goal «from all savings» grows with the accounts\' own rates', async () => {
+    const goal = { goal_mode: 'total', balanceMain: 0, target_amount: 1200000, currency: 'RUB', target_date: null };
+    const cash = await service.goalStatus(goal, state({ monthly: 0, parts: [{ balance: 1000000, yieldRate: 0 }] }));
+    const deposit = await service.goalStatus(goal, state({ monthly: 0, parts: [{ balance: 1000000, yieldRate: 12 }] }));
+    expect(cash.etaNominal).toBeNull();
+    expect(deposit.etaNominal).toBe(19); // 1.01^19 ≈ 1.208
   });
 });
 
@@ -160,5 +180,20 @@ describe('savings input parsing', () => {
     expect(await handlers.parseAmount('0', 'RUB', true)).toBe(0);
     expect(await handlers.parseAmount('0', 'RUB', false)).toBeNull();
     expect(await handlers.parseAmount('15000 машина', 'RUB', false)).toBeNull();
+  });
+
+  test.each([
+    ['Наличные USD', { name: 'Наличные', currency: 'USD', yieldRate: null }],
+    ['Вклад 16%', { name: 'Вклад', currency: 'RUB', yieldRate: 16 }],
+    ['$ под подушкой', { name: 'под подушкой', currency: 'USD', yieldRate: null }],
+    ['Крипта USDT', { name: 'Крипта', currency: 'USD', yieldRate: null }],
+    ['Счёт в банке EUR 3,5%', { name: 'Счёт в банке', currency: 'EUR', yieldRate: 3.5 }],
+    ['Скины Steam usd', { name: 'Скины Steam', currency: 'USD', yieldRate: null }]
+  ])('account «%s»', (input, expected) => {
+    expect(handlers.parseAccountInput(input, 'RUB')).toEqual(expected);
+  });
+
+  test.each(['USD', '16%', '   '])('account «%s» without a name is rejected', (input) => {
+    expect(handlers.parseAccountInput(input, 'RUB')).toBeNull();
   });
 });

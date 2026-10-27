@@ -388,3 +388,23 @@ CREATE TABLE IF NOT EXISTS savings_settings (
 );
 COMMENT ON COLUMN savings_settings.monthly_contribution IS 'Сколько откладывается в месяц (основная валюта); NULL — среднее (доходы − траты) за 3 полных периода';
 COMMENT ON COLUMN savings_settings.contribution_growth IS 'Рост ежемесячного взноса раз в год, %';
+
+-- ========================================
+-- SAVINGS ACCOUNTS: несколько счетов накоплений
+-- ========================================
+
+-- Счета (kind 'account'): наличные, вклад, крипта, скины… — своя валюта и своя доходность.
+-- Общая копилка — счёт по умолчанию (одна на пользователя, не удаляется).
+ALTER TABLE savings_pots ADD COLUMN IF NOT EXISTS yield_rate DECIMAL(6,2) NULL;
+COMMENT ON COLUMN savings_pots.yield_rate IS 'Доходность счёта, % годовых; NULL — ставка из параметров прогноза. У целей не используется';
+ALTER TABLE savings_pots DROP CONSTRAINT IF EXISTS savings_pots_kind_check;
+ALTER TABLE savings_pots DROP CONSTRAINT IF EXISTS savings_pots_check;
+ALTER TABLE savings_pots DROP CONSTRAINT IF EXISTS savings_pots_fields_check;
+ALTER TABLE savings_pots DROP CONSTRAINT IF EXISTS savings_pots_yield_rate_check;
+ALTER TABLE savings_pots ADD CONSTRAINT savings_pots_kind_check CHECK (kind IN ('general', 'account', 'goal'));
+ALTER TABLE savings_pots ADD CONSTRAINT savings_pots_fields_check CHECK (
+    kind = 'general'
+    OR (kind = 'account' AND name IS NOT NULL)
+    OR (kind = 'goal' AND name IS NOT NULL AND target_amount IS NOT NULL)
+);
+ALTER TABLE savings_pots ADD CONSTRAINT savings_pots_yield_rate_check CHECK (yield_rate IS NULL OR yield_rate BETWEEN 0 AND 300);
