@@ -81,6 +81,7 @@ describe('receipt JSON normalization', () => {
     const many = normalize({ is_receipt: true, items: Array.from({ length: 150 }, (_, i) => ({ name: `item ${i}`, amount: 1 })) });
     expect(many.items).toHaveLength(100);
     expect(cleanName('1. Кефир')).toBe('Кефир');
+    expect(cleanName('[М] Молоко СТМ 3.2% полипак')).toBe('Молоко СТМ 3.2% полипак');
   });
 
   it('maps categories by the user\'s names in any case, unknown → «Другое»', () => {
@@ -182,7 +183,7 @@ describe('ReceiptService', () => {
     ] } });
     const receipt = await service.recognize(777, { image: Buffer.from('img'), mimeType: 'image/jpeg', lang: 'en', currency: 'USD', timezone: 'UTC' });
     const { prompt } = provider.recognize.mock.calls[0][0];
-    expect(prompt).toContain('"Food", "Other", "Кофейни"');
+    expect(prompt).toContain('"Food" (food: groceries, drinks, cafes), "Other" (anything else), "Кофейни"');
     expect(prompt).toContain('If none fits, use "Other"');
     expect(prompt).toContain('If unknown: USD');
     expect(receipt.items.map(item => item.categoryId)).toEqual([50, 1, 6]);
@@ -493,5 +494,230 @@ describe('provider chain', () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+});
+
+describe('local slot queue', () => {
+  const { Limiter, isLocalUrl } = require('../services/receipt/chain');
+
+  it('runs one task at a time and reports queue positions', async () => {
+    const limiter = new Limiter(1);
+    const releases = [];
+    const task = (name) => () => new Promise(resolve => releases.push(() => resolve(name)));
+    const positions = { b: [], c: [] };
+    const a = limiter.run(task('a'));
+    const b = limiter.run(task('b'), position => positions.b.push(position));
+    const c = limiter.run(task('c'), position => positions.c.push(position));
+    expect(releases).toHaveLength(1);
+    releases[0]();
+    await expect(a).resolves.toBe('a');
+    await Promise.resolve();
+    releases[1]();
+    await expect(b).resolves.toBe('b');
+    await Promise.resolve();
+    releases[2]();
+    await expect(c).resolves.toBe('c');
+    expect(positions).toEqual({ b: [1, 0], c: [2, 1, 0] });
+  });
+
+  it('treats loopback and LAN addresses as local, one recognition at a time by default', () => {
+    expect(isLocalUrl('http://127.0.0.1:11434/v1')).toBe(true);
+    expect(isLocalUrl('http://192.168.1.50:11434/v1')).toBe(true);
+    expect(isLocalUrl('http://gamingpc.lan:11434/v1')).toBe(true);
+    expect(isLocalUrl('https://api.mistral.ai/v1')).toBe(false);
+    const slots = parseSlots({
+      RECEIPT_AI_1_PROVIDER: 'openai', RECEIPT_AI_1_BASE_URL: 'http://192.168.1.50:11434/v1', RECEIPT_AI_1_MODEL: 'a',
+      RECEIPT_AI_2_PROVIDER: 'openai', RECEIPT_AI_2_BASE_URL: 'https://api.mistral.ai/v1', RECEIPT_AI_2_MODEL: 'b',
+      RECEIPT_AI_3_PROVIDER: 'openai', RECEIPT_AI_3_BASE_URL: 'http://127.0.0.1:11434/v1', RECEIPT_AI_3_MODEL: 'c', RECEIPT_AI_3_CONCURRENCY: '2'
+    });
+    expect(slots.map(slot => slot.concurrency)).toEqual([1, 0, 2]);
+  });
+
+  it('reports queue position and a local slot start through onStatus', async () => {
+    let release;
+    const slow = { slot: 1, name: 'openai', model: 'm', isLocal: true, limiter: new Limiter(1), recognize: jest.fn(() => new Promise(resolve => { release = resolve; })) };
+    const chain = new ChainProvider([slow]);
+    const first = [];
+    const second = [];
+    const p1 = chain.recognize({ onStatus: status => first.push(status) });
+    const p2 = chain.recognize({ onStatus: status => second.push(status) });
+    expect(first).toEqual([{ position: 0, local: true }]);
+    expect(second).toEqual([{ position: 1, local: true }]);
+    release({ is_receipt: true, items: [] });
+    await p1;
+    await Promise.resolve();
+    release({ is_receipt: true, items: [] });
+    await p2;
+    expect(second).toEqual([{ position: 1, local: true }, { position: 0, local: true }]);
+  });
+});
+
+describe('EXIF orientation', () => {
+  const { jpegOrientation } = require('../services/receipt/image');
+  function jpegWithOrientation(value, littleEndian) {
+    const tiff = Buffer.alloc(26);
+    tiff.write(littleEndian ? 'II' : 'MM', 0, 'ascii');
+    const u16 = (v, at) => (littleEndian ? tiff.writeUInt16LE(v, at) : tiff.writeUInt16BE(v, at));
+    const u32 = (v, at) => (littleEndian ? tiff.writeUInt32LE(v, at) : tiff.writeUInt32BE(v, at));
+    u16(42, 2); u32(8, 4); u16(1, 8); // одна запись в IFD0
+    u16(0x0112, 10); u16(3, 12); u32(1, 14); u16(value, 18);
+    const exif = Buffer.concat([Buffer.from('Exif\0\0', 'ascii'), tiff]);
+    const app1 = Buffer.alloc(4);
+    app1.writeUInt16BE(0xffe1, 0);
+    app1.writeUInt16BE(exif.length + 2, 2);
+    return Buffer.concat([Buffer.from([0xff, 0xd8]), app1, exif, Buffer.from([0xff, 0xda, 0, 2])]);
+  }
+
+  it('reads Orientation from big- and little-endian EXIF, null without it', () => {
+    expect(jpegOrientation(jpegWithOrientation(6, false))).toBe(6);
+    expect(jpegOrientation(jpegWithOrientation(1, true))).toBe(1);
+    expect(jpegOrientation(Buffer.from([0xff, 0xd8, 0xff, 0xda, 0, 2]))).toBeNull();
+    expect(jpegOrientation(Buffer.from('not a jpeg'))).toBeNull();
+  });
+});
+
+describe('confidence gate and prompt', () => {
+  const categoriesList = [{ id: 1, names: ['Еда'] }, { id: 6, names: ['Другое'] }];
+  const check = (raw) => normalizeReceipt(raw, { categories: categoriesList, fallbackCategoryId: 6, defaultCurrency: 'RUB', supportedCurrencies: SUPPORTED_CURRENCIES });
+
+  it('trusts the real qwen2.5vl:3b answer for the «Ярче» receipt (one misread quantity)', () => {
+    const receipt = check({
+      is_receipt: true, merchant: 'Ярче', date: '2026-10-27', time: '11:47', currency: 'RUB', total: 1160.55, items: [
+        { name: 'Пакет-майка', quantity: 1, price: 8, amount: 8 }, { name: 'Рагу', quantity: 2, price: 139.99, amount: 279.98 },
+        { name: 'Соус', quantity: 1, price: 36.99, amount: 36.99 }, { name: 'Картофель', quantity: 0.712, price: 39.99, amount: 28.47 },
+        { name: 'Морковь', quantity: 0.522, price: 24.99, amount: 13.04 }, { name: 'Лук', quantity: 0.62, price: 33.99, amount: 21.07 },
+        { name: 'Молоко', quantity: 9, price: 74.99, amount: 74.99 }, { name: 'Масло', quantity: 1, price: 169.99, amount: 169.99 },
+        { name: 'Хлеб', quantity: 1, price: 59.99, amount: 59.99 }, { name: 'Виноград', quantity: 0.748, price: 249.99, amount: 186.99 },
+        { name: 'Яблоки', quantity: 0.518, price: 119.99, amount: 62.15 }, { name: 'Хурма', quantity: 0.446, price: 149.99, amount: 66.9 },
+        { name: 'Слива', quantity: 0.608, price: 249.99, amount: 151.99 }
+      ]
+    });
+    expect(receipt).toMatchObject({ lowConfidence: false, itemsTotal: 1160.55, checks: { badLines: 1, lines: 13 } });
+  });
+
+  it('is low when items differ from the total by more than 3% or many lines don\'t multiply out', () => {
+    expect(check({ is_receipt: true, total: 100, items: [{ name: 'a', amount: 96 }] }).lowConfidence).toBe(true);
+    expect(check({ is_receipt: true, total: 100, items: [{ name: 'a', amount: 98 }] }).lowConfidence).toBe(false);
+    const garbled = check({ is_receipt: true, total: 300, items: [
+      { name: 'a', quantity: 1, price: 50, amount: 100 }, { name: 'b', quantity: 2, price: 10, amount: 100 },
+      { name: 'c', quantity: 1, price: 100, amount: 100 }
+    ] });
+    expect(garbled).toMatchObject({ lowConfidence: true, checks: { badLines: 2, lines: 3 } });
+    expect(check({ is_receipt: true, items: [{ name: 'a', quantity: 0.5, price: 10, amount: 5.4 }] }).lowConfidence).toBe(false);
+  });
+
+  it('the exported prompt template is filled completely and explains the Russian line format', () => {
+    const { RECEIPT_PROMPT_TEMPLATE } = require('../services/receipt/prompt');
+    expect(RECEIPT_PROMPT_TEMPLATE).toContain('КОЛ-ВО*ЦЕНА=СУММА');
+    const prompt = buildPrompt({ categories: ['Еда', 'Другое'], fallbackCategory: 'Другое', defaultCurrency: 'RUB', today: '2026-10-27' });
+    expect(prompt).not.toMatch(/\{\{\w+\}\}/);
+    expect(prompt).toContain('"category":"<one of the categories below>"');
+    expect(prompt).toContain('exactly one of: "Еда", "Другое"');
+    expect(prompt).toContain('27.10.26 → 2026-10-27');
+  });
+});
+
+describe('ReceiptHandlers background recognition', () => {
+  const Formatter = require('../utils/formatter');
+
+  function setup() {
+    let finish;
+    const recognition = new Promise(resolve => { finish = resolve; });
+    const receiptService = {
+      configured: true,
+      provider: { acceptsHeic: false },
+      premiumLimit: 300,
+      checkLimit: jest.fn(async () => ({ isPremium: false, limit: 10, used: 0, remaining: 10 })),
+      recognize: jest.fn(() => recognition),
+      record: jest.fn(async () => 1),
+      getReceipt: jest.fn(async () => ({ id: 1, merchant: 'Ярче', purchased_day: '2026-10-27', purchased_hm: '11:47', status: 'active', printed_total: '45', items_total: '45', currency: 'RUB' })),
+      getExpenses: jest.fn(async () => [{ id: 5, amount: '45', currency: 'RUB', description: 'Хлеб', category_name: 'Еда', category_icon: '🍕' }]),
+      categoriesById: jest.fn(async () => new Map([[1, { id: 1, name: 'Еда', icon: '🍕' }]]))
+    };
+    const handlers = new ReceiptHandlers({
+      receiptService,
+      expenseHandlers: { registerBackView: jest.fn(), familyModeTarget: jest.fn(async () => null) },
+      budgetService: { checkAfterExpense: jest.fn(async () => []) },
+      userService: { getUserLanguage: async () => 'ru', getUserTimezone: async () => 'Europe/Moscow', getUserCurrency: async () => 'RUB' },
+      localizationService: new LocalizationService(),
+      formatter: new Formatter({ convert: async (amount) => amount })
+    });
+    handlers.download = jest.fn(async () => Buffer.from('image'));
+    let messageId = 100;
+    const ctx = {
+      chat: { id: 7, type: 'private' },
+      from: { id: 7 },
+      reply: jest.fn(async () => ({ message_id: ++messageId })),
+      sendChatAction: jest.fn(async () => true),
+      telegram: { editMessageText: jest.fn(async () => true) }
+    };
+    const receipt = (overrides = {}) => ({ merchant: 'Ярче', date: '2026-10-27', time: '11:47', currency: 'RUB', total: 45, itemsTotal: 45, mismatch: false, lowConfidence: false, items: [{ name: 'Хлеб', amount: 45, categoryId: 1 }], ...overrides });
+    return { handlers, receiptService, ctx, finish, receipt };
+  }
+  const t = (key, params) => new LocalizationService().getText('ru', key, params);
+
+  it('the photo handler returns before recognition completes; one receipt per user at a time', async () => {
+    const { handlers, receiptService, ctx, finish, receipt } = setup();
+    await handlers.processImage(ctx, { fileId: 'f', fileSize: 1000, mimeType: 'image/jpeg' });
+    expect(ctx.reply).toHaveBeenLastCalledWith(t('receipt_recognizing'));
+    expect(receiptService.recognize).toHaveBeenCalled();
+    expect(receiptService.record).not.toHaveBeenCalled();
+
+    await handlers.processImage(ctx, { fileId: 'g', fileSize: 1000, mimeType: 'image/jpeg' });
+    expect(ctx.reply).toHaveBeenLastCalledWith(t('receipt_busy'));
+    expect(receiptService.recognize).toHaveBeenCalledTimes(1);
+
+    finish(receipt());
+    await handlers.idle();
+    expect(receiptService.record).toHaveBeenCalled();
+    const [, messageId, , text] = ctx.telegram.editMessageText.mock.calls.pop();
+    expect(messageId).toBe(101);
+    expect(text).toContain('Хлеб');
+    expect(handlers.busyUsers.size).toBe(0);
+  });
+
+  it('shows the local-model hint and queue position while waiting', async () => {
+    const { handlers, receiptService, ctx, finish, receipt } = setup();
+    receiptService.recognize.mockImplementation(async (userId, { onStatus }) => {
+      onStatus({ position: 2, local: true });
+      onStatus({ position: 0, local: true });
+      return receipt();
+    });
+    await handlers.processImage(ctx, { fileId: 'f', fileSize: 1000, mimeType: 'image/jpeg' });
+    await handlers.idle();
+    void finish;
+    const texts = ctx.telegram.editMessageText.mock.calls.map(call => call[3]);
+    expect(texts.slice(0, 2)).toEqual([t('receipt_queued', { position: 2 }), t('receipt_recognizing_slow')]);
+    expect(texts[2]).toContain('Хлеб');
+  });
+
+  it('low-confidence results become a draft: nothing recorded until «Записать как есть»', async () => {
+    const { handlers, receiptService, ctx, finish, receipt } = setup();
+    await handlers.processImage(ctx, { fileId: 'f', fileSize: 1000, mimeType: 'image/jpeg' });
+    finish(receipt({ lowConfidence: true, total: 100 }));
+    await handlers.idle();
+    expect(receiptService.record).not.toHaveBeenCalled();
+    const [, , , text, extra] = ctx.telegram.editMessageText.mock.calls.pop();
+    expect(text).toContain(t('receipt_low_confidence', { total: '100 ₽'.replace(' ', '\u00a0') }));
+    expect(extra.reply_markup.inline_keyboard.flat().map(b => b.callback_data)).toEqual(['rvd|1', 'rvd|0']);
+
+    const callbackCtx = { ...ctx, callbackQuery: { message: { message_id: 101 } }, answerCbQuery: jest.fn(async () => true), editMessageText: jest.fn(async () => true) };
+    await handlers.resolveDraft(callbackCtx, true);
+    expect(receiptService.record).toHaveBeenCalledTimes(1);
+    await handlers.resolveDraft(callbackCtx, true);
+    expect(receiptService.record).toHaveBeenCalledTimes(1);
+    expect(callbackCtx.answerCbQuery).toHaveBeenLastCalledWith(t('receipt_draft_outdated'), { show_alert: true });
+  });
+
+  it('asks to send a rotated image file as a photo instead', async () => {
+    const { handlers, receiptService, ctx } = setup();
+    const { jpegOrientation } = require('../services/receipt/image');
+    const rotated = Buffer.from('ffd8ffe100224578696600004d4d002a00000008000101120003000000010006000000000000ffda0002', 'hex');
+    expect(jpegOrientation(rotated)).toBe(6);
+    handlers.download = jest.fn(async () => rotated);
+    await handlers.handleImageDocument({ ...ctx, message: { document: { file_id: 'd', file_name: 'IMG.jpg', mime_type: 'image/jpeg', file_size: 400000 } } });
+    expect(ctx.reply).toHaveBeenLastCalledWith(t('receipt_send_as_photo'));
+    expect(receiptService.recognize).not.toHaveBeenCalled();
+    expect(handlers.busyUsers.size).toBe(0);
   });
 });

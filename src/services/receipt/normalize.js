@@ -8,6 +8,9 @@ const MERCHANT_MAX = 60;
 const NAME_MAX = 200;
 const RECEIPT_MAX_AGE_DAYS = 60;
 const TOTAL_TOLERANCE = 0.01; // 1%: в пределах — подгоняем позиции к итогу, больше — предупреждаем
+const LOW_CONFIDENCE_SUM = 0.03; // позиции расходятся с итогом больше чем на 3% — черновик, а не запись
+const LOW_CONFIDENCE_LINES = 0.2; // больше 20% строк, где сумма ≠ количество × цена
+const LINE_TOLERANCE = 1; // единица валюты на округление в строке
 
 const round2 = (value) => Math.round(value * 100) / 100;
 const sumOf = (items) => round2(items.reduce((sum, item) => sum + item.amount, 0));
@@ -24,6 +27,7 @@ function cleanName(value) {
     .replace(/\s+/g, ' ')
     .trim()
     .replace(/^\d{1,3}[.)]\s+/, '')
+    .replace(/^\[[^\]]{1,3}\]\s*/, '') // «[М]» — маркировка «Честного знака»
     .replace(/^[#№*]?\d{4,}\s*[-.:]?\s+/, '')
     .replace(/\s+\d{6,}$/, '')
     .replace(/^["'«]+|["'»]+$/g, '')
@@ -63,7 +67,9 @@ function normalizeDate(rawDate, rawTime) {
 }
 
 // raw — JSON модели. categories: [{ id, names: [название, перевод…] }], fallbackCategoryId — «Другое».
-// Возвращает { merchant, date, time, currency, total (напечатанный или null), itemsTotal, mismatch, items }.
+// Возвращает { merchant, date, time, currency, total (напечатанный или null), itemsTotal, mismatch, lowConfidence, checks, items }.
+// lowConfidence — ответу нельзя верить без проверки: позиции расходятся с итогом больше чем на 3% или у больше чем 20%
+// строк сумма не равна количество × цена (±1) — маленькие модели так «додумывают» цифры
 function normalizeReceipt(raw, { categories = [], fallbackCategoryId, defaultCurrency, supportedCurrencies, maxItems = MAX_ITEMS }) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new ReceiptError('unreadable', 'response is not an object');
   const rawItems = Array.isArray(raw.items) ? raw.items : [];
@@ -96,7 +102,8 @@ function normalizeReceipt(raw, { categories = [], fallbackCategoryId, defaultCur
       quantity,
       price: price !== null ? round2(price) : null,
       amount,
-      categoryId: byName.get(categoryKey(item.category)) || fallbackCategoryId
+      categoryId: byName.get(categoryKey(item.category)) || fallbackCategoryId,
+      lineMismatch: price !== null && Math.abs(round2(quantity * price) - amount) > LINE_TOLERANCE
     });
   }
   if (!items.length) throw new ReceiptError(raw.is_receipt === false ? 'not_receipt' : 'unreadable', 'no usable items');
@@ -115,6 +122,10 @@ function normalizeReceipt(raw, { categories = [], fallbackCategoryId, defaultCur
     if (total === null || Math.abs(withDiscount - total) <= Math.abs(rawSum - total)) items = scaleTo(items, withDiscount);
   }
 
+  const sumDeviation = total !== null ? Math.abs(total - sumOf(items)) / total : null;
+  const badLines = items.filter(item => item.lineMismatch).length;
+  const lowConfidence = (sumDeviation !== null && sumDeviation > LOW_CONFIDENCE_SUM) || badLines / items.length > LOW_CONFIDENCE_LINES;
+
   let mismatch = false;
   if (total !== null) {
     const diff = Math.abs(total - sumOf(items));
@@ -132,7 +143,10 @@ function normalizeReceipt(raw, { categories = [], fallbackCategoryId, defaultCur
     .replace(/["«»„“”]/g, '')
     .trim()
     .slice(0, MERCHANT_MAX) || null;
-  return { merchant, ...normalizeDate(raw.date, raw.time), currency, total, itemsTotal: sumOf(items), mismatch, items };
+  return {
+    merchant, ...normalizeDate(raw.date, raw.time), currency, total, itemsTotal: sumOf(items), mismatch,
+    lowConfidence, checks: { sumDeviation, badLines, lines: items.length }, items
+  };
 }
 
 function localNow(timezone, now = new Date()) {

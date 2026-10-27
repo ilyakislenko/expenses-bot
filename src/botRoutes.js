@@ -183,6 +183,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^rvok\|(\d+)$/, errorHandler((ctx) => receiptHandlers.confirm(ctx, parseInt(ctx.match[1], 10))));
   bot.action(/^rvx\|(\d+)$/, errorHandler((ctx) => receiptHandlers.askUndo(ctx, parseInt(ctx.match[1], 10))));
   bot.action(/^rvxc\|(\d+)$/, errorHandler((ctx) => receiptHandlers.undo(ctx, parseInt(ctx.match[1], 10))));
+  bot.action(/^rvd\|([01])$/, errorHandler((ctx) => receiptHandlers.resolveDraft(ctx, ctx.match[1] === '1'))); // черновик: записать / отмена
   bot.action('limits', errorHandler(async (ctx) => {
     await ctx.answerCbQuery();
     await commandHandlers.premiumSubscription(ctx);

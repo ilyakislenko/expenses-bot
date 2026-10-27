@@ -1,7 +1,7 @@
 const logger = require('../utils/logger');
 const { SUPPORTED_CURRENCIES } = require('../config/currencies');
 const { USER_LIMITS } = require('../utils/constants');
-const { buildPrompt } = require('./receipt/prompt');
+const { buildPrompt, SYSTEM_CATEGORY_HINTS } = require('./receipt/prompt');
 const { normalizeReceipt, resolveReceiptTime, localMonthStart, localNow } = require('./receipt/normalize');
 
 // Фото чека → траты по позициям. Распознаёт провайдер (receipt/providers.js), ответ проверяет normalize.js,
@@ -41,22 +41,33 @@ class ReceiptService {
     ]);
     const label = (name) => this.expenseService.translateCategoryName(name, this.localizationService, lang);
     return {
-      labels: categories.map(category => label(category.name)),
+      labels: categories.map(category => ({
+        name: label(category.name),
+        hint: Number(category.user_id) === 0 ? SYSTEM_CATEGORY_HINTS[category.name] : undefined
+      })),
       fallbackLabel: label(fallback.name),
       fallbackCategoryId: fallback.id,
       choices: categories.map(category => ({ id: category.id, names: [label(category.name), category.name] }))
     };
   }
 
-  // Распознаёт фото. Ошибки — ReceiptError (receipt/errors.js)
-  async recognize(userId, { image, mimeType, lang, currency, timezone }) {
+  // Распознаёт фото. Ошибки — ReceiptError (receipt/errors.js). onStatus({ position, local }) — очередь и начало работы слота
+  async recognize(userId, { image, mimeType, lang, currency, timezone, onStatus }) {
     const { labels, fallbackLabel, fallbackCategoryId, choices } = await this.categoryChoices(userId, lang);
     const prompt = buildPrompt({ categories: labels, fallbackCategory: fallbackLabel, defaultCurrency: currency, today: localNow(timezone).date });
     const started = Date.now();
-    const raw = await this.provider.recognize({ image, mimeType, prompt });
+    const raw = await this.provider.recognize({ image, mimeType, prompt, onStatus });
     const receipt = normalizeReceipt(raw, { categories: choices, fallbackCategoryId, defaultCurrency: currency, supportedCurrencies: SUPPORTED_CURRENCIES });
-    logger.info('Receipt recognized', { userId, provider: this.provider.name, items: receipt.items.length, mismatch: receipt.mismatch, ms: Date.now() - started });
+    logger.info('Receipt recognized', {
+      userId, items: receipt.items.length, mismatch: receipt.mismatch, lowConfidence: receipt.lowConfidence, checks: receipt.checks, ms: Date.now() - started
+    });
     return receipt;
+  }
+
+  // Категории пользователя по id (для черновика чека до записи)
+  async categoriesById(userId) {
+    const categories = await this.expenseService.getCategories(userId);
+    return new Map(categories.map(category => [category.id, category]));
   }
 
   // Записывает позиции тратами (описание — название позиции в пределах лимита описания пользователя).
