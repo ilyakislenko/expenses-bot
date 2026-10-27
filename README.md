@@ -14,7 +14,7 @@ around making that useful over months rather than days.
 | **Tracking** | Free-text entry (`250 coffee`, `20 USD taxi`), remembered categories, edit/undo from the record card, CSV export with period and category filters |
 | **Income & recurring** | Income with `+50000 salary`, balance per period; rent and subscriptions recorded automatically every month |
 | **Budgets** | Monthly and per-category limits with alerts at 80% and when exceeded (premium) |
-| **Savings** | Separate section: one total or several accounts (cash USD, deposit at 16%, crypto…) with own currency and yield; goals as own pots or measured against all savings; forecast with per-account yield, inflation and contribution growth (auto contribution = income − expenses); one goal free, up to 10 with premium |
+| **Savings** | Separate section: one total or several accounts (cash USD, deposit at 16%, crypto…) with own currency and yield; goals as own pots or measured against all savings; debts (loans, mortgage, installments, money owed to friends) with rate, monthly payment, payoff date and total interest, net worth = savings − debts; forecast with per-account yield, inflation, contribution growth and debt amortization (auto contribution = income − expenses); one goal free, up to 10 with premium; up to 10 accounts and 10 debts free |
 | **Reporting** | Month overview by categories, period summary vs the previous period, daily summary at a chosen hour, weekly insight on Mondays (week vs usual, category changes, period pace), reminders |
 | **Family** | Shared budgets — invite members, expenses roll up across the family |
 | **Money** | Multi-currency with scheduled rate updates; per-user currency |

@@ -1,12 +1,14 @@
 const BaseRepository = require('./BaseRepository');
 
-// Накопления: копилки (общая — одна на пользователя, цели — kind 'goal'), операции и параметры прогноза.
+// Накопления: копилки (общая — одна на пользователя, счета, цели — kind 'goal'), долги (kind 'debt'),
+// операции и параметры прогноза.
 // Цель в режиме 'total' своих денег не хранит (balance = 0) — прогресс считается от всех накоплений.
+// Долг: balance — сколько осталось вернуть, yield_rate — ставка по долгу, monthly_payment — платёж в месяц.
 class SavingsRepository extends BaseRepository {
   async getPots(userId) {
     const result = await this.query(
       `SELECT * FROM savings_pots WHERE user_id = $1
-       ORDER BY CASE kind WHEN 'general' THEN 0 WHEN 'account' THEN 1 ELSE 2 END, created_at, id`,
+       ORDER BY CASE kind WHEN 'general' THEN 0 WHEN 'account' THEN 1 WHEN 'goal' THEN 2 ELSE 3 END, created_at, id`,
       [userId]
     );
     return result.rows;
@@ -36,6 +38,43 @@ class SavingsRepository extends BaseRepository {
   async countAccounts(userId) {
     const result = await this.query(`SELECT COUNT(*)::int AS n FROM savings_pots WHERE user_id = $1 AND kind = 'account'`, [userId]);
     return result.rows[0].n;
+  }
+
+  async countDebts(userId) {
+    const result = await this.query(`SELECT COUNT(*)::int AS n FROM savings_pots WHERE user_id = $1 AND kind = 'debt'`, [userId]);
+    return result.rows[0].n;
+  }
+
+  // Новый долг с суммой и ставкой (null — без процентов); первая сумма — операция 'set', как у точной суммы
+  async createDebt(userId, { name, amount, currency, rate }) {
+    return this.transaction(async (client) => {
+      const result = await client.query(
+        `INSERT INTO savings_pots (user_id, kind, name, balance, currency, yield_rate) VALUES ($1, 'debt', $2, $3, $4, $5) RETURNING *`,
+        [userId, name, amount, currency, rate]
+      );
+      const debt = result.rows[0];
+      await client.query(`INSERT INTO savings_operations (user_id, pot_id, amount, kind) VALUES ($1, $2, $3, 'set')`, [userId, debt.id, amount]);
+      return debt;
+    });
+  }
+
+  // fields: name, yield_rate, monthly_payment (null — без процентов / платёж не задан) — только для долгов
+  async updateDebt(userId, potId, fields) {
+    const allowed = ['name', 'yield_rate', 'monthly_payment'];
+    const keys = Object.keys(fields).filter(key => allowed.includes(key));
+    if (!keys.length) return null;
+    const set = keys.map((key, index) => `${key} = $${index + 3}`).join(', ');
+    const result = await this.query(
+      `UPDATE savings_pots SET ${set} WHERE id = $1 AND user_id = $2 AND kind = 'debt' RETURNING *`,
+      [potId, userId, ...keys.map(key => fields[key])]
+    );
+    return result.rows[0];
+  }
+
+  // Удаление долга: деньги никуда не переходят
+  async deleteDebt(userId, potId) {
+    const result = await this.query(`DELETE FROM savings_pots WHERE id = $1 AND user_id = $2 AND kind = 'debt' RETURNING *`, [potId, userId]);
+    return result.rows[0];
   }
 
   async createAccount(userId, { name, currency, yieldRate }) {
@@ -81,12 +120,13 @@ class SavingsRepository extends BaseRepository {
   }
 
   // Пополнение (change > 0), снятие (change < 0) или точная сумма: change — функция от текущего баланса,
-  // считается под блокировкой строки. { pot, delta } или { error: 'not_found' | 'insufficient' | 'not_own' }
-  async changeBalance(userId, potId, change, kind) {
+  // считается под блокировкой строки. debt = true — только для долгов (увеличить, погасить, точная сумма),
+  // иначе — только для накоплений. { pot, delta } или { error: 'not_found' | 'insufficient' | 'not_own' }
+  async changeBalance(userId, potId, change, kind, debt = false) {
     return this.transaction(async (client) => {
       const locked = await client.query('SELECT * FROM savings_pots WHERE id = $1 AND user_id = $2 FOR UPDATE', [potId, userId]);
       const pot = locked.rows[0];
-      if (!pot) return { error: 'not_found' };
+      if (!pot || (pot.kind === 'debt') !== debt) return { error: 'not_found' };
       if (pot.kind === 'goal' && pot.goal_mode !== 'own') return { error: 'not_own' };
       const delta = typeof change === 'function' ? change(Number(pot.balance)) : change;
       const balance = Number(pot.balance) + delta;
@@ -99,7 +139,7 @@ class SavingsRepository extends BaseRepository {
     });
   }
 
-  // Перевод между своими копилками: amountFrom списывается в валюте источника, amountTo зачисляется в валюте получателя
+  // Перевод между своими копилками (не долгами): amountFrom списывается в валюте источника, amountTo зачисляется в валюте получателя
   async transfer(userId, fromId, toId, amountFrom, amountTo) {
     return this.transaction(async (client) => {
       const locked = await client.query(
@@ -108,7 +148,7 @@ class SavingsRepository extends BaseRepository {
       );
       const from = locked.rows.find(p => p.id === fromId);
       const to = locked.rows.find(p => p.id === toId);
-      if (!from || !to || fromId === toId) return { error: 'not_found' };
+      if (!from || !to || fromId === toId || [from, to].some(p => p.kind === 'debt')) return { error: 'not_found' };
       if ([from, to].some(p => p.kind === 'goal' && p.goal_mode !== 'own')) return { error: 'not_own' };
       if (Number(from.balance) < amountFrom) return { error: 'insufficient' };
       const updatedFrom = await client.query('UPDATE savings_pots SET balance = balance - $2 WHERE id = $1 RETURNING *', [fromId, amountFrom]);

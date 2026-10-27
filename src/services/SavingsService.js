@@ -4,6 +4,7 @@ const { localToday } = require('../utils/period');
 
 const AUTO_PERIODS = 3; // взнос «авто» — среднее (доходы − траты) за столько последних полных периодов
 const MAX_ACCOUNTS = 10; // дополнительных счетов (наличные, вклад, крипта…) — бесплатно
+const MAX_DEBTS = 10; // долгов (кредит, ипотека, рассрочка, долг другу) — бесплатно
 
 // Полные месяцы от today до даты 'YYYY-MM-DD' — столько ежемесячных взносов успеет поступить (прошедшая дата — 0)
 function monthsUntil(today, date) {
@@ -75,7 +76,8 @@ class SavingsService {
     return { amount: income - expenses, income, expenses, periods: samples.length };
   }
 
-  // Всё для экранов раздела: копилки с суммами в основной валюте, итог, параметры, взнос в месяц
+  // Всё для экранов раздела: копилки с суммами в основной валюте, итог, параметры, взнос в месяц.
+  // Долги — не накопления: в total, parts и цели «от всех накоплений» не входят, только в debtTotal и netWorth.
   async getState(userId) {
     const currency = await this.userService.getUserCurrency(userId);
     await this.savingsRepository.ensureGeneralPot(userId, currency);
@@ -90,8 +92,13 @@ class SavingsService {
       target_amount: pot.target_amount === null ? null : Number(pot.target_amount),
       target_date: dateOnly(pot.target_date),
       yield_rate: pot.yield_rate === null || pot.yield_rate === undefined ? null : Number(pot.yield_rate),
+      monthly_payment: pot.monthly_payment === null || pot.monthly_payment === undefined ? null : Number(pot.monthly_payment),
       balanceMain: await this.toCurrency(Number(pot.balance), pot.currency, currency)
     })));
+    const assets = pots.filter(p => p.kind !== 'debt');
+    const debts = pots.filter(p => p.kind === 'debt');
+    const total = assets.reduce((sum, p) => sum + p.balanceMain, 0);
+    const debtTotal = debts.reduce((sum, p) => sum + p.balanceMain, 0);
     const settings = this.normalizeSettings(settingsRow);
     const auto = settings.manualMonthly === null ? await this.autoMonthly(userId, currency) : null;
     const monthly = settings.manualMonthly !== null ? settings.manualMonthly : (auto ? auto.amount : null);
@@ -100,11 +107,14 @@ class SavingsService {
       today: localToday(timezone),
       pots,
       general: pots.find(p => p.kind === 'general'),
-      accounts: pots.filter(p => p.kind !== 'goal'),
+      accounts: pots.filter(p => p.kind === 'general' || p.kind === 'account'),
       goals: pots.filter(p => p.kind === 'goal'),
-      total: pots.reduce((sum, p) => sum + p.balanceMain, 0),
+      debts,
+      total,
+      debtTotal,
+      netWorth: total - debtTotal,
       // Части для прогноза: счета со своей ставкой (null — ставка из параметров), деньги целей — по ставке параметров
-      parts: pots.filter(p => p.balanceMain > 0).map(p => ({ balance: p.balanceMain, yieldRate: p.kind === 'goal' ? null : p.yield_rate })),
+      parts: assets.filter(p => p.balanceMain > 0).map(p => ({ balance: p.balanceMain, yieldRate: p.kind === 'goal' ? null : p.yield_rate })),
       settings,
       auto,
       monthly
@@ -247,6 +257,36 @@ class SavingsService {
     return result;
   }
 
+  // { debt } или { error: 'limit', limit }. rate null — без процентов
+  async createDebt(userId, { name, amount, currency, rate }) {
+    if (await this.savingsRepository.countDebts(userId) >= MAX_DEBTS) return { error: 'limit', limit: MAX_DEBTS };
+    const debt = await this.savingsRepository.createDebt(userId, { name, amount, currency, rate });
+    logger.info('Savings debt created', { userId, potId: debt.id, currency });
+    return { debt };
+  }
+
+  // kind: 'pay' (погасить часть) | 'increase' | 'set'. Деньги накоплений и траты не трогает. { pot } или { error }
+  async changeDebt(userId, potId, kind, amount) {
+    const change = kind === 'set' ? (balance) => amount - balance : (kind === 'pay' ? -amount : amount);
+    const operation = { pay: 'withdraw', increase: 'deposit', set: 'set' }[kind];
+    const result = await this.savingsRepository.changeBalance(userId, potId, change, operation, true);
+    if (result.error) return result;
+    logger.info('Savings debt changed', { userId, potId, kind, delta: result.delta });
+    return { pot: result.pot };
+  }
+
+  // fields: name, yield_rate, monthly_payment. Долг или null
+  async updateDebt(userId, potId, fields) {
+    return this.savingsRepository.updateDebt(userId, potId, fields);
+  }
+
+  // Удалённый долг или null
+  async deleteDebt(userId, potId) {
+    const debt = await this.savingsRepository.deleteDebt(userId, potId);
+    if (debt) logger.info('Savings debt deleted', { userId, potId });
+    return debt || null;
+  }
+
   async getPot(userId, potId) {
     return this.savingsRepository.getPot(userId, potId);
   }
@@ -261,5 +301,6 @@ class SavingsService {
 }
 
 SavingsService.monthsUntil = monthsUntil;
+SavingsService.MAX_DEBTS = MAX_DEBTS;
 
 module.exports = SavingsService;
