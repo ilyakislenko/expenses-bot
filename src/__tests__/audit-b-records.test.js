@@ -307,7 +307,8 @@ describe('inline buttons reset text-input states (REC-1, TG-3, SEC-6, PLT-3)', (
       stateService,
       expenseHandlers,
       categoryService,
-      commandHandlers: {}
+      commandHandlers: {},
+      multiEntryHandlers: { handleText: jest.fn(async () => false) }
     });
     await messages.handleExpense({ from: { id: 7 }, message: { text: '250 кофе' }, reply: jest.fn() });
     expect(categoryService.updateUserCategory).not.toHaveBeenCalled();

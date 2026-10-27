@@ -77,12 +77,14 @@ class ExpenseRepository extends BaseRepository {
   }
 
   // Категория последней траты пользователя с таким же описанием (без учёта регистра).
-  // Траты из импорта выписок не учитываются: импорт не меняет запомненные категории
+  // Траты из импорта выписок не учитываются: импорт не меняет запомненные категории. Категория по умолчанию,
+  // поставленная ботом при записи нескольких трат разом (category_guessed), — тоже: пользователь её не выбирал
   async getLastCategoryIdForDescription(userId, description) {
     const query = `
       SELECT category_id
       FROM expenses
-      WHERE user_id = $1 AND category_id IS NOT NULL AND import_hash IS NULL AND LOWER(TRIM(description)) = LOWER(TRIM($2))
+      WHERE user_id = $1 AND category_id IS NOT NULL AND import_hash IS NULL AND NOT category_guessed
+        AND LOWER(TRIM(description)) = LOWER(TRIM($2))
       ORDER BY created_at_utc DESC
       LIMIT 1
     `;
@@ -90,10 +92,11 @@ class ExpenseRepository extends BaseRepository {
     return result.rows[0] ? result.rows[0].category_id : null;
   }
 
+  // Категорию выбрал пользователь — она больше не «угаданная» и запоминается для описания
   async updateExpenseCategory(userId, expenseId, categoryId) {
     const query = `
       UPDATE expenses
-      SET category_id = $3
+      SET category_id = $3, category_guessed = FALSE
       WHERE id = $1 AND user_id = $2
       RETURNING *
     `;

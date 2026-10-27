@@ -198,6 +198,7 @@ Menü aşağıda: ay özeti, bugünkü kayıtlar, gelir, düzenli harcamalar (ki
 • \`250 kahve\` — harcama. Kategoriyi bir kez seçin, hatırlarım
 • \`20 USD taksi\` — başka para biriminde harcama, \`300\` — açıklamasız
 • \`+50000 maaş\` — gelir (\`+1000 USD\` — başka para biriminde)
+• \`kahve 250, taksi 400\` — tek mesajda birkaç kayıt (veya her satıra bir kayıt)
 • Yeni kaydın altında: ↩️ geri al, 🏷 kategoriyi değiştir
 • 📊 *Ay özeti* — harcamalar, gelir, bakiye, kategoriler; ◀️ — önceki dönemler
 • 📅 *Bugün* — günün kayıtları; düzenlemek veya silmek için numaraya dokunun
@@ -1271,6 +1272,29 @@ Artık tüm harcamalar yerel saatte gösterilecek.`,
   import_error: '❌ İşlemler kaydedilemedi — hiçbir şey kaydedilmedi. Lütfen tekrar deneyin.',
   receipt_recognizing: '🔍 Fiş okunuyor…',
   receipt_not_configured: '🧾 Fiş tanıma henüz ayarlanmadı. Harcamaları mesajla girin: `250 kahve`.',
+  multi_recorded_title: 'Kaydedildi: {count}',
+  multi_income_label: 'gelir',
+  multi_expenses_total: 'Toplam harcama: *{total}*',
+  multi_tap_number: 'Bir kaydı düzenlemek, kategorisini değiştirmek veya silmek için numarasına dokunun.',
+  multi_default_category_hint: '🏷 Yeni açıklamalar «{category}» kategorisine kaydedildi — kartta kategoriyi değiştirin, bir dahaki sefere hatırlarım.',
+  button_multi_undo_all: '↩️ Tümünü geri al',
+  multi_undone: '↩️ Geri alındı: {count} kayıt silindi.',
+  multi_already_undone: 'Bu kayıtlar zaten geri alındı.',
+  multi_all_deleted: 'Buradaki tüm kayıtlar silindi.',
+  multi_not_found: 'Kayıtlar bulunamadı.',
+  multi_too_many: '❌ Bir seferde en fazla {max} kayıt. Lütfen birkaç mesaja bölün.',
+  voice_not_configured: '🎙 Sesli giriş henüz ayarlanmadı. Harcamaları mesajla yazın: `kahve 250, taksi 400`.',
+  voice_too_long: '🎙 Sesli mesaj {max} saniyeden uzun. Daha kısa bir tane kaydedin veya yazın: `kahve 250, taksi 400`.',
+  voice_busy: '⏳ Lütfen bekleyin, önceki sesli mesajınızı hâlâ tanıyorum.',
+  voice_limit_regular: '🎙 Bugünkü sesli mesaj hakkınız doldu: {used} / {limit}. Premium ile günde {premium} adede kadar. Yazarak sınırsız: `kahve 250, taksi 400`.',
+  voice_limit_premium: '🎙 Bugünkü sesli mesaj hakkınız doldu: {used} / {limit}. Limit yarın yenilenir — şimdilik yazabilirsiniz: `kahve 250, taksi 400`.',
+  voice_recognizing: '🎙 Ses tanınıyor…',
+  voice_queued: '🎙 Ses tanınıyor… Sıradaki yeriniz: {position}',
+  voice_heard: '🎙 Duyduğum: «{text}»',
+  voice_no_amount: 'Tutar bulamadım. Örneğin şöyle söyleyin: «kahve iki yüz elli ve taksi dört yüz».',
+  voice_empty: '🎙 Hiçbir şey duyamadım. Mikrofona daha yakın ve sessiz bir yerde tekrar deneyin.',
+  voice_error: '❌ Sesli mesaj tanınamadı. Tekrar deneyin veya yazın: `kahve 250`.',
+  help_voice: '🎙 Sesli mesajla «kahve iki yüz elli ve taksi dört yüz» deyin — iki harcamayı da kaydederim. Ses sunucumuzda tanınır ve saklanmaz.',
   receipt_limit_regular: '🧾 Bu ayki fiş tanıma limiti doldu: {used} / {limit}. Premium ile ayda {premium} fişe kadar. Harcamaları yine mesajla girebilirsiniz: `250 kahve`.',
   receipt_limit_premium: '🧾 Bu ayki fiş tanıma limiti doldu: {used} / {limit}. Limit gelecek ay yenilenir; o zamana kadar harcamaları mesajla girebilirsiniz: `250 kahve`.',
   receipt_send_as_photo: '🖼 Bu dosya okunamıyor. Lütfen fişi dosya olarak değil fotoğraf olarak gönderin — Telegram kendisi sıkıştırır.',

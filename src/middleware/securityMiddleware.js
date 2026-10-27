@@ -117,6 +117,10 @@ class SecurityMiddleware {
     if (ctx.message?.photo) {
       limitType = 'receipt';
     }
+    // Голосовые (скачивание и распознавание речи) — отдельный лимит
+    if (ctx.message?.voice) {
+      limitType = 'voice';
+    }
 
     // Специальная проверка для баг-репортов
     if (ctx.callbackQuery?.data === 'bug_report') {

@@ -806,3 +806,35 @@ CREATE TABLE IF NOT EXISTS assistant_questions (
 COMMENT ON TABLE assistant_questions IS 'Отвеченные вопросы боту (без текста вопроса): дневной лимит и статистика';
 COMMENT ON COLUMN assistant_questions.source IS 'Кто разобрал вопрос: example — кнопка-пример, fast — быстрый разбор, model — нейросеть, fallback — быстрый разбор, когда нейросеть не ответила';
 CREATE INDEX IF NOT EXISTS idx_assistant_questions_user_date ON assistant_questions(user_id, local_date);
+
+-- ==== VOICE INPUT & MULTI-ENTRY ====
+-- Несколько записей одним сообщением или голосом: партия (expenses.batch_id / incomes.batch_id) для сводки,
+-- карточек и «Отменить всё». Голос и расшифровка не хранятся; voice_usage — только счётчик голосовых за локальный день.
+CREATE TABLE IF NOT EXISTS entry_batches (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    source VARCHAR(10) NOT NULL DEFAULT 'text',
+    status VARCHAR(10) NOT NULL DEFAULT 'active',
+    item_count INTEGER NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE entry_batches DROP CONSTRAINT IF EXISTS entry_batches_source_check;
+ALTER TABLE entry_batches ADD CONSTRAINT entry_batches_source_check CHECK (source IN ('text', 'voice'));
+ALTER TABLE entry_batches DROP CONSTRAINT IF EXISTS entry_batches_status_check;
+ALTER TABLE entry_batches ADD CONSTRAINT entry_batches_status_check CHECK (status IN ('active', 'undone'));
+CREATE INDEX IF NOT EXISTS idx_entry_batches_user ON entry_batches(user_id, created_at);
+
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS batch_id INTEGER NULL REFERENCES entry_batches(id) ON DELETE SET NULL;
+ALTER TABLE incomes ADD COLUMN IF NOT EXISTS batch_id INTEGER NULL REFERENCES entry_batches(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_expenses_batch ON expenses(batch_id) WHERE batch_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_incomes_batch ON incomes(batch_id) WHERE batch_id IS NOT NULL;
+-- Категория по умолчанию, поставленная ботом (описание ещё не встречалось), — не «запоминается» для описания
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS category_guessed BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Распознанные голосовые за локальный день пользователя (дневной лимит USER_LIMITS.*.MAX_VOICE_PER_DAY)
+CREATE TABLE IF NOT EXISTS voice_usage (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    day DATE NOT NULL,
+    count INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, day)
+);

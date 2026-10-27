@@ -12,6 +12,7 @@ around making that useful over months rather than days.
 | | |
 |---|---|
 | **Tracking** | Free-text entry (`250 coffee`, `20 USD taxi`), remembered categories, edit/undo from the record card, CSV export with period and category filters, bank statement import (T-Bank CSV, Sber and Kaspi Gold PDF, any CSV) with preview, dedup and one-tap undo, receipt photos or full-resolution JPEG files (auto-cropped and straightened, retried rotated when unreadable) recognized by free vision LLMs (fallback chain: Ollama on a LAN GPU PC → optional cloud key → Ollama on the server) into one expense per line item with categories, monthly cap |
+| **Batch & voice** | Several records in one message (`coffee 250, taxi 400`, one per line, `250 coffee and 400 taxi`, incomes with `+`) recorded at once with one summary card, per-item cards and «Undo all»; voice messages recognized fully locally by whisper.cpp (`ggml-small` on CPU, ~3 s for a short phrase), number words in ru/en (`two hundred fifty` → 250), transcript shown, 20 voice messages a day free / 300 with premium, nothing stored |
 | **Income & recurring** | Income with `+50000 salary`, balance per period; rent and subscriptions recorded automatically every month |
 | **Budgets** | Monthly and per-category limits with alerts at 80% and when exceeded (premium) |
 | **Savings** | Separate section: one total or several accounts (cash USD, deposit at 16%, crypto…) with own currency and yield; goals measured against all savings (default) or as own pots; debts (loans, mortgage, installments, money owed to friends) with rate, monthly payment, payoff date and total interest; net worth (capital) = savings − debts; «Update balances» wizard walks every account/debt in one pass; guided creation with currency buttons; compact forecast per horizon with per-account yield, inflation, contribution growth and debt amortization (auto contribution = income − expenses); one goal free, up to 10 with premium; up to 10 accounts and 10 debts free |
@@ -56,6 +57,7 @@ production:
 - **Alerts** — Alertmanager rules in `monitoring/config`.
 - **Infra** — Terraform in `terraform/` provisions the deployment.
 - **Migrations** — `npm run migrate`, plain SQL in `src/migrations`.
+- **Voice** — whisper.cpp + ffmpeg on the host, `VOICE_STT_*` in `.env`; exact install commands in `BOT_PAGES.md` («Голосовые»).
 
 ```bash
 docker compose up -d                                    # Postgres

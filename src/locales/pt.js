@@ -199,6 +199,7 @@ O menu fica embaixo: resumo do mês, registros de hoje, receitas, despesas recor
 • \`250 café\` — despesa. Escolha uma categoria uma vez, eu vou lembrar
 • \`20 USD táxi\` — despesa em outra moeda, \`300\` — sem descrição
 • \`+50000 salário\` — receita (\`+1000 USD\` — em outra moeda)
+• \`café 250, táxi 400\` — vários registros numa mensagem (ou um por linha)
 • Abaixo de um novo registro: ↩️ desfazer, 🏷 mudar categoria
 • 📊 *Resumo do mês* — despesas, receitas, saldo, categorias; ◀️ — períodos anteriores
 • 📅 *Hoje* — registros do dia; toque em um número para editar ou excluir um registro
@@ -1274,6 +1275,29 @@ Agora todas as suas despesas serão exibidas no horário local.`,
     import_error: '❌ Não consegui registrar as operações — nada foi salvo. Tente novamente.',
     receipt_recognizing: '🔍 Lendo o recibo…',
     receipt_not_configured: '🧾 O reconhecimento de recibos ainda não está configurado. Registre despesas por mensagem: `250 café`.',
+    multi_recorded_title: 'Registrado: {count}',
+    multi_income_label: 'receita',
+    multi_expenses_total: 'Total de despesas: *{total}*',
+    multi_tap_number: 'Toque em um número para editar um registro, mudar a categoria ou excluí-lo.',
+    multi_default_category_hint: '🏷 As descrições novas foram para «{category}» — mude a categoria no cartão e eu vou lembrar dela na próxima vez.',
+    button_multi_undo_all: '↩️ Desfazer tudo',
+    multi_undone: '↩️ Desfeito: {count} registros excluídos.',
+    multi_already_undone: 'Estes registros já foram desfeitos.',
+    multi_all_deleted: 'Todos os registros daqui foram excluídos.',
+    multi_not_found: 'Registros não encontrados.',
+    multi_too_many: '❌ No máximo {max} registros de uma vez. Divida em várias mensagens.',
+    voice_not_configured: '🎙 A entrada por voz ainda não está configurada. Escreva as despesas numa mensagem: `café 250, táxi 400`.',
+    voice_too_long: '🎙 A mensagem de voz tem mais de {max} s. Grave uma mais curta ou escreva: `café 250, táxi 400`.',
+    voice_busy: '⏳ Aguarde, ainda estou reconhecendo sua mensagem de voz anterior.',
+    voice_limit_regular: '🎙 As mensagens de voz de hoje acabaram: {used} de {limit}. Com premium — até {premium} por dia. Por texto não há limite: `café 250, táxi 400`.',
+    voice_limit_premium: '🎙 As mensagens de voz de hoje acabaram: {used} de {limit}. O limite renova amanhã — por enquanto, escreva: `café 250, táxi 400`.',
+    voice_recognizing: '🎙 Reconhecendo sua voz…',
+    voice_queued: '🎙 Reconhecendo sua voz… Você está na fila: {position}',
+    voice_heard: '🎙 Ouvi: «{text}»',
+    voice_no_amount: 'Não encontrei nenhum valor. Diga, por exemplo: «café duzentos e cinquenta e táxi quatrocentos».',
+    voice_empty: '🎙 Não ouvi nada. Tente de novo, mais perto do microfone e sem barulho.',
+    voice_error: '❌ Não consegui reconhecer a mensagem de voz. Tente de novo ou escreva: `café 250`.',
+    help_voice: '🎙 Diga numa mensagem de voz «café duzentos e cinquenta e táxi quatrocentos» — registro as duas despesas. A voz é reconhecida no nosso servidor e não é guardada.',
     receipt_limit_regular: '🧾 O limite de reconhecimento de recibos deste mês acabou: {used} de {limit}. Com premium — até {premium} recibos por mês. Você ainda pode registrar despesas por mensagem: `250 café`.',
     receipt_limit_premium: '🧾 O limite de reconhecimento de recibos deste mês acabou: {used} de {limit}. Ele renova no próximo mês; até lá, registre despesas por mensagem: `250 café`.',
     receipt_send_as_photo: '🖼 Não consigo ler este arquivo. Envie o recibo como foto, não como arquivo — o Telegram vai comprimi-lo.',

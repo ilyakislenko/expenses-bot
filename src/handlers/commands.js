@@ -8,7 +8,7 @@ const { localToday, lastDaysPeriod } = require('../utils/period');
 const { PREMIUM_TARIFFS, tariffDiscount, USER_LIMITS } = require('../utils/constants');
 
 class CommandHandlers {
-  constructor({ expenseService, userService, premiumService, familyService, localizationService, formatter, stateService, keyboardGenerators, paymentService, incomeService, funnelService, receiptService, referralService = null }) {
+  constructor({ expenseService, userService, premiumService, familyService, localizationService, formatter, stateService, keyboardGenerators, paymentService, incomeService, funnelService, receiptService, referralService = null, voiceService = null }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -22,6 +22,7 @@ class CommandHandlers {
     this.funnelService = funnelService;
     this.receiptService = receiptService;
     this.referralService = referralService;
+    this.voiceService = voiceService;
   }
 
   async paysupport(ctx) {
@@ -160,9 +161,12 @@ class CommandHandlers {
     const userLanguage = await this.userService.getUserLanguage(userId);
     const t = (key) => this.localizationService.getText(userLanguage, key);
     if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
-    // Подсказка про фото чека — только если распознавание настроено; вопросы боту работают всегда (частые — без нейросети)
-    const receipts = this.receiptService && this.receiptService.configured;
-    const text = `${t('help_message')}\n\n${receipts ? `${t('help_receipt')}\n` : ''}${t('help_assistant')}`;
+    // Подсказки про фото чека и голосовые — только если распознавание настроено; вопросы боту работают всегда (частые — без нейросети)
+    const hints = [t('help_message')];
+    if (this.receiptService && this.receiptService.configured) hints.push(t('help_receipt'));
+    if (this.voiceService && this.voiceService.configured) hints.push(t('help_voice'));
+    hints.push(t('help_assistant'));
+    const text = hints.join('\n\n');
     await respond(ctx, text, {
       parse_mode: 'Markdown',
       reply_markup: {

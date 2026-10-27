@@ -248,4 +248,6 @@ class IncomeHandlers {
   }
 }
 
+IncomeHandlers.MAX_INCOME_AMOUNT = MAX_INCOME_AMOUNT;
+
 module.exports = IncomeHandlers;

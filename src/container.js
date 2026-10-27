@@ -45,6 +45,7 @@ const PlanningRepository = require('./repositories/PlanningRepository');
 const AchievementRepository = require('./repositories/AchievementRepository');
 const ReferralRepository = require('./repositories/ReferralRepository');
 const AssistantRepository = require('./repositories/AssistantRepository');
+const EntryBatchRepository = require('./repositories/EntryBatchRepository');
 
 // Services
 const ExpenseService = require('./services/ExpenseService');
@@ -73,6 +74,9 @@ const ReferralService = require('./services/ReferralService');
 const { createProviderFromEnv: createReceiptProvider } = require('./services/receipt/chain');
 const AssistantService = require('./services/AssistantService');
 const { createAssistantProvider } = require('./services/assistant/model');
+const EntryBatchService = require('./services/EntryBatchService');
+const VoiceService = require('./services/VoiceService');
+const { createSttFromEnv } = require('./services/voice/whisper');
 
 // Handlers
 const CommandHandlers = require('./handlers/commands');
@@ -91,6 +95,7 @@ const PlanningHandlers = require('./handlers/PlanningHandlers');
 const AchievementHandlers = require('./handlers/AchievementHandlers');
 const ReferralHandlers = require('./handlers/ReferralHandlers');
 const AssistantHandlers = require('./handlers/AssistantHandlers');
+const MultiEntryHandlers = require('./handlers/MultiEntryHandlers');
 
 // State management
 const StateService = require('./services/StateService');
@@ -310,6 +315,45 @@ class Container {
           localizationService: this.get('localizationService')
         });
 
+      case 'entryBatchRepository':
+        return new EntryBatchRepository();
+
+      case 'entryBatchService':
+        return new EntryBatchService({
+          entryBatchRepository: this.get('entryBatchRepository'),
+          expenseService: this.get('expenseService'),
+          incomeService: this.get('incomeService'),
+          userService: this.get('userService'),
+          funnelService: this.get('funnelService')
+        });
+
+      // Распознавание речи из VOICE_STT_* (smoke-тесты подменяют его через instances); null — голос не настроен
+      case 'voiceStt':
+        return createSttFromEnv(process.env);
+
+      case 'voiceService':
+        return new VoiceService({
+          stt: this.get('voiceStt'),
+          entryBatchRepository: this.get('entryBatchRepository'),
+          premiumService: this.get('premiumService'),
+          languageMode: process.env.VOICE_STT_LANGUAGE
+        });
+
+      case 'multiEntryHandlers':
+        return new MultiEntryHandlers({
+          entryBatchService: this.get('entryBatchService'),
+          voiceService: this.get('voiceService'),
+          expenseHandlers: this.get('expenseHandlers'),
+          incomeHandlers: this.get('incomeHandlers'),
+          expenseService: this.get('expenseService'),
+          incomeService: this.get('incomeService'),
+          premiumService: this.get('premiumService'),
+          userService: this.get('userService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter'),
+          validator: this.get('enhancedValidator')
+        });
+
       case 'currencyUtils':
         return createCurrencyUtils(this.get('currencyRepository'));
 
@@ -527,7 +571,8 @@ class Container {
           incomeService: this.get('incomeService'),
           funnelService: this.get('funnelService'),
           receiptService: this.get('receiptService'),
-          referralService: this.get('referralService')
+          referralService: this.get('referralService'),
+          voiceService: this.get('voiceService')
         });
 
       case 'messageHandlers':
@@ -553,7 +598,8 @@ class Container {
           exportHandlers: this.get('exportHandlers'),
           savingsHandlers: this.get('savingsHandlers'),
           planningHandlers: this.get('planningHandlers'),
-          assistantHandlers: this.get('assistantHandlers')
+          assistantHandlers: this.get('assistantHandlers'),
+          multiEntryHandlers: this.get('multiEntryHandlers')
         });
 
       case 'callbackHandlers':
@@ -728,6 +774,7 @@ class Container {
       referralHandlers: this.get('referralHandlers'),
       referralService: this.get('referralService'),
       assistantHandlers: this.get('assistantHandlers'),
+      multiEntryHandlers: this.get('multiEntryHandlers'),
       savingsHandlers: this.get('savingsHandlers'),
       planningHandlers: this.get('planningHandlers'),
       planningService: this.get('planningService'),

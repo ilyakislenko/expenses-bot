@@ -13,6 +13,7 @@ const USER_LIMITS = {
     STREAK_FREEZES_PER_WEEK: 1, // заморозок серии в неделю (закрывают пропущенный день автоматически)
     MAX_ACTIVE_CHALLENGES: 1, // челленджей одновременно
     MAX_ASSISTANT_QUESTIONS_PER_DAY: 5, // отвеченных вопросов «🤖 Спроси бота» в локальный день
+    MAX_VOICE_PER_DAY: 20, // распознанных голосовых в локальный день (запись текстом — без лимита)
   },
   premium: {
     MAX_DESCRIPTION_LENGTH: 160,
@@ -25,6 +26,7 @@ const USER_LIMITS = {
     STREAK_FREEZES_PER_WEEK: 2,
     MAX_ACTIVE_CHALLENGES: Infinity,
     MAX_ASSISTANT_QUESTIONS_PER_DAY: 100,
+    MAX_VOICE_PER_DAY: 300,
   }
 };
 

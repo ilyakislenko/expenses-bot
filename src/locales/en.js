@@ -194,6 +194,7 @@ The menu is at the bottom: month overview, today's records, income, recurring ex
 • \`250 coffee\` — expense. Pick a category once, I'll remember it
 • \`20 USD taxi\` — expense in another currency, \`300\` — without description
 • \`+50000 salary\` — income (\`+1000 USD\` — in another currency)
+• \`coffee 250, taxi 400\` — several records in one message (or one per line)
 • Under a new record: ↩️ undo, 🏷 change category
 • 📊 *Month overview* — expenses, income, balance, categories; ◀️ — previous periods
 • 📅 *Today* — records for the day; tap a number to edit or delete a record
@@ -1291,6 +1292,29 @@ Now all your expenses will be correctly displayed in your local time.`,
   import_error: '❌ Couldn\'t record the operations — nothing was saved. Please try again.',
   receipt_recognizing: '🔍 Reading the receipt…',
   receipt_not_configured: '🧾 Receipt recognition isn\'t set up yet. Record expenses with a message: `250 coffee`.',
+  multi_recorded_title: 'Recorded: {count}',
+  multi_income_label: 'income',
+  multi_expenses_total: 'Total spent: *{total}*',
+  multi_tap_number: 'Tap a number to edit a record, change its category or delete it.',
+  multi_default_category_hint: '🏷 New descriptions went to “{category}” — change the category in the card and I\'ll remember it next time.',
+  button_multi_undo_all: '↩️ Undo all',
+  multi_undone: '↩️ Undone: {count} records deleted.',
+  multi_already_undone: 'These records have already been undone.',
+  multi_all_deleted: 'All records from here have been deleted.',
+  multi_not_found: 'Records not found.',
+  multi_too_many: '❌ Up to {max} records at once. Split them into several messages.',
+  voice_not_configured: '🎙 Voice input isn\'t set up yet. Write expenses in a message: `coffee 250, taxi 400`.',
+  voice_too_long: '🎙 The voice message is longer than {max} s. Record a shorter one or type it: `coffee 250, taxi 400`.',
+  voice_busy: '⏳ Please wait, I\'m still recognizing your previous voice message.',
+  voice_limit_regular: '🎙 You\'ve used up today\'s voice messages: {used} of {limit}. With premium — up to {premium} a day. Typing is unlimited: `coffee 250, taxi 400`.',
+  voice_limit_premium: '🎙 You\'ve used up today\'s voice messages: {used} of {limit}. The limit resets tomorrow — for now, just type it: `coffee 250, taxi 400`.',
+  voice_recognizing: '🎙 Recognizing your voice…',
+  voice_queued: '🎙 Recognizing your voice… You\'re in line: {position}',
+  voice_heard: '🎙 I heard: “{text}”',
+  voice_no_amount: 'I couldn\'t find an amount. Try saying: “coffee two hundred fifty and taxi four hundred”.',
+  voice_empty: '🎙 I didn\'t catch anything. Try again — closer to the mic and without background noise.',
+  voice_error: '❌ Couldn\'t recognize the voice message. Try again or type it: `coffee 250`.',
+  help_voice: '🎙 Say “coffee two hundred fifty and taxi four hundred” in a voice message — I\'ll record both expenses. Voice is recognized on our server and isn\'t stored.',
   receipt_limit_regular: '🧾 This month\'s receipt recognition limit is used up: {used} of {limit}. With premium — up to {premium} receipts a month. You can still record expenses with a message: `250 coffee`.',
   receipt_limit_premium: '🧾 This month\'s receipt recognition limit is used up: {used} of {limit}. It resets next month; meanwhile record expenses with a message: `250 coffee`.',
   receipt_send_as_photo: '🖼 I can\'t read this file. Send the receipt as a photo, not as a file — Telegram will compress it.',

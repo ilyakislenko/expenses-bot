@@ -1,5 +1,5 @@
 module.exports = function registerBotRoutes(bot, handlers) {
-  const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, importHandlers, receiptHandlers, savingsHandlers, planningHandlers, achievementHandlers, assistantHandlers, stateService } = handlers;
+  const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, importHandlers, receiptHandlers, multiEntryHandlers, savingsHandlers, planningHandlers, achievementHandlers, assistantHandlers, stateService } = handlers;
   const ReceiptHandlers = require('./handlers/ReceiptHandlers');
   const { BACK_VIEW_PATTERN } = require('./handlers/ExpenseHandlers');
 
@@ -220,6 +220,10 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^rvxc\|(\d+)$/, errorHandler((ctx) => receiptHandlers.undo(ctx, parseInt(ctx.match[1], 10))));
   bot.action(/^rvd\|([01])$/, errorHandler((ctx) => receiptHandlers.resolveDraft(ctx, ctx.match[1] === '1'))); // черновик: записать / отмена
   bot.action('rvr', errorHandler((ctx) => receiptHandlers.rotateAndRetry(ctx))); // повернуть кадр на 90° и распознать снова
+  // Несколько записей одним сообщением и голосовые: сводка (vcb|<id>) → карточки (back v.<id>), «Отменить всё» (vcx|<id>)
+  bot.on('voice', errorHandler((ctx) => multiEntryHandlers.handleVoice(ctx)));
+  bot.action(/^vcb\|(\d+)$/, errorHandler((ctx) => multiEntryHandlers.showBatch(ctx, parseInt(ctx.match[1], 10))));
+  bot.action(/^vcx\|(\d+)$/, errorHandler((ctx) => multiEntryHandlers.undo(ctx, parseInt(ctx.match[1], 10))));
   bot.action('limits', errorHandler(async (ctx) => {
     await ctx.answerCbQuery();
     await commandHandlers.premiumSubscription(ctx);

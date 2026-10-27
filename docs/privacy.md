@@ -9,6 +9,7 @@
 - Импорт банковской выписки: из присланного файла сохраняются только операции — дата, сумма, валюта, описание (обычно название магазина или получателя перевода) и категория. Сам файл, номера карт и счетов, остатки и прочие строки выписки не сохраняются: файл разбирается в памяти и удаляется сразу после обработки.
 - Фото чеков: из присланного фото сохраняются только траты по позициям чека (название, сумма, валюта, категория, дата) и сводка чека (продавец, дата, итог). Само фото бот не сохраняет.
 - Вопросы боту («🤖 Спроси бота»): текст вопроса не сохраняется — только факт ответа (дата, тип вопроса) для дневного лимита.
+- Голосовые сообщения: распознаются программой на сервере бота (whisper.cpp) и никуда не передаются. Сохраняются только записанные из них траты и доходы и число голосовых за день (для дневного лимита). Само голосовое и его текстовая расшифровка не сохраняются: временный файл удаляется сразу после распознавания.
 - Семья: участие в семье и приглашения. Семейные траты видят участники семьи.
 - Покупки в Telegram Stars: тариф, сумма в звёздах, идентификатор платежа Telegram. Данные карт и счетов бот не получает — оплата проходит внутри Telegram.
 - Сообщения в поддержку и баг-репорты.
@@ -19,7 +20,7 @@
 Чтобы вести учёт, считать итоги и бюджеты, присылать напоминания, сводки и уведомления, выдавать премиум, отвечать в поддержке и улучшать бот.
 
 ## Кому передаются
-Данные не продаются и не передаются для рекламы. Сообщения доставляет Telegram. Курсы валют загружаются с cbr-xml-daily.ru без твоих данных. Фото чека распознаёт нейросеть — только изображение, без твоего имени и ID. Обычно это модели, запущенные на компьютерах разработчика: тогда фото никуда не уходит. Если они недоступны и в боте настроен облачный сервис (например, Google Gemini или Mistral), фото отправляется ему; бесплатный тариф Gemini позволяет Google использовать присланные данные для улучшения своих продуктов, поэтому не присылай фото с лишними личными данными.
+Данные не продаются и не передаются для рекламы. Сообщения доставляет Telegram. Курсы валют загружаются с cbr-xml-daily.ru без твоих данных. Голосовые сообщения распознаются на сервере бота и третьим лицам не передаются. Фото чека распознаёт нейросеть — только изображение, без твоего имени и ID. Обычно это модели, запущенные на компьютерах разработчика: тогда фото никуда не уходит. Если они недоступны и в боте настроен облачный сервис (например, Google Gemini или Mistral), фото отправляется ему; бесплатный тариф Gemini позволяет Google использовать присланные данные для улучшения своих продуктов, поэтому не присылай фото с лишними личными данными.
 Вопрос боту, который бот не разобрал сам, разбирает нейросеть — только текст вопроса, сегодняшняя дата и названия твоих категорий, без имени, ID и сумм. Суммы и ответ считает сам бот по твоим записям. Нейросеть та же, что для чеков (обычно на компьютерах разработчика, облачный сервис — только если локальные недоступны и он настроен).
 
 ## Хранение
@@ -40,6 +41,7 @@ Version of 27.10.2026. Data controller: IE KISLENKO (Republic of Kazakhstan), II
 - Bank statement import: only the operations from the file you send are stored — date, amount, currency, description (usually the merchant or transfer recipient) and category. The file itself, card and account numbers, balances and the rest of the statement are not stored: the file is processed in memory and discarded right after.
 - Receipt photos: only the expenses from the receipt lines (name, amount, currency, category, date) and a receipt summary (merchant, date, total) are stored. The bot does not store the photo itself.
 - Questions to the bot («🤖 Ask the bot»): the question text is not stored — only the fact of an answer (date, question type) for the daily limit.
+- Voice messages: recognized by a program on the bot's own server (whisper.cpp) and not sent anywhere. Only the expenses and income recorded from them and the number of voice messages per day (for the daily limit) are stored. The voice message itself and its transcript are not stored: the temporary file is deleted right after recognition.
 - Family: membership and invitations. Family expenses are visible to family members.
 - Telegram Stars purchases: plan, amount in Stars, Telegram payment ID. The bot never receives card or bank details — payment happens inside Telegram.
 - Support messages and bug reports.
@@ -50,7 +52,7 @@ Version of 27.10.2026. Data controller: IE KISLENKO (Republic of Kazakhstan), II
 To keep your records, calculate summaries and budgets, send reminders, summaries and notifications, grant premium, answer support requests and improve the bot.
 
 ## Sharing
-Data is not sold or shared for advertising. Messages are delivered by Telegram. Exchange rates are loaded from cbr-xml-daily.ru without your data. A receipt photo is recognized by an AI model — the image only, without your name or ID. Usually these are models running on the developer's own computers, so the photo doesn't leave them. If they are unavailable and a cloud service is configured in the bot (for example Google Gemini or Mistral), the photo is sent to it; Gemini's free tier allows Google to use submitted data to improve its products, so don't send photos with unnecessary personal information.
+Data is not sold or shared for advertising. Messages are delivered by Telegram. Exchange rates are loaded from cbr-xml-daily.ru without your data. Voice messages are recognized on the bot's own server and are not shared with third parties. A receipt photo is recognized by an AI model — the image only, without your name or ID. Usually these are models running on the developer's own computers, so the photo doesn't leave them. If they are unavailable and a cloud service is configured in the bot (for example Google Gemini or Mistral), the photo is sent to it; Gemini's free tier allows Google to use submitted data to improve its products, so don't send photos with unnecessary personal information.
 A question the bot can't parse by itself is parsed by an AI model — only the question text, today's date and your category names, without your name, ID or amounts. The bot computes the amounts and the answer from your records itself. It's the same model as for receipts (usually on the developer's own computers; a cloud service only if those are unavailable and one is configured).
 
 ## Storage

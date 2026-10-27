@@ -2,7 +2,7 @@ const { LEGACY_MENU_BUTTON_KEYS } = require('../utils/constants');
 const AssistantHandlers = require('./AssistantHandlers');
 
 class MessageHandlers {
-constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, donationRepository, bugReportRepository, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, savingsHandlers, planningHandlers, assistantHandlers }) {
+constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, donationRepository, bugReportRepository, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, savingsHandlers, planningHandlers, assistantHandlers, multiEntryHandlers }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -25,6 +25,7 @@ constructor({ expenseService, userService, premiumService, familyService, catego
     this.savingsHandlers = savingsHandlers;
     this.planningHandlers = planningHandlers;
     this.assistantHandlers = assistantHandlers;
+    this.multiEntryHandlers = multiEntryHandlers;
   }
 
   async handleExpense(ctx) {
@@ -215,6 +216,9 @@ constructor({ expenseService, userService, premiumService, familyService, catego
       if (this.assistantHandlers && AssistantHandlers.isQuestion(text)) {
         return await this.assistantHandlers.ask(ctx, text, userLanguage);
       }
+
+      // Несколько записей одним сообщением: «кофе 250, такси 400», по строке на запись, «+50000 зарплата, обед 600»
+      if (await this.multiEntryHandlers.handleText(ctx, text, userLanguage)) return;
       // Доход быстрым вводом: "+50000 зарплата", "+1000 USD фриланс"
       if (/^\s*\+\s*\d/.test(text)) {
         return await this.incomeHandlers.handleIncomeInput(ctx, text, userLanguage);
