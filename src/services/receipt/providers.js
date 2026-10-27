@@ -1,13 +1,12 @@
 // Провайдеры распознавания: Google Gemini (бесплатный тариф) и любой OpenAI-совместимый chat/completions
-// (OpenRouter, Mistral, локальная Ollama). Оба возвращают сырой JSON модели — проверяет normalize.js.
+// (Ollama, Mistral, OpenRouter). Оба возвращают сырой JSON модели — проверяет normalize.js.
+// Цепочка провайдеров из переменных окружения — chain.js.
 const { ReceiptError } = require('./errors');
 const { RESPONSE_SCHEMA } = require('./prompt');
 const { postJsonWithRetry } = require('./httpClient');
 
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com';
 const GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash';
-const GITHUB_BASE_URL = 'https://models.github.ai/inference';
-const GITHUB_DEFAULT_MODEL = 'openai/gpt-4o-mini';
 
 // Текст ответа модели → объект. Модели иногда оборачивают JSON в ```json … ```
 function parseModelJson(text) {
@@ -39,15 +38,19 @@ function mapHttpError(response) {
   return new ReceiptError('unavailable', `HTTP ${response.status}: ${message}`);
 }
 
+const unexpected = (response) => new ReceiptError('unavailable', `unexpected response: ${String(response.body).slice(0, 100)}`);
+
 class GeminiProvider {
-  constructor({ apiKey, model, localAddress, timeoutMs, baseUrl = GEMINI_BASE_URL, post = postJsonWithRetry }) {
+  constructor({ apiKey, model, localAddress, timeoutMs, connectTimeoutMs, baseUrl = GEMINI_BASE_URL, post = postJsonWithRetry }) {
     this.name = 'gemini';
-    this.apiKey = apiKey;
+    this.apiKey = apiKey || '';
     this.model = model || GEMINI_DEFAULT_MODEL;
     this.localAddress = localAddress || undefined;
     this.timeoutMs = timeoutMs;
+    this.connectTimeoutMs = connectTimeoutMs;
     this.baseUrl = baseUrl.replace(/\/+$/, '');
     this.post = post;
+    this.acceptsHeic = true;
   }
 
   get configured() {
@@ -73,11 +76,11 @@ class GeminiProvider {
   async recognize(input) {
     if (!this.configured) throw new ReceiptError('not_configured');
     const { url, body } = this.buildRequest(input);
-    const response = await this.post(url, body, { localAddress: this.localAddress, timeoutMs: this.timeoutMs });
+    const response = await this.post(url, body, { localAddress: this.localAddress, timeoutMs: this.timeoutMs, connectTimeoutMs: this.connectTimeoutMs });
     if (response.status !== 200) throw mapHttpError(response);
     const json = response.json;
     // 200 без ожидаемого JSON (заглушка, прокси) — сбой сервиса, а не плохое фото
-    if (!json || (!json.candidates && !json.promptFeedback)) throw new ReceiptError('unavailable', `unexpected response: ${String(response.body).slice(0, 100)}`);
+    if (!json || (!json.candidates && !json.promptFeedback)) throw unexpected(response);
     if (json.promptFeedback && json.promptFeedback.blockReason) throw new ReceiptError('unreadable', `blocked: ${json.promptFeedback.blockReason}`);
     const candidate = (json.candidates || [])[0];
     const parts = (candidate && candidate.content && candidate.content.parts) || [];
@@ -87,22 +90,22 @@ class GeminiProvider {
   }
 }
 
+// OpenAI-совместимый /chat/completions. Ключ необязателен (локальная Ollama его не проверяет — не отправляем)
 class OpenAiCompatibleProvider {
-  // name — 'openai' или пресет ('github'); requireKey — без ключа провайдер не настроен (облачные сервисы)
-  constructor({ apiKey, model, baseUrl, localAddress, timeoutMs, post = postJsonWithRetry, name = 'openai', requireKey = false }) {
-    this.name = name;
+  constructor({ apiKey, model, baseUrl, localAddress, timeoutMs, connectTimeoutMs, post = postJsonWithRetry }) {
+    this.name = 'openai';
     this.apiKey = apiKey || '';
     this.model = model;
     this.baseUrl = String(baseUrl || '').replace(/\/+$/, '');
     this.localAddress = localAddress || undefined;
     this.timeoutMs = timeoutMs;
+    this.connectTimeoutMs = connectTimeoutMs;
     this.post = post;
-    this.requireKey = requireKey;
+    this.acceptsHeic = false;
   }
 
-  // Адрес и модель обязательны; ключ — только если requireKey (локальной Ollama он не нужен)
   get configured() {
-    return !!(this.baseUrl && this.model && (this.apiKey || !this.requireKey));
+    return !!(this.baseUrl && this.model);
   }
 
   buildRequest({ image, mimeType, prompt }) {
@@ -128,11 +131,9 @@ class OpenAiCompatibleProvider {
   async recognize(input) {
     if (!this.configured) throw new ReceiptError('not_configured');
     const { url, headers, body } = this.buildRequest(input);
-    const response = await this.post(url, body, { headers, localAddress: this.localAddress, timeoutMs: this.timeoutMs });
+    const response = await this.post(url, body, { headers, localAddress: this.localAddress, timeoutMs: this.timeoutMs, connectTimeoutMs: this.connectTimeoutMs });
     if (response.status !== 200) throw mapHttpError(response);
-    if (!response.json || !Array.isArray(response.json.choices)) {
-      throw new ReceiptError('unavailable', `unexpected response: ${String(response.body).slice(0, 100)}`);
-    }
+    if (!response.json || !Array.isArray(response.json.choices)) throw unexpected(response);
     const choice = response.json.choices[0];
     const content = choice && choice.message && choice.message.content;
     const text = Array.isArray(content) ? content.map(part => part.text || '').join('') : content;
@@ -141,31 +142,4 @@ class OpenAiCompatibleProvider {
   }
 }
 
-// Провайдер из переменных окружения: RECEIPT_AI_PROVIDER (gemini|github|openai), RECEIPT_AI_API_KEY, RECEIPT_AI_MODEL,
-// RECEIPT_AI_BASE_URL (openai; у github — свой адрес по умолчанию), RECEIPT_AI_LOCAL_ADDRESS (исходящий IP)
-function createProviderFromEnv(env = process.env) {
-  const common = {
-    apiKey: env.RECEIPT_AI_API_KEY || '',
-    model: env.RECEIPT_AI_MODEL || undefined,
-    localAddress: env.RECEIPT_AI_LOCAL_ADDRESS || undefined
-  };
-  const kind = String(env.RECEIPT_AI_PROVIDER || 'gemini').toLowerCase();
-  if (kind === 'github') {
-    // GitHub Models: GitHub PAT, OpenAI-совместимый chat/completions. GitHub закрыл сервис 30.07.2026 (адрес отвечает
-    // заглушкой «OK» — это «сервис недоступен»); пресет оставлен на случай возврата
-    return new OpenAiCompatibleProvider({
-      ...common,
-      name: 'github',
-      requireKey: true,
-      model: common.model || GITHUB_DEFAULT_MODEL,
-      baseUrl: env.RECEIPT_AI_BASE_URL || GITHUB_BASE_URL
-    });
-  }
-  if (kind === 'openai') return new OpenAiCompatibleProvider({ ...common, baseUrl: env.RECEIPT_AI_BASE_URL });
-  return new GeminiProvider(common);
-}
-
-module.exports = {
-  GeminiProvider, OpenAiCompatibleProvider, createProviderFromEnv, parseModelJson, mapHttpError,
-  GEMINI_DEFAULT_MODEL, GITHUB_BASE_URL, GITHUB_DEFAULT_MODEL
-};
+module.exports = { GeminiProvider, OpenAiCompatibleProvider, parseModelJson, mapHttpError, GEMINI_DEFAULT_MODEL };

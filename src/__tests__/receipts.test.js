@@ -1,6 +1,7 @@
 const http = require('http');
 const { normalizeReceipt, resolveReceiptTime, localMonthStart, cleanName } = require('../services/receipt/normalize');
-const { GeminiProvider, OpenAiCompatibleProvider, createProviderFromEnv, mapHttpError, parseModelJson } = require('../services/receipt/providers');
+const { GeminiProvider, OpenAiCompatibleProvider, mapHttpError, parseModelJson } = require('../services/receipt/providers');
+const { parseSlots, createProviderFromEnv, ChainProvider } = require('../services/receipt/chain');
 const { RESPONSE_SCHEMA, buildPrompt } = require('../services/receipt/prompt');
 const { postJson, postJsonWithRetry } = require('../services/receipt/httpClient');
 const { ReceiptError } = require('../services/receipt/errors');
@@ -246,17 +247,6 @@ describe('providers', () => {
     expect(post.mock.calls[0][2]).toMatchObject({ localAddress: '10.0.0.5', headers: {} });
   });
 
-  it('configures providers from env: github preset, gemini, openai; no key → not configured', () => {
-    const github = createProviderFromEnv({ RECEIPT_AI_PROVIDER: 'github', RECEIPT_AI_API_KEY: 'pat' });
-    expect(github).toMatchObject({ name: 'github', baseUrl: 'https://models.github.ai/inference', model: 'openai/gpt-4o-mini', configured: true });
-    expect(github.buildRequest(input).url).toBe('https://models.github.ai/inference/chat/completions');
-    expect(createProviderFromEnv({ RECEIPT_AI_PROVIDER: 'github' }).configured).toBe(false);
-    expect(createProviderFromEnv({}).configured).toBe(false);
-    expect(createProviderFromEnv({ RECEIPT_AI_API_KEY: 'k', RECEIPT_AI_LOCAL_ADDRESS: '100.103.143.229' })).toMatchObject({ name: 'gemini', localAddress: '100.103.143.229', configured: true });
-    expect(createProviderFromEnv({ RECEIPT_AI_PROVIDER: 'openai', RECEIPT_AI_API_KEY: 'k' }).configured).toBe(false);
-    expect(createProviderFromEnv({ RECEIPT_AI_PROVIDER: 'openai', RECEIPT_AI_BASE_URL: 'http://127.0.0.1:11434/v1', RECEIPT_AI_MODEL: 'llava' }).configured).toBe(true);
-  });
-
   it('maps HTTP errors to error classes', () => {
     expect(mapHttpError({ status: 429, json: { error: { message: 'Rate limit' } } }).code).toBe('quota');
     expect(mapHttpError({ status: 401, json: { error: { message: 'Bad credentials' } } }).code).toBe('auth');
@@ -266,11 +256,9 @@ describe('providers', () => {
     expect(() => parseModelJson('no json here')).toThrow(ReceiptError);
   });
 
-  it('treats a 200 answer without the expected JSON (retired GitHub Models answers "OK") as an unavailable service', async () => {
+  it('treats a 200 answer without the expected JSON (a stub page) as an unavailable service', async () => {
     const stub = async () => ({ status: 200, body: 'OK\n', json: null });
-    const github = createProviderFromEnv({ RECEIPT_AI_PROVIDER: 'github', RECEIPT_AI_API_KEY: 'pat' });
-    github.post = stub;
-    await expect(github.recognize(input)).rejects.toMatchObject({ code: 'unavailable' });
+    await expect(new OpenAiCompatibleProvider({ model: 'm', baseUrl: 'http://x/v1', post: stub }).recognize(input)).rejects.toMatchObject({ code: 'unavailable' });
     await expect(new GeminiProvider({ apiKey: 'k', post: stub }).recognize(input)).rejects.toMatchObject({ code: 'unavailable' });
   });
 
@@ -355,5 +343,155 @@ describe('telegram images', () => {
     expect(ReceiptHandlers.isImageDocument({ mime_type: 'image/jpeg' })).toBe(true);
     expect(ReceiptHandlers.isImageDocument({ file_name: 'IMG_1234.HEIC' })).toBe(true);
     expect(ReceiptHandlers.isImageDocument({ file_name: 'statement.csv', mime_type: 'text/csv' })).toBe(false);
+  });
+});
+
+describe('provider chain', () => {
+  const input = { image: Buffer.from('jpegdata'), mimeType: 'image/jpeg', prompt: 'PROMPT' };
+
+  it('reads numbered slots in order and the legacy un-numbered settings as slot 1', () => {
+    const slots = parseSlots({
+      RECEIPT_AI_1_PROVIDER: 'openai', RECEIPT_AI_1_BASE_URL: 'http://192.168.1.50:11434/v1', RECEIPT_AI_1_MODEL: 'qwen2.5vl:7b',
+      RECEIPT_AI_2_PROVIDER: 'gemini', RECEIPT_AI_2_API_KEY: 'k', RECEIPT_AI_2_LOCAL_ADDRESS: '100.103.143.229',
+      RECEIPT_AI_3_PROVIDER: 'OPENAI', RECEIPT_AI_3_BASE_URL: 'http://127.0.0.1:11434/v1', RECEIPT_AI_3_MODEL: 'qwen2.5vl:3b',
+      RECEIPT_AI_3_TIMEOUT_MS: '120000', RECEIPT_AI_3_CONNECT_TIMEOUT_MS: '500',
+      RECEIPT_AI_PROVIDER: 'gemini', RECEIPT_AI_API_KEY: 'ignored-when-slot-1-is-set'
+    });
+    expect(slots.map(slot => [slot.slot, slot.provider, slot.model || null, slot.timeoutMs, slot.connectTimeoutMs])).toEqual([
+      [1, 'openai', 'qwen2.5vl:7b', 60000, 2000],
+      [2, 'gemini', null, 60000, 2000],
+      [3, 'openai', 'qwen2.5vl:3b', 120000, 500]
+    ]);
+    expect(slots[1]).toMatchObject({ apiKey: 'k', localAddress: '100.103.143.229' });
+
+    expect(parseSlots({ RECEIPT_AI_API_KEY: 'k', RECEIPT_AI_MODEL: 'gemini-x' })).toEqual([
+      expect.objectContaining({ slot: 1, provider: 'gemini', apiKey: 'k', model: 'gemini-x' })
+    ]);
+    expect(parseSlots({ RECEIPT_AI_PROVIDER: 'openai', RECEIPT_AI_BASE_URL: 'http://h/v1', RECEIPT_AI_MODEL: 'm', RECEIPT_AI_2_PROVIDER: 'gemini', RECEIPT_AI_2_API_KEY: 'k' })
+      .map(slot => [slot.slot, slot.provider])).toEqual([[1, 'openai'], [2, 'gemini']]);
+    expect(parseSlots({})).toEqual([]);
+  });
+
+  it('skips incomplete or unknown slots; the chain is configured if any slot is', () => {
+    expect(createProviderFromEnv({}).configured).toBe(false);
+    expect(createProviderFromEnv({ RECEIPT_AI_1_PROVIDER: 'gemini' }).configured).toBe(false); // без ключа
+    expect(createProviderFromEnv({ RECEIPT_AI_1_PROVIDER: 'openai', RECEIPT_AI_1_MODEL: 'm' }).configured).toBe(false); // без адреса
+    expect(createProviderFromEnv({ RECEIPT_AI_1_PROVIDER: 'github', RECEIPT_AI_1_API_KEY: 'pat' }).configured).toBe(false); // пресет удалён
+    const chain = createProviderFromEnv({
+      RECEIPT_AI_1_PROVIDER: 'openai', RECEIPT_AI_1_BASE_URL: 'http://127.0.0.1:11434/v1', RECEIPT_AI_1_MODEL: 'qwen2.5vl:3b'
+    });
+    expect(chain.configured).toBe(true);
+    expect(chain.acceptsHeic).toBe(false);
+    expect(chain.providers[0]).toMatchObject({ slot: 1, apiKey: '', model: 'qwen2.5vl:3b' });
+    expect(chain.providers[0].buildRequest(input).headers).toEqual({}); // Ollama: без ключа заголовок не шлём
+  });
+
+  function fakeSlot(slot, behaviour) {
+    return { slot, name: 'fake', model: `m${slot}`, recognize: jest.fn(async () => {
+      if (behaviour instanceof Error) throw behaviour;
+      return behaviour;
+    }) };
+  }
+
+  it('falls through on availability errors and stops on answers', async () => {
+    const answer = { is_receipt: true, items: [] };
+    for (const code of ['network', 'unavailable', 'quota', 'auth']) {
+      const chain = new ChainProvider([fakeSlot(1, new ReceiptError(code)), fakeSlot(2, answer)]);
+      await expect(chain.recognize(input)).resolves.toBe(answer);
+    }
+    for (const code of ['unreadable', 'not_receipt']) {
+      const second = fakeSlot(2, answer);
+      const chain = new ChainProvider([fakeSlot(1, new ReceiptError(code)), second]);
+      await expect(chain.recognize(input)).rejects.toMatchObject({ code });
+      expect(second.recognize).not.toHaveBeenCalled();
+    }
+    const allDown = new ChainProvider([fakeSlot(1, new ReceiptError('network')), fakeSlot(2, new ReceiptError('quota'))]);
+    await expect(allDown.recognize(input)).rejects.toMatchObject({ code: 'quota' });
+    await expect(new ChainProvider([fakeSlot(1, new Error('socket hang up')), fakeSlot(2, answer)]).recognize(input)).resolves.toBe(answer);
+  });
+
+  describe('over HTTP', () => {
+    let server;
+    let port;
+    const hits = [];
+    beforeAll(async () => {
+      server = http.createServer((req, res) => {
+        let body = '';
+        req.on('data', chunk => { body += chunk; });
+        req.on('end', () => {
+          hits.push(req.url);
+          res.setHeader('Content-Type', 'application/json');
+          if (req.url.startsWith('/down/')) {
+            res.statusCode = 503;
+            res.end('{"error":"model is loading"}');
+          } else if (req.url.startsWith('/garbage/')) {
+            res.end(JSON.stringify({ choices: [{ message: { content: 'I cannot read this image' } }] }));
+          } else {
+            res.end(JSON.stringify({ choices: [{ message: { content: '{"is_receipt":true,"items":[{"name":"Хлеб","amount":45}]}' } }] }));
+          }
+        });
+      });
+      await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+      port = server.address().port;
+    });
+    afterAll(() => new Promise(resolve => server.close(resolve)));
+    beforeEach(() => { hits.length = 0; });
+
+    async function freePort() {
+      const probe = http.createServer();
+      await new Promise(resolve => probe.listen(0, '127.0.0.1', resolve));
+      const { port: closed } = probe.address();
+      await new Promise(resolve => probe.close(resolve));
+      return closed;
+    }
+
+    it('refused → 503 → answer: each slot is tried once, the last one serves', async () => {
+      const closed = await freePort();
+      const chain = createProviderFromEnv({
+        RECEIPT_AI_1_PROVIDER: 'openai', RECEIPT_AI_1_BASE_URL: `http://127.0.0.1:${closed}/v1`, RECEIPT_AI_1_MODEL: 'qwen2.5vl:7b',
+        RECEIPT_AI_2_PROVIDER: 'openai', RECEIPT_AI_2_BASE_URL: `http://127.0.0.1:${port}/down/v1`, RECEIPT_AI_2_MODEL: 'cloud',
+        RECEIPT_AI_3_PROVIDER: 'openai', RECEIPT_AI_3_BASE_URL: `http://127.0.0.1:${port}/ok/v1`, RECEIPT_AI_3_MODEL: 'qwen2.5vl:3b'
+      });
+      const started = Date.now();
+      await expect(chain.recognize(input)).resolves.toEqual({ is_receipt: true, items: [{ name: 'Хлеб', amount: 45 }] });
+      expect(hits).toEqual(['/down/v1/chat/completions', '/ok/v1/chat/completions']); // 503 у не последнего слота — без повтора
+      expect(Date.now() - started).toBeLessThan(1500);
+    });
+
+    it('an unreadable answer stops the chain', async () => {
+      const chain = createProviderFromEnv({
+        RECEIPT_AI_1_PROVIDER: 'openai', RECEIPT_AI_1_BASE_URL: `http://127.0.0.1:${port}/garbage/v1`, RECEIPT_AI_1_MODEL: 'a',
+        RECEIPT_AI_2_PROVIDER: 'openai', RECEIPT_AI_2_BASE_URL: `http://127.0.0.1:${port}/ok/v1`, RECEIPT_AI_2_MODEL: 'b'
+      });
+      await expect(chain.recognize(input)).rejects.toMatchObject({ code: 'unreadable' });
+      expect(hits).toEqual(['/garbage/v1/chat/completions']);
+    });
+
+    it('fails fast on a non-listening port and on an unreachable host', async () => {
+      const closed = await freePort();
+      let started = Date.now();
+      await expect(postJson(`http://127.0.0.1:${closed}/v1/chat/completions`, {}, { timeoutMs: 60000 })).rejects.toMatchObject({ code: 'network' });
+      expect(Date.now() - started).toBeLessThan(500);
+      // 10.255.255.1 не отвечает (пакеты теряются) — срабатывает таймаут соединения, а не общий
+      started = Date.now();
+      await expect(postJson('http://10.255.255.1:11434/v1/chat/completions', {}, { timeoutMs: 60000, connectTimeoutMs: 300 })).rejects.toMatchObject({ code: 'network' });
+      expect(Date.now() - started).toBeLessThan(1500);
+    });
+  });
+
+  it('keeps sending «typing» every 4 s until stopped', () => {
+    jest.useFakeTimers();
+    try {
+      const ctx = { sendChatAction: jest.fn(async () => true) };
+      const stop = ReceiptHandlers.keepTyping(ctx);
+      jest.advanceTimersByTime(12500);
+      expect(ctx.sendChatAction).toHaveBeenCalledTimes(3);
+      expect(ctx.sendChatAction).toHaveBeenCalledWith('typing');
+      stop();
+      jest.advanceTimersByTime(20000);
+      expect(ctx.sendChatAction).toHaveBeenCalledTimes(3);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

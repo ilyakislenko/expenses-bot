@@ -63,7 +63,7 @@ const DailySummaryService = require('./services/DailySummaryService');
 const WeeklyInsightService = require('./services/WeeklyInsightService');
 const ImportService = require('./services/ImportService');
 const ReceiptService = require('./services/ReceiptService');
-const { createProviderFromEnv: createReceiptProvider } = require('./services/receipt/providers');
+const { createProviderFromEnv: createReceiptProvider } = require('./services/receipt/chain');
 
 // Handlers
 const CommandHandlers = require('./handlers/commands');

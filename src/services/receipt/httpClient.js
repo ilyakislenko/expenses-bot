@@ -5,11 +5,13 @@ const https = require('https');
 const { ReceiptError } = require('./errors');
 
 const DEFAULT_TIMEOUT_MS = 60000;
+const DEFAULT_CONNECT_TIMEOUT_MS = 2000; // выключенный ПК в сети не должен задерживать переход к следующему слоту
 const RETRY_DELAY_MS = 2000;
 const MAX_RETRY_DELAY_MS = 20000;
 
-// { status, headers, body (текст), json (или null) }; сетевые ошибки и таймаут — ReceiptError('network')
-function postJson(url, body, { headers = {}, timeoutMs = DEFAULT_TIMEOUT_MS, localAddress, transport } = {}) {
+// { status, headers, body (текст), json (или null) }; сетевые ошибки и таймауты — ReceiptError('network').
+// connectTimeoutMs — на установку TCP-соединения, timeoutMs — на весь запрос (модель может думать долго)
+function postJson(url, body, { headers = {}, timeoutMs = DEFAULT_TIMEOUT_MS, connectTimeoutMs = DEFAULT_CONNECT_TIMEOUT_MS, localAddress, transport } = {}) {
   const target = new URL(url);
   const client = transport || (target.protocol === 'http:' ? http : https);
   const payload = Buffer.from(JSON.stringify(body));
@@ -28,6 +30,7 @@ function postJson(url, body, { headers = {}, timeoutMs = DEFAULT_TIMEOUT_MS, loc
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      clearTimeout(connectTimer);
       fn(value);
     };
     const req = client.request(options, (res) => {
@@ -49,6 +52,15 @@ function postJson(url, body, { headers = {}, timeoutMs = DEFAULT_TIMEOUT_MS, loc
       req.destroy();
       finish(reject, new ReceiptError('network', 'timeout'));
     }, timeoutMs);
+    let connectTimer = null;
+    req.on('socket', (socket) => {
+      if (!socket.connecting) return;
+      connectTimer = setTimeout(() => {
+        req.destroy();
+        finish(reject, new ReceiptError('network', 'connect timeout'));
+      }, connectTimeoutMs);
+      socket.once('connect', () => clearTimeout(connectTimer));
+    });
     req.on('error', error => finish(reject, new ReceiptError('network', error.message)));
     req.end(payload);
   });

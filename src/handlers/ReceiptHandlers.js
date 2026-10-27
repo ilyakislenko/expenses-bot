@@ -5,7 +5,14 @@ const { ReceiptError } = require('../services/receipt/errors');
 const PAGE_SIZE = 20;
 const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024; // больше — просим прислать фото (Telegram сожмёт до ~1280px)
 const NAME_IN_LIST = 40;
-const TYPING_INTERVAL_MS = 4500;
+const TYPING_INTERVAL_MS = 4000;
+
+// «печатает…» в чате, пока идёт долгая операция (статус Telegram держится ~5 с). Возвращает stop()
+function keepTyping(ctx, intervalMs = TYPING_INTERVAL_MS) {
+  const timer = setInterval(() => ctx.sendChatAction('typing').catch(() => {}), intervalMs);
+  return () => clearInterval(timer);
+}
+
 const IMAGE_MIME = /^image\/(jpeg|jpg|png|webp|heic|heif)$/i;
 const IMAGE_EXTENSION = /\.(jpe?g|png|webp|heic|heif)$/i;
 const MIME_BY_EXTENSION = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', heic: 'image/heic', heif: 'image/heif' };
@@ -45,6 +52,8 @@ class ReceiptHandlers {
     this.userService = userService;
     this.localizationService = localizationService;
     this.formatter = formatter;
+    this.tasks = new Set(); // фоновые распознавания
+    this.inFlightByUser = new Map(); // userId → сколько его чеков сейчас распознаётся
     // «⬅️ Назад» на карточке позиции (back r.<receiptId>.<page>) и экран после удаления позиции
     expenseHandlers.registerBackView('r', (ctx, [receiptId, page]) => this.showReceipt(ctx, receiptId, page));
   }
@@ -64,7 +73,7 @@ class ReceiptHandlers {
   async handleImageDocument(ctx) {
     const document = ctx.message.document;
     const mimeType = documentMime(document);
-    const heicUnsupported = /heic|heif/.test(mimeType) && this.receiptService.provider && this.receiptService.provider.name !== 'gemini';
+    const heicUnsupported = /heic|heif/.test(mimeType) && !this.receiptService.provider.acceptsHeic;
     if (this.receiptService.configured && (document.file_size > MAX_IMAGE_BYTES || heicUnsupported)) {
       if (ctx.chat?.type !== 'private') return;
       const lang = await this.userService.getUserLanguage(ctx.from.id);
@@ -102,12 +111,12 @@ class ReceiptHandlers {
       this.userService.getUserTimezone(userId),
       this.userService.getUserCurrency(userId)
     ]);
+    // Чеки, которые ещё распознаются, тоже занимают лимит (несколько фото подряд)
     const limit = await this.receiptService.checkLimit(userId, timezone);
-    if (!limit.remaining) {
-      const premiumLimit = this.receiptService.premiumLimit;
+    if (limit.remaining - (this.inFlightByUser.get(userId) || 0) <= 0) {
       const key = limit.isPremium ? 'receipt_limit_premium' : 'receipt_limit_regular';
       const keyboard = limit.isPremium ? [] : [[{ text: this.t(lang, 'button_premium'), callback_data: 'premium_subscription' }]];
-      await ctx.reply(this.t(lang, key, { used: limit.used, limit: limit.limit, premium: premiumLimit }), {
+      await ctx.reply(this.t(lang, key, { used: limit.used, limit: limit.limit, premium: this.receiptService.premiumLimit }), {
         parse_mode: 'Markdown',
         reply_markup: { inline_keyboard: keyboard }
       });
@@ -120,34 +129,60 @@ class ReceiptHandlers {
 
     await ctx.sendChatAction('typing').catch(() => {});
     const status = await ctx.reply(this.t(lang, 'receipt_recognizing'));
-    const typing = setInterval(() => ctx.sendChatAction('typing').catch(() => {}), TYPING_INTERVAL_MS);
-    let receipt;
+    // Распознавание может идти минуту-две (локальная модель на сервере): обработчик апдейта не ждёт его,
+    // иначе polling задержит остальных пользователей, а Telegraf оборвёт обработчик по таймауту (90 с)
+    this.track(userId, this.recognizeAndRecord(ctx, { fileId, mimeType, userId, lang, timezone, currency, statusId: status.message_id }));
+  }
+
+  track(userId, promise) {
+    this.inFlightByUser.set(userId, (this.inFlightByUser.get(userId) || 0) + 1);
+    const task = promise.finally(() => {
+      const left = (this.inFlightByUser.get(userId) || 1) - 1;
+      if (left > 0) this.inFlightByUser.set(userId, left);
+      else this.inFlightByUser.delete(userId);
+      this.tasks.delete(task);
+    });
+    this.tasks.add(task);
+  }
+
+  // Все фоновые распознавания завершены (для тестов и остановки)
+  async idle() {
+    await Promise.all([...this.tasks]);
+  }
+
+  // Фоновая часть: скачать, распознать, записать, показать список. Ошибки не выходят наружу — превращаются в текст
+  async recognizeAndRecord(ctx, { fileId, mimeType, userId, lang, timezone, currency, statusId }) {
+    const stopTyping = keepTyping(ctx);
     try {
       let image;
       try {
         image = await this.download(ctx, fileId);
       } catch (error) {
         logger.warn('Receipt download failed', { userId, error: error.message });
-        await this.editStatus(ctx, status.message_id, this.t(lang, 'import_download_error'));
+        await this.editStatus(ctx, statusId, this.t(lang, 'import_download_error'));
         return;
       }
+      let receipt;
       try {
         receipt = await this.receiptService.recognize(userId, { image, mimeType, lang, currency, timezone });
       } catch (error) {
         const code = error instanceof ReceiptError ? error.code : 'unavailable';
         logger.warn('Receipt not recognized', { userId, code, error: error.message });
-        await this.editStatus(ctx, status.message_id, this.t(lang, ERROR_KEYS[code] || 'receipt_error_unavailable', error.params), { parse_mode: 'Markdown' });
+        await this.editStatus(ctx, statusId, this.t(lang, ERROR_KEYS[code] || 'receipt_error_unavailable', error.params), { parse_mode: 'Markdown' });
         return;
       }
+      const familyId = await this.expenseHandlers.familyModeTarget(userId);
+      const receiptId = await this.receiptService.record(userId, receipt, { timezone, familyId });
+      stopTyping();
+      const view = await this.buildReceiptView(userId, lang, receiptId, 0);
+      await this.editStatus(ctx, statusId, view.text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: view.keyboard } });
+      await this.sendBudgetWarnings(ctx, userId, lang, receiptId);
+    } catch (error) {
+      logger.error('Receipt processing failed', { userId, error: error.message, stack: error.stack });
+      await this.editStatus(ctx, statusId, this.t(lang, 'receipt_error_unavailable')).catch(() => {});
     } finally {
-      clearInterval(typing);
+      stopTyping();
     }
-
-    const familyId = await this.expenseHandlers.familyModeTarget(userId);
-    const receiptId = await this.receiptService.record(userId, receipt, { timezone, familyId });
-    const view = await this.buildReceiptView(userId, lang, receiptId, 0);
-    await this.editStatus(ctx, status.message_id, view.text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: view.keyboard } });
-    await this.sendBudgetWarnings(ctx, userId, lang, receiptId);
   }
 
   // Бюджеты проверяются один раз на чек (по каждой его категории и общий), а не на каждую позицию
@@ -307,5 +342,6 @@ class ReceiptHandlers {
 ReceiptHandlers.isImageDocument = isImageDocument;
 ReceiptHandlers.pickPhotoSize = pickPhotoSize;
 ReceiptHandlers.MAX_IMAGE_BYTES = MAX_IMAGE_BYTES;
+ReceiptHandlers.keepTyping = keepTyping;
 
 module.exports = ReceiptHandlers;

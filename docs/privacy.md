@@ -17,7 +17,7 @@
 Чтобы вести учёт, считать итоги и бюджеты, присылать напоминания, сводки и уведомления, выдавать премиум, отвечать в поддержке и улучшать бот.
 
 ## Кому передаются
-Данные не продаются и не передаются для рекламы. Сообщения доставляет Telegram. Курсы валют загружаются с cbr-xml-daily.ru без твоих данных. Фото чека для распознавания отправляется в Google Gemini (или в другой сервис распознавания, который настроен в боте) — только изображение, без твоего имени и ID. Бесплатный тариф Gemini позволяет Google использовать присланные данные для улучшения своих продуктов, поэтому не присылай фото с лишними личными данными.
+Данные не продаются и не передаются для рекламы. Сообщения доставляет Telegram. Курсы валют загружаются с cbr-xml-daily.ru без твоих данных. Фото чека распознаёт нейросеть — только изображение, без твоего имени и ID. Обычно это модели, запущенные на компьютерах разработчика: тогда фото никуда не уходит. Если они недоступны и в боте настроен облачный сервис (например, Google Gemini или Mistral), фото отправляется ему; бесплатный тариф Gemini позволяет Google использовать присланные данные для улучшения своих продуктов, поэтому не присылай фото с лишними личными данными.
 
 ## Хранение
 На сервере разработчика в России. Резервные копии базы хранятся 30 дней. Технические логи (в том числе начало текста запросов к боту, до 100 символов) — 14 дней, логи ошибок — 30 дней.
@@ -45,7 +45,7 @@ Version of 27.10.2026. Data controller: IE KISLENKO (Republic of Kazakhstan), II
 To keep your records, calculate summaries and budgets, send reminders, summaries and notifications, grant premium, answer support requests and improve the bot.
 
 ## Sharing
-Data is not sold or shared for advertising. Messages are delivered by Telegram. Exchange rates are loaded from cbr-xml-daily.ru without your data. A receipt photo is sent to Google Gemini (or another recognition service configured in the bot) for recognition — the image only, without your name or ID. Gemini's free tier allows Google to use submitted data to improve its products, so don't send photos with unnecessary personal information.
+Data is not sold or shared for advertising. Messages are delivered by Telegram. Exchange rates are loaded from cbr-xml-daily.ru without your data. A receipt photo is recognized by an AI model — the image only, without your name or ID. Usually these are models running on the developer's own computers, so the photo doesn't leave them. If they are unavailable and a cloud service is configured in the bot (for example Google Gemini or Mistral), the photo is sent to it; Gemini's free tier allows Google to use submitted data to improve its products, so don't send photos with unnecessary personal information.
 
 ## Storage
 On the developer's server in Russia. Database backups are kept for 30 days. Technical logs (including the first 100 characters of requests to the bot) — 14 days, error logs — 30 days.
