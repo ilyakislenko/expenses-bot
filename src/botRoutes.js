@@ -1,5 +1,6 @@
 module.exports = function registerBotRoutes(bot, handlers) {
-  const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, importHandlers, savingsHandlers, stateService } = handlers;
+  const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, importHandlers, receiptHandlers, savingsHandlers, stateService } = handlers;
+  const ReceiptHandlers = require('./handlers/ReceiptHandlers');
   const { BACK_VIEW_PATTERN } = require('./handlers/ExpenseHandlers');
 
   // Импортируем middleware для автоматической очистки состояний
@@ -166,13 +167,22 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^xp_cat\|(\d+)$/, errorHandler((ctx) => exportHandlers.toggleCategory(ctx, Number(ctx.match[1]))));
   bot.action(/^xp_cats_all\|([01])$/, errorHandler((ctx) => exportHandlers.setAllCategories(ctx, ctx.match[1] === '1')));
   bot.action('xp_cats_done', errorHandler((ctx) => exportHandlers.categoriesDone(ctx)));
-  // Импорт банковской выписки: файл .csv/.pdf/.txt в любой момент → превью → запись партией
-  bot.on('document', errorHandler((ctx) => importHandlers.handleDocument(ctx)));
+  // Импорт банковской выписки: файл .csv/.pdf/.txt в любой момент → превью → запись партией.
+  // Картинка файлом (jpg/png/webp/heic) — фото чека
+  bot.on('document', errorHandler((ctx) => (ReceiptHandlers.isImageDocument(ctx.message.document)
+    ? receiptHandlers.handleImageDocument(ctx)
+    : importHandlers.handleDocument(ctx))));
   bot.action('import', errorHandler((ctx) => importHandlers.showIntro(ctx)));
   bot.action(/^imx\|([01])$/, errorHandler((ctx) => importHandlers.setTransfers(ctx, ctx.match[1] === '1')));
   bot.action('imgo', errorHandler((ctx) => importHandlers.confirm(ctx)));
   bot.action('imno', errorHandler((ctx) => importHandlers.cancel(ctx)));
   bot.action(/^imu\|(\d+)$/, errorHandler((ctx) => importHandlers.undo(ctx, parseInt(ctx.match[1], 10))));
+  // Фото чека: каждая позиция — трата, список чека → карточки (back r.<id>.<page>), «Всё верно», отмена чека
+  bot.on('photo', errorHandler((ctx) => receiptHandlers.handlePhoto(ctx)));
+  bot.action(/^rv\|(\d+)\|(\d+)$/, errorHandler((ctx) => receiptHandlers.showReceipt(ctx, parseInt(ctx.match[1], 10), parseInt(ctx.match[2], 10))));
+  bot.action(/^rvok\|(\d+)$/, errorHandler((ctx) => receiptHandlers.confirm(ctx, parseInt(ctx.match[1], 10))));
+  bot.action(/^rvx\|(\d+)$/, errorHandler((ctx) => receiptHandlers.askUndo(ctx, parseInt(ctx.match[1], 10))));
+  bot.action(/^rvxc\|(\d+)$/, errorHandler((ctx) => receiptHandlers.undo(ctx, parseInt(ctx.match[1], 10))));
   bot.action('limits', errorHandler(async (ctx) => {
     await ctx.answerCbQuery();
     await commandHandlers.premiumSubscription(ctx);

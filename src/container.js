@@ -40,6 +40,7 @@ const FunnelRepository = require('./repositories/FunnelRepository');
 const UserNotificationRepository = require('./repositories/UserNotificationRepository');
 const BudgetRepository = require('./repositories/BudgetRepository');
 const ImportRepository = require('./repositories/ImportRepository');
+const ReceiptRepository = require('./repositories/ReceiptRepository');
 
 // Services
 const ExpenseService = require('./services/ExpenseService');
@@ -61,6 +62,8 @@ const ReportService = require('./services/ReportService');
 const DailySummaryService = require('./services/DailySummaryService');
 const WeeklyInsightService = require('./services/WeeklyInsightService');
 const ImportService = require('./services/ImportService');
+const ReceiptService = require('./services/ReceiptService');
+const { createProviderFromEnv: createReceiptProvider } = require('./services/receipt/providers');
 
 // Handlers
 const CommandHandlers = require('./handlers/commands');
@@ -74,6 +77,7 @@ const ExpenseHandlers = require('./handlers/ExpenseHandlers');
 const BudgetHandlers = require('./handlers/BudgetHandlers');
 const ExportHandlers = require('./handlers/ExportHandlers');
 const ImportHandlers = require('./handlers/ImportHandlers');
+const ReceiptHandlers = require('./handlers/ReceiptHandlers');
 
 // State management
 const StateService = require('./services/StateService');
@@ -153,6 +157,34 @@ class Container {
         return new ImportHandlers({
           importService: this.get('importService'),
           expenseService: this.get('expenseService'),
+          userService: this.get('userService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter'),
+          receiptService: this.get('receiptService')
+        });
+
+      case 'receiptRepository':
+        return new ReceiptRepository();
+
+      // Провайдер распознавания чеков из RECEIPT_AI_* (smoke-тесты подменяют его через instances)
+      case 'receiptProvider':
+        return createReceiptProvider(process.env);
+
+      case 'receiptService':
+        return new ReceiptService({
+          receiptRepository: this.get('receiptRepository'),
+          provider: this.get('receiptProvider'),
+          expenseService: this.get('expenseService'),
+          premiumService: this.get('premiumService'),
+          localizationService: this.get('localizationService'),
+          funnelService: this.get('funnelService')
+        });
+
+      case 'receiptHandlers':
+        return new ReceiptHandlers({
+          receiptService: this.get('receiptService'),
+          expenseHandlers: this.get('expenseHandlers'),
+          budgetService: this.get('budgetService'),
           userService: this.get('userService'),
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter')
@@ -370,7 +402,8 @@ class Container {
           keyboardGenerators: this.get('keyboardGenerators'),
           paymentService: this.get('paymentService'),
           incomeService: this.get('incomeService'),
-          funnelService: this.get('funnelService')
+          funnelService: this.get('funnelService'),
+          receiptService: this.get('receiptService')
         });
 
       case 'messageHandlers':
@@ -553,6 +586,7 @@ class Container {
       budgetHandlers: this.get('budgetHandlers'),
       exportHandlers: this.get('exportHandlers'),
       importHandlers: this.get('importHandlers'),
+      receiptHandlers: this.get('receiptHandlers'),
       savingsHandlers: this.get('savingsHandlers'),
       reportService: this.get('reportService'),
       dailySummaryService: this.get('dailySummaryService'),

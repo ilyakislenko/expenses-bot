@@ -7,14 +7,16 @@ const INCOME_HINT_DAYS = 14; // подсказку про доходы видя�
 //   d.<offset>.<page>              — записи за день
 //   c.<categoryId>.<offset>.<page> — записи категории за период
 //   f.<page>                       — семейные записи за сегодня
+//   r.<receiptId>.<page>           — позиции распознанного чека (ReceiptHandlers)
 //   n                              — свежее подтверждение "Расход добавлен" (без кнопки "Назад")
-const BACK_VIEW_PATTERN = 'n|d\\.-?\\d+\\.\\d+|c\\.\\d+\\.-?\\d+\\.\\d+|f\\.\\d+';
+const BACK_VIEW_PATTERN = 'n|d\\.-?\\d+\\.\\d+|c\\.\\d+\\.-?\\d+\\.\\d+|f\\.\\d+|r\\.\\d+\\.\\d+';
 
 function backCallback(back) {
   const [kind, ...args] = back.split('.');
   if (kind === 'd') return `dy|${args[0]}|${args[1]}`;
   if (kind === 'c') return `oc|${args[0]}|${args[1]}|${args[2]}`;
   if (kind === 'f') return `fd|${args[0]}`;
+  if (kind === 'r') return `rv|${args[0]}|${args[1]}`;
   return null;
 }
 
@@ -40,6 +42,12 @@ class ExpenseHandlers {
     this.validator = validator;
     this.budgetService = budgetService;
     this.reportService = reportService;
+    this.backViews = {}; // экраны других разделов: kind → (ctx, args) => …, см. registerBackView
+  }
+
+  // Экран раздела, куда возвращается карточка записи (например, 'r' — список чека из ReceiptHandlers)
+  registerBackView(kind, render) {
+    this.backViews[kind] = render;
   }
 
   t(lang, key, params) {
@@ -332,6 +340,7 @@ class ExpenseHandlers {
     const [kind, ...args] = back.split('.').map((v, i) => (i === 0 ? v : parseInt(v, 10)));
     if (kind === 'd') return this.showDay(ctx, args[0], args[1]);
     if (kind === 'c') return this.showCategoryList(ctx, args[0], args[1], args[2]);
+    if (this.backViews[kind]) return this.backViews[kind](ctx, args);
     if (kind === 'f') return this.showFamilyDay(ctx, args[0]);
   }
 

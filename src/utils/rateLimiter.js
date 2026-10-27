@@ -34,6 +34,11 @@ class RateLimiter {
         requests: 10,
         windowMs: 600000 // 10 минут
       },
+      // Лимиты для фото чеков (каждое — запрос к нейросети); месячный лимит — в ReceiptService
+      receipt: {
+        requests: 20,
+        windowMs: 600000 // 10 минут
+      },
       // Лимиты для баг-репортов
       bug_report: {
         requests: 3,

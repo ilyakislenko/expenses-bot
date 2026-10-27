@@ -113,6 +113,10 @@ class SecurityMiddleware {
     if (ctx.message?.document) {
       limitType = 'import';
     }
+    // Фото чеков (скачивание и запрос к нейросети) — отдельный лимит; картинки файлом считаются как документы
+    if (ctx.message?.photo) {
+      limitType = 'receipt';
+    }
 
     // Специальная проверка для баг-репортов
     if (ctx.callbackQuery?.data === 'bug_report') {

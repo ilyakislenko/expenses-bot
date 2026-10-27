@@ -464,3 +464,28 @@ CREATE INDEX IF NOT EXISTS idx_incomes_import ON incomes(import_id) WHERE import
 
 -- Новая цель по умолчанию считается от всех накоплений (своя копилка — по выбору); старые цели не меняются
 ALTER TABLE savings_pots ALTER COLUMN goal_mode SET DEFAULT 'total';
+
+-- ==== RECEIPTS ====
+-- Распознанные фото чеков: каждая позиция — отдельная трата (expenses.receipt_id) для списка, правки и отмены чека.
+-- Сами фото не хранятся. Строка чека остаётся и после отмены (status 'undone') — по ней считается месячный лимит.
+CREATE TABLE IF NOT EXISTS receipts (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    merchant VARCHAR(60) NULL,
+    purchased_date DATE NULL,
+    purchased_time TIME NULL,
+    currency VARCHAR(3) NOT NULL,
+    printed_total DECIMAL(12,2) NULL,
+    items_total DECIMAL(12,2) NOT NULL,
+    item_count INTEGER NOT NULL,
+    status VARCHAR(10) NOT NULL DEFAULT 'active',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE receipts DROP CONSTRAINT IF EXISTS receipts_status_check;
+ALTER TABLE receipts ADD CONSTRAINT receipts_status_check CHECK (status IN ('active', 'confirmed', 'undone'));
+COMMENT ON COLUMN receipts.purchased_date IS 'Дата покупки, напечатанная в чеке (NULL — не распознана)';
+COMMENT ON COLUMN receipts.printed_total IS 'Итог, напечатанный в чеке; items_total — сумма позиций после распределения скидок';
+CREATE INDEX IF NOT EXISTS idx_receipts_user_created ON receipts(user_id, created_at);
+
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS receipt_id INTEGER NULL REFERENCES receipts(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_expenses_receipt ON expenses(receipt_id) WHERE receipt_id IS NOT NULL;

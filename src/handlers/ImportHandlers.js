@@ -13,12 +13,13 @@ const ERROR_KEYS = {
 // Импорт банковской выписки: файл (.csv/.pdf/.txt) в любой момент → превью (ничего не записано) →
 // выбор по переводам → запись одной партией с кнопкой отмены. Сам файл не сохраняется.
 class ImportHandlers {
-  constructor({ importService, expenseService, userService, localizationService, formatter }) {
+  constructor({ importService, expenseService, userService, localizationService, formatter, receiptService }) {
     this.importService = importService;
     this.expenseService = expenseService;
     this.userService = userService;
     this.localizationService = localizationService;
     this.formatter = formatter;
+    this.receiptService = receiptService;
   }
 
   t(lang, key, params) {
@@ -29,7 +30,11 @@ class ImportHandlers {
   async showIntro(ctx) {
     const lang = await this.userService.getUserLanguage(ctx.from.id);
     if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
-    await respond(ctx, this.t(lang, 'import_intro'), {
+    // Подсказка про фото чека — только если распознавание настроено
+    const text = this.receiptService && this.receiptService.configured
+      ? `${this.t(lang, 'import_intro')}\n\n${this.t(lang, 'import_receipt_hint')}`
+      : this.t(lang, 'import_intro');
+    await respond(ctx, text, {
       parse_mode: 'Markdown',
       reply_markup: { inline_keyboard: [[{ text: this.t(lang, 'button_back'), callback_data: 'back_to_menu' }]] }
     });

@@ -4,7 +4,7 @@ const { getTimezoneDisplayName } = require('../utils/timezoneCalculator');
 const { summaryHour } = require('../services/DailySummaryService');
 
 class CommandHandlers {
-  constructor({ expenseService, userService, premiumService, familyService, localizationService, formatter, stateService, keyboardGenerators, paymentService, incomeService, funnelService }) {
+  constructor({ expenseService, userService, premiumService, familyService, localizationService, formatter, stateService, keyboardGenerators, paymentService, incomeService, funnelService, receiptService }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -16,6 +16,7 @@ class CommandHandlers {
     this.paymentService = paymentService;
     this.incomeService = incomeService;
     this.funnelService = funnelService;
+    this.receiptService = receiptService;
   }
 
   async paysupport(ctx) {
@@ -132,7 +133,9 @@ class CommandHandlers {
     const userLanguage = await this.userService.getUserLanguage(userId);
     const t = (key) => this.localizationService.getText(userLanguage, key);
     if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
-    await respond(ctx, t('help_message'), {
+    // Подсказка про фото чека — только если распознавание настроено
+    const text = this.receiptService && this.receiptService.configured ? `${t('help_message')}\n\n${t('help_receipt')}` : t('help_message');
+    await respond(ctx, text, {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [

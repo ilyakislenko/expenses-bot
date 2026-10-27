@@ -7,12 +7,14 @@ const USER_LIMITS = {
     ALLOW_CUSTOM_CATEGORIES: false,
     MAX_CUSTOM_CATEGORIES: 0,
     MAX_SAVINGS_GOALS: 1,
+    MAX_RECEIPTS_PER_MONTH: 10, // распознанных фото чеков в локальный календарный месяц
   },
   premium: {
     MAX_DESCRIPTION_LENGTH: 160,
     ALLOW_CUSTOM_CATEGORIES: true,
     MAX_CUSTOM_CATEGORIES: 5,
     MAX_SAVINGS_GOALS: 10,
+    MAX_RECEIPTS_PER_MONTH: 300,
   }
 };
 
