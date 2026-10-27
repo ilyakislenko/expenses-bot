@@ -408,3 +408,11 @@ ALTER TABLE savings_pots ADD CONSTRAINT savings_pots_fields_check CHECK (
     OR (kind = 'goal' AND name IS NOT NULL AND target_amount IS NOT NULL)
 );
 ALTER TABLE savings_pots ADD CONSTRAINT savings_pots_yield_rate_check CHECK (yield_rate IS NULL OR yield_rate BETWEEN 0 AND 300);
+
+-- ========================================
+-- WEEKLY INSIGHT: сводка недели по понедельникам
+-- ========================================
+
+-- Сводка недели: по понедельникам в 10:00 по местному времени (по разу за неделю — user_notifications 'weekly_insight')
+ALTER TABLE users ADD COLUMN IF NOT EXISTS weekly_insight_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+COMMENT ON COLUMN users.weekly_insight_enabled IS 'Флаг сводки недели (понедельник, 10:00 по местному времени)';

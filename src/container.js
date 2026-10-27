@@ -58,6 +58,7 @@ const PremiumLifecycleService = require('./services/PremiumLifecycleService');
 const BudgetService = require('./services/BudgetService');
 const ReportService = require('./services/ReportService');
 const DailySummaryService = require('./services/DailySummaryService');
+const WeeklyInsightService = require('./services/WeeklyInsightService');
 
 // Handlers
 const CommandHandlers = require('./handlers/commands');
@@ -221,6 +222,18 @@ class Container {
           formatter: this.get('formatter')
         });
 
+      case 'weeklyInsightService':
+        return new WeeklyInsightService({
+          expenseService: this.get('expenseService'),
+          incomeService: this.get('incomeService'),
+          reportService: this.get('reportService'),
+          budgetService: this.get('budgetService'),
+          userNotificationRepository: this.get('userNotificationRepository'),
+          notificationService: this.get('notificationService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter')
+        });
+
       case 'expenseService':
         return new ExpenseService(
           this.get('expenseRepository'),
@@ -375,7 +388,8 @@ class Container {
           commandHandlers: this.get('commandHandlers'),
           keyboardGenerators: this.get('keyboardGenerators'),
           donationRepository: this.get('donationRepository'),
-          funnelService: this.get('funnelService')
+          funnelService: this.get('funnelService'),
+          weeklyInsightService: this.get('weeklyInsightService')
         });
 
       case 'adminHandlers':
@@ -518,6 +532,7 @@ class Container {
       savingsHandlers: this.get('savingsHandlers'),
       reportService: this.get('reportService'),
       dailySummaryService: this.get('dailySummaryService'),
+      weeklyInsightService: this.get('weeklyInsightService'),
       recurringExpenseService: this.get('recurringExpenseService'),
       premiumLifecycleService: this.get('premiumLifecycleService'),
       funnelService: this.get('funnelService'),
