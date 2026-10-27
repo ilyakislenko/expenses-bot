@@ -60,6 +60,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^in\|(\d+)$/, errorHandler((ctx) => incomeHandlers.showCard(ctx)));
   bot.action(/^income_delete\|(\d+)$/, errorHandler((ctx) => incomeHandlers.deleteIncome(ctx)));
   bot.action(/^income_undo\|(\d+)$/, errorHandler((ctx) => incomeHandlers.undoIncome(ctx)));
+  bot.action(/^ie\|(\d+)$/, errorHandler((ctx) => incomeHandlers.startEdit(ctx)));
 
   // Регулярные (ежемесячные) траты
   bot.action('recurring_menu', errorHandler((ctx) => recurringExpenseHandlers.showMenu(ctx)));

@@ -478,6 +478,8 @@ module.exports = {
     income_added: '✅ Кіріс жазылды: *{amount}* — {description}',
     income_default_description: 'Кіріс',
     income_deleted: '✅ Кіріс жойылды',
+    income_edit_prompt: '✏️ Қазір: {current}\n\nЖаңа соманы және/немесе сипаттаманы жіберіңіз 👇\nМысалы: `60000 жалақы`, тек сома `60000` немесе тек сипаттама `аванс`.\nВалютаны сомадан кейін кодпен өзгертуге болады: `1000 USD`',
+    income_updated: '✅ Кіріс жаңартылды',
     income_not_found: '❌ Кіріс табылмады',
     income_currency_select: 'Әдетте табыс алатын валютаны таңдаңыз. Шығындар негізгі валютада қалады:',
     income_currency_set: '✅ Кіріс валютасы: {currency}',

@@ -499,6 +499,8 @@ module.exports = {
     income_added: '✅ आय दर्ज की गई: *{amount}* — {description}',
     income_default_description: 'आय',
     income_deleted: '✅ आय हटा दी गई',
+    income_edit_prompt: '✏️ अभी: {current}\n\nनई राशि और/या विवरण भेजें 👇\nउदाहरण: `60000 वेतन`, केवल राशि `60000` या केवल विवरण `अग्रिम`।\nमुद्रा बदलने के लिए राशि के बाद कोड लिखें: `1000 USD`',
+    income_updated: '✅ आय अपडेट की गई',
     income_not_found: '❌ आय नहीं मिली',
     income_currency_select: 'वह मुद्रा चुनें जिसमें आपको आमतौर पर भुगतान मिलता है। खर्च आपकी मुख्य मुद्रा में ही रहेंगे:',
     income_currency_set: '✅ आय की मुद्रा: {currency}',

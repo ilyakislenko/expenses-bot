@@ -36,6 +36,13 @@ class IncomeService {
     return this.incomeRepository.getIncomeById(userId, incomeId);
   }
 
+  // changes — { amount, currency, description } целиком (незаданные поля берёт обработчик из старой записи)
+  async updateIncome(userId, incomeId, changes) {
+    const income = await this.incomeRepository.updateIncome(userId, incomeId, changes);
+    if (income) logger.info('Income updated', { userId, incomeId, amount: changes.amount, currency: changes.currency });
+    return income;
+  }
+
   async deleteIncome(userId, incomeId) {
     return this.incomeRepository.deleteIncomeById(userId, incomeId);
   }

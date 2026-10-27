@@ -73,16 +73,95 @@ class IncomeHandlers {
     const lang = await this.userService.getUserLanguage(userId);
     await ctx.answerCbQuery().catch(() => {});
     const income = await this.incomeService.getIncome(userId, parseInt(ctx.match[1], 10));
-    const backRow = [{ text: this.t(lang, 'button_back'), callback_data: 'income_menu' }];
     if (!income) {
+      const backRow = [{ text: this.t(lang, 'button_back'), callback_data: 'income_menu' }];
       return respond(ctx, this.t(lang, 'income_not_found'), { reply_markup: { inline_keyboard: [backRow] } });
     }
-    const timezone = await this.userService.getUserTimezone(userId);
+    const card = await this.buildCard(userId, lang, income);
+    await respond(ctx, card.text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: card.keyboard } });
+  }
+
+  // Карточка дохода. Изменение — премиум, как у трат
+  async buildCard(userId, lang, income) {
+    const [timezone, isPremium] = await Promise.all([
+      this.userService.getUserTimezone(userId),
+      this.premiumService.isPremiumUser(userId)
+    ]);
     const amount = this.formatter.formatAmount(Number(income.amount), income.currency);
     const text = `💵 *${amount}* — ${this.incomeLabel(income, lang)}\n📅 ${this.formatter.formatDate(income.created_at_utc, timezone)}`;
-    await respond(ctx, text, {
+    const actions = [{ text: this.t(lang, 'button_delete_record'), callback_data: `income_delete|${income.id}` }];
+    if (isPremium) actions.unshift({ text: this.t(lang, 'button_edit_record'), callback_data: `ie|${income.id}` });
+    return { text, keyboard: [actions, [{ text: this.t(lang, 'button_back'), callback_data: 'income_menu' }]] };
+  }
+
+  // callback: ie|<id> — изменить сумму, валюту и/или описание; ввод следующим сообщением
+  async startEdit(ctx) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    if (!(await this.premiumService.isPremiumUser(userId))) {
+      return ctx.answerCbQuery(this.t(lang, 'premium_required'), { show_alert: true });
+    }
+    const income = await this.incomeService.getIncome(userId, parseInt(ctx.match[1], 10));
+    // Нет такой записи (удалена или чужая): экран «Доход не найден» с кнопкой назад, как у карточки
+    if (!income) return this.showCard(ctx);
+    this.stateService.setUserState(userId, `editing_income:${income.id}`);
+    await ctx.answerCbQuery().catch(() => {});
+    const current = `${this.formatter.formatAmount(Number(income.amount), income.currency)} — ${this.incomeLabel(income, lang)}`;
+    await ctx.reply(this.t(lang, 'income_edit_prompt', { current }), {
       parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: [[{ text: this.t(lang, 'button_delete_record'), callback_data: `income_delete|${income.id}` }], backRow] }
+      reply_markup: { inline_keyboard: [[{ text: this.t(lang, 'button_cancel'), callback_data: `in|${income.id}` }]] }
+    });
+  }
+
+  // Ввод при editing_income:<id>. "60000" — только сумма, "60000 USD аванс" — сумма, валюта и описание,
+  // текст без числа в начале — только описание. Незаданное остаётся как было.
+  async handleEditInput(ctx, text, lang, incomeId) {
+    const userId = ctx.from.id;
+    // Изменение — премиум; он мог закончиться между нажатием кнопки и вводом
+    if (!(await this.premiumService.isPremiumUser(userId))) {
+      this.stateService.deleteUserState(userId);
+      return ctx.reply(this.t(lang, 'premium_required'));
+    }
+    const income = await this.incomeService.getIncome(userId, incomeId);
+    if (!income) {
+      this.stateService.deleteUserState(userId);
+      return ctx.reply(this.t(lang, 'income_not_found'));
+    }
+
+    const limits = await this.premiumService.getUserLimits(userId);
+    let changes;
+    if (/^\s*\+?\s*\d/.test(text)) {
+      const parsed = this.validator.parseMoneyInput(text.replace(/^\s*\+\s*/, ''), {
+        maxAmount: MAX_INCOME_AMOUNT,
+        maxDescriptionLength: limits.MAX_DESCRIPTION_LENGTH,
+        requireDescription: false
+      });
+      if (!parsed.isValid) {
+        const errorText = await moneyInputErrorText(this, userId, lang, parsed.error, 'income', MAX_INCOME_AMOUNT);
+        return ctx.reply(errorText, { parse_mode: 'Markdown' });
+      }
+      changes = {
+        amount: parsed.amount,
+        currency: parsed.currency || income.currency,
+        description: parsed.description ?? income.description
+      };
+    } else {
+      const parsed = this.validator.parseEditExpense(text, limits.MAX_DESCRIPTION_LENGTH);
+      if (!parsed.isValid) {
+        const error = parsed.error === 'too_long' ? 'too_long' : 'format';
+        const errorText = await moneyInputErrorText(this, userId, lang, error, 'income', MAX_INCOME_AMOUNT);
+        return ctx.reply(errorText, { parse_mode: 'Markdown' });
+      }
+      changes = { amount: income.amount, currency: income.currency, description: parsed.description };
+    }
+
+    const updated = await this.incomeService.updateIncome(userId, income.id, changes);
+    this.stateService.deleteUserState(userId);
+    if (!updated) return ctx.reply(this.t(lang, 'income_not_found'));
+    const card = await this.buildCard(userId, lang, updated);
+    await ctx.reply(`${this.t(lang, 'income_updated')}\n\n${card.text}`, {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: card.keyboard }
     });
   }
 
@@ -116,14 +195,16 @@ class IncomeHandlers {
     const income = await this.incomeService.addIncome(userId, parsed.amount, parsed.currency, parsed.description);
     this.stateService.deleteUserState(userId);
 
+    // Опечатку в только что записанном доходе можно сразу исправить (премиум, как в карточке)
+    const actions = [{ text: this.t(lang, 'button_undo'), callback_data: `income_undo|${income.id}` }];
+    if (await this.premiumService.isPremiumUser(userId)) {
+      actions.push({ text: this.t(lang, 'button_edit_record'), callback_data: `ie|${income.id}` });
+    }
     const amount = this.formatter.formatAmount(Number(income.amount), income.currency);
     await ctx.reply(this.t(lang, 'income_added', { amount, description: this.incomeLabel(income, lang) }), {
       parse_mode: 'Markdown',
       reply_markup: {
-        inline_keyboard: [[
-          { text: this.t(lang, 'button_undo'), callback_data: `income_undo|${income.id}` },
-          { text: this.t(lang, 'button_income'), callback_data: 'income_menu' }
-        ]]
+        inline_keyboard: [actions, [{ text: this.t(lang, 'button_income'), callback_data: 'income_menu' }]]
       }
     });
   }

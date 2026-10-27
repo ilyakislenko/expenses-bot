@@ -496,6 +496,8 @@ module.exports = {
     income_added: '✅ 収入を記録しました: *{amount}* — {description}',
     income_default_description: '収入',
     income_deleted: '✅ 収入を削除しました',
+    income_edit_prompt: '✏️ 現在: {current}\n\n新しい金額や説明を送ってください 👇\n例: `60000 給料`、金額だけ `60000`、説明だけ `前払い`。\n通貨は金額の後にコードを付けて変更できます: `1000 USD`',
+    income_updated: '✅ 収入を更新しました',
     income_not_found: '❌ 収入が見つかりません',
     income_currency_select: '普段受け取る通貨を選んでください。支出はメイン通貨のままです:',
     income_currency_set: '✅ 収入の通貨: {currency}',

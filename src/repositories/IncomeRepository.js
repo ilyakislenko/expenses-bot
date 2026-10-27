@@ -47,6 +47,16 @@ class IncomeRepository extends BaseRepository {
     return result.rows[0];
   }
 
+  async updateIncome(userId, incomeId, { amount, currency, description }) {
+    const query = `
+      UPDATE incomes SET amount = $3, currency = $4, description = $5
+      WHERE id = $1 AND user_id = $2
+      RETURNING *
+    `;
+    const result = await this.query(query, [incomeId, userId, amount, currency, description]);
+    return result.rows[0];
+  }
+
   async deleteIncomeById(userId, incomeId) {
     const query = `
       DELETE FROM incomes

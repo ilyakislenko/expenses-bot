@@ -497,6 +497,8 @@ module.exports = {
     income_added: '✅ 已记录收入：*{amount}* — {description}',
     income_default_description: '收入',
     income_deleted: '✅ 收入已删除',
+    income_edit_prompt: '✏️ 当前：{current}\n\n请发送新的金额和/或描述 👇\n例如：`60000 工资`，只改金额 `60000`，或只改描述 `预付款`。\n在金额后加代码可更换货币：`1000 USD`',
+    income_updated: '✅ 收入已更新',
     income_not_found: '❌ 未找到收入',
     income_currency_select: '请选择你通常收款的货币。支出仍使用主货币：',
     income_currency_set: '✅ 收入货币：{currency}',

@@ -506,6 +506,8 @@ module.exports = {
   income_added: '✅ Доход записан: *{amount}* — {description}',
   income_default_description: 'Доход',
   income_deleted: '✅ Доход удалён',
+  income_edit_prompt: '✏️ Сейчас: {current}\n\nПришли новую сумму и/или описание 👇\nНапример: `60000 зарплата`, только сумму `60000` или только описание `аванс`.\nВалюту можно сменить кодом после суммы: `1000 USD`',
+  income_updated: '✅ Доход обновлён',
   income_not_found: '❌ Доход не найден',
   income_currency_select: 'Выбери валюту, в которой обычно получаешь доход. Траты при этом остаются в основной валюте:',
   income_currency_set: '✅ Валюта дохода: {currency}',

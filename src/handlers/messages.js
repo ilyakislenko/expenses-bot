@@ -45,6 +45,10 @@ constructor({ expenseService, userService, premiumService, familyService, catego
         [t('button_personal_expense')]: () => this.startPersonalExpense(ctx, userLanguage)
       };
       if (Object.prototype.hasOwnProperty.call(mainButtons, text)) {
+        // Нижняя кнопка — уход из незавершённого ввода: иначе следующее сообщение («250 кофе») ушло бы
+        // в брошенный ввод дохода или правку записи. Черновики на карточках категорий не трогаем.
+        this.stateService.deleteUserState(userId);
+        this.stateService.deleteUserEditState(userId);
         await mainButtons[text]();
         return;
       }
@@ -120,6 +124,10 @@ constructor({ expenseService, userService, premiumService, familyService, catego
 
         if (userState === 'adding_income') {
           return await this.incomeHandlers.handleIncomeInput(ctx, text, userLanguage);
+        }
+
+        if (typeof userState === 'string' && userState.startsWith('editing_income:')) {
+          return await this.incomeHandlers.handleEditInput(ctx, text, userLanguage, parseInt(userState.split(':')[1], 10));
         }
 
         if (userState === 'adding_recurring') {
