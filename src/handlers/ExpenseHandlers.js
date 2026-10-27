@@ -8,8 +8,9 @@ const INCOME_HINT_DAYS = 14; // подсказку про доходы видя�
 //   c.<categoryId>.<offset>.<page> — записи категории за период
 //   f.<page>                       — семейные записи за сегодня
 //   r.<receiptId>.<page>           — позиции распознанного чека (ReceiptHandlers)
+//   v.<batchId>                    — сводка нескольких записей из одного сообщения/голосового (MultiEntryHandlers)
 //   n                              — свежее подтверждение "Расход добавлен" (без кнопки "Назад")
-const BACK_VIEW_PATTERN = 'n|d\\.-?\\d+\\.\\d+|c\\.\\d+\\.-?\\d+\\.\\d+|f\\.\\d+|r\\.\\d+\\.\\d+';
+const BACK_VIEW_PATTERN = 'n|d\\.-?\\d+\\.\\d+|c\\.\\d+\\.-?\\d+\\.\\d+|f\\.\\d+|r\\.\\d+\\.\\d+|v\\.\\d+';
 
 function backCallback(back) {
   const [kind, ...args] = back.split('.');
@@ -17,6 +18,7 @@ function backCallback(back) {
   if (kind === 'c') return `oc|${args[0]}|${args[1]}|${args[2]}`;
   if (kind === 'f') return `fd|${args[0]}`;
   if (kind === 'r') return `rv|${args[0]}|${args[1]}`;
+  if (kind === 'v') return `vcb|${args[0]}`;
   return null;
 }
 
@@ -164,9 +166,20 @@ class ExpenseHandlers {
     await this.sendBudgetWarnings(ctx, userId, lang, category.name);
   }
 
-  // Предупреждения бюджета (80% и превышение) отдельным сообщением, чтобы не потерялись при правке карточки
+  // Предупреждения бюджета (80% и превышение) отдельным сообщением, чтобы не потерялись при правке карточки.
+  // categoryName — имя или список имён (несколько записей разом): каждое предупреждение — один раз
   async sendBudgetWarnings(ctx, userId, lang, categoryName) {
-    const warnings = await this.budgetService.checkAfterExpense(userId, categoryName);
+    const names = Array.isArray(categoryName) ? categoryName : [categoryName];
+    const seen = new Set();
+    const warnings = [];
+    for (const name of names) {
+      for (const warning of await this.budgetService.checkAfterExpense(userId, name)) {
+        const key = `${warning.id}:${warning.level}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        warnings.push(warning);
+      }
+    }
     if (!warnings.length) return;
     await ctx.reply(warnings.map(w => this.budgetService.warningText(lang, w)).join('\n'), {
       parse_mode: 'Markdown',

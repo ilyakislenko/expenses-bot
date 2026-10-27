@@ -199,6 +199,7 @@ module.exports = {
 • \`250 咖啡\` — 支出。类别选一次，我会记住
 • \`20 USD 出租车\` — 其他货币的支出，\`300\` — 不带描述
 • \`+50000 工资\` — 收入（\`+1000 USD\` — 其他货币）
+• \`咖啡 250, 出租车 400\` — 一条消息记多笔（或每行一笔）
 • 新记录下方：↩️ 撤销，🏷 更改类别
 • 📊 *月度概览* — 支出、收入、余额、类别；◀️ — 以前的周期
 • 📅 *今天* — 当天的记录；点击编号可编辑或删除记录
@@ -916,6 +917,29 @@ module.exports = {
     import_error: '❌ 无法记录交易，未保存任何内容。请重试。',
     receipt_recognizing: '🔍 正在识别小票…',
     receipt_not_configured: '🧾 小票识别尚未配置。请用消息记录支出：`250 咖啡`',
+    multi_recorded_title: '已记录: {count} 笔',
+    multi_income_label: '收入',
+    multi_expenses_total: '支出合计: *{total}*',
+    multi_tap_number: '点按编号可修改记录、更换类别或删除。',
+    multi_default_category_hint: '🏷 新的描述已记入「{category}」——在卡片里更换类别，下次我会记住。',
+    button_multi_undo_all: '↩️ 全部撤销',
+    multi_undone: '↩️ 已撤销: 删除了 {count} 条记录。',
+    multi_already_undone: '这些记录已经撤销过了。',
+    multi_all_deleted: '这里的记录已全部删除。',
+    multi_not_found: '找不到这些记录。',
+    multi_too_many: '❌ 一次最多 {max} 条记录，请分成几条消息发送。',
+    voice_not_configured: '🎙 语音输入尚未配置。请用消息记录支出：`咖啡 250, 出租车 400`',
+    voice_too_long: '🎙 语音消息超过 {max} 秒。请录短一点，或直接输入：`咖啡 250, 出租车 400`',
+    voice_busy: '⏳ 请稍等，我还在识别你上一条语音。',
+    voice_limit_regular: '🎙 今天的语音次数已用完：{used} / {limit}。开通高级版每天最多 {premium} 条。文字输入不限次数：`咖啡 250, 出租车 400`',
+    voice_limit_premium: '🎙 今天的语音次数已用完：{used} / {limit}。明天会重置——现在可以先用文字：`咖啡 250, 出租车 400`',
+    voice_recognizing: '🎙 正在识别语音…',
+    voice_queued: '🎙 正在识别语音… 你排在第 {position} 位',
+    voice_heard: '🎙 我听到的是：「{text}」',
+    voice_no_amount: '没找到金额。可以这样说：“咖啡 250 元 和 出租车 400 元”。',
+    voice_empty: '🎙 什么也没听到。请靠近麦克风、在安静的地方再试一次。',
+    voice_error: '❌ 无法识别这条语音。请再试一次，或直接输入：`咖啡 250`',
+    help_voice: '🎙 发语音说“咖啡250元和出租车400元”——我会把两笔支出都记下来。语音在我们的服务器上识别，不会保存。',
     receipt_limit_regular: '🧾 本月小票识别次数已用完：{used} / {limit}。开通高级版每月最多 {premium} 张。你仍可以用消息记录支出：`250 咖啡`',
     receipt_limit_premium: '🧾 本月小票识别次数已用完：{used} / {limit}。下个月会重置；在此之前请用消息记录支出：`250 咖啡`',
     receipt_send_as_photo: '🖼 无法读取这个文件。请把小票作为照片发送，而不是文件——Telegram 会自动压缩。',

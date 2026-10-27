@@ -8,6 +8,7 @@ const USER_LIMITS = {
     MAX_CUSTOM_CATEGORIES: 0,
     MAX_SAVINGS_GOALS: 1,
     MAX_RECEIPTS_PER_MONTH: 10, // распознанных фото чеков в локальный календарный месяц
+    MAX_VOICE_PER_DAY: 20, // распознанных голосовых в локальный день (запись текстом — без лимита)
   },
   premium: {
     MAX_DESCRIPTION_LENGTH: 160,
@@ -15,6 +16,7 @@ const USER_LIMITS = {
     MAX_CUSTOM_CATEGORIES: 5,
     MAX_SAVINGS_GOALS: 10,
     MAX_RECEIPTS_PER_MONTH: 300,
+    MAX_VOICE_PER_DAY: 300,
   }
 };
 

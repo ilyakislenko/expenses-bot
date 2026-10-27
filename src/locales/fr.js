@@ -199,6 +199,7 @@ Le menu est en bas : aperçu du mois, entrées du jour, revenus, dépenses récu
 • \`250 café\` — dépense. Choisis une catégorie une fois, je m'en souviendrai
 • \`20 USD taxi\` — dépense dans une autre devise, \`300\` — sans description
 • \`+50000 salaire\` — revenu (\`+1000 USD\` — dans une autre devise)
+• \`café 250, taxi 400\` — plusieurs entrées dans un seul message (ou une par ligne)
 • Sous une nouvelle entrée : ↩️ annuler, 🏷 changer de catégorie
 • 📊 *Aperçu du mois* — dépenses, revenus, solde, catégories ; ◀️ — périodes précédentes
 • 📅 *Aujourd'hui* — entrées du jour ; touche un numéro pour modifier ou supprimer une entrée
@@ -917,6 +918,29 @@ Toutes tes dépenses seront désormais affichées à ton heure locale.`,
     import_error: '❌ Impossible d\'enregistrer les opérations, rien n\'a été sauvegardé. Réessaie.',
     receipt_recognizing: '🔍 Je lis le ticket…',
     receipt_not_configured: '🧾 La reconnaissance des tickets n\'est pas encore configurée. Enregistre tes dépenses par message : `250 café`.',
+    multi_recorded_title: 'Enregistré : {count}',
+    multi_income_label: 'revenu',
+    multi_expenses_total: 'Total des dépenses : *{total}*',
+    multi_tap_number: 'Touche un numéro pour modifier une entrée, changer sa catégorie ou la supprimer.',
+    multi_default_category_hint: '🏷 Les nouvelles descriptions sont classées dans « {category} » : change la catégorie dans la fiche et je m\'en souviendrai la prochaine fois.',
+    button_multi_undo_all: '↩️ Tout annuler',
+    multi_undone: '↩️ Annulé : {count} entrées supprimées.',
+    multi_already_undone: 'Ces entrées sont déjà annulées.',
+    multi_all_deleted: 'Toutes les entrées d\'ici ont été supprimées.',
+    multi_not_found: 'Entrées introuvables.',
+    multi_too_many: '❌ {max} entrées maximum à la fois. Répartis-les sur plusieurs messages.',
+    voice_not_configured: '🎙 La saisie vocale n\'est pas encore configurée. Écris tes dépenses dans un message : `café 250, taxi 400`.',
+    voice_too_long: '🎙 Le message vocal dépasse {max} s. Enregistre-en un plus court ou écris : `café 250, taxi 400`.',
+    voice_busy: '⏳ Patiente, je reconnais encore ton message vocal précédent.',
+    voice_limit_regular: '🎙 Les messages vocaux du jour sont épuisés : {used} sur {limit}. Avec premium — jusqu\'à {premium} par jour. Par écrit, c\'est illimité : `café 250, taxi 400`.',
+    voice_limit_premium: '🎙 Les messages vocaux du jour sont épuisés : {used} sur {limit}. La limite se renouvelle demain — en attendant, écris : `café 250, taxi 400`.',
+    voice_recognizing: '🎙 Je reconnais ta voix…',
+    voice_queued: '🎙 Je reconnais ta voix… Tu es dans la file : {position}',
+    voice_heard: '🎙 J\'ai entendu : « {text} »',
+    voice_no_amount: 'Je n\'ai pas trouvé de montant. Dis par exemple : « café deux cent cinquante et taxi quatre cents ».',
+    voice_empty: '🎙 Je n\'ai rien entendu. Réessaie, plus près du micro et sans bruit.',
+    voice_error: '❌ Impossible de reconnaître le message vocal. Réessaie ou écris : `café 250`.',
+    help_voice: '🎙 Dis dans un message vocal « café deux cent cinquante et taxi quatre cents » — j\'enregistre les deux dépenses. La voix est reconnue sur notre serveur et n\'est pas conservée.',
     receipt_limit_regular: '🧾 La limite de reconnaissance de tickets de ce mois est atteinte : {used} sur {limit}. Avec premium — jusqu\'à {premium} tickets par mois. Tu peux toujours enregistrer tes dépenses par message : `250 café`.',
     receipt_limit_premium: '🧾 La limite de reconnaissance de tickets de ce mois est atteinte : {used} sur {limit}. Elle se renouvelle le mois prochain ; en attendant, enregistre tes dépenses par message : `250 café`.',
     receipt_send_as_photo: '🖼 Je ne peux pas lire ce fichier. Envoie le ticket en photo, pas en fichier — Telegram le compressera.',

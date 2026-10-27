@@ -199,6 +199,7 @@ Das Menü ist unten: Monatsübersicht, heutige Einträge, Einnahmen, wiederkehre
 • \`250 Kaffee\` — Ausgabe. Wähle einmal eine Kategorie, ich merke sie mir
 • \`20 USD Taxi\` — Ausgabe in anderer Währung, \`300\` — ohne Beschreibung
 • \`+50000 Gehalt\` — Einnahme (\`+1000 USD\` — in anderer Währung)
+• \`Kaffee 250, Taxi 400\` — mehrere Einträge in einer Nachricht (oder einer pro Zeile)
 • Unter einem neuen Eintrag: ↩️ rückgängig, 🏷 Kategorie ändern
 • 📊 *Monatsübersicht* — Ausgaben, Einnahmen, Saldo, Kategorien; ◀️ — frühere Zeiträume
 • 📅 *Heute* — Einträge des Tages; tippe auf eine Nummer, um einen Eintrag zu bearbeiten oder zu löschen
@@ -920,6 +921,29 @@ Ab jetzt werden alle Ausgaben in deiner Ortszeit angezeigt.`,
     import_error: '❌ Die Buchungen konnten nicht gespeichert werden — nichts wurde übernommen. Versuch es noch einmal.',
     receipt_recognizing: '🔍 Ich lese den Kassenbon…',
     receipt_not_configured: '🧾 Die Bon-Erkennung ist noch nicht eingerichtet. Erfasse Ausgaben per Nachricht: `250 Kaffee`.',
+    multi_recorded_title: 'Erfasst: {count}',
+    multi_income_label: 'Einnahme',
+    multi_expenses_total: 'Ausgaben gesamt: *{total}*',
+    multi_tap_number: 'Tippe auf eine Nummer, um einen Eintrag zu ändern, die Kategorie zu wechseln oder ihn zu löschen.',
+    multi_default_category_hint: '🏷 Neue Beschreibungen landen in „{category}“ — ändere die Kategorie in der Karte, dann merke ich sie mir fürs nächste Mal.',
+    button_multi_undo_all: '↩️ Alles rückgängig',
+    multi_undone: '↩️ Rückgängig gemacht: {count} Einträge gelöscht.',
+    multi_already_undone: 'Diese Einträge wurden schon rückgängig gemacht.',
+    multi_all_deleted: 'Alle Einträge von hier wurden gelöscht.',
+    multi_not_found: 'Einträge nicht gefunden.',
+    multi_too_many: '❌ Höchstens {max} Einträge auf einmal. Teile sie auf mehrere Nachrichten auf.',
+    voice_not_configured: '🎙 Die Spracheingabe ist noch nicht eingerichtet. Schreib Ausgaben als Nachricht: `Kaffee 250, Taxi 400`.',
+    voice_too_long: '🎙 Die Sprachnachricht ist länger als {max} s. Nimm eine kürzere auf oder schreib: `Kaffee 250, Taxi 400`.',
+    voice_busy: '⏳ Einen Moment, ich erkenne noch deine vorige Sprachnachricht.',
+    voice_limit_regular: '🎙 Die Sprachnachrichten für heute sind aufgebraucht: {used} von {limit}. Mit Premium — bis zu {premium} pro Tag. Schreiben geht unbegrenzt: `Kaffee 250, Taxi 400`.',
+    voice_limit_premium: '🎙 Die Sprachnachrichten für heute sind aufgebraucht: {used} von {limit}. Morgen wird das Limit erneuert — bis dahin schreib einfach: `Kaffee 250, Taxi 400`.',
+    voice_recognizing: '🎙 Erkenne deine Sprache…',
+    voice_queued: '🎙 Erkenne deine Sprache… Du bist in der Warteschlange: {position}',
+    voice_heard: '🎙 Verstanden: „{text}“',
+    voice_no_amount: 'Ich habe keinen Betrag gefunden. Sag zum Beispiel: „Kaffee zweihundertfünfzig und Taxi vierhundert“.',
+    voice_empty: '🎙 Ich habe nichts verstanden. Versuch es noch mal — näher am Mikrofon und ohne Lärm.',
+    voice_error: '❌ Die Sprachnachricht konnte nicht erkannt werden. Versuch es noch mal oder schreib: `Kaffee 250`.',
+    help_voice: '🎙 Sag per Sprachnachricht „Kaffee zweihundertfünfzig und Taxi vierhundert“ — ich erfasse beide Ausgaben. Die Sprache wird auf unserem Server erkannt und nicht gespeichert.',
     receipt_limit_regular: '🧾 Das Limit für die Bon-Erkennung in diesem Monat ist erreicht: {used} von {limit}. Mit Premium — bis zu {premium} Bons im Monat. Ausgaben kannst du weiterhin per Nachricht erfassen: `250 Kaffee`.',
     receipt_limit_premium: '🧾 Das Limit für die Bon-Erkennung in diesem Monat ist erreicht: {used} von {limit}. Nächsten Monat wird es zurückgesetzt; bis dahin erfasse Ausgaben per Nachricht: `250 Kaffee`.',
     receipt_send_as_photo: '🖼 Diese Datei kann ich nicht lesen. Schick den Bon als Foto, nicht als Datei — Telegram komprimiert ihn selbst.',

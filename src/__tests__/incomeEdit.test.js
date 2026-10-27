@@ -98,6 +98,7 @@ describe('abandoned text input does not swallow the next message', () => {
     expenseHandlers: { handleExpenseInput: jest.fn(async () => true), showDay: jest.fn(async () => {}) },
     incomeHandlers: { handleEditInput: jest.fn(), handleIncomeInput: jest.fn() },
     commandHandlers: {},
+    multiEntryHandlers: { handleText: jest.fn(async () => false) },
     ...extra
   });
   const send = (messages, text) => messages.handleExpense({ from: { id: USER }, message: { text }, reply: jest.fn() });

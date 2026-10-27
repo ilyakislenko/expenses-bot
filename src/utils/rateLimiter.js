@@ -39,6 +39,11 @@ class RateLimiter {
         requests: 20,
         windowMs: 600000 // 10 минут
       },
+      // Голосовые (скачивание и распознавание речи на сервере); дневной лимит — в VoiceService
+      voice: {
+        requests: 20,
+        windowMs: 600000 // 10 минут
+      },
       // Лимиты для баг-репортов
       bug_report: {
         requests: 3,

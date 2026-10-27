@@ -181,6 +181,7 @@ Menyu pastda: oy sharhi, bugungi yozuvlar, daromad, doimiy xarajatlar (ijara, ob
 • \`250 qahva\` — xarajat. Kategoriyani bir marta tanlang, eslab qolaman
 • \`20 USD taksi\` — boshqa valyutadagi xarajat, \`300\` — izohsiz
 • \`+50000 maosh\` — daromad (\`+1000 USD\` — boshqa valyutada)
+• \`kofe 250, taksi 400\` — bitta xabarda bir nechta yozuv (yoki har qatorda bittadan)
 • Yangi yozuv ostida: ↩️ bekor qilish, 🏷 kategoriyani o‘zgartirish
 • 📊 *Oy sharhi* — xarajatlar, daromad, balans, kategoriyalar; ◀️ — oldingi davrlar
 • 📅 *Bugun* — kun yozuvlari; yozuvni tahrirlash yoki o‘chirish uchun raqamni bosing
@@ -897,6 +898,29 @@ Endi barcha xarajatlaringiz mahalliy vaqt bo‘yicha ko‘rsatiladi.`,
   import_error: '❌ Operatsiyalarni yozib bo‘lmadi — hech narsa saqlanmadi. Iltimos, qaytadan urinib ko‘ring.',
   receipt_recognizing: '🔍 Chekni o‘qiyapman…',
   receipt_not_configured: '🧾 Cheklarni tanish hali sozlanmagan. Xarajatni xabar bilan yozing: `250 kofe`.',
+  multi_recorded_title: 'Yozildi: {count}',
+  multi_income_label: 'daromad',
+  multi_expenses_total: 'Jami xarajat: *{total}*',
+  multi_tap_number: 'Yozuvni o‘zgartirish, toifasini almashtirish yoki o‘chirish uchun raqamini bosing.',
+  multi_default_category_hint: '🏷 Yangi tavsiflar «{category}» toifasiga yozildi — kartochkada toifani o‘zgartiring, keyingi safar eslab qolaman.',
+  button_multi_undo_all: '↩️ Hammasini bekor qilish',
+  multi_undone: '↩️ Bekor qilindi: {count} ta yozuv o‘chirildi.',
+  multi_already_undone: 'Bu yozuvlar allaqachon bekor qilingan.',
+  multi_all_deleted: 'Bu yerdagi barcha yozuvlar o‘chirildi.',
+  multi_not_found: 'Yozuvlar topilmadi.',
+  multi_too_many: '❌ Bir martada ko‘pi bilan {max} ta yozuv. Bir nechta xabarga bo‘ling.',
+  voice_not_configured: '🎙 Ovozli kiritish hali sozlanmagan. Xarajatlarni xabar bilan yozing: `kofe 250, taksi 400`.',
+  voice_too_long: '🎙 Ovozli xabar {max} soniyadan uzun. Qisqaroq yozib oling yoki matn bilan yuboring: `kofe 250, taksi 400`.',
+  voice_busy: '⏳ Iltimos, kuting — oldingi ovozli xabaringizni hali tanib olyapman.',
+  voice_limit_regular: '🎙 Bugungi ovozli xabarlar tugadi: {used} / {limit}. Premium bilan — kuniga {premium} tagacha. Matn bilan — cheklovsiz: `kofe 250, taksi 400`.',
+  voice_limit_premium: '🎙 Bugungi ovozli xabarlar tugadi: {used} / {limit}. Limit ertaga yangilanadi — hozircha matn bilan yozing: `kofe 250, taksi 400`.',
+  voice_recognizing: '🎙 Ovozni tanib olyapman…',
+  voice_queued: '🎙 Ovozni tanib olyapman… Navbatdagi o‘rningiz: {position}',
+  voice_heard: '🎙 Eshitganim: «{text}»',
+  voice_no_amount: 'Summani topa olmadim. Masalan, shunday ayting: «kofe ikki yuz ellik va taksi to‘rt yuz».',
+  voice_empty: '🎙 Hech narsa eshitmadim. Mikrofonga yaqinroq va shovqinsiz joyda qayta urinib ko‘ring.',
+  voice_error: '❌ Ovozli xabarni tanib bo‘lmadi. Qayta urinib ko‘ring yoki matn bilan yozing: `kofe 250`.',
+  help_voice: '🎙 Ovozli xabarda «kofe ikki yuz ellik va taksi to‘rt yuz» deng — ikkala xarajatni ham yozaman. Ovoz serverimizda tanib olinadi va saqlanmaydi.',
   receipt_limit_regular: '🧾 Bu oydagi cheklarni tanish limiti tugadi: {used} / {limit}. Premium bilan — oyiga {premium} tagacha chek. Xarajatlarni xabar bilan yozishingiz mumkin: `250 kofe`.',
   receipt_limit_premium: '🧾 Bu oydagi cheklarni tanish limiti tugadi: {used} / {limit}. Keyingi oyda limit yangilanadi; hozircha xarajatlarni xabar bilan yozing: `250 kofe`.',
   receipt_send_as_photo: '🖼 Bu faylni o‘qib bo‘lmaydi. Iltimos, chekni fayl emas, foto sifatida yuboring — Telegram o‘zi siqadi.',

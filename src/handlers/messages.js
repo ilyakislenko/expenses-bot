@@ -1,7 +1,7 @@
 const { LEGACY_MENU_BUTTON_KEYS } = require('../utils/constants');
 
 class MessageHandlers {
-constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, donationRepository, bugReportRepository, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, savingsHandlers }) {
+constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, donationRepository, bugReportRepository, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, savingsHandlers, multiEntryHandlers }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -22,6 +22,7 @@ constructor({ expenseService, userService, premiumService, familyService, catego
     this.budgetHandlers = budgetHandlers;
     this.exportHandlers = exportHandlers;
     this.savingsHandlers = savingsHandlers;
+    this.multiEntryHandlers = multiEntryHandlers;
   }
 
   async handleExpense(ctx) {
@@ -199,6 +200,8 @@ constructor({ expenseService, userService, premiumService, familyService, catego
           return ctx.reply(expenseUpdateErrorText);
         }
       }
+      // Несколько записей одним сообщением: «кофе 250, такси 400», по строке на запись, «+50000 зарплата, обед 600»
+      if (await this.multiEntryHandlers.handleText(ctx, text, userLanguage)) return;
       // Доход быстрым вводом: "+50000 зарплата", "+1000 USD фриланс"
       if (/^\s*\+\s*\d/.test(text)) {
         return await this.incomeHandlers.handleIncomeInput(ctx, text, userLanguage);
