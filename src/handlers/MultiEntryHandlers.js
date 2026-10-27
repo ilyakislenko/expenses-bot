@@ -5,6 +5,7 @@ const { normalizeSpokenText } = require('../utils/numberWords');
 const moneyInputErrorText = require('./moneyInputErrors');
 const { keepTyping, MAX_FILE_BYTES } = require('./ReceiptHandlers');
 const { MAX_INCOME_AMOUNT } = require('./IncomeHandlers');
+const { isQuestion } = require('./AssistantHandlers');
 
 const MAX_VOICE_SECONDS = 60;
 const NAME_IN_LIST = 40;
@@ -27,7 +28,7 @@ function entryText(entry, currencyToken, defaultCurrency) {
 // Записи сразу пишутся партией (EntryBatchService), сводка — номера → обычные карточки (back v.<batchId>),
 // «↩️ Отменить всё». Одна запись — обычный ввод (выбор категории и т.д.).
 class MultiEntryHandlers {
-  constructor({ entryBatchService, voiceService, expenseHandlers, incomeHandlers, expenseService, incomeService, premiumService, userService, localizationService, formatter, validator }) {
+  constructor({ entryBatchService, voiceService, expenseHandlers, incomeHandlers, expenseService, incomeService, premiumService, userService, localizationService, formatter, validator, achievementService = null, assistantHandlers = null }) {
     this.entryBatchService = entryBatchService;
     this.voiceService = voiceService;
     this.expenseHandlers = expenseHandlers;
@@ -39,6 +40,8 @@ class MultiEntryHandlers {
     this.localizationService = localizationService;
     this.formatter = formatter;
     this.validator = validator;
+    this.achievementService = achievementService;
+    this.assistantHandlers = assistantHandlers;
     this.tasks = new Set(); // фоновые распознавания голоса
     this.busyUsers = new Set(); // у кого сейчас распознаётся голосовое (по одному на пользователя)
     // «⬅️ Назад» на карточке записи (back v.<batchId>) и экран после её удаления
@@ -84,12 +87,25 @@ class MultiEntryHandlers {
     }));
     const familyId = await this.expenseHandlers.familyModeTarget(userId);
     const { batchId, defaulted } = await this.entryBatchService.record(userId, prepared, { source, familyId });
-    const view = await this.buildBatchView(userId, lang, batchId, { header, defaulted });
-    await send(view.text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: view.keyboard } });
-
     const { expenses } = await this.entryBatchService.getItems(userId, batchId);
     const categoryNames = [...new Set(expenses.map(expense => expense.category_name).filter(Boolean))];
+    const view = await this.buildBatchView(userId, lang, batchId, { header, defaulted });
+    const event = source === 'voice' ? 'voice_used' : (expenses.length ? 'expense_added' : 'income_added');
+    const note = await this.achievementNote(userId, event, lang, categoryNames);
+    await send(note ? `${view.text}\n\n${note}` : view.text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: view.keyboard } });
+
     if (categoryNames.length) await this.expenseHandlers.sendBudgetWarnings(ctx, userId, lang, categoryNames);
+  }
+
+  // Строка достижений к сводке или голосовому ('' — нечего сказать; track сам не бросает исключений)
+  async achievementNote(userId, event, lang, categoryNames = []) {
+    if (!this.achievementService) return '';
+    return this.achievementService.track(userId, event, { lang, categoryNames });
+  }
+
+  // Расшифровка голосового — вопрос боту («сколько я потратил на такси?»), если «🤖 Спроси бота» подключён
+  isSpokenQuestion(text) {
+    return Boolean(this.assistantHandlers) && isQuestion(text);
   }
 
   amounts(items) {
@@ -242,7 +258,7 @@ class MultiEntryHandlers {
     try {
       const audio = await this.download(ctx, fileId);
       const transcript = await this.voiceService.transcribe(userId, audio, {
-        lang, timezone, durationSec, onQueued, usable: text => Boolean(parseSpoken(text))
+        lang, timezone, durationSec, onQueued, usable: text => Boolean(parseSpoken(text)) || this.isSpokenQuestion(text)
       });
       await statusEdits;
       stopTyping();
@@ -251,6 +267,13 @@ class MultiEntryHandlers {
         return;
       }
       const heard = this.t(lang, 'voice_heard', { text: this.formatter.escapeMarkdown(this.formatter.shorten(transcript, TRANSCRIPT_IN_MESSAGE)) });
+      // «Сколько я потратил на такси?» голосом — вопрос боту (whisper ставит «?» в конце вопроса)
+      if (this.isSpokenQuestion(transcript)) {
+        logger.info('Voice parsed', { userId, question: true });
+        await this.editStatus(ctx, statusId, heard, { parse_mode: 'Markdown' });
+        await this.assistantHandlers.ask(ctx, transcript, lang);
+        return;
+      }
       const entries = parseSpoken(transcript);
       logger.info('Voice parsed', { userId, entries: entries ? entries.length : 0 });
       if (!entries) {
@@ -270,6 +293,9 @@ class MultiEntryHandlers {
       const text = entryText(entry, token => this.validator.resolveCurrencyToken(token), defaultCurrency);
       if (entry.kind === 'income') await this.incomeHandlers.handleIncomeInput(ctx, text, lang);
       else await this.expenseHandlers.handleExpenseInput(ctx, text, lang);
+      // Сама запись (и её строка достижений) — в обычном вводе; здесь только «первое голосовое»
+      const note = await this.achievementNote(userId, 'voice_used', lang);
+      if (note) await ctx.reply(note, { parse_mode: 'Markdown' });
     } catch (error) {
       logger.error('Voice processing failed', { userId, code: error.code, error: error.message });
       await statusEdits;

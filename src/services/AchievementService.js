@@ -174,13 +174,15 @@ class AchievementService {
   // Событие действия пользователя (см. EVENTS в utils/achievements.js). Возвращает Markdown-строку для добавления
   // к ответу на это действие ('' — нечего сказать): не больше одного значка, повышение уровня, заморозка серии,
   // «🔥 N дней подряд» (раз в день). Никогда не бросает исключение — основное действие важнее.
-  async track(userId, event, { lang = null, categoryName = null } = {}) {
+  // categoryNames — категории записанных трат (партия из нескольких записей или голос), иначе categoryName траты
+  async track(userId, event, { lang = null, categoryName = null, categoryNames = null } = {}) {
     try {
       const language = lang || await this.userService.getUserLanguage(userId);
       const snap = await this.snapshot(userId);
       const lines = [];
-      if (event === 'expense_added' && categoryName) {
-        lines.push(...await this.breakCategoryChallenges(userId, snap, categoryName, language));
+      const spentIn = categoryNames || (event === 'expense_added' && categoryName ? [categoryName] : []);
+      for (const name of spentIn) {
+        lines.push(...await this.breakCategoryChallenges(userId, snap, name, language));
       }
       const result = await this.grant(userId, snap, event);
       lines.push(...this.grantLines(language, result));

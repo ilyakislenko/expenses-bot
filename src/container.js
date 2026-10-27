@@ -324,7 +324,8 @@ class Container {
           expenseService: this.get('expenseService'),
           incomeService: this.get('incomeService'),
           userService: this.get('userService'),
-          funnelService: this.get('funnelService')
+          funnelService: this.get('funnelService'),
+          referralService: this.get('referralService')
         });
 
       // Распознавание речи из VOICE_STT_* (smoke-тесты подменяют его через instances); null — голос не настроен
@@ -351,7 +352,9 @@ class Container {
           userService: this.get('userService'),
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
-          validator: this.get('enhancedValidator')
+          validator: this.get('enhancedValidator'),
+          achievementService: this.get('achievementService'),
+          assistantHandlers: this.get('assistantHandlers')
         });
 
       case 'currencyUtils':

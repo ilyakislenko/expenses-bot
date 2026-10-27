@@ -124,19 +124,16 @@ const LEGACY_MENU_BUTTON_KEYS = [
   'button_admin'
 ];
 
-// Меню «☰ Ещё» (inline)
+// Меню «☰ Ещё» (inline): длинные подписи (импорт, приглашение) — в паре с короткими
 function generateMoreMenu(localizationService, userLanguage, isAdmin = false) {
   const t = (key) => localizationService.getText(userLanguage, key);
   const keyboard = [
     [{ text: t('button_ai'), callback_data: 'ai' }],
-    [{ text: t('button_savings'), callback_data: 'sv' }],
-    [{ text: t('button_planning'), callback_data: 'pl' }],
-    [{ text: t('button_achievements'), callback_data: 'ach' }],
+    [{ text: t('button_planning'), callback_data: 'pl' }, { text: t('button_savings'), callback_data: 'sv' }],
+    [{ text: t('button_achievements'), callback_data: 'ach' }, { text: t('button_invite'), callback_data: 'ref' }],
     [{ text: t('button_family'), callback_data: 'family' }, { text: t('premium_subscription_title'), callback_data: 'premium_subscription' }],
     [{ text: t('button_export'), callback_data: 'export' }, { text: t('button_settings'), callback_data: 'settings' }],
-    [{ text: t('button_import'), callback_data: 'import' }],
-    [{ text: t('button_invite'), callback_data: 'ref' }],
-    [{ text: t('button_help'), callback_data: 'help' }]
+    [{ text: t('button_import'), callback_data: 'import' }, { text: t('button_help'), callback_data: 'help' }]
   ];
   if (isAdmin) {
     keyboard.push([{ text: t('button_admin'), callback_data: 'panel_main' }]);

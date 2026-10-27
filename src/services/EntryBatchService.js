@@ -4,12 +4,13 @@ const logger = require('../utils/logger');
 // по описанию (как у одиночного ввода), иначе категория по умолчанию; валюта без кода — основная (траты) или
 // валюта дохода (доходы).
 class EntryBatchService {
-  constructor({ entryBatchRepository, expenseService, incomeService, userService, funnelService }) {
+  constructor({ entryBatchRepository, expenseService, incomeService, userService, funnelService, referralService = null }) {
     this.entryBatchRepository = entryBatchRepository;
     this.expenseService = expenseService;
     this.incomeService = incomeService;
     this.userService = userService;
     this.funnelService = funnelService;
+    this.referralService = referralService;
   }
 
   // entries — из utils/multiEntry (описание уже в пределах лимита). Возвращает { batchId, defaulted } —
@@ -45,7 +46,11 @@ class EntryBatchService {
 
     const batchId = await this.entryBatchRepository.create(userId, { source, familyId, expenses, incomes });
     logger.info('Entry batch recorded', { userId, batchId, source, expenses: expenses.length, incomes: incomes.length, defaulted });
-    if (expenses.length) await this.funnelService.track(userId, 'first_expense');
+    if (expenses.length) {
+      await this.funnelService.track(userId, 'first_expense');
+      // Приглашённый: засчитывается вся партия (без await — как у одиночной траты и чека, никогда не бросает)
+      if (this.referralService) this.referralService.onExpenseRecorded(userId);
+    }
     return { batchId, defaulted };
   }
 
