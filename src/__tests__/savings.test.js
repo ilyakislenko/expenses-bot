@@ -197,3 +197,111 @@ describe('savings input parsing', () => {
     expect(handlers.parseAccountInput(input, 'RUB')).toBeNull();
   });
 });
+
+describe('debt amortization', () => {
+  const { amortize, projectDebt } = require('../utils/debtForecast');
+
+  test('interest-free debt: plain division, the last payment is partial', () => {
+    expect(amortize({ balance: 12000, payment: 1000 })).toMatchObject({ paidOff: true, months: 12, totalInterest: 0, lastPayment: 1000 });
+    expect(amortize({ balance: 10500, rate: null, payment: 1000 })).toMatchObject({ paidOff: true, months: 11, totalInterest: 0, lastPayment: 500 });
+  });
+
+  test('interest accrues monthly (12% a year → 1% a month) before the payment', () => {
+    const plan = amortize({ balance: 100000, rate: 12, payment: 10000 });
+    // n = −ln(1 − B·i/P) / ln(1 + i) ≈ 10.59 → 11 payments, the last one partial
+    expect(plan.months).toBe(11);
+    expect(plan.interest).toBeCloseTo(1000, 6);
+    near(plan.totalInterest, 10 * 10000 + plan.lastPayment - 100000);
+    expect(plan.lastPayment).toBeLessThan(10000);
+  });
+
+  test('annuity payment repays the loan exactly in its term', () => {
+    const balance = 1000000;
+    const i = 0.01;
+    const payment = balance * i / (1 - Math.pow(1 + i, -120));
+    const plan = amortize({ balance, rate: 12, payment });
+    expect(plan.months).toBe(120);
+    near(plan.totalInterest, 120 * payment - balance);
+  });
+
+  test('payment not above the monthly interest never repays the debt', () => {
+    expect(amortize({ balance: 100000, rate: 12, payment: 1000 })).toMatchObject({ paidOff: false, reason: 'below_interest', interest: 1000 });
+    expect(amortize({ balance: 100000, rate: 12, payment: 500 })).toMatchObject({ paidOff: false, reason: 'below_interest' });
+    expect(amortize({ balance: 100000, rate: 12, payment: 1001 })).toMatchObject({ paidOff: false, reason: 'too_long' });
+  });
+
+  test('no payment, nothing owed', () => {
+    expect(amortize({ balance: 5000, rate: 20, payment: null })).toMatchObject({ paidOff: false, reason: 'no_payment' });
+    expect(amortize({ balance: 5000, payment: 0 })).toMatchObject({ paidOff: false, reason: 'no_payment', interest: 0 });
+    expect(amortize({ balance: 0, rate: 20, payment: null })).toMatchObject({ paidOff: true, months: 0 });
+  });
+
+  test('projection: grows with interest without a payment, stops at zero once repaid', () => {
+    const grow = projectDebt({ balance: 1000, rate: 12, months: 12 });
+    near(grow[12], 1000 * 1.01 ** 12);
+    expect(projectDebt({ balance: 1000, months: 3 })).toEqual([1000, 1000, 1000, 1000]);
+    expect(projectDebt({ balance: 2500, payment: 1000, months: 5 })).toEqual([2500, 1500, 500, 0, 0, 0]);
+    near(projectDebt({ balance: 100000, rate: 12, payment: 10000, months: 1 })[1], 91000);
+  });
+});
+
+describe('debts in the savings state', () => {
+  const service = new SavingsService({
+    userService: { getUserCurrency: async () => 'RUB', getUserTimezone: async () => 'UTC' },
+    savingsRepository: {
+      ensureGeneralPot: async () => ({}),
+      getSettings: async () => ({ monthly_contribution: '10000' }),
+      getPots: async () => [
+        { id: 1, kind: 'general', name: null, balance: '100000', currency: 'RUB', yield_rate: null, target_amount: null, monthly_payment: null },
+        { id: 2, kind: 'account', name: 'Cash', balance: '1000', currency: 'USD', yield_rate: '0', target_amount: null, monthly_payment: null },
+        { id: 3, kind: 'debt', name: 'Mortgage', balance: '300000', currency: 'RUB', yield_rate: '12', target_amount: null, monthly_payment: '20000' },
+        { id: 4, kind: 'debt', name: 'Loan', balance: '100', currency: 'USD', yield_rate: null, target_amount: null, monthly_payment: null }
+      ]
+    },
+    currencyUtils: { convert: async (amount, from) => (from === 'USD' ? amount * 100 : amount) }
+  });
+
+  test('debts are not savings: excluded from total, accounts and forecast parts; net worth = savings − debts', async () => {
+    const state = await service.getState(7);
+    expect(state.total).toBe(200000);
+    expect(state.debtTotal).toBe(310000);
+    expect(state.netWorth).toBe(-110000);
+    expect(state.accounts.map(p => p.id)).toEqual([1, 2]);
+    expect(state.debts.map(p => p.id)).toEqual([3, 4]);
+    expect(state.debts[0].monthly_payment).toBe(20000);
+    expect(state.parts).toEqual([{ balance: 100000, yieldRate: null }, { balance: 100000, yieldRate: 0 }]);
+    // Цель «от всех накоплений» считает только накопления
+    const status = await service.goalStatus({ goal_mode: 'total', target_amount: 400000, currency: 'RUB', target_date: null }, state);
+    expect(status.current).toBe(200000);
+  });
+
+  test('forecast sums debts in the main currency at the current rate', async () => {
+    const state = await service.getState(7);
+    const handlers = new SavingsHandlers({});
+    const points = handlers.projectDebts(state.debts, 1);
+    near(points[0], 310000);
+    near(points[1], 300000 * 1.01 - 20000 + 10000);
+  });
+});
+
+describe('debt input parsing', () => {
+  const handlers = new SavingsHandlers({ validator: new EnhancedValidator() });
+
+  test.each([
+    ['Ипотека 3 500 000 12%', { name: 'Ипотека', amount: 3500000, currency: 'RUB', rate: 12 }],
+    ['Кредитка 45000 29,9%', { name: 'Кредитка', amount: 45000, currency: 'RUB', rate: 29.9 }],
+    ['Долг Пете 15000', { name: 'Долг Пете', amount: 15000, currency: 'RUB', rate: null }],
+    ['Рассрочка USD 1200', { name: 'Рассрочка', amount: 1200, currency: 'USD', rate: null }],
+    ['12% Ипотека 3500000', { name: 'Ипотека', amount: 3500000, currency: 'RUB', rate: 12 }],
+    ['Loan to Mike $500', { name: 'Loan to Mike', amount: 500, currency: 'USD', rate: null }],
+    ['Кредит 1200,50 eur 0%', { name: 'Кредит', amount: 1200.5, currency: 'EUR', rate: null }],
+    ['Кредит на iPhone 15 120000', { name: 'Кредит на iPhone 15', amount: 120000, currency: 'RUB', rate: null }],
+    ['房贷 1 000 000 4%', { name: '房贷', amount: 1000000, currency: 'RUB', rate: 4 }]
+  ])('debt «%s»', (input, expected) => {
+    expect(handlers.parseDebtInput(input, 'RUB')).toEqual(expected);
+  });
+
+  test.each(['Ипотека', '15000', 'USD 1200 12%', 'Ипотека 3 500 000 12', 'Долг 0', 'Долг 99999999999'])('debt «%s» is rejected', (input) => {
+    expect(handlers.parseDebtInput(input, 'RUB')).toBeNull();
+  });
+});

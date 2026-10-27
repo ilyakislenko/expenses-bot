@@ -593,3 +593,24 @@ ALTER TABLE savings_pots ADD CONSTRAINT savings_pots_fields_check CHECK (
     OR (kind = 'goal' AND name IS NOT NULL AND target_amount IS NOT NULL)
 );
 ALTER TABLE savings_pots ADD CONSTRAINT savings_pots_yield_rate_check CHECK (yield_rate IS NULL OR yield_rate BETWEEN 0 AND 300);
+
+-- ========================================
+-- SAVINGS DEBTS: долги и чистая стоимость
+-- ========================================
+
+-- Долги (kind 'debt'): кредит, ипотека, рассрочка, долг другу. balance — сколько осталось вернуть,
+-- yield_rate — ставка по долгу, % годовых (NULL — без процентов). В накопления не входят.
+ALTER TABLE savings_pots ADD COLUMN IF NOT EXISTS monthly_payment DECIMAL(14,2) NULL;
+COMMENT ON COLUMN savings_pots.monthly_payment IS 'Плановый платёж по долгу в месяц (валюта долга); NULL — не задан. Только для kind = debt';
+ALTER TABLE savings_pots DROP CONSTRAINT IF EXISTS savings_pots_kind_check;
+ALTER TABLE savings_pots DROP CONSTRAINT IF EXISTS savings_pots_fields_check;
+ALTER TABLE savings_pots DROP CONSTRAINT IF EXISTS savings_pots_monthly_payment_check;
+ALTER TABLE savings_pots ADD CONSTRAINT savings_pots_kind_check CHECK (kind IN ('general', 'account', 'goal', 'debt'));
+ALTER TABLE savings_pots ADD CONSTRAINT savings_pots_fields_check CHECK (
+    kind = 'general'
+    OR (kind IN ('account', 'debt') AND name IS NOT NULL)
+    OR (kind = 'goal' AND name IS NOT NULL AND target_amount IS NOT NULL)
+);
+ALTER TABLE savings_pots ADD CONSTRAINT savings_pots_monthly_payment_check CHECK (
+    monthly_payment IS NULL OR (kind = 'debt' AND monthly_payment > 0)
+);

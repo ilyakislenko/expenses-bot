@@ -1,5 +1,7 @@
 const respond = require('../utils/respond');
 const { simulate } = require('../utils/savingsForecast');
+const { amortize, projectDebt } = require('../utils/debtForecast');
+const { MAX_DEBTS } = require('../services/SavingsService');
 
 const MAX_SAVINGS_AMOUNT = 9999999999; // savings_pots.balance DECIMAL(14,2) с запасом на пополнения
 const MAX_GOAL_NAME_LENGTH = 60;
@@ -7,8 +9,10 @@ const RATE_LIMITS = { i: 300, y: 300, g: 100 }; // проценты годовы
 const RATE_COLUMNS = { i: 'inflation_rate', y: 'yield_rate', g: 'contribution_growth' };
 const FORECAST_HORIZONS = [6, 12, 36, 60, 120];
 const ZERO = /^\s*0+(?:[.,]0+)?\s*$/;
+const DEBT_NUMBER = /^\d+(?:[.,]\d{1,2})?$/;
+const DEBT_AMOUNT = /^(?:\d{1,3}(?: \d{3})+|\d+)(?:[.,]\d{1,2})?$/;
 
-// Раздел «🏦 Накопления»: общая копилка, цели (своя копилка или от всех накоплений), прогноз.
+// Раздел «🏦 Накопления»: общая копилка, счета, цели (своя копилка или от всех накоплений), долги, прогноз.
 // Ввод текстом — состояние sv_in:<операция>:<параметры>, см. handleInput.
 class SavingsHandlers {
   constructor({ savingsService, userService, premiumService, localizationService, formatter, stateService, validator }) {
@@ -58,7 +62,7 @@ class SavingsHandlers {
   }
 
   potIcon(pot) {
-    return { general: '💰', account: '💼', goal: '🎯' }[pot.kind];
+    return { general: '💰', account: '💼', goal: '🎯', debt: '💳' }[pot.kind];
   }
 
   // «3 000 $ (≈ 285 000 ₽) · 16%»: сумма счёта, в основной валюте, если другая, и своя ставка
@@ -92,8 +96,8 @@ class SavingsHandlers {
     const lang = await this.userService.getUserLanguage(userId);
     await this.answer(ctx);
     const state = await this.savingsService.getState(userId);
-    const { currency, accounts, goals } = state;
-    const empty = state.total === 0 && !goals.length && accounts.length === 1;
+    const { currency, accounts, goals, debts } = state;
+    const empty = state.total === 0 && !goals.length && !debts.length && accounts.length === 1;
 
     const lines = [];
     if (notice) lines.push(notice, '');
@@ -107,6 +111,9 @@ class SavingsHandlers {
         if (account.kind === 'general' && account.balance === 0 && accounts.length > 1) continue;
         lines.push(`${this.potIcon(account)} ${this.potName(account, lang)}: ${this.accountSummary(account, currency)}`);
       }
+      for (const debt of debts) {
+        lines.push(`💳 ${this.potName(debt, lang)}: ${this.accountSummary(debt, currency)}`);
+      }
       for (const goal of goals) {
         const status = await this.savingsService.goalStatus(goal, state);
         const mode = goal.goal_mode === 'total' ? ` ${this.t(lang, 'savings_mode_total_short')}` : '';
@@ -115,6 +122,13 @@ class SavingsHandlers {
           ? this.t(lang, 'savings_goal_achieved_short')
           : (status.etaNominal !== null ? `≈ ${this.duration(status.etaNominal, lang)}` : '');
         lines.push(`   ${this.formatter.progressBar(status.ratio)} ${Math.min(100, Math.floor(status.ratio * 100))}%${tail ? ` · ${tail}` : ''}`);
+      }
+      if (debts.length) {
+        lines.push('', this.t(lang, 'savings_net_worth', {
+          amount: this.money(state.netWorth, currency),
+          assets: this.money(state.total, currency),
+          debts: this.money(state.debtTotal, currency)
+        }));
       }
       lines.push('', this.monthlyLine(state, lang));
       if (state.monthly !== null) {
@@ -129,14 +143,19 @@ class SavingsHandlers {
     const keyboard = [];
     if (empty) {
       keyboard.push([{ text: this.t(lang, 'savings_button_set_current'), callback_data: `svs|${accounts[0].id}` }]);
-      keyboard.push([{ text: this.t(lang, 'savings_button_new_account'), callback_data: 'sva' }]);
     } else {
-      const pots = [...accounts, ...goals];
+      const pots = [...accounts, ...goals, ...debts];
       for (let i = 0; i < pots.length; i += 2) {
-        keyboard.push(pots.slice(i, i + 2).map(pot => ({ text: `${this.potIcon(pot)} ${this.potButtonName(pot, lang)}`, callback_data: `svp|${pot.id}` })));
+        keyboard.push(pots.slice(i, i + 2).map(pot => ({
+          text: `${this.potIcon(pot)} ${this.potButtonName(pot, lang)}`,
+          callback_data: pot.kind === 'debt' ? `svb|${pot.id}` : `svp|${pot.id}`
+        })));
       }
-      keyboard.push([{ text: this.t(lang, 'savings_button_new_account'), callback_data: 'sva' }]);
     }
+    keyboard.push([
+      { text: this.t(lang, 'savings_button_new_account'), callback_data: 'sva' },
+      { text: this.t(lang, 'savings_button_new_debt'), callback_data: 'svbn' }
+    ]);
     keyboard.push([
       { text: this.t(lang, 'savings_button_new_goal'), callback_data: 'svgn' },
       { text: this.t(lang, 'savings_button_forecast'), callback_data: 'svf' }
@@ -167,6 +186,7 @@ class SavingsHandlers {
     if (!pot) {
       return respond(ctx, this.t(lang, 'savings_not_found'), { reply_markup: { inline_keyboard: [this.backToSavings(lang)] } });
     }
+    if (pot.kind === 'debt') return this.debtCard(ctx, lang, pot, state, notice);
 
     const lines = [];
     if (notice) lines.push(notice, '');
@@ -183,18 +203,7 @@ class SavingsHandlers {
         : this.t(lang, 'savings_account_yield_default', { value: this.percent(state.settings.yieldRate) }));
     }
 
-    if (own) {
-      const operations = await this.savingsService.getRecentOperations(userId, pot.id);
-      if (operations.length) {
-        lines.push('', this.t(lang, 'savings_recent_operations'));
-        const timezone = await this.userService.getUserTimezone(userId);
-        for (const op of operations) {
-          const amount = Number(op.amount);
-          const sign = amount >= 0 ? '+' : '−';
-          lines.push(`${sign}${this.exact(Math.abs(amount), pot.currency)} · ${this.formatter.formatShortDateTime(op.created_at, timezone)}`);
-        }
-      }
-    }
+    if (own) await this.operationLines(lines, userId, pot, lang);
 
     const keyboard = [];
     if (own) {
@@ -203,7 +212,7 @@ class SavingsHandlers {
         { text: this.t(lang, 'savings_button_withdraw'), callback_data: `svw|${pot.id}` }
       ]);
       const row = [{ text: this.t(lang, 'savings_button_set'), callback_data: `svs|${pot.id}` }];
-      const ownPots = state.pots.filter(p => p.kind !== 'goal' || p.goal_mode === 'own');
+      const ownPots = state.pots.filter(p => p.kind !== 'debt' && (p.kind !== 'goal' || p.goal_mode === 'own'));
       if (ownPots.length > 1 && pot.balance > 0) row.push({ text: this.t(lang, 'savings_button_transfer'), callback_data: `svt|${pot.id}` });
       keyboard.push(row);
     }
@@ -225,6 +234,92 @@ class SavingsHandlers {
     }
     keyboard.push(this.backToSavings(lang));
     await respond(ctx, lines.join('\n'), { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
+  }
+
+  // Последние изменения копилки или долга (у долга «+» — долг вырос, «−» — погашено)
+  async operationLines(lines, userId, pot, lang) {
+    const operations = await this.savingsService.getRecentOperations(userId, pot.id);
+    if (!operations.length) return;
+    lines.push('', this.t(lang, 'savings_recent_operations'));
+    const timezone = await this.userService.getUserTimezone(userId);
+    for (const op of operations) {
+      const amount = Number(op.amount);
+      const sign = amount >= 0 ? '+' : '−';
+      lines.push(`${sign}${this.exact(Math.abs(amount), pot.currency)} · ${this.formatter.formatShortDateTime(op.created_at, timezone)}`);
+    }
+  }
+
+  // callback: svb|<id> — карточка долга. notice — строка сверху
+  async showDebt(ctx, debtId = null, notice = null) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    await this.answer(ctx);
+    const id = debtId || parseInt(ctx.match[1], 10);
+    const state = await this.savingsService.getState(userId);
+    const debt = state.debts.find(p => p.id === id);
+    if (!debt) {
+      return respond(ctx, this.t(lang, 'savings_not_found'), { reply_markup: { inline_keyboard: [this.backToSavings(lang)] } });
+    }
+    return this.debtCard(ctx, lang, debt, state, notice);
+  }
+
+  async debtCard(ctx, lang, debt, state, notice) {
+    const lines = [];
+    if (notice) lines.push(notice, '');
+    lines.push(`💳 *${this.potName(debt, lang)}*`);
+    let owed = this.t(lang, 'savings_debt_owed', { amount: this.exact(debt.balance, debt.currency) });
+    if (debt.currency !== state.currency && debt.balance > 0) owed += ` (≈ ${this.money(debt.balanceMain, state.currency)})`;
+    lines.push(owed);
+    lines.push(debt.yield_rate
+      ? this.t(lang, 'savings_debt_rate', { value: this.percent(debt.yield_rate) })
+      : this.t(lang, 'savings_debt_no_rate'));
+    lines.push(debt.monthly_payment
+      ? this.t(lang, 'savings_debt_payment', { amount: this.exact(debt.monthly_payment, debt.currency) })
+      : this.t(lang, 'savings_debt_payment_not_set'));
+    lines.push('', ...this.payoffLines(debt, state.today, lang));
+    await this.operationLines(lines, ctx.from.id, debt, lang);
+
+    const id = debt.id;
+    await respond(ctx, lines.join('\n'), {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: this.t(lang, 'savings_button_debt_pay'), callback_data: `svbp|${id}` },
+            { text: this.t(lang, 'savings_button_debt_increase'), callback_data: `svbi|${id}` }
+          ],
+          [
+            { text: this.t(lang, 'savings_button_set'), callback_data: `svbs|${id}` },
+            { text: this.t(lang, 'savings_button_debt_payment'), callback_data: `svbm|${id}` }
+          ],
+          [
+            { text: this.t(lang, 'savings_button_debt_rate'), callback_data: `svbr|${id}` },
+            { text: this.t(lang, 'savings_button_account_name'), callback_data: `svbe|${id}` }
+          ],
+          [{ text: this.t(lang, 'savings_button_debt_delete'), callback_data: `svbx|${id}` }],
+          this.backToSavings(lang)
+        ]
+      }
+    });
+  }
+
+  // Когда закроется долг при плановом платеже и сколько уйдёт на проценты
+  payoffLines(debt, today, lang) {
+    const plan = amortize({ balance: debt.balance, rate: debt.yield_rate, payment: debt.monthly_payment });
+    const currency = debt.currency;
+    if (plan.paidOff && plan.months === 0) return [this.t(lang, 'savings_debt_paid_off')];
+    if (plan.paidOff) {
+      const lines = [this.t(lang, 'savings_debt_payoff', { duration: this.duration(plan.months, lang), date: this.monthLabel(today, plan.months) })];
+      if (plan.totalInterest >= 0.5) lines.push(this.t(lang, 'savings_debt_total_interest', { amount: this.money(plan.totalInterest, currency) }));
+      return lines;
+    }
+    if (plan.reason === 'too_long') return [this.t(lang, 'savings_debt_too_long')];
+    // Платёж должен быть больше процентов за месяц — округляем вверх, чтобы «больше X» точно хватало
+    const interest = this.formatter.formatAmount(Math.ceil(plan.interest), currency);
+    if (plan.reason === 'below_interest') return [this.t(lang, 'savings_debt_below_interest', { amount: interest })];
+    return [plan.interest > 0
+      ? this.t(lang, 'savings_debt_no_payment_interest', { amount: interest })
+      : this.t(lang, 'savings_debt_no_payment')];
   }
 
   async goalLines(lines, goal, state, lang) {
@@ -271,13 +366,14 @@ class SavingsHandlers {
     }
   }
 
-  // Подсказка ввода с кнопкой отмены (возврат на cancelCallback); extraRows — дополнительные кнопки
-  async prompt(ctx, lang, text, state, cancelCallback, extraRows = []) {
+  // Подсказка ввода с кнопкой отмены (возврат на cancelCallback); extraRows — дополнительные кнопки,
+  // cancelText — своя надпись вместо «Отмена» (например, «Пропустить»)
+  async prompt(ctx, lang, text, state, cancelCallback, extraRows = [], cancelText = null) {
     this.stateService.setUserState(ctx.from.id, state);
     await this.answer(ctx);
     await ctx.reply(text, {
       parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: [...extraRows, [{ text: this.t(lang, 'button_cancel'), callback_data: cancelCallback }]] }
+      reply_markup: { inline_keyboard: [...extraRows, [{ text: cancelText || this.t(lang, 'button_cancel'), callback_data: cancelCallback }]] }
     });
   }
 
@@ -286,7 +382,7 @@ class SavingsHandlers {
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
     const pot = await this.savingsService.getPot(userId, parseInt(ctx.match[1], 10));
-    if (!pot || (pot.kind === 'goal' && pot.goal_mode !== 'own')) return this.showMenu(ctx, this.t(lang, 'savings_not_found'));
+    if (!pot || pot.kind === 'debt' || (pot.kind === 'goal' && pot.goal_mode !== 'own')) return this.showMenu(ctx, this.t(lang, 'savings_not_found'));
     const key = { dep: 'savings_prompt_deposit', wd: 'savings_prompt_withdraw', set: 'savings_prompt_set' }[op];
     const text = this.t(lang, key, { name: this.potName(pot, lang), amount: this.exact(Number(pot.balance), pot.currency) });
     await this.prompt(ctx, lang, text, `sv_in:${op}:${pot.id}`, pot.kind === 'general' && Number(pot.balance) === 0 ? 'sv' : `svp|${pot.id}`);
@@ -300,8 +396,8 @@ class SavingsHandlers {
     const fromId = parseInt(ctx.match[1], 10);
     const state = await this.savingsService.getState(userId);
     const from = state.pots.find(p => p.id === fromId);
-    if (!from) return this.showMenu(ctx, this.t(lang, 'savings_not_found'));
-    const targets = state.pots.filter(p => p.id !== fromId && (p.kind !== 'goal' || p.goal_mode === 'own'));
+    if (!from || from.kind === 'debt') return this.showMenu(ctx, this.t(lang, 'savings_not_found'));
+    const targets = state.pots.filter(p => p.id !== fromId && p.kind !== 'debt' && (p.kind !== 'goal' || p.goal_mode === 'own'));
     const keyboard = targets.map(p => [{ text: `${this.potIcon(p)} ${this.potButtonName(p, lang)}`, callback_data: `svtt|${fromId}|${p.id}` }]);
     keyboard.push([{ text: this.t(lang, 'button_back'), callback_data: `svp|${fromId}` }]);
     await respond(ctx, this.t(lang, 'savings_transfer_choose', { name: this.potName(from, lang), amount: this.exact(from.balance, from.currency) }), {
@@ -316,7 +412,7 @@ class SavingsHandlers {
     const lang = await this.userService.getUserLanguage(userId);
     const [fromId, toId] = [parseInt(ctx.match[1], 10), parseInt(ctx.match[2], 10)];
     const [from, to] = await Promise.all([this.savingsService.getPot(userId, fromId), this.savingsService.getPot(userId, toId)]);
-    if (!from || !to) return this.showMenu(ctx, this.t(lang, 'savings_not_found'));
+    if (!from || !to || [from, to].some(p => p.kind === 'debt')) return this.showMenu(ctx, this.t(lang, 'savings_not_found'));
     const text = this.t(lang, 'savings_prompt_transfer', {
       from: this.potName(from, lang), to: this.potName(to, lang), amount: this.exact(Number(from.balance), from.currency)
     });
@@ -331,10 +427,81 @@ class SavingsHandlers {
     await this.prompt(ctx, lang, this.t(lang, 'savings_prompt_account', { currency }), 'sv_in:acc', 'sv');
   }
 
+  // callback: svbn — новый долг («Ипотека 3 500 000 12%», «Долг Пете 15000»), до 10 бесплатно
+  async startNewDebt(ctx) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    const state = await this.savingsService.getState(userId);
+    if (state.debts.length >= MAX_DEBTS) return this.showMenu(ctx, this.t(lang, 'savings_debt_limit', { limit: MAX_DEBTS }));
+    await this.prompt(ctx, lang, this.t(lang, 'savings_prompt_debt', { currency: state.currency }), 'sv_in:debt', 'sv');
+  }
+
+  // Долг по callback ctx.match[1]; иначе — экран «не найдено»
+  async debtFromCallback(ctx, lang) {
+    const pot = await this.savingsService.getPot(ctx.from.id, parseInt(ctx.match[1], 10));
+    if (pot && pot.kind === 'debt') return pot;
+    await this.showMenu(ctx, this.t(lang, 'savings_not_found'));
+    return null;
+  }
+
+  // callback: svbp|svbi|svbs|svbm|svbr|svbe <id> — погасить, увеличить, точная сумма, платёж в месяц, ставка, название
+  async startDebtInput(ctx, op) {
+    const lang = await this.userService.getUserLanguage(ctx.from.id);
+    const debt = await this.debtFromCallback(ctx, lang);
+    if (!debt) return;
+    const name = this.potName(debt, lang);
+    const amount = this.exact(Number(debt.balance), debt.currency);
+    const [key, params] = {
+      bpay: ['savings_prompt_debt_pay', { name, amount }],
+      binc: ['savings_prompt_debt_increase', { name, amount }],
+      bset: ['savings_prompt_debt_set', { name, amount }],
+      bpm: ['savings_prompt_debt_payment', { name, currency: debt.currency }],
+      brate: ['savings_prompt_debt_rate', { name, max: RATE_LIMITS.y }],
+      bname: ['savings_prompt_account_name', { name }]
+    }[op];
+    const extra = op === 'bpm' && debt.monthly_payment !== null
+      ? [[{ text: this.t(lang, 'savings_button_debt_no_payment'), callback_data: `svbmn|${debt.id}` }]]
+      : [];
+    await this.prompt(ctx, lang, this.t(lang, key, params), `sv_in:${op}:${debt.id}`, `svb|${debt.id}`, extra);
+  }
+
+  // callback: svbmn|<id> — убрать платёж в месяц
+  async clearDebtPayment(ctx) {
+    const lang = await this.userService.getUserLanguage(ctx.from.id);
+    const debt = await this.savingsService.updateDebt(ctx.from.id, parseInt(ctx.match[1], 10), { monthly_payment: null });
+    if (!debt) return this.showMenu(ctx, this.t(lang, 'savings_not_found'));
+    await this.showDebt(ctx, debt.id, this.t(lang, 'savings_setting_saved'));
+  }
+
+  // callback: svbx|<id> — подтверждение удаления долга (деньги никуда не переходят)
+  async confirmDeleteDebt(ctx) {
+    const lang = await this.userService.getUserLanguage(ctx.from.id);
+    await this.answer(ctx);
+    const debt = await this.debtFromCallback(ctx, lang);
+    if (!debt) return;
+    await respond(ctx, this.t(lang, 'savings_debt_delete_confirm', { name: this.potName(debt, lang) }), {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [[
+          { text: this.t(lang, 'savings_button_goal_delete_yes'), callback_data: `svbxc|${debt.id}` },
+          { text: this.t(lang, 'button_back'), callback_data: `svb|${debt.id}` }
+        ]]
+      }
+    });
+  }
+
+  // callback: svbxc|<id>
+  async deleteDebt(ctx) {
+    const lang = await this.userService.getUserLanguage(ctx.from.id);
+    const debt = await this.savingsService.deleteDebt(ctx.from.id, parseInt(ctx.match[1], 10));
+    if (!debt) return this.showMenu(ctx, this.t(lang, 'savings_not_found'));
+    await this.showMenu(ctx, this.t(lang, 'savings_debt_deleted', { name: this.formatter.escapeMarkdown(debt.name) }));
+  }
+
   // Счёт или общая копилка по callback ctx.match[1]; иначе — экран «не найдено»
   async accountFromCallback(ctx, lang) {
     const pot = await this.savingsService.getPot(ctx.from.id, parseInt(ctx.match[1], 10));
-    if (pot && pot.kind !== 'goal') return pot;
+    if (pot && (pot.kind === 'general' || pot.kind === 'account')) return pot;
     await this.showMenu(ctx, this.t(lang, 'savings_not_found'));
     return null;
   }
@@ -508,27 +675,56 @@ class SavingsHandlers {
     lines.push(this.monthlyLine(state, lang));
     const ratesLine = this.ratesLine(state, lang);
     if (ratesLine) lines.push(ratesLine);
+    if (state.debts.length) {
+      lines.push(this.t(lang, 'savings_forecast_debts_now', { amount: this.money(state.debtTotal, currency), net: this.money(state.netWorth, currency) }));
+    }
 
+    const horizon = Math.max(...FORECAST_HORIZONS);
+    const debtPoints = state.debts.length ? this.projectDebts(state.debts, horizon) : null;
+    let points = null;
+    let depletedAt = null;
     if (state.monthly === null) {
       lines.push('', this.t(lang, 'savings_forecast_need_monthly'));
     } else {
-      const { points, depletedAt } = simulate({ parts: state.parts, monthly: state.monthly, ...this.rates(state), months: Math.max(...FORECAST_HORIZONS) });
+      ({ points, depletedAt } = simulate({ parts: state.parts, monthly: state.monthly, ...this.rates(state), months: horizon }));
+    }
+    if (points || debtPoints) {
       const showGrowth = settings.yieldRate > 0 || settings.contributionGrowth > 0 || state.accounts.some(a => a.yield_rate > 0);
       for (const months of FORECAST_HORIZONS) {
-        const point = points[months];
         lines.push('', `*${this.t(lang, `savings_horizon_${months}`)}*`);
-        lines.push(`• ${this.t(lang, 'savings_forecast_simple', { amount: this.money(point.simple, currency) })}`);
-        if (showGrowth) lines.push(`• ${this.t(lang, 'savings_forecast_nominal', { amount: this.money(point.nominal, currency) })}`);
-        if (settings.inflationRate > 0) lines.push(`• ${this.t(lang, 'savings_forecast_real', { amount: this.money(point.real, currency) })}`);
+        if (points) {
+          const point = points[months];
+          lines.push(`• ${this.t(lang, 'savings_forecast_simple', { amount: this.money(point.simple, currency) })}`);
+          if (showGrowth) lines.push(`• ${this.t(lang, 'savings_forecast_nominal', { amount: this.money(point.nominal, currency) })}`);
+          if (settings.inflationRate > 0) lines.push(`• ${this.t(lang, 'savings_forecast_real', { amount: this.money(point.real, currency) })}`);
+        }
+        if (debtPoints) {
+          lines.push(`• ${this.t(lang, 'savings_forecast_debts', { amount: this.money(debtPoints[months], currency) })}`);
+          if (points) lines.push(`• ${this.t(lang, 'savings_forecast_net_worth', { amount: this.money(points[months].nominal - debtPoints[months], currency) })}`);
+        }
       }
       if (depletedAt !== null) lines.push('', this.t(lang, 'savings_forecast_depleted', { duration: this.duration(depletedAt, lang) }));
-      lines.push('', this.t(lang, 'savings_forecast_legend'));
+      if (points) lines.push('', this.t(lang, 'savings_forecast_legend'));
+      if (debtPoints) lines.push('', this.t(lang, 'savings_forecast_debts_note'));
     }
 
     await respond(ctx, lines.join('\n'), {
       parse_mode: 'Markdown',
       reply_markup: { inline_keyboard: [[{ text: this.t(lang, 'savings_button_settings'), callback_data: 'svo' }], this.backToSavings(lang)] }
     });
+  }
+
+  // Сколько останется должен по месяцам 0..months (основная валюта по текущему курсу): каждый долг — по своей
+  // ставке и плановому платежу
+  projectDebts(debts, months) {
+    const total = new Array(months + 1).fill(0);
+    for (const debt of debts) {
+      if (debt.balance <= 0) continue;
+      const fx = debt.balanceMain / debt.balance; // курс валюты долга к основной
+      const points = projectDebt({ balance: debt.balance, rate: debt.yield_rate, payment: debt.monthly_payment, months });
+      points.forEach((owed, k) => { total[k] += owed * fx; });
+    }
+    return total;
   }
 
   percent(value) {
@@ -750,7 +946,64 @@ class SavingsHandlers {
       return this.finish(ctx, lang, () => this.showPot(ctx, pot.id, this.t(lang, 'savings_setting_saved')));
     }
 
+    if (op === 'debt') {
+      const currency = await this.userService.getUserCurrency(userId);
+      const parsed = this.parseDebtInput(text, currency);
+      if (!parsed) return retry('savings_error_debt');
+      const result = await this.savingsService.createDebt(userId, parsed);
+      if (result.error === 'limit') {
+        return this.finish(ctx, lang, () => this.showMenu(ctx, this.t(lang, 'savings_debt_limit', { limit: result.limit })));
+      }
+      // Сразу спрашиваем платёж в месяц — по нему считается срок погашения; можно пропустить
+      const name = this.potName(result.debt, lang);
+      const prompt = `${this.t(lang, 'savings_debt_created', { name })}\n\n${this.t(lang, 'savings_prompt_debt_payment', { name, currency: result.debt.currency })}`;
+      return this.prompt(ctx, lang, prompt, `sv_in:bpm:${result.debt.id}`, `svb|${result.debt.id}`, [], this.t(lang, 'savings_button_skip'));
+    }
+
+    if (['bpay', 'binc', 'bset', 'bpm', 'brate', 'bname'].includes(op)) {
+      const debt = await this.savingsService.getPot(userId, parseInt(a, 10));
+      if (!debt || debt.kind !== 'debt') return this.finish(ctx, lang, () => this.showMenu(ctx, this.t(lang, 'savings_not_found')));
+      return this.handleDebtInput(ctx, text, lang, op, debt, retry);
+    }
+
     this.stateService.deleteUserState(userId);
+  }
+
+  // Ввод для долга: погасить / увеличить / точная сумма / платёж в месяц / ставка / название
+  async handleDebtInput(ctx, text, lang, op, debt, retry) {
+    const userId = ctx.from.id;
+    const notFound = () => this.finish(ctx, lang, () => this.showMenu(ctx, this.t(lang, 'savings_not_found')));
+    const saved = (updated) => (updated
+      ? this.finish(ctx, lang, () => this.showDebt(ctx, updated.id, this.t(lang, 'savings_setting_saved')))
+      : notFound());
+
+    if (op === 'bpay' || op === 'binc' || op === 'bset') {
+      const amount = await this.parseAmount(text, debt.currency, op === 'bset');
+      if (amount === null) return retry('savings_error_amount');
+      const kind = { bpay: 'pay', binc: 'increase', bset: 'set' }[op];
+      const result = await this.savingsService.changeDebt(userId, debt.id, kind, amount);
+      if (result.error === 'insufficient') return retry('savings_debt_error_overpay', { amount: this.exact(Number(debt.balance), debt.currency) });
+      if (result.error) return notFound();
+      const key = { pay: 'savings_debt_paid', increase: 'savings_debt_increased', set: 'savings_debt_set' }[kind];
+      const notice = this.t(lang, key, { amount: this.exact(kind === 'set' ? Number(result.pot.balance) : amount, debt.currency) });
+      return this.finish(ctx, lang, () => this.showDebt(ctx, debt.id, notice));
+    }
+
+    if (op === 'bpm') {
+      const amount = await this.parseAmount(text, debt.currency, true);
+      if (amount === null) return retry('savings_error_amount');
+      return saved(await this.savingsService.updateDebt(userId, debt.id, { monthly_payment: amount === 0 ? null : amount }));
+    }
+
+    if (op === 'brate') {
+      const value = this.parseRate(text, RATE_LIMITS.y);
+      if (value === null) return retry('savings_error_rate', { max: RATE_LIMITS.y });
+      return saved(await this.savingsService.updateDebt(userId, debt.id, { yield_rate: value === 0 ? null : value }));
+    }
+
+    const name = this.parseName(text);
+    if (!name) return retry('savings_error_name', { max: MAX_GOAL_NAME_LENGTH });
+    return saved(await this.savingsService.updateDebt(userId, debt.id, { name }));
   }
 
   // «8», «7,5», «16%» → число в [0, max]; null — не понято
@@ -784,6 +1037,40 @@ class SavingsHandlers {
     const name = this.parseName(words.join(' '));
     if (!name) return null;
     return { name, currency: currency || defaultCurrency, yieldRate };
+  }
+
+  // «Ипотека 3 500 000 12%», «Кредитка 45000 29,9%», «Долг Пете 15000», «Рассрочка USD 1200»: сумма (тысячи можно
+  // через пробел), валюта (код или символ) и ставка «N%» — в любом месте, остальное — название.
+  // Без валюты — основная, без ставки (или 0%) — без процентов. null — не понято
+  parseDebtInput(text, defaultCurrency) {
+    // «$1200», «45000₽» — символ валюты вплотную к сумме
+    const tokens = text.trim().split(/\s+/).flatMap((token) => {
+      const match = token.match(/^([$€₽₸₾₺₹฿])(\d[\d.,]*)$/u) || token.match(/^(\d[\d.,]*)([$€₽₸₾₺₹฿])$/u);
+      return match ? [match[1], match[2]] : [token];
+    });
+    let currency = null;
+    let rate = null;
+    const rest = [];
+    for (const token of tokens) {
+      const tokenRate = /^\d{1,3}(?:[.,]\d{1,2})?%$/.test(token) ? this.parseRate(token, RATE_LIMITS.y) : null;
+      const tokenCurrency = currency ? null : this.validator.resolveCurrencyToken(token);
+      if (tokenRate !== null && rate === null) rate = tokenRate;
+      else if (tokenCurrency) currency = tokenCurrency;
+      else rest.push(token);
+    }
+    // Сумма — последнее число вместе с группами тысяч перед ним («3 500 000»)
+    let end = rest.length - 1;
+    while (end >= 0 && !DEBT_NUMBER.test(rest[end])) end--;
+    if (end < 0) return null;
+    let start = end;
+    while (start > 0 && DEBT_AMOUNT.test(rest.slice(start - 1, end + 1).join(' '))) start--;
+    // «Ипотека 3 500 000 12» (забыт %): число сразу после группы тысяч — непонятно, где сумма
+    if (start > 0 && /^\d{3}$/.test(rest[start - 1])) return null;
+    const amount = parseFloat(rest.slice(start, end + 1).join('').replace(',', '.'));
+    if (!(amount > 0) || amount > MAX_SAVINGS_AMOUNT) return null;
+    const name = this.parseName([...rest.slice(0, start), ...rest.slice(end + 1)].join(' '));
+    if (!name) return null;
+    return { name, amount, currency: currency || defaultCurrency, rate: rate || null };
   }
 
   // Ввод принят (или потерял смысл): снимаем состояние и показываем экран
