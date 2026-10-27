@@ -93,9 +93,19 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^bg_add\|(total|\d+)$/, errorHandler((ctx) => budgetHandlers.startSetAmount(ctx)));
   bot.action(/^bg_del\|(\d+)$/, errorHandler((ctx) => budgetHandlers.delete(ctx)));
 
-  // Накопления: копилки, цели, прогноз, параметры
+  // Накопления: счета, цели, долги, мастер «Обновить остатки», прогноз, настройки
   bot.action('sv', errorHandler((ctx) => savingsHandlers.showMenu(ctx)));
   bot.action(/^svp\|(\d+)$/, errorHandler((ctx) => savingsHandlers.showPot(ctx)));
+  bot.action(/^svpc\|(\d+)$/, errorHandler((ctx) => savingsHandlers.showAccountSettings(ctx)));
+  bot.action(/^svgc\|(\d+)$/, errorHandler((ctx) => savingsHandlers.showGoalSettings(ctx)));
+  bot.action(/^svbc\|(\d+)$/, errorHandler((ctx) => savingsHandlers.showDebtSettings(ctx)));
+  bot.action('svn', errorHandler((ctx) => savingsHandlers.showAddMenu(ctx)));
+  bot.action('svu', errorHandler((ctx) => savingsHandlers.startUpdate(ctx)));
+  bot.action(/^svuk\|(\d+)$/, errorHandler((ctx) => savingsHandlers.keepUpdate(ctx)));
+  bot.action('svux', errorHandler((ctx) => savingsHandlers.stopUpdate(ctx)));
+  bot.action(/^svac\|(\d+)\|([A-Z]{3})$/, errorHandler((ctx) => savingsHandlers.setAccountCurrency(ctx)));
+  bot.action(/^svaco\|(\d+)$/, errorHandler((ctx) => savingsHandlers.chooseOtherCurrency(ctx)));
+  bot.action(/^svm\|(s|f|o|g\d+)$/, errorHandler((ctx) => savingsHandlers.startMonthlyInput(ctx)));
   bot.action(/^svd\|(\d+)$/, errorHandler((ctx) => savingsHandlers.startBalanceInput(ctx, 'dep')));
   bot.action(/^svw\|(\d+)$/, errorHandler((ctx) => savingsHandlers.startBalanceInput(ctx, 'wd')));
   bot.action(/^svs\|(\d+)$/, errorHandler((ctx) => savingsHandlers.startBalanceInput(ctx, 'set')));
@@ -128,6 +138,8 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('svf', errorHandler((ctx) => savingsHandlers.showForecast(ctx)));
   bot.action('svo', errorHandler((ctx) => savingsHandlers.showSettings(ctx)));
   bot.action(/^svo\|(m|ma|i|y|g)$/, errorHandler((ctx) => savingsHandlers.settingsAction(ctx)));
+  // Устаревшие или неизвестные кнопки раздела (старые сообщения) — главный экран накоплений
+  bot.action(/^sv/, errorHandler((ctx) => savingsHandlers.showMenu(ctx)));
 
   // Текстовые сообщения
   bot.on('text', errorHandler((ctx) => messageHandlers.handleExpense(ctx))); // ввод трат, доходов и кнопки клавиатуры

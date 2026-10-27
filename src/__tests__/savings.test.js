@@ -182,19 +182,21 @@ describe('savings input parsing', () => {
     expect(await handlers.parseAmount('15000 машина', 'RUB', false)).toBeNull();
   });
 
+  // Валюта и ставка не указаны — null: тогда бот спрашивает валюту кнопками
   test.each([
     ['Наличные USD', { name: 'Наличные', currency: 'USD', yieldRate: null }],
-    ['Вклад 16%', { name: 'Вклад', currency: 'RUB', yieldRate: 16 }],
+    ['Вклад 16%', { name: 'Вклад', currency: null, yieldRate: 16 }],
     ['$ под подушкой', { name: 'под подушкой', currency: 'USD', yieldRate: null }],
     ['Крипта USDT', { name: 'Крипта', currency: 'USD', yieldRate: null }],
     ['Счёт в банке EUR 3,5%', { name: 'Счёт в банке', currency: 'EUR', yieldRate: 3.5 }],
-    ['Скины Steam usd', { name: 'Скины Steam', currency: 'USD', yieldRate: null }]
+    ['Скины Steam usd', { name: 'Скины Steam', currency: 'USD', yieldRate: null }],
+    ['Наличные', { name: 'Наличные', currency: null, yieldRate: null }]
   ])('account «%s»', (input, expected) => {
-    expect(handlers.parseAccountInput(input, 'RUB')).toEqual(expected);
+    expect(handlers.parseAccountInput(input)).toEqual(expected);
   });
 
   test.each(['USD', '16%', '   '])('account «%s» without a name is rejected', (input) => {
-    expect(handlers.parseAccountInput(input, 'RUB')).toBeNull();
+    expect(handlers.parseAccountInput(input)).toBeNull();
   });
 });
 
@@ -303,5 +305,110 @@ describe('debt input parsing', () => {
 
   test.each(['Ипотека', '15000', 'USD 1200 12%', 'Ипотека 3 500 000 12', 'Долг 0', 'Долг 99999999999'])('debt «%s» is rejected', (input) => {
     expect(handlers.parseDebtInput(input, 'RUB')).toBeNull();
+  });
+});
+
+describe('debt guided creation: amount line', () => {
+  const handlers = new SavingsHandlers({ validator: new EnhancedValidator() });
+
+  test.each([
+    ['300000', { amount: 300000, currency: 'RUB', rate: null }],
+    ['3 500 000 12%', { amount: 3500000, currency: 'RUB', rate: 12 }],
+    ['1200 USD', { amount: 1200, currency: 'USD', rate: null }],
+    ['18% 45000', { amount: 45000, currency: 'RUB', rate: 18 }]
+  ])('«%s»', (input, expected) => {
+    expect(handlers.parseDebtAmount(input, 'RUB')).toEqual(expected);
+  });
+
+  test.each(['Ипотека 300000', 'много', '0', '3 500 000 12'])('«%s» is rejected', (input) => {
+    expect(handlers.parseDebtAmount(input, 'RUB')).toBeNull();
+  });
+});
+
+describe('savings view helpers', () => {
+  const { compactAmount, potIcon, updateQueue, UpdateWizards } = require('../utils/savingsView');
+  const ru = { thousand: '{n} тыс', million: '{n} млн', comma: true };
+  const en = { thousand: '{n}K', million: '{n}M', comma: false };
+  const plain = (s) => s.replace(/[\u00a0\u202f]/g, ' ');
+
+  test.each([
+    [1530000, 'RUB', ru, '1,53 млн ₽'],
+    [2000000, 'RUB', ru, '2 млн ₽'],
+    [1500000, 'USD', en, '1.5M $'],
+    [12345678, 'RUB', ru, '12,3 млн ₽'],
+    [1234567890, 'RUB', ru, '1 235 млн ₽'],
+    [241300, 'RUB', ru, '241 тыс ₽'],
+    [241300, 'EUR', en, '241K €'],
+    [999600, 'RUB', ru, '1 млн ₽'],
+    [10000, 'RUB', ru, '10 тыс ₽'],
+    [9999.4, 'RUB', ru, '9 999 ₽'],
+    [3000, 'USD', en, '3 000 $'],
+    [0, 'RUB', ru, '0 ₽'],
+    [-2461200, 'RUB', ru, '-2,46 млн ₽'],
+    [50000, 'KZT', ru, '50 тыс KZT']
+  ])('compact %s %s', (amount, currency, units, expected) => {
+    expect(plain(compactAmount(amount, currency, units))).toBe(expected);
+  });
+
+  test.each([
+    ['Наличные USD', '💵'], ['Cash', '💵'], ['Вклад в Сбере', '🏦'], ['Депозит', '🏦'], ['Накопительный счёт', '🏦'],
+    ['Savings account', '🏦'], ['Крипта', '🪙'], ['BTC cold wallet', '🪙'], ['usdt', '🪙'], ['Скины CS', '🎮'],
+    ['Steam inventory', '🎮'], ['Брокерский счёт', '📈'], ['Акции', '📈'], ['Invest', '📈'],
+    ['Кредитная карта', '💼'], ['Card', '💼'], ['Method', '💼'], ['Копилка', '💼']
+  ])('icon for «%s»', (name, icon) => {
+    expect(potIcon({ kind: 'account', name })).toBe(icon);
+  });
+
+  test('icons of other kinds', () => {
+    expect(potIcon({ kind: 'general', name: 'Наличные' })).toBe('💰');
+    expect(potIcon({ kind: 'goal', name: 'Наличные' })).toBe('🎯');
+    expect(potIcon({ kind: 'debt', name: 'Наличные' })).toBe('💳');
+  });
+
+  const general = (balance) => ({ id: 1, kind: 'general', balance });
+  test('update queue: general (if not empty or alone), accounts, own goals, debts', () => {
+    const accounts = [general(0), { id: 2, kind: 'account', balance: 0 }, { id: 3, kind: 'account', balance: 5 }];
+    const goals = [{ id: 4, goal_mode: 'total' }, { id: 5, goal_mode: 'own' }];
+    const debts = [{ id: 6 }, { id: 7 }];
+    expect(updateQueue({ accounts, goals, debts })).toEqual([2, 3, 5, 6, 7]);
+    expect(updateQueue({ accounts: [general(100), ...accounts.slice(1)], goals, debts })).toEqual([1, 2, 3, 5, 6, 7]);
+    expect(updateQueue({ accounts: [general(0)], goals: [], debts: [] })).toEqual([1]);
+  });
+
+  test('wizard: steps in order, stale steps refused, expires', () => {
+    let now = 0;
+    const wizards = new UpdateWizards(1000, () => now);
+    wizards.start(7, [1, 2, 3], { total: 10 });
+    expect(wizards.current(7)).toBe(1);
+    expect(wizards.advance(7, 2)).toBe(false); // кнопка не текущего шага
+    expect(wizards.advance(7, 1)).toBe(true);
+    expect(wizards.advance(7, 1)).toBe(false); // повторное нажатие
+    expect(wizards.current(7)).toBe(2);
+    now = 900;
+    expect(wizards.advance(7, 2)).toBe(true); // шаг продлевает срок
+    now = 1800;
+    expect(wizards.current(7)).toBe(3);
+    expect(wizards.advance(7, 3)).toBe(true);
+    expect(wizards.current(7)).toBeNull(); // очередь кончилась
+    expect(wizards.finish(7).before).toEqual({ total: 10 });
+    expect(wizards.get(7)).toBeNull();
+    wizards.start(8, [1], {});
+    now = 5000;
+    expect(wizards.current(8)).toBeNull(); // просрочен
+    expect(wizards.get(9)).toBeNull();
+  });
+});
+
+describe('new goals', () => {
+  test('are created «from all savings» (goal_mode total)', async () => {
+    const SavingsRepository = require('../repositories/SavingsRepository');
+    const repository = new SavingsRepository();
+    const calls = [];
+    repository.query = async (sql, params) => {
+      calls.push({ sql, params });
+      return { rows: [{ id: 1, goal_mode: 'total' }] };
+    };
+    await repository.createGoal(7, { name: 'Машина', targetAmount: 1500000, currency: 'RUB' });
+    expect(calls[0].sql).toMatch(/goal_mode\) VALUES \(\$1, 'goal', \$2, \$3, \$4, 'total'\)/);
   });
 });

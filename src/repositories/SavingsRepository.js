@@ -98,9 +98,19 @@ class SavingsRepository extends BaseRepository {
     return result.rows[0];
   }
 
+  // Валюта нового счёта (выбирается кнопкой после названия): только пока на счёте ничего нет
+  async setAccountCurrency(userId, potId, currency) {
+    const result = await this.query(
+      `UPDATE savings_pots SET currency = $3 WHERE id = $1 AND user_id = $2 AND kind = 'account' AND balance = 0 RETURNING *`,
+      [potId, userId, currency]
+    );
+    return result.rows[0];
+  }
+
+  // Новая цель — «от всех накоплений» (своя копилка — по выбору в настройках цели)
   async createGoal(userId, { name, targetAmount, currency }) {
     const result = await this.query(
-      `INSERT INTO savings_pots (user_id, kind, name, target_amount, currency) VALUES ($1, 'goal', $2, $3, $4) RETURNING *`,
+      `INSERT INTO savings_pots (user_id, kind, name, target_amount, currency, goal_mode) VALUES ($1, 'goal', $2, $3, $4, 'total') RETURNING *`,
       [userId, name, targetAmount, currency]
     );
     return result.rows[0];

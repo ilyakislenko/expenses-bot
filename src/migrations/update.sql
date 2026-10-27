@@ -642,3 +642,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_expenses_user_import_hash ON expenses(user
 CREATE UNIQUE INDEX IF NOT EXISTS idx_incomes_user_import_hash ON incomes(user_id, import_hash) WHERE import_hash IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_expenses_import ON expenses(import_id) WHERE import_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_incomes_import ON incomes(import_id) WHERE import_id IS NOT NULL;
+
+-- ========================================
+-- SAVINGS UX: новые цели — от всех накоплений
+-- ========================================
+
+-- Новая цель по умолчанию считается от всех накоплений (своя копилка — по выбору); старые цели не меняются
+ALTER TABLE savings_pots ALTER COLUMN goal_mode SET DEFAULT 'total';

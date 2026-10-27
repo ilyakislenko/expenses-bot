@@ -250,6 +250,11 @@ class SavingsService {
     return this.savingsRepository.updateAccount(userId, potId, fields);
   }
 
+  // Валюта только что созданного (пустого) счёта. Счёт или null
+  async setAccountCurrency(userId, potId, currency) {
+    return this.savingsRepository.setAccountCurrency(userId, potId, currency);
+  }
+
   // Удаление счёта: деньги переходят в общую копилку (общую удалить нельзя). { pot, moved } или null
   async deleteAccount(userId, potId) {
     const result = await this.savingsRepository.deletePot(userId, potId, 'account', this.generalConverter(userId));
@@ -291,8 +296,8 @@ class SavingsService {
     return this.savingsRepository.getPot(userId, potId);
   }
 
-  async getRecentOperations(userId, potId) {
-    return this.savingsRepository.getRecentOperations(userId, potId);
+  async getRecentOperations(userId, potId, limit = 3) {
+    return this.savingsRepository.getRecentOperations(userId, potId, limit);
   }
 
   async updateSettings(userId, fields) {
