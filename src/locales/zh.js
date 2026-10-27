@@ -496,6 +496,7 @@ module.exports = {
     savings_title: '🏦 *储蓄*',
     savings_intro: '记录储蓄、目标和债务 — 我会算出一年后有多少钱，以及何时达成目标。\n\n先填写一个总额，或添加账户：现金、存款、加密货币 👇',
     savings_general: '通用储蓄',
+    savings_general_short: '通用',
     savings_monthly_manual: '📥 你每月存 {amount}（手动设置）',
     savings_monthly_unknown: '📥 暂时不知道你每月存多少',
     savings_monthly_negative: '📉 每月支出比收入多 ~{amount} — 储蓄没有增长',

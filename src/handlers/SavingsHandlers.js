@@ -217,7 +217,9 @@ class SavingsHandlers {
 
   // «💵 Наличные · 3 000 $», «🎯 Машина · 63%», «💳 Кредит · 300 тыс ₽»
   potButton(pot, status, lang) {
-    const name = this.formatter.shorten(this.potButtonName(pot, lang), BUTTON_NAME_LENGTH);
+    // В кнопке общей копилки без своего названия — короткое «Общие»: длинное не влезает в два столбца
+    const label = pot.kind === 'general' && !pot.name ? this.t(lang, 'savings_general_short') : this.potButtonName(pot, lang);
+    const name = this.formatter.shorten(label, BUTTON_NAME_LENGTH);
     let value;
     if (pot.kind === 'goal') value = status.achieved ? '✅' : `${Math.min(100, Math.floor(status.ratio * 100))}%`;
     else if (pot.kind === 'debt' && pot.balance === 0) value = '✅';
@@ -260,14 +262,16 @@ class SavingsHandlers {
 
   // «Без процентов» | «16% годовых» | «Ставка как в настройках (8%)»
   rateLine(pot, state, lang) {
-    if (pot.yield_rate === null) return this.t(lang, 'savings_rate_default', { value: this.percent(state.settings.yieldRate) });
-    if (pot.yield_rate === 0) return this.t(lang, 'savings_rate_none');
+    if (pot.yield_rate === null && state.settings.yieldRate > 0) {
+      return this.t(lang, 'savings_rate_default', { value: this.percent(state.settings.yieldRate) });
+    }
+    if (!pot.yield_rate) return this.t(lang, 'savings_rate_none');
     return this.t(lang, 'savings_rate_own', { value: this.percent(pot.yield_rate) });
   }
 
-  // «💵 *Наличные* — 3 000 $ (≈ 285 000 ₽)»
-  cardTitle(pot, state, lang) {
-    let title = `${potIcon(pot)} *${this.potName(pot, lang)}* — ${this.exact(pot.balance, pot.currency)}`;
+  // «💵 *Наличные* — 3 000 $ (≈ 285 000 ₽)»; icon — значок вместо значка счёта (⚙️ на экранах настроек)
+  cardTitle(pot, state, lang, icon = potIcon(pot)) {
+    let title = `${icon} *${this.potName(pot, lang)}* — ${this.exact(pot.balance, pot.currency)}`;
     if (pot.currency !== state.currency && pot.balance > 0) title += ` (≈ ${this.money(pot.balanceMain, state.currency)})`;
     return title;
   }
@@ -331,7 +335,7 @@ class SavingsHandlers {
       { text: this.t(lang, 'savings_button_rate'), callback_data: `svpy|${pot.id}` }
     ];
     if (pot.kind === 'account') row.push({ text: this.t(lang, 'savings_button_delete'), callback_data: `svpx|${pot.id}` });
-    await respond(ctx, `⚙️ ${this.cardTitle(pot, state, lang)}\n${this.rateLine(pot, state, lang)}`, {
+    await respond(ctx, `${this.cardTitle(pot, state, lang, '⚙️')}\n${this.rateLine(pot, state, lang)}`, {
       parse_mode: 'Markdown',
       reply_markup: { inline_keyboard: [row, [{ text: this.t(lang, 'savings_button_back_to_account'), callback_data: `svp|${pot.id}` }]] }
     });
@@ -406,7 +410,7 @@ class SavingsHandlers {
     await this.answer(ctx);
     const goal = await this.savingsService.getPot(ctx.from.id, parseInt(ctx.match[1], 10));
     if (!goal || goal.kind !== 'goal') return this.showMenu(ctx, this.t(lang, 'savings_not_found'));
-    const text = `⚙️ 🎯 *${this.potName(goal, lang)}*\n${this.t(lang, goal.goal_mode === 'own' ? 'savings_mode_own_line' : 'savings_mode_total_line')}\n\n${this.t(lang, 'savings_mode_hint')}`;
+    const text = `⚙️ *${this.potName(goal, lang)}*\n${this.t(lang, goal.goal_mode === 'own' ? 'savings_mode_own_line' : 'savings_mode_total_line')}\n\n${this.t(lang, 'savings_mode_hint')}`;
     await respond(ctx, text, {
       parse_mode: 'Markdown',
       reply_markup: {
@@ -475,7 +479,7 @@ class SavingsHandlers {
     const debt = state.debts.find(p => p.id === parseInt(ctx.match[1], 10));
     if (!debt) return this.showMenu(ctx, this.t(lang, 'savings_not_found'));
     const id = debt.id;
-    await respond(ctx, [`⚙️ ${this.cardTitle(debt, state, lang)}`, ...this.debtTermsLines(debt, lang)].join('\n'), {
+    await respond(ctx, [this.cardTitle(debt, state, lang, '⚙️'), ...this.debtTermsLines(debt, lang)].join('\n'), {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [

@@ -495,6 +495,7 @@ module.exports = {
     savings_title: '🏦 *貯金*',
     savings_intro: '貯金・目標・借入を管理できます — 1年後にいくらになるか、いつ目標を達成できるかを計算します。\n\nまずは合計額を入力するか、口座を追加してください：現金、預金、暗号資産 👇',
     savings_general: '共通の貯金',
+    savings_general_short: '共通',
     savings_monthly_manual: '📥 毎月 {amount} を貯金（手動設定）',
     savings_monthly_unknown: '📥 毎月の貯金額はまだ不明です',
     savings_monthly_negative: '📉 支出が収入を毎月 ~{amount} 上回っています — 貯金が増えていません',

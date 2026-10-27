@@ -505,6 +505,7 @@ module.exports = {
   savings_title: '🏦 *Накопления*',
   savings_intro: 'Веди накопления, цели и долги — посчитаю, сколько будет через год и когда достигнешь цели.\n\nНачни с общей суммы или заведи счёт: наличные, вклад, крипта 👇',
   savings_general: 'Общие накопления',
+  savings_general_short: 'Общие',
   savings_monthly_manual: '📥 Откладываешь {amount}/мес (вручную)',
   savings_monthly_unknown: '📥 Сколько откладываешь в месяц — пока не знаю',
   savings_monthly_negative: '📉 Траты больше доходов на ~{amount}/мес — накопления не растут',

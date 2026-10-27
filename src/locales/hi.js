@@ -498,6 +498,7 @@ module.exports = {
     savings_title: '🏦 *बचत*',
     savings_intro: 'अपनी बचत, लक्ष्य और कर्ज़ का हिसाब रखें — मैं बताऊँगा कि एक साल में कितना होगा और लक्ष्य कब पूरा होगा।\n\nकुल राशि से शुरू करें या खाता जोड़ें: नकद, जमा, क्रिप्टो 👇',
     savings_general: 'सामान्य बचत',
+    savings_general_short: 'सामान्य',
     savings_monthly_manual: '📥 आप {amount}/महीना बचाते हैं (मैन्युअल)',
     savings_monthly_unknown: '📥 आप हर महीने कितना बचाते हैं, यह अभी पता नहीं',
     savings_monthly_negative: '📉 खर्च आय से ~{amount}/महीना ज़्यादा है — बचत नहीं बढ़ रही',
