@@ -656,10 +656,27 @@ class CommandHandlers {
     if (!paidOrGranted && recentCount > 0) {
       blocks.push(t(onTrial ? 'premium_hook_trial' : 'premium_hook_regular', { count: recentCount }));
     }
+    const { regular: free, premium } = USER_LIMITS;
     const receipts = this.receiptService && this.receiptService.configured
-      ? t('premium_benefit_receipts', { premium: USER_LIMITS.premium.MAX_RECEIPTS_PER_MONTH, free: USER_LIMITS.regular.MAX_RECEIPTS_PER_MONTH })
+      ? t('premium_benefit_receipts', { premium: premium.MAX_RECEIPTS_PER_MONTH, free: free.MAX_RECEIPTS_PER_MONTH })
       : '';
-    blocks.push(t('premium_benefits', { receipts }));
+    // Голос — только если распознавание настроено (как чеки)
+    const voice = this.voiceService && this.voiceService.configured
+      ? t('premium_benefit_voice', { premium: premium.MAX_VOICE_PER_DAY, free: free.MAX_VOICE_PER_DAY })
+      : '';
+    blocks.push(t('premium_benefits', {
+      receipts,
+      voice,
+      inflationPremium: premium.PLANNING_INFLATION_ITEMS,
+      inflationFree: free.PLANNING_INFLATION_ITEMS,
+      subsPremium: premium.PLANNING_SUBSCRIPTIONS,
+      subsFree: free.PLANNING_SUBSCRIPTIONS,
+      askPremium: premium.MAX_ASSISTANT_QUESTIONS_PER_DAY,
+      askFree: free.MAX_ASSISTANT_QUESTIONS_PER_DAY,
+      freezePremium: premium.STREAK_FREEZES_PER_WEEK,
+      freezeFree: free.STREAK_FREEZES_PER_WEEK,
+      challengesFree: free.MAX_ACTIVE_CHALLENGES
+    }));
     blocks.push(t('premium_coming_soon'));
     if (onTrial) blocks.push(t('premium_trial_note'));
     if (!subscription) blocks.push(await this.bestValueLine(userId, lang));
