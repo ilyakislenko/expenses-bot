@@ -42,13 +42,14 @@ function distrustSparse(result, small) {
 // Фото чека → траты по позициям. Распознаёт провайдер (receipt/providers.js), ответ проверяет normalize.js,
 // записываются все позиции сразу одной транзакцией.
 class ReceiptService {
-  constructor({ receiptRepository, provider, expenseService, premiumService, localizationService, funnelService }) {
+  constructor({ receiptRepository, provider, expenseService, premiumService, localizationService, funnelService, referralService = null }) {
     this.receiptRepository = receiptRepository;
     this.provider = provider;
     this.expenseService = expenseService;
     this.premiumService = premiumService;
     this.localizationService = localizationService;
     this.funnelService = funnelService;
+    this.referralService = referralService;
   }
 
   get configured() {
@@ -166,6 +167,8 @@ class ReceiptService {
       items
     });
     await this.funnelService.track(userId, 'first_expense');
+    // Позиции чека — тоже траты: награда за приглашение в фоне (сервис сам ловит ошибки)
+    if (this.referralService) this.referralService.onExpenseRecorded(userId);
     return receiptId;
   }
 

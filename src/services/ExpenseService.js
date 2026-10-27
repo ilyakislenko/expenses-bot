@@ -3,12 +3,13 @@ const { expensesTotal, expensesAmountTotal } = require('../utils/metrics');
 const { localToday, customPeriod, dayPeriod } = require('../utils/period');
 
 class ExpenseService {
-  constructor(expenseRepository, userRepository, categoryRepository, premiumService, funnelService) {
+  constructor(expenseRepository, userRepository, categoryRepository, premiumService, funnelService, referralService = null) {
     this.expenseRepository = expenseRepository;
     this.userRepository = userRepository;
     this.categoryRepository = categoryRepository;
     this.premiumService = premiumService;
     this.funnelService = funnelService;
+    this.referralService = referralService;
   }
 
   async hasAnyExpenseToday(userId, userTimezone) {
@@ -73,6 +74,8 @@ class ExpenseService {
       expensesAmountTotal.inc({ currency: expenseCurrency }, amount);
       logger.info('Expense added successfully', { userId, amount, currency: expenseCurrency, categoryId, expenseId: expense.id, familyId });
       await this.funnelService.track(userId, 'first_expense');
+      // Награда за приглашение на 3-й трате — в фоне, не задерживая ответ (сервис сам ловит ошибки)
+      if (this.referralService) this.referralService.onExpenseRecorded(userId);
       return expense;
     } catch (error) {
       logger.error('Failed to add expense', { userId, amount, description, categoryId, familyId, error: error.message });

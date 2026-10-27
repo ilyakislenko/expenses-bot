@@ -205,6 +205,7 @@ El menú está abajo: resumen del mes, registros de hoy, ingresos, gastos recurr
 • 🔁 *Gastos recurrentes* — el alquiler y las suscripciones se registran automáticamente cada mes
 • 🎯 *Presupuestos* y 📄 *Resumen* del periodo — botones bajo el resumen del mes (premium)
 • Monedas, recordatorios (hasta 3 al día) e inicio del periodo — en ☰ Más → ⚙️ Ajustes
+• 🎁 /invite — invita a un amigo: +7 días de premium para los dos
 
 Comandos: /stats /history /income /recurring /export /settings /menu`,
   
@@ -341,7 +342,7 @@ Tus gastos se mostrarán en hora local.`,
     status_regular: '👤 Estándar',
     status_premium: '💎 Premium',
     max_description_length: '<b>Longitud máxima de descripción:</b> {length} caracteres',
-    premium_benefits: '💎 <b>Ventajas premium:</b>\n  • 🎯 Presupuestos mensuales y por categoría con avisos al 80 % y al superarlos\n  • 📄 Resumen completo del periodo: cada categoría frente al mes anterior, presupuestos, gasto medio por día\n  • 160 caracteres en descripción (en vez de 80)\n  • Hasta 5 categorías propias\n  • Presupuesto familiar\n  • Hasta 10 metas de ahorro (sin premium — 1)\n\n  Registrar gastos e ingresos es gratis e ilimitado.',
+    premium_benefits: '💎 <b>Qué te da premium</b>\n\n👀 <b>Ves a dónde va el dinero</b>\n• Resumen completo del periodo: cada categoría frente al mes anterior, gasto medio por día, el mayor gasto{receipts}\n\n🎯 <b>Gastas según el plan</b>\n• Presupuestos mensuales y por categoría — aviso al 80 % y al superarlos\n\n🏦 <b>Ahorras más rápido</b>\n• Hasta 10 metas de ahorro (sin premium — 1)\n\n👨‍👩‍👧 <b>Toda la familia</b>\n• Presupuesto familiar: los gastos comunes de todos en un solo lugar\n\n✏️ <b>A tu manera</b>\n• Hasta 5 categorías propias y descripciones de hasta 160 caracteres (en vez de 80)\n\nRegistrar gastos e ingresos, importar extractos, ahorros y previsión — gratis y sin límites.',
     
     // Suscripción premium
     premium_subscription_title: '⭐️ Suscripción',
@@ -366,6 +367,32 @@ Tus gastos se mostrarán en hora local.`,
     purchases_prev_button: '◀ Anterior',
     purchases_next_button: 'Siguiente ▶',
     premium_why_paid_text: 'Mantener el servidor cuesta unos $200 mensuales, sin contar el aumento de usuarios. Y yo como desarrollador también necesito comer para seguir creando funciones :)',
+    button_invite: '🎁 Invitar a un amigo',
+    command_invite: 'Invitar a un amigo: +7 días de premium',
+    referral_title: '🎁 *Invita a un amigo*',
+    referral_intro: 'Envía tu enlace a un amigo. Cuando registre {expenses} gastos, *los dos* recibiréis *+{days} días de premium* — sumados a la prueba o al periodo pagado.',
+    referral_link_label: '🔗 Tu enlace (toca para copiar):',
+    referral_stats: '👥 Llegaron por tu enlace: *{invited}* · ya registran gastos: *{activated}*',
+    referral_stats_days: '⭐ Ganado: *{days}* de {max} días de premium',
+    referral_capped_note: '✅ Has alcanzado el máximo — {max} días. ¡Gracias! Los amigos que lleguen por tu enlace seguirán recibiendo +{days} días.',
+    referral_share_text: 'Llevo mis gastos con un bot de Telegram: escribes «250 café» y él lo clasifica por categorías y te muestra a dónde va el dinero. Pruébalo con mi enlace — te regalan +{days} días de premium 🎁',
+    referral_button_share: '📤 Enviar a un amigo',
+    referral_button_text: '✉️ Texto para reenviar',
+    referral_button_invite_more: '🎁 Invitar a más',
+    referral_friend_fallback: 'Un amigo',
+    referral_joined_notification: '👋 ¡{name} llegó por tu enlace! Cuando registre {expenses} gastos, los dos recibiréis +{days} días de premium.',
+    referral_welcome_note: '🎁 Te invitó un amigo: registra {expenses} gastos y los dos recibiréis +{days} días de premium.',
+    referral_reward_invitee: '🎉 *¡+{days} días de premium!* Registraste {expenses} gastos — el bono de invitación es para ti y para el amigo que te invitó. Premium activo hasta {date}.\n\nInvita a tus amigos — +{days} días por cada uno.',
+    referral_reward_inviter: '🎉 *¡+{days} días de premium!* {name} ya registra sus gastos gracias a tu invitación. Premium activo hasta {date}.',
+    referral_reward_inviter_capped: '🎉 ¡{name} ya registra sus gastos gracias a tu invitación y recibió sus +{friendDays} días! Ya tienes el bono máximo ({days} días) — gracias por recomendar el bot ❤️',
+    referral_upsell_line: '🎁 O invita a un amigo — los dos recibís +{days} días de premium.',
+    premium_hook_regular: '📊 Registros en los últimos 30 días: <b>{count}</b>. Con premium ves qué categorías crecen, pones límites — y a fin de mes te queda más.',
+    premium_hook_trial: '📊 Registros en los últimos 30 días: <b>{count}</b>. Tras la prueba, los presupuestos, los resúmenes completos y la familia quedan solo con premium — todo lo registrado se conserva igualmente.',
+    premium_benefit_receipts: '\n• 🧾 Fotos de tickets: hasta {premium} al mes (sin premium — {free})',
+    premium_coming_soon: '✨ Al premium llegan funciones nuevas con regularidad — tu suscripción ya las incluye.',
+    premium_trial_note: '⏳ Ahora tienes premium de prueba. Elige un plan antes de que termine — los días que quedan se conservan.',
+    premium_best_value: '💡 Lo más rentable — anual: <b>≈ {stars} ⭐ ({price}) al mes</b>, ahorras un {percent} %.',
+    premium_referral_line: '🎁 ¿Aún no quieres pagar? Invita a un amigo — los dos recibís +{days} días de premium.',
     // Etiquetas de tarifas y nombre del producto
     tariff_button_30: '1 Mes',
     tariff_button_90: '3 Meses',

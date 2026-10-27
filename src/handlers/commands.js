@@ -1,10 +1,14 @@
 const respond = require('../utils/respond');
+const logger = require('../utils/logger');
 const FunnelService = require('../services/FunnelService');
+const ReferralService = require('../services/ReferralService');
 const { getTimezoneDisplayName } = require('../utils/timezoneCalculator');
 const { summaryHour } = require('../services/DailySummaryService');
+const { localToday, lastDaysPeriod } = require('../utils/period');
+const { PREMIUM_TARIFFS, tariffDiscount, USER_LIMITS } = require('../utils/constants');
 
 class CommandHandlers {
-  constructor({ expenseService, userService, premiumService, familyService, localizationService, formatter, stateService, keyboardGenerators, paymentService, incomeService, funnelService, receiptService }) {
+  constructor({ expenseService, userService, premiumService, familyService, localizationService, formatter, stateService, keyboardGenerators, paymentService, incomeService, funnelService, receiptService, referralService = null }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -17,6 +21,7 @@ class CommandHandlers {
     this.incomeService = incomeService;
     this.funnelService = funnelService;
     this.receiptService = receiptService;
+    this.referralService = referralService;
   }
 
   async paysupport(ctx) {
@@ -77,9 +82,13 @@ class CommandHandlers {
 
     // Новый пользователь: одноразовый onboarding (язык → валюта → часовой пояс)
     if (registered && registered.isNew) {
-      // Источник из ссылки t.me/<bot>?start=<код> и первый шаг воронки
-      await this.funnelService.registerSource(user.id, FunnelService.parseStartSource(ctx.message && ctx.message.text));
+      // Источник из ссылки t.me/<bot>?start=<код> и первый шаг воронки. Приглашения друзей (ref_<код>) —
+      // один источник «ref», а не отдельный у каждого пригласившего
+      const startCode = FunnelService.parseStartSource(ctx.message && ctx.message.text);
+      const referralCode = ReferralService.parseStartCode(startCode);
+      await this.funnelService.registerSource(user.id, referralCode ? 'ref' : startCode);
       await this.funnelService.track(user.id, 'registered');
+      if (referralCode) await this.attributeReferral(user, referralCode);
 
       // Стартовый язык экрана — язык Telegram (ja → jp, pt-br → pt…), если бот его поддерживает, иначе en
       const initialLanguage = this.localizationService.resolveTelegramLanguage(user && user.language_code) || 'en';
@@ -94,11 +103,29 @@ class CommandHandlers {
     if (afterOnboarding) {
       await this.funnelService.track(user.id, 'onboarding_completed');
       message = `${this.localizationService.getText(userLanguage, 'start_message')}\n\n${this.localizationService.getText(userLanguage, 'start_reminders_note')}`;
+      // Пришёл по приглашению друга — напоминаем, как получить бонус
+      if (this.referralService && await this.referralService.getPendingInviter(user.id).catch(() => null)) {
+        message += `\n\n${this.localizationService.getText(userLanguage, 'referral_welcome_note', {
+          expenses: this.referralService.config.ACTIVATION_EXPENSES,
+          days: this.referralService.rewardDays
+        })}`;
+      }
     }
     await ctx.reply(message, {
       parse_mode: 'Markdown',
       reply_markup: await this.mainKeyboardMarkup(user.id, userLanguage)
     });
+  }
+
+  // Новый пользователь по ссылке друга: привязка и сообщение пригласившему. Ошибка не мешает онбордингу
+  async attributeReferral(user, code) {
+    if (!this.referralService) return;
+    try {
+      const result = await this.referralService.attribute(user.id, code, { isNew: true });
+      if (result.status === 'attributed') await this.referralService.notifyJoined(result.inviterId, user);
+    } catch (error) {
+      logger.error('Failed to attribute referral', { userId: user.id, error: error.message });
+    }
   }
 
   // Reply-клавиатура главного меню. Премиум с семьёй получает кнопку-исключение:
@@ -309,16 +336,17 @@ class CommandHandlers {
       // Проверяем премиум статус пользователя
       const isPremium = await this.premiumService.isPremiumUser(userId);
       if (!isPremium) {
-        // Тизер вместо тупика: что даёт семья и кнопка перейти к премиуму
+        // Тизер вместо тупика: что даёт семья и кнопка перейти к премиуму (иногда — и «пригласи друга»)
         const t = (key) => this.localizationService.getText(userLanguage, key);
-        await respond(ctx, t('family_teaser'), {
+        let text = t('family_teaser');
+        let keyboard = [
+          [{ text: t('button_premium'), callback_data: 'premium_subscription' }],
+          [{ text: t('button_back'), callback_data: 'back_to_menu' }]
+        ];
+        if (this.referralService) ({ text, keyboard } = await this.referralService.withUpsell(userId, userLanguage, text, keyboard));
+        await respond(ctx, text, {
           parse_mode: 'Markdown',
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: t('button_premium'), callback_data: 'premium_subscription' }],
-              [{ text: t('button_back'), callback_data: 'back_to_menu' }]
-            ]
-          }
+          reply_markup: { inline_keyboard: keyboard }
         });
         return;
       }
@@ -558,7 +586,6 @@ class CommandHandlers {
     const statusHeader = this.localizationService.getText(userLanguage, 'premium_status_header');
     const privileges = this.localizationService.getText(userLanguage, 'premium_privileges', { status });
     const menuTitle = this.localizationService.getText(userLanguage, 'premium_menu_title');
-    const benefits = this.localizationService.getText(userLanguage, 'premium_benefits');
 
     let message = `${subscriptionTitle}\n\n${statusHeader}\n- ${privileges}\n- ${maxDescriptionLength}`;
       
@@ -579,7 +606,8 @@ class CommandHandlers {
         })}`;
       }
       
-      message += `\n\n${benefits}\n\n${menuTitle}`;
+      const pitch = await this.premiumPitch(userId, userLanguage, userTimezone, limitsInfo, subscription);
+      message += `\n\n${pitch.blocks.join('\n\n')}\n\n${menuTitle}`;
     
     // Создаем inline клавиатуру для премиум меню
     const tariffButton = this.localizationService.getText(userLanguage, 'premium_tariff_button');
@@ -595,6 +623,7 @@ class CommandHandlers {
       ],
       [{ text: purchasesButton, callback_data: 'premium_purchases' }],
       [{ text: whyPaidButton, callback_data: 'premium_why_paid' }],
+      ...(pitch.referral ? [[{ text: this.localizationService.getText(userLanguage, 'button_invite'), callback_data: 'ref' }]] : []),
       [{ text: backButton, callback_data: 'back_to_menu' }]
     ];
     
@@ -603,6 +632,58 @@ class CommandHandlers {
       reply_markup: {
         inline_keyboard: inlineKeyboard
       }
+    });
+  }
+
+  // Блоки ценности экрана подписки (HTML): личная строка по записям за 30 дней, выгоды по результату, пробный
+  // период, самый выгодный тариф в пересчёте на месяц и бонус за друга. Не загрузились данные — блок пропускается.
+  async premiumPitch(userId, lang, timezone, limitsInfo, subscription) {
+    const t = (key, params) => this.localizationService.getText(lang, key, params);
+    const [source, recentCount, referralStats] = await Promise.all([
+      this.referralService ? this.referralService.getPremiumSource(userId).catch(() => null) : null,
+      this.recentExpenseCount(userId, timezone).catch(() => 0),
+      this.referralService ? this.referralService.getStats(userId).catch(() => null) : null
+    ]);
+    const onTrial = !!limitsInfo.isPremium && source === 'trial';
+    const paidOrGranted = !!limitsInfo.isPremium && !onTrial;
+    const blocks = [];
+
+    if (!paidOrGranted && recentCount > 0) {
+      blocks.push(t(onTrial ? 'premium_hook_trial' : 'premium_hook_regular', { count: recentCount }));
+    }
+    const receipts = this.receiptService && this.receiptService.configured
+      ? t('premium_benefit_receipts', { premium: USER_LIMITS.premium.MAX_RECEIPTS_PER_MONTH, free: USER_LIMITS.regular.MAX_RECEIPTS_PER_MONTH })
+      : '';
+    blocks.push(t('premium_benefits', { receipts }));
+    blocks.push(t('premium_coming_soon'));
+    if (onTrial) blocks.push(t('premium_trial_note'));
+    if (!subscription) blocks.push(await this.bestValueLine(userId, lang));
+    const referral = !paidOrGranted && !!referralStats && !referralStats.capped;
+    if (referral) blocks.push(t('premium_referral_line', { days: this.referralService.rewardDays }));
+    return { blocks, referral };
+  }
+
+  // Записей за последние 30 дней (включая сегодня) — для личной строки
+  async recentExpenseCount(userId, timezone) {
+    const totals = await this.expenseService.getTotals(userId, timezone, lastDaysPeriod(localToday(timezone), 30));
+    return totals.count;
+  }
+
+  // Годовой тариф в пересчёте на месяц: звёзды и цена в основной валюте (как на экране тарифов), скидка — tariffDiscount
+  async bestValueLine(userId, lang) {
+    const year = PREMIUM_TARIFFS.MONTH_12;
+    const monthUsd = year.usd / year.months;
+    let price = this.formatter.formatAmount(monthUsd, 'USD');
+    try {
+      const currency = await this.userService.getUserCurrency(userId);
+      price = this.formatter.formatAmount(await this.formatter.currencyUtils.convert(monthUsd, 'USD', currency), currency);
+    } catch (error) {
+      // нет курса — цена в USD
+    }
+    return this.localizationService.getText(lang, 'premium_best_value', {
+      stars: Math.round(year.stars / year.months),
+      price,
+      percent: tariffDiscount(year).percent
     });
   }
 

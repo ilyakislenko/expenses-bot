@@ -24,6 +24,18 @@ const TRIAL_PERIOD = {
   TYPE: 'trial'
 };
 
+// Реферальная программа: оба получают REWARD_DAYS премиума, когда приглашённый запишет ACTIVATION_EXPENSES трат
+// (ручных или из чека — не регулярных и не из импорта). Пригласившему — не больше MAX_REWARDED_INVITES наград
+// и MAX_BONUS_DAYS дней всего; приглашённый получает награду всегда. Одинаково для всех: это путь к премиуму.
+// Подсказка «пригласи друга» к сообщениям о лимитах — не чаще раза в UPSELL_INTERVAL_DAYS.
+const REFERRAL = {
+  REWARD_DAYS: 7,
+  ACTIVATION_EXPENSES: 3,
+  MAX_REWARDED_INVITES: 10,
+  MAX_BONUS_DAYS: 90,
+  UPSELL_INTERVAL_DAYS: 7
+};
+
 // Константы для тарифов премиум подписки. Скидки не хранятся: их считает tariffDiscount от месячной цены.
 const PREMIUM_TARIFFS = {
   MONTH_1: {
@@ -108,6 +120,7 @@ function generateMoreMenu(localizationService, userLanguage, isAdmin = false) {
     [{ text: t('button_family'), callback_data: 'family' }, { text: t('premium_subscription_title'), callback_data: 'premium_subscription' }],
     [{ text: t('button_export'), callback_data: 'export' }, { text: t('button_settings'), callback_data: 'settings' }],
     [{ text: t('button_import'), callback_data: 'import' }],
+    [{ text: t('button_invite'), callback_data: 'ref' }],
     [{ text: t('button_help'), callback_data: 'help' }]
   ];
   if (isAdmin) {
@@ -234,6 +247,7 @@ module.exports = {
   PREMIUM_TARIFFS,
   tariffDiscount,
   TRIAL_PERIOD,
+  REFERRAL,
   generateMainMenuKeyboard,
   generateMoreMenu,
   LEGACY_MENU_BUTTON_KEYS,

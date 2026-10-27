@@ -41,6 +41,7 @@ const UserNotificationRepository = require('./repositories/UserNotificationRepos
 const BudgetRepository = require('./repositories/BudgetRepository');
 const ImportRepository = require('./repositories/ImportRepository');
 const ReceiptRepository = require('./repositories/ReceiptRepository');
+const ReferralRepository = require('./repositories/ReferralRepository');
 
 // Services
 const ExpenseService = require('./services/ExpenseService');
@@ -63,6 +64,7 @@ const DailySummaryService = require('./services/DailySummaryService');
 const WeeklyInsightService = require('./services/WeeklyInsightService');
 const ImportService = require('./services/ImportService');
 const ReceiptService = require('./services/ReceiptService');
+const ReferralService = require('./services/ReferralService');
 const { createProviderFromEnv: createReceiptProvider } = require('./services/receipt/chain');
 
 // Handlers
@@ -78,6 +80,7 @@ const BudgetHandlers = require('./handlers/BudgetHandlers');
 const ExportHandlers = require('./handlers/ExportHandlers');
 const ImportHandlers = require('./handlers/ImportHandlers');
 const ReceiptHandlers = require('./handlers/ReceiptHandlers');
+const ReferralHandlers = require('./handlers/ReferralHandlers');
 
 // State management
 const StateService = require('./services/StateService');
@@ -166,6 +169,25 @@ class Container {
       case 'receiptRepository':
         return new ReceiptRepository();
 
+      case 'referralRepository':
+        return new ReferralRepository();
+
+      case 'referralService':
+        return new ReferralService({
+          referralRepository: this.get('referralRepository'),
+          userService: this.get('userService'),
+          notificationService: this.get('notificationService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter')
+        });
+
+      case 'referralHandlers':
+        return new ReferralHandlers({
+          referralService: this.get('referralService'),
+          userService: this.get('userService'),
+          localizationService: this.get('localizationService')
+        });
+
       // Провайдер распознавания чеков из RECEIPT_AI_* (smoke-тесты подменяют его через instances)
       case 'receiptProvider':
         return createReceiptProvider(process.env);
@@ -177,7 +199,8 @@ class Container {
           expenseService: this.get('expenseService'),
           premiumService: this.get('premiumService'),
           localizationService: this.get('localizationService'),
-          funnelService: this.get('funnelService')
+          funnelService: this.get('funnelService'),
+          referralService: this.get('referralService')
         });
 
       case 'receiptHandlers':
@@ -187,7 +210,8 @@ class Container {
           budgetService: this.get('budgetService'),
           userService: this.get('userService'),
           localizationService: this.get('localizationService'),
-          formatter: this.get('formatter')
+          formatter: this.get('formatter'),
+          referralService: this.get('referralService')
         });
 
       case 'currencyUtils':
@@ -295,7 +319,8 @@ class Container {
           this.get('userRepository'),
           this.get('categoryRepository'),
           this.get('premiumService'),
-          this.get('funnelService')
+          this.get('funnelService'),
+          this.get('referralService')
         );
 
           case 'userService':
@@ -403,7 +428,8 @@ class Container {
           paymentService: this.get('paymentService'),
           incomeService: this.get('incomeService'),
           funnelService: this.get('funnelService'),
-          receiptService: this.get('receiptService')
+          receiptService: this.get('receiptService'),
+          referralService: this.get('referralService')
         });
 
       case 'messageHandlers':
@@ -456,7 +482,8 @@ class Container {
           this.get('formatter'),
           this.get('stateService'),
           this.get('funnelService'),
-          this.get('paymentService')
+          this.get('paymentService'),
+          this.get('referralService')
         );
 
       case 'expenseHandlers':
@@ -484,7 +511,8 @@ class Container {
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
           stateService: this.get('stateService'),
-          validator: this.get('enhancedValidator')
+          validator: this.get('enhancedValidator'),
+          referralService: this.get('referralService')
         });
 
       case 'exportHandlers':
@@ -504,7 +532,8 @@ class Container {
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
           stateService: this.get('stateService'),
-          validator: this.get('enhancedValidator')
+          validator: this.get('enhancedValidator'),
+          referralService: this.get('referralService')
         });
 
       case 'incomeHandlers':
@@ -587,6 +616,8 @@ class Container {
       exportHandlers: this.get('exportHandlers'),
       importHandlers: this.get('importHandlers'),
       receiptHandlers: this.get('receiptHandlers'),
+      referralHandlers: this.get('referralHandlers'),
+      referralService: this.get('referralService'),
       savingsHandlers: this.get('savingsHandlers'),
       reportService: this.get('reportService'),
       dailySummaryService: this.get('dailySummaryService'),

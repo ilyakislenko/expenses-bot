@@ -187,6 +187,7 @@ Menyu pastda: oy sharhi, bugungi yozuvlar, daromad, doimiy xarajatlar (ijara, ob
 • 🔁 *Doimiy xarajatlar* — ijara va obunalar har oy avtomatik yoziladi
 • 🎯 *Byudjetlar* va 📄 davr *Xulosasi* — oy sharhi ostidagi tugmalar (Premium)
 • Valyutalar, eslatmalar (kuniga 3 tagacha) va davr boshi — ☰ Yana → ⚙️ Sozlamalar
+• 🎁 /invite — do‘stingizni taklif qiling: ikkalangizga +7 kun Premium
 
 Buyruqlar: /stats /history /income /recurring /export /settings /menu`,
   
@@ -323,7 +324,7 @@ Endi barcha xarajatlaringiz mahalliy vaqt bo‘yicha ko‘rsatiladi.`,
     status_regular: '👤 Oddiy',
     status_premium: '💎 Premium',
     max_description_length: '<b>Izoh uzunligi limiti:</b> {length} belgi',
-    premium_benefits: '💎 <b>Premium afzalliklari:</b>\n  • 🎯 80% da va oshganda ogohlantiruvchi oylik va kategoriya byudjetlari\n  • 📄 Davrning to‘liq xulosasi: har bir kategoriya o‘tgan oy bilan taqqoslab, byudjetlar, kunlik o‘rtacha xarajat\n  • 5 tagacha maxsus kategoriya\n  • Oilaviy byudjet\n  • 10 tagacha jamg‘arma maqsadi (premiumsiz — 1)\n  • Izoh 160 belgi (oddiyda 80 belgi)\n\nXarajat va daromadlarni yozish bepul va cheklanmagan.',
+    premium_benefits: '💎 <b>Premium nima beradi</b>\n\n👀 <b>Pul qayerga ketayotganini ko‘rasiz</b>\n• Davrning to‘liq xulosasi: har bir toifa o‘tgan oyga nisbatan, kunlik o‘rtacha xarajat, eng katta xarajat{receipts}\n\n🎯 <b>Reja bo‘yicha sarflaysiz</b>\n• Oylik va toifa byudjetlari — 80% da va oshib ketganda ogohlantirish\n\n🏦 <b>Tezroq jamg‘arasiz</b>\n• 10 tagacha jamg‘arma maqsadi (Premiumsiz — 1)\n\n👨‍👩‍👧 <b>Butun oila</b>\n• Oila byudjeti: hammaning umumiy xarajatlari bir joyda\n\n✏️ <b>O‘zingizga moslab</b>\n• 5 tagacha o‘z toifangiz va 160 belgigacha tavsif (80 o‘rniga)\n\nXarajat va daromadlarni yozish, ko‘chirmani import qilish, jamg‘armalar va prognoz — bepul va cheklovsiz.',
     
     // Premium obuna
     premium_subscription_title: '⭐️ Obuna',
@@ -348,6 +349,32 @@ Endi barcha xarajatlaringiz mahalliy vaqt bo‘yicha ko‘rsatiladi.`,
     purchases_prev_button: '◀ Oldingi',
     purchases_next_button: 'Keyingi ▶',
     premium_why_paid_text: 'Ushbu botni saqlash xarajati oyiga ~$200. Foydalanuvchilar soni oshib bormoqda va men xizmatni yaxshilash uchun daromadga muhtojman :)',
+    button_invite: '🎁 Do‘stni taklif qilish',
+    command_invite: 'Do‘stni taklif qilish: +7 kun Premium',
+    referral_title: '🎁 *Do‘stingizni taklif qiling*',
+    referral_intro: 'Havolangizni do‘stingizga yuboring. U {expenses} ta xarajat yozganda, *ikkalangiz ham* *+{days} kun Premium* olasiz — sinov yoki to‘langan muddatga qo‘shiladi.',
+    referral_link_label: '🔗 Sizning havolangiz (nusxalash uchun bosing):',
+    referral_stats: '👥 Havola orqali kelganlar: *{invited}* · hisob yurita boshlaganlar: *{activated}*',
+    referral_stats_days: '⭐ Yig‘ilgan: *{days}* / {max} kun Premium',
+    referral_capped_note: '✅ Siz maksimumga yetdingiz — {max} kun. Rahmat! Havolangiz orqali kelgan do‘stlar baribir +{days} kun oladi.',
+    referral_share_text: 'Xarajatlarimni Telegram-botda hisoblayman: «250 kofe» deb yozasiz — bot xarajatlarni toifalarga ajratadi va pul qayerga ketayotganini ko‘rsatadi. Mening havolam orqali sinab ko‘ring — sovg‘a sifatida +{days} kun Premium olasiz 🎁',
+    referral_button_share: '📤 Do‘stga yuborish',
+    referral_button_text: '✉️ Yuborish uchun matn',
+    referral_button_invite_more: '🎁 Yana taklif qilish',
+    referral_friend_fallback: 'Do‘st',
+    referral_joined_notification: '👋 {name} havolangiz orqali qo‘shildi! {expenses} ta xarajat yozilganda, ikkalangiz ham +{days} kun Premium olasiz.',
+    referral_welcome_note: '🎁 Sizni do‘stingiz taklif qildi: {expenses} ta xarajat yozing — ikkalangiz ham +{days} kun Premium olasiz.',
+    referral_reward_invitee: '🎉 *+{days} kun Premium!* Siz {expenses} ta xarajat yozdingiz — taklif bonusini siz ham, sizni taklif qilgan do‘stingiz ham oldingiz. Premium {date} gacha amal qiladi.\n\nDo‘stlaringizni taklif qiling — har biri uchun yana +{days} kun.',
+    referral_reward_inviter: '🎉 *+{days} kun Premium!* {name} taklifingiz bilan xarajatlarini yozib bormoqda. Premium {date} gacha amal qiladi.',
+    referral_reward_inviter_capped: '🎉 {name} taklifingiz bilan xarajatlarini yozib bormoqda va o‘zining +{friendDays} kunini oldi. Siz maksimal bonusni ({days} kun) allaqachon yig‘dingiz — botni tavsiya qilganingiz uchun rahmat ❤️',
+    referral_upsell_line: '🎁 Yoki do‘stingizni taklif qiling — ikkalangizga +{days} kun Premium.',
+    premium_hook_regular: '📊 Oxirgi 30 kundagi yozuvlar: <b>{count}</b>. Premium bilan qaysi toifalar o‘sayotganini ko‘rasiz, limit qo‘yasiz — oy oxirida ko‘proq qoladi.',
+    premium_hook_trial: '📊 Oxirgi 30 kundagi yozuvlar: <b>{count}</b>. Sinov muddatidan keyin byudjetlar, to‘liq xulosa va oila faqat Premium bilan qoladi — yozilganlarning hammasi har qanday holatda saqlanadi.',
+    premium_benefit_receipts: '\n• 🧾 Chek suratlari: oyiga {premium} tagacha (Premiumsiz — {free})',
+    premium_coming_soon: '✨ Premiumga muntazam yangi imkoniyatlar qo‘shiladi — obunangiz ularni allaqachon o‘z ichiga oladi.',
+    premium_trial_note: '⏳ Hozir sizda sinov Premiumi bor. U tugashidan oldin tarif tanlang — qolgan kunlar saqlanadi.',
+    premium_best_value: '💡 Eng foydalisi — yillik: <b>oyiga ≈ {stars} ⭐ ({price})</b>, {percent}% tejash.',
+    premium_referral_line: '🎁 Hali to‘lashga tayyor emasmisiz? Do‘stingizni taklif qiling — ikkalangiz ham +{days} kun Premium olasiz.',
     // Tarif yorliqlari va mahsulot nomi
     tariff_button_30: '1 Oy',
     tariff_button_90: '3 Oy',

@@ -12,6 +12,7 @@
 - Покупки в Telegram Stars: тариф, сумма в звёздах, идентификатор платежа Telegram. Данные карт и счетов бот не получает — оплата проходит внутри Telegram.
 - Сообщения в поддержку и баг-репорты.
 - Код рекламной ссылки, по которой ты пришёл, и шаги первого запуска — для обезличенной статистики.
+- Приглашения друзей: кто кого пригласил по личной ссылке и выданные за это дни премиума. Пригласивший видит в боте число приглашённых и получает сообщение с именем друга из Telegram, когда тот пришёл по ссылке и когда начал вести учёт; траты друга ему не видны.
 
 ## Зачем
 Чтобы вести учёт, считать итоги и бюджеты, присылать напоминания, сводки и уведомления, выдавать премиум, отвечать в поддержке и улучшать бот.
@@ -40,6 +41,7 @@ Version of 27.10.2026. Data controller: IE KISLENKO (Republic of Kazakhstan), II
 - Telegram Stars purchases: plan, amount in Stars, Telegram payment ID. The bot never receives card or bank details — payment happens inside Telegram.
 - Support messages and bug reports.
 - The code of the ad link you came from and first-run steps — for anonymous statistics.
+- Friend invites: who invited whom via a personal link and the premium days granted for it. The inviter sees the number of invited friends in the bot and gets a message with the friend's Telegram name when the friend joins via the link and when they start tracking; the friend's expenses are never shown to them.
 
 ## Why
 To keep your records, calculate summaries and budgets, send reminders, summaries and notifications, grant premium, answer support requests and improve the bot.
