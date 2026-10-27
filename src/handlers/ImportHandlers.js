@@ -13,13 +13,14 @@ const ERROR_KEYS = {
 // Импорт банковской выписки: файл (.csv/.pdf/.txt) в любой момент → превью (ничего не записано) →
 // выбор по переводам → запись одной партией с кнопкой отмены. Сам файл не сохраняется.
 class ImportHandlers {
-  constructor({ importService, expenseService, userService, localizationService, formatter, receiptService }) {
+  constructor({ importService, expenseService, userService, localizationService, formatter, receiptService, achievementService = null }) {
     this.importService = importService;
     this.expenseService = expenseService;
     this.userService = userService;
     this.localizationService = localizationService;
     this.formatter = formatter;
     this.receiptService = receiptService;
+    this.achievementService = achievementService;
   }
 
   t(lang, key, params) {
@@ -144,6 +145,10 @@ class ImportHandlers {
     ];
     const skippedLines = this.skippedLines(lang, skipped);
     if (skippedLines.length) lines.push('', this.t(lang, 'import_done_skipped'), ...skippedLines);
+    if (result.importId && this.achievementService) {
+      const note = await this.achievementService.track(userId, 'import_done', { lang });
+      if (note) lines.push('', note);
+    }
     const keyboard = [[{ text: this.t(lang, 'button_overview'), callback_data: 'ov|0' }]];
     if (result.importId) keyboard.push([{ text: this.t(lang, 'button_import_undo'), callback_data: `imu|${result.importId}` }]);
     await respond(ctx, lines.join('\n'), { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });

@@ -20,7 +20,7 @@ const QUICK_CURRENCIES = ['USD', 'EUR', 'RUB'];
 // Ввод текстом — состояние sv_in:<операция>:<параметры>, см. handleInput.
 // Откуда вводили взнос в месяц (svm|<origin>): s — главный экран, f — прогноз, o — настройки, g<id> — цель.
 class SavingsHandlers {
-  constructor({ savingsService, userService, premiumService, localizationService, formatter, stateService, validator }) {
+  constructor({ savingsService, userService, premiumService, localizationService, formatter, stateService, validator, achievementService = null }) {
     this.savingsService = savingsService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -28,6 +28,7 @@ class SavingsHandlers {
     this.formatter = formatter;
     this.stateService = stateService;
     this.validator = validator;
+    this.achievementService = achievementService;
     this.wizards = new UpdateWizards();
   }
 
@@ -655,7 +656,8 @@ class SavingsHandlers {
       }));
     }
     const achieved = wizard.achieved.filter((goal, index, all) => all.findIndex(g => g.id === goal.id) === index);
-    return this.showMenu(ctx, this.withAchievements(lines.join('\n'), achieved, lang));
+    const note = await this.achievementNote(userId, 'savings_updated', lang);
+    return this.showMenu(ctx, this.withAchievements(lines.join('\n'), achieved, lang, note));
   }
 
   // callback: sva — новый счёт: сначала название (можно сразу с валютой и ставкой — «Вклад USD 4%»)
@@ -846,7 +848,8 @@ class SavingsHandlers {
     if (!result) return this.showMenu(ctx, this.t(lang, 'savings_not_found'));
     let notice = this.t(lang, mode === 'own' ? 'savings_mode_set_own' : 'savings_mode_set_total');
     if (result.moved > 0) notice += `\n${this.t(lang, 'savings_moved_to_general', { amount: this.exact(result.moved, goal.currency) })}`;
-    await this.showPot(ctx, goalId, this.withAchievements(notice, result.achieved, lang));
+    const note = result.achieved?.length ? await this.achievementNote(userId, 'goal_reached', lang) : '';
+    await this.showPot(ctx, goalId, this.withAchievements(notice, result.achieved, lang, note));
   }
 
   // callback: svgx|<id> — подтверждение удаления
@@ -1103,12 +1106,18 @@ class SavingsHandlers {
     return this.showSettings(ctx, notice);
   }
 
-  withAchievements(notice, achieved, lang) {
+  // note — строка достижений (achievementService.track) в конце
+  withAchievements(notice, achieved, lang, note = '') {
     const lines = notice ? [notice] : [];
     for (const goal of achieved || []) {
       lines.push(this.t(lang, 'savings_goal_achieved_notice', { name: this.formatter.escapeMarkdown(goal.name) }));
     }
+    if (note) lines.push(note);
     return lines.join('\n') || null;
+  }
+
+  async achievementNote(userId, event, lang) {
+    return this.achievementService ? this.achievementService.track(userId, event, { lang }) : '';
   }
 
   // Сумма из ввода в валюте currency: "15000", "15 000", "100 USD". allowZero — для новой суммы и взноса.
@@ -1160,7 +1169,8 @@ class SavingsHandlers {
       if (result.error) return notFound();
       const noticeKey = { dep: 'savings_deposited', wd: 'savings_withdrawn', set: 'savings_balance_set' }[op];
       const notice = this.t(lang, noticeKey, { amount: this.exact(op === 'set' ? Number(result.pot.balance) : amount, pot.currency) });
-      return this.finish(ctx, lang, () => this.showPot(ctx, pot.id, this.withAchievements(notice, result.achieved, lang)));
+      const note = await this.achievementNote(userId, result.achieved?.length ? 'goal_reached' : 'savings_updated', lang);
+      return this.finish(ctx, lang, () => this.showPot(ctx, pot.id, this.withAchievements(notice, result.achieved, lang, note)));
     }
 
     if (op === 'tr') {
@@ -1175,7 +1185,8 @@ class SavingsHandlers {
         amount: this.exact(result.amountTo, result.to.currency),
         name: this.potName(result.to, lang)
       });
-      return this.finish(ctx, lang, () => this.showPot(ctx, result.to.id, this.withAchievements(notice, result.achieved, lang)));
+      const note = await this.achievementNote(userId, result.achieved?.length ? 'goal_reached' : 'savings_updated', lang);
+      return this.finish(ctx, lang, () => this.showPot(ctx, result.to.id, this.withAchievements(notice, result.achieved, lang, note)));
     }
 
     if (op === 'goal' || op === 'target') {
@@ -1193,13 +1204,15 @@ class SavingsHandlers {
       if (op === 'goal') {
         const result = await this.savingsService.createGoal(userId, { name: parsed.description, targetAmount: target, currency });
         if (result.error === 'limit') return this.finish(ctx, lang, () => this.showGoalLimit(ctx, lang, result.limit));
-        return this.finish(ctx, lang, () => this.showPot(ctx, result.goal.id, this.t(lang, 'savings_goal_created')));
+        const note = await this.achievementNote(userId, 'goal_created', lang);
+        return this.finish(ctx, lang, () => this.showPot(ctx, result.goal.id, this.withAchievements(this.t(lang, 'savings_goal_created'), result.achieved, lang, note)));
       }
       const fields = { target_amount: target };
       if (parsed.description) fields.name = parsed.description;
       const result = await this.savingsService.updateGoal(userId, parseInt(a, 10), fields);
       if (!result) return notFound();
-      return this.finish(ctx, lang, () => this.showPot(ctx, result.goal.id, this.withAchievements(this.t(lang, 'savings_goal_updated'), result.achieved, lang)));
+      const note = result.achieved?.length ? await this.achievementNote(userId, 'goal_reached', lang) : '';
+      return this.finish(ctx, lang, () => this.showPot(ctx, result.goal.id, this.withAchievements(this.t(lang, 'savings_goal_updated'), result.achieved, lang, note)));
     }
 
     if (op === 'date') {
@@ -1335,7 +1348,8 @@ class SavingsHandlers {
     const result = await this.savingsService.changeBalance(userId, potId, 'set', amount);
     if (result.error) return this.finish(ctx, lang, () => this.showMenu(ctx, this.t(lang, 'savings_not_found')));
     const notice = this.t(lang, 'savings_balance_set', { amount: this.exact(Number(result.pot.balance), current.currency) });
-    return this.finish(ctx, lang, () => this.showPot(ctx, potId, this.withAchievements(notice, result.achieved, lang)));
+    const note = await this.achievementNote(userId, 'savings_updated', lang);
+    return this.finish(ctx, lang, () => this.showPot(ctx, potId, this.withAchievements(notice, result.achieved, lang, note)));
   }
 
   // Долг создан — сразу спрашиваем платёж в месяц (по нему считается срок погашения), можно пропустить
@@ -1366,7 +1380,8 @@ class SavingsHandlers {
       if (result.error) return notFound();
       const key = { pay: 'savings_debt_paid', increase: 'savings_debt_increased', set: 'savings_debt_set' }[kind];
       const notice = this.t(lang, key, { amount: this.exact(kind === 'set' ? Number(result.pot.balance) : amount, debt.currency) });
-      return this.finish(ctx, lang, () => this.showDebt(ctx, debt.id, notice));
+      const note = await this.achievementNote(userId, Number(result.pot.balance) === 0 ? 'debt_paid_off' : 'savings_updated', lang);
+      return this.finish(ctx, lang, () => this.showDebt(ctx, debt.id, [notice, note].filter(Boolean).join('\n')));
     }
 
     if (op === 'bpm') {

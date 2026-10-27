@@ -50,13 +50,14 @@ function pickPhotoSize(sizes) {
 // Фото чека → каждая позиция записывается отдельной тратой сразу, затем список чека для правки
 // (номер → обычная карточка записи с возвратом к чеку, «Всё верно», «Отменить чек»).
 class ReceiptHandlers {
-  constructor({ receiptService, expenseHandlers, budgetService, userService, localizationService, formatter }) {
+  constructor({ receiptService, expenseHandlers, budgetService, userService, localizationService, formatter, achievementService = null }) {
     this.receiptService = receiptService;
     this.expenseHandlers = expenseHandlers;
     this.budgetService = budgetService;
     this.userService = userService;
     this.localizationService = localizationService;
     this.formatter = formatter;
+    this.achievementService = achievementService;
     this.tasks = new Set(); // фоновые распознавания
     this.busyUsers = new Set(); // у кого сейчас распознаётся чек (по одному на пользователя)
     this.drafts = new Map(); // `${userId}:${messageId}` → неуверенно распознанный чек до подтверждения | null — уже записывается
@@ -231,7 +232,8 @@ class ReceiptHandlers {
       }
       const receiptId = await this.recordReceipt(userId, receipt, timezone);
       const view = await this.buildReceiptView(userId, lang, receiptId, 0);
-      await this.editStatus(ctx, statusId, view.text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: view.keyboard } });
+      const text = await this.withAchievementNote(userId, lang, view.text);
+      await this.editStatus(ctx, statusId, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: view.keyboard } });
       await this.sendBudgetWarnings(ctx, userId, lang, receiptId);
     } catch (error) {
       logger.error('Receipt processing failed', { userId, error: error.message, stack: error.stack });
@@ -377,8 +379,16 @@ class ReceiptHandlers {
     this.drafts.delete(`${userId}:${messageId}`);
     this.rotations.delete(`${userId}:${messageId}`);
     const view = await this.buildReceiptView(userId, lang, receiptId, 0);
-    await respond(ctx, view.text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: view.keyboard } });
+    const text = await this.withAchievementNote(userId, lang, view.text);
+    await respond(ctx, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: view.keyboard } });
     await this.sendBudgetWarnings(ctx, userId, lang, receiptId);
+  }
+
+  // Записанный чек: строка достижений (первый чек, серия…) под списком
+  async withAchievementNote(userId, lang, text) {
+    if (!this.achievementService) return text;
+    const note = await this.achievementService.track(userId, 'receipt_recorded', { lang });
+    return note ? `${text}\n\n${note}` : text;
   }
 
   // Бюджеты проверяются один раз на чек (по каждой его категории и общий), а не на каждую позицию

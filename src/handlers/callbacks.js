@@ -4,7 +4,7 @@ const { summaryHour } = require('../services/DailySummaryService');
 const hourLabel = (hour) => `${String(hour).padStart(2, '0')}:00`;
 
 class CallbackHandlers {
-  constructor({ expenseService, premiumService, paymentService, familyService, categoryService, localizationService, formatter, stateService, userService, commandHandlers, keyboardGenerators, donationRepository, funnelService, weeklyInsightService }) {
+  constructor({ expenseService, premiumService, paymentService, familyService, categoryService, localizationService, formatter, stateService, userService, commandHandlers, keyboardGenerators, donationRepository, funnelService, weeklyInsightService, achievementService = null }) {
     this.expenseService = expenseService;
     this.premiumService = premiumService;
     this.paymentService = paymentService;
@@ -19,6 +19,7 @@ class CallbackHandlers {
     this.donationRepository = donationRepository;
     this.funnelService = funnelService;
     this.weeklyInsightService = weeklyInsightService;
+    this.achievementService = achievementService;
   }
 
   async handleToggleReminders(ctx) {
@@ -1045,7 +1046,13 @@ class CallbackHandlers {
       });
       
       await ctx.answerCbQuery(invitationAcceptedText);
-      await ctx.editMessageText(invitationAcceptedText, {
+      // Строка достижений — в Markdown, поэтому название семьи (пользовательский текст) экранируется
+      const note = this.achievementService ? await this.achievementService.track(userId, 'family_joined', { lang: userLanguage }) : '';
+      const text = note
+        ? `${this.localizationService.getText(userLanguage, 'invitation_accepted', { familyName: this.formatter.escapeMarkdown(result.family?.name || 'Unknown Family') })}\n\n${note}`
+        : invitationAcceptedText;
+      await ctx.editMessageText(text, {
+        ...(note ? { parse_mode: 'Markdown' } : {}),
         reply_markup: {
           inline_keyboard: [
             [{ text: this.localizationService.getText(userLanguage, 'button_back'), callback_data: 'family_menu' }]

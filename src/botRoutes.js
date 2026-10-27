@@ -1,5 +1,5 @@
 module.exports = function registerBotRoutes(bot, handlers) {
-  const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, importHandlers, receiptHandlers, savingsHandlers, stateService } = handlers;
+  const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, importHandlers, receiptHandlers, savingsHandlers, achievementHandlers, stateService } = handlers;
   const ReceiptHandlers = require('./handlers/ReceiptHandlers');
   const { BACK_VIEW_PATTERN } = require('./handlers/ExpenseHandlers');
 
@@ -37,6 +37,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.command('income', errorHandler((ctx) => incomeHandlers.showMenu(ctx))); // доходы за период
   bot.command('recurring', errorHandler((ctx) => recurringExpenseHandlers.showMenu(ctx))); // ежемесячные регулярные траты
   bot.command('savings', errorHandler((ctx) => savingsHandlers.showMenu(ctx))); // накопления, цели, прогноз
+  bot.command('achievements', errorHandler((ctx) => achievementHandlers.show(ctx))); // уровень, серия, достижения, челленджи
   bot.command('cancel', errorHandler(async (ctx) => {
     const userId = ctx.from.id;
     const userLanguage = await handlers.userService.getUserLanguage(userId);
@@ -141,6 +142,21 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^svo\|(m|ma|i|y|g)$/, errorHandler((ctx) => savingsHandlers.settingsAction(ctx)));
   // Устаревшие или неизвестные кнопки раздела (старые сообщения) — главный экран накоплений
   bot.action(/^sv/, errorHandler((ctx) => savingsHandlers.showMenu(ctx)));
+
+  // Достижения: экран, каталог, «день без трат», челленджи, «Итоги месяца»
+  bot.action('ach', errorHandler((ctx) => achievementHandlers.show(ctx)));
+  bot.action('achl', errorHandler((ctx) => achievementHandlers.showAll(ctx)));
+  bot.action('achn', errorHandler((ctx) => achievementHandlers.markNoSpend(ctx)));
+  bot.action('achc', errorHandler((ctx) => achievementHandlers.showChallenges(ctx)));
+  bot.action(/^achcs\|(ns|nc|bm)$/, errorHandler((ctx) => achievementHandlers.startChallenge(ctx)));
+  bot.action(/^achcc\|(\d+)$/, errorHandler((ctx) => achievementHandlers.startCategoryChallenge(ctx)));
+  bot.action(/^achcx\|(\d+)$/, errorHandler((ctx) => achievementHandlers.askCancel(ctx)));
+  bot.action(/^achcxc\|(\d+)$/, errorHandler((ctx) => achievementHandlers.cancel(ctx)));
+  bot.action(/^achw\|(-?\d+)$/, errorHandler((ctx) => achievementHandlers.showWrapped(ctx, parseInt(ctx.match[1], 10))));
+  bot.action(/^achwt\|(-?\d+)$/, errorHandler((ctx) => achievementHandlers.toggleWrapped(ctx)));
+  bot.action('achwo', errorHandler((ctx) => achievementHandlers.turnOffWrapped(ctx)));
+  // Устаревшие или неизвестные кнопки раздела — экран достижений
+  bot.action(/^ach/, errorHandler((ctx) => achievementHandlers.show(ctx)));
 
   // Текстовые сообщения
   bot.on('text', errorHandler((ctx) => messageHandlers.handleExpense(ctx))); // ввод трат, доходов и кнопки клавиатуры

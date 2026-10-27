@@ -13,7 +13,7 @@ function summaryHour(value) {
 }
 
 class DailySummaryService {
-  constructor({ expenseService, incomeService, reportService, userNotificationRepository, notificationService, localizationService, formatter }) {
+  constructor({ expenseService, incomeService, reportService, userNotificationRepository, notificationService, localizationService, formatter, achievementService = null }) {
     this.expenseService = expenseService;
     this.incomeService = incomeService;
     this.reportService = reportService;
@@ -21,6 +21,7 @@ class DailySummaryService {
     this.notificationService = notificationService;
     this.localizationService = localizationService;
     this.formatter = formatter;
+    this.achievementService = achievementService;
   }
 
   t(lang, key, params) {
@@ -52,6 +53,9 @@ class DailySummaryService {
     for (const category of categories.slice(0, TOP_CATEGORIES)) {
       lines.push(`${this.reportService.categoryLabel(category, lang)} — ${money(category.total)}`);
     }
+    // Серия дней с записями (и сработавшая заморозка) — одной строкой в конце
+    const streakLine = this.achievementService ? await this.achievementService.summaryLine(userId, lang) : '';
+    if (streakLine) lines.push('', streakLine);
     return { text: lines.join('\n'), today };
   }
 

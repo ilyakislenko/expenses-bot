@@ -41,6 +41,7 @@ const UserNotificationRepository = require('./repositories/UserNotificationRepos
 const BudgetRepository = require('./repositories/BudgetRepository');
 const ImportRepository = require('./repositories/ImportRepository');
 const ReceiptRepository = require('./repositories/ReceiptRepository');
+const AchievementRepository = require('./repositories/AchievementRepository');
 
 // Services
 const ExpenseService = require('./services/ExpenseService');
@@ -63,6 +64,7 @@ const DailySummaryService = require('./services/DailySummaryService');
 const WeeklyInsightService = require('./services/WeeklyInsightService');
 const ImportService = require('./services/ImportService');
 const ReceiptService = require('./services/ReceiptService');
+const AchievementService = require('./services/AchievementService');
 const { createProviderFromEnv: createReceiptProvider } = require('./services/receipt/chain');
 
 // Handlers
@@ -78,6 +80,7 @@ const BudgetHandlers = require('./handlers/BudgetHandlers');
 const ExportHandlers = require('./handlers/ExportHandlers');
 const ImportHandlers = require('./handlers/ImportHandlers');
 const ReceiptHandlers = require('./handlers/ReceiptHandlers');
+const AchievementHandlers = require('./handlers/AchievementHandlers');
 
 // State management
 const StateService = require('./services/StateService');
@@ -160,11 +163,41 @@ class Container {
           userService: this.get('userService'),
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
-          receiptService: this.get('receiptService')
+          receiptService: this.get('receiptService'),
+          achievementService: this.get('achievementService')
         });
 
       case 'receiptRepository':
         return new ReceiptRepository();
+
+      case 'achievementRepository':
+        return new AchievementRepository();
+
+      // Серия, достижения, челленджи, «Итоги месяца»; track() вызывают обработчики действий
+      case 'achievementService':
+        return new AchievementService({
+          achievementRepository: this.get('achievementRepository'),
+          userService: this.get('userService'),
+          premiumService: this.get('premiumService'),
+          expenseService: this.get('expenseService'),
+          reportService: this.get('reportService'),
+          budgetService: this.get('budgetService'),
+          savingsService: this.get('savingsService'),
+          currencyUtils: this.get('currencyUtils'),
+          formatter: this.get('formatter'),
+          localizationService: this.get('localizationService'),
+          notificationService: this.get('notificationService'),
+          userNotificationRepository: this.get('userNotificationRepository')
+        });
+
+      case 'achievementHandlers':
+        return new AchievementHandlers({
+          achievementService: this.get('achievementService'),
+          expenseService: this.get('expenseService'),
+          userService: this.get('userService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter')
+        });
 
       // Провайдер распознавания чеков из RECEIPT_AI_* (smoke-тесты подменяют его через instances)
       case 'receiptProvider':
@@ -187,7 +220,8 @@ class Container {
           budgetService: this.get('budgetService'),
           userService: this.get('userService'),
           localizationService: this.get('localizationService'),
-          formatter: this.get('formatter')
+          formatter: this.get('formatter'),
+          achievementService: this.get('achievementService')
         });
 
       case 'currencyUtils':
@@ -274,7 +308,8 @@ class Container {
           userNotificationRepository: this.get('userNotificationRepository'),
           notificationService: this.get('notificationService'),
           localizationService: this.get('localizationService'),
-          formatter: this.get('formatter')
+          formatter: this.get('formatter'),
+          achievementService: this.get('achievementService')
         });
 
       case 'weeklyInsightService':
@@ -445,7 +480,8 @@ class Container {
           keyboardGenerators: this.get('keyboardGenerators'),
           donationRepository: this.get('donationRepository'),
           funnelService: this.get('funnelService'),
-          weeklyInsightService: this.get('weeklyInsightService')
+          weeklyInsightService: this.get('weeklyInsightService'),
+          achievementService: this.get('achievementService')
         });
 
       case 'adminHandlers':
@@ -472,7 +508,8 @@ class Container {
           stateService: this.get('stateService'),
           validator: this.get('enhancedValidator'),
           budgetService: this.get('budgetService'),
-          reportService: this.get('reportService')
+          reportService: this.get('reportService'),
+          achievementService: this.get('achievementService')
         });
 
       case 'budgetHandlers':
@@ -484,7 +521,8 @@ class Container {
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
           stateService: this.get('stateService'),
-          validator: this.get('enhancedValidator')
+          validator: this.get('enhancedValidator'),
+          achievementService: this.get('achievementService')
         });
 
       case 'exportHandlers':
@@ -504,7 +542,8 @@ class Container {
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
           stateService: this.get('stateService'),
-          validator: this.get('enhancedValidator')
+          validator: this.get('enhancedValidator'),
+          achievementService: this.get('achievementService')
         });
 
       case 'incomeHandlers':
@@ -516,7 +555,8 @@ class Container {
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
           stateService: this.get('stateService'),
-          validator: this.get('enhancedValidator')
+          validator: this.get('enhancedValidator'),
+          achievementService: this.get('achievementService')
         });
 
       case 'recurringExpenseHandlers':
@@ -584,6 +624,8 @@ class Container {
       recurringExpenseHandlers: this.get('recurringExpenseHandlers'),
       expenseHandlers: this.get('expenseHandlers'),
       budgetHandlers: this.get('budgetHandlers'),
+      achievementHandlers: this.get('achievementHandlers'),
+      achievementService: this.get('achievementService'),
       exportHandlers: this.get('exportHandlers'),
       importHandlers: this.get('importHandlers'),
       receiptHandlers: this.get('receiptHandlers'),

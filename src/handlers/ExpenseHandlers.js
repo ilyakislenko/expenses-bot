@@ -29,7 +29,7 @@ function groupByCurrency(expenses) {
 }
 
 class ExpenseHandlers {
-  constructor({ expenseService, incomeService, recurringExpenseService, familyService, premiumService, userService, localizationService, formatter, stateService, validator, budgetService, reportService }) {
+  constructor({ expenseService, incomeService, recurringExpenseService, familyService, premiumService, userService, localizationService, formatter, stateService, validator, budgetService, reportService, achievementService = null }) {
     this.expenseService = expenseService;
     this.incomeService = incomeService;
     this.recurringExpenseService = recurringExpenseService;
@@ -42,6 +42,7 @@ class ExpenseHandlers {
     this.validator = validator;
     this.budgetService = budgetService;
     this.reportService = reportService;
+    this.achievementService = achievementService;
     this.backViews = {}; // экраны других разделов: kind → (ctx, args) => …, см. registerBackView
   }
 
@@ -85,7 +86,8 @@ class ExpenseHandlers {
     if (remembered || !categories.length) {
       const category = remembered || await this.expenseService.getDefaultCategory();
       const expense = await this.expenseService.addExpense(userId, { ...draft, categoryId: category.id });
-      await this.showCard(ctx, expense.id, 'n', { added: true, remembered: !!remembered });
+      const note = await this.achievementNote(userId, lang, category.name);
+      await this.showCard(ctx, expense.id, 'n', { added: true, remembered: !!remembered, note });
       await this.sendBudgetWarnings(ctx, userId, lang, category.name);
       return true;
     }
@@ -160,7 +162,8 @@ class ExpenseHandlers {
     await ctx.answerCbQuery(this.t(lang, 'callback_expense_added', {
       category: this.formatter.translateCategoryName(category.name, this.localizationService, lang)
     }));
-    await this.showCard(ctx, expense.id, 'n', { added: true });
+    const note = await this.achievementNote(userId, lang, category.name);
+    await this.showCard(ctx, expense.id, 'n', { added: true, note });
     await this.sendBudgetWarnings(ctx, userId, lang, category.name);
   }
 
@@ -178,7 +181,13 @@ class ExpenseHandlers {
   // КАРТОЧКА ЗАПИСИ
   // ========================================
 
-  async showCard(ctx, expenseId, back, { added = false, remembered = false } = {}) {
+  // Строка достижений к подтверждению записи ('' — нечего сказать; track сам не бросает исключений)
+  async achievementNote(userId, lang, categoryName) {
+    if (!this.achievementService) return '';
+    return this.achievementService.track(userId, 'expense_added', { lang, categoryName });
+  }
+
+  async showCard(ctx, expenseId, back, { added = false, remembered = false, note = '' } = {}) {
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
     const expense = await this.expenseService.getExpenseById(userId, expenseId);
@@ -205,6 +214,7 @@ class ExpenseHandlers {
     }
     if (expense.recurring_expense_id) text += `\n🔁 ${this.t(lang, 'expense_recurring_label')}`;
     if (remembered) text += `\n\n${this.t(lang, 'expense_category_remembered')}`;
+    if (note) text += `\n\n${note}`;
 
     const keyboard = [];
     if (isOwner) {

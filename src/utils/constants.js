@@ -8,6 +8,8 @@ const USER_LIMITS = {
     MAX_CUSTOM_CATEGORIES: 0,
     MAX_SAVINGS_GOALS: 1,
     MAX_RECEIPTS_PER_MONTH: 10, // распознанных фото чеков в локальный календарный месяц
+    STREAK_FREEZES_PER_WEEK: 1, // заморозок серии в неделю (закрывают пропущенный день автоматически)
+    MAX_ACTIVE_CHALLENGES: 1, // челленджей одновременно
   },
   premium: {
     MAX_DESCRIPTION_LENGTH: 160,
@@ -15,6 +17,8 @@ const USER_LIMITS = {
     MAX_CUSTOM_CATEGORIES: 5,
     MAX_SAVINGS_GOALS: 10,
     MAX_RECEIPTS_PER_MONTH: 300,
+    STREAK_FREEZES_PER_WEEK: 2,
+    MAX_ACTIVE_CHALLENGES: Infinity,
   }
 };
 
@@ -105,6 +109,7 @@ function generateMoreMenu(localizationService, userLanguage, isAdmin = false) {
   const t = (key) => localizationService.getText(userLanguage, key);
   const keyboard = [
     [{ text: t('button_savings'), callback_data: 'sv' }],
+    [{ text: t('button_achievements'), callback_data: 'ach' }],
     [{ text: t('button_family'), callback_data: 'family' }, { text: t('premium_subscription_title'), callback_data: 'premium_subscription' }],
     [{ text: t('button_export'), callback_data: 'export' }, { text: t('button_settings'), callback_data: 'settings' }],
     [{ text: t('button_import'), callback_data: 'import' }],

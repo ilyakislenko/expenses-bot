@@ -5,7 +5,7 @@ const MAX_BUDGET_AMOUNT = 9999999999; // category_budgets.amount DECIMAL(12,2)
 // Бюджеты на пользовательский период — функция премиума.
 // Цель бюджета в callback/состоянии: "total" — общий бюджет, иначе id категории.
 class BudgetHandlers {
-  constructor({ budgetService, expenseService, premiumService, userService, localizationService, formatter, stateService, validator }) {
+  constructor({ budgetService, expenseService, premiumService, userService, localizationService, formatter, stateService, validator, achievementService = null }) {
     this.budgetService = budgetService;
     this.expenseService = expenseService;
     this.premiumService = premiumService;
@@ -14,6 +14,7 @@ class BudgetHandlers {
     this.formatter = formatter;
     this.stateService = stateService;
     this.validator = validator;
+    this.achievementService = achievementService;
   }
 
   t(lang, key, params) {
@@ -182,7 +183,8 @@ class BudgetHandlers {
     const currency = parsed.currency || await this.userService.getUserCurrency(userId);
     await this.budgetService.setBudget(userId, categoryName, parsed.amount, currency);
     this.stateService.deleteUserState(userId);
-    await this.showMenu(ctx, this.t(lang, 'budget_saved'));
+    const note = this.achievementService ? await this.achievementService.track(userId, 'budget_set', { lang }) : '';
+    await this.showMenu(ctx, [this.t(lang, 'budget_saved'), note].filter(Boolean).join('\n'));
   }
 
   // callback: bg_del|<id>
