@@ -59,6 +59,15 @@ class UserNotificationRepository extends BaseRepository {
     return result.rows;
   }
 
+  // Кандидаты для сводки недели: включили её в настройках напоминаний
+  async getWeeklyInsightCandidates() {
+    const result = await this.query(
+      'SELECT id, language, timezone FROM users WHERE id > 0 AND weekly_insight_enabled = TRUE',
+      []
+    );
+    return result.rows;
+  }
+
   // true — уведомление ещё не отправлялось и теперь отмечено; false — уже было
   async markSent(userId, kind, refKey) {
     const result = await this.query(

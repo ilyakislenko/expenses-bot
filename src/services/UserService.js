@@ -145,6 +145,10 @@ class UserService {
     return this.userRepository.setDailySummaryHour(userId, hour);
   }
 
+  async setWeeklyInsightEnabled(userId, enabled) {
+    return this.userRepository.setWeeklyInsightEnabled(userId, enabled);
+  }
+
   async setUserPeriodStartDay(userId, day) {
     if (typeof day !== 'number' || day < 1 || day > 31) {
       throw new Error('Invalid period start day');

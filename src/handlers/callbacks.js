@@ -4,7 +4,7 @@ const { summaryHour } = require('../services/DailySummaryService');
 const hourLabel = (hour) => `${String(hour).padStart(2, '0')}:00`;
 
 class CallbackHandlers {
-  constructor({ expenseService, premiumService, paymentService, familyService, categoryService, localizationService, formatter, stateService, userService, commandHandlers, keyboardGenerators, donationRepository, funnelService }) {
+  constructor({ expenseService, premiumService, paymentService, familyService, categoryService, localizationService, formatter, stateService, userService, commandHandlers, keyboardGenerators, donationRepository, funnelService, weeklyInsightService }) {
     this.expenseService = expenseService;
     this.premiumService = premiumService;
     this.paymentService = paymentService;
@@ -18,6 +18,7 @@ class CallbackHandlers {
     this.keyboardGenerators = keyboardGenerators;
     this.donationRepository = donationRepository;
     this.funnelService = funnelService;
+    this.weeklyInsightService = weeklyInsightService;
   }
 
   async handleToggleReminders(ctx) {
@@ -69,13 +70,19 @@ class CallbackHandlers {
       { text: t(settings.daily_summary_enabled ? 'button_daily_summary_on' : 'button_daily_summary_off'), callback_data: 'toggle_daily_summary' },
       { text: `🕒 ${hourLabel(summaryHour(settings.daily_summary_hour))}`, callback_data: 'daily_summary_hour' }
     ]);
+    // Сводка недели: вкл/выкл и «показать сейчас» (работает и при выключенной)
+    keyboard.push([
+      { text: t(settings.weekly_insight_enabled ? 'button_weekly_insight_on' : 'button_weekly_insight_off'), callback_data: 'toggle_weekly_insight' },
+      { text: t('button_weekly_insight_now'), callback_data: 'weekly_insight_now' }
+    ]);
     keyboard.push([{ text: backText, callback_data: 'back_to_settings' }]);
 
     const list = current.map(h => `${h.toString().padStart(2,'0')}:00`).join(', ');
     const summaryLine = settings.daily_summary_enabled
       ? t('settings_daily_summary_on_line', { time: hourLabel(summaryHour(settings.daily_summary_hour)) })
       : t('settings_daily_summary_off_line');
-    const newText = `🔔 *${t('reminders_title')}*\n\n${t('reminders_info')}\n\n${t('reminder_hours_info')} ${list || '-'}\n\n${t('daily_summary_info')}\n${summaryLine}`;
+    const weeklyLine = t(settings.weekly_insight_enabled ? 'settings_weekly_insight_on_line' : 'settings_weekly_insight_off_line');
+    const newText = `🔔 *${t('reminders_title')}*\n\n${t('reminders_info')}\n\n${t('reminder_hours_info')} ${list || '-'}\n\n${t('daily_summary_info')}\n${summaryLine}\n\n${t('weekly_insight_info')}\n${weeklyLine}`;
     await ctx.answerCbQuery().catch(() => {});
     await respond(ctx, newText, { reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown' });
   }
@@ -88,6 +95,39 @@ class CallbackHandlers {
     await this.userService.setDailySummaryEnabled(userId, newValue);
     await ctx.answerCbQuery(this.localizationService.getText(userLanguage, newValue ? 'daily_summary_enabled' : 'daily_summary_disabled'));
     await this.handleConfigureReminderHours(ctx);
+  }
+
+  async handleToggleWeeklyInsight(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const settings = await this.userService.getReminderSettings(userId);
+    const newValue = !settings.weekly_insight_enabled;
+    await this.userService.setWeeklyInsightEnabled(userId, newValue);
+    await ctx.answerCbQuery(this.localizationService.getText(userLanguage, newValue ? 'weekly_insight_enabled' : 'weekly_insight_disabled'));
+    await this.handleConfigureReminderHours(ctx);
+  }
+
+  // «Показать сейчас»: сводка недели отдельным сообщением, экран напоминаний остаётся
+  async handleWeeklyInsightNow(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const insight = await this.weeklyInsightService.buildInsight(userId, userLanguage);
+    if (!insight) {
+      return ctx.answerCbQuery(this.localizationService.getText(userLanguage, 'weekly_insight_no_data'), { show_alert: true });
+    }
+    await ctx.answerCbQuery().catch(() => {});
+    await ctx.reply(insight.text, { parse_mode: 'Markdown', reply_markup: this.weeklyInsightService.keyboard(userLanguage) });
+  }
+
+  // «Выключить сводку недели» под сводкой: сводка остаётся, у неё пропадает кнопка выключения
+  async handleWeeklyInsightOff(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    await this.userService.setWeeklyInsightEnabled(userId, false);
+    await ctx.answerCbQuery(this.localizationService.getText(userLanguage, 'weekly_insight_turned_off'), { show_alert: true });
+    await ctx.editMessageReplyMarkup({
+      inline_keyboard: this.weeklyInsightService.keyboard(userLanguage).inline_keyboard.slice(0, 1)
+    }).catch(() => {});
   }
 
   // Выбор часа ежедневной сводки: сетка 0..23, текущий час отмечен

@@ -50,7 +50,7 @@ async function sendReminders({ userService, expenseService, notificationService 
   return sent;
 }
 
-function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, recurringExpenseService, premiumLifecycleService, reportService, dailySummaryService, supportedCurrencies = currencyConfig.SUPPORTED_CURRENCIES) {
+function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, recurringExpenseService, premiumLifecycleService, reportService, dailySummaryService, weeklyInsightService, supportedCurrencies = currencyConfig.SUPPORTED_CURRENCIES) {
   // Проверяем, нужно ли обновлять курсы при запуске
   (async () => {
     try {
@@ -140,6 +140,18 @@ function setupBotCron(cron, currencyUtils, donationRepository, userService, expe
       }
     } catch (err) {
       console.error('Ошибка при отправке ежедневной сводки:', err);
+    }
+  });
+
+  // Сводка недели: по понедельникам в 10:00 по местному времени (проверка — каждый час), по разу за неделю
+  cron.schedule('0 * * * *', async () => {
+    try {
+      const sent = await weeklyInsightService.processDue();
+      if (sent > 0) {
+        console.log(`Сводка недели: отправлено ${sent}`);
+      }
+    } catch (err) {
+      console.error('Ошибка при отправке сводки недели:', err);
     }
   });
 

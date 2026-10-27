@@ -218,7 +218,8 @@ class CommandHandlers {
         : t('settings_reminders_off_line'),
       reminders.daily_summary_enabled
         ? t('settings_daily_summary_on_line', { time: `${String(summaryHour(reminders.daily_summary_hour)).padStart(2, '0')}:00` })
-        : t('settings_daily_summary_off_line')
+        : t('settings_daily_summary_off_line'),
+      t(reminders.weekly_insight_enabled ? 'settings_weekly_insight_on_line' : 'settings_weekly_insight_off_line')
     ];
 
     if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});

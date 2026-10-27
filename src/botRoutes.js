@@ -182,6 +182,9 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('toggle_daily_summary', errorHandler((ctx) => callbackHandlers.handleToggleDailySummary(ctx)));
   bot.action('daily_summary_hour', errorHandler((ctx) => callbackHandlers.handleDailySummaryHour(ctx)));
   bot.action(/^set_daily_summary_hour\|(\d{1,2})$/, errorHandler((ctx) => callbackHandlers.handleSetDailySummaryHour(ctx)));
+  bot.action('toggle_weekly_insight', errorHandler((ctx) => callbackHandlers.handleToggleWeeklyInsight(ctx)));
+  bot.action('weekly_insight_now', errorHandler((ctx) => callbackHandlers.handleWeeklyInsightNow(ctx)));
+  bot.action('weekly_insight_off', errorHandler((ctx) => callbackHandlers.handleWeeklyInsightOff(ctx)));
   bot.action('bug_report', errorHandler((ctx) => callbackHandlers.handleBugReport(ctx)));
   // time|<час>|<минуты>[|ob] и set_language|<код>[|ob]: `|ob` — шаг онбординга
   bot.action(/^time\|(\d{1,2})\|(\d{1,2})(\|ob)?$/, errorHandler((ctx) => callbackHandlers.handleTimezoneSelection(ctx)));

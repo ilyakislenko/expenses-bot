@@ -88,9 +88,9 @@ class UserRepository extends BaseRepository {
   }
 
   async getReminderSettings(userId) {
-    const query = 'SELECT reminder_enabled, last_reminder_local_date, timezone, reminder_hours, reminder_sent_today_hours, daily_summary_enabled, daily_summary_hour FROM users WHERE id = $1';
+    const query = 'SELECT reminder_enabled, last_reminder_local_date, timezone, reminder_hours, reminder_sent_today_hours, daily_summary_enabled, daily_summary_hour, weekly_insight_enabled FROM users WHERE id = $1';
     const result = await this.query(query, [userId]);
-    return result.rows[0] || { reminder_enabled: false, last_reminder_local_date: null, timezone: 'UTC', daily_summary_enabled: false, daily_summary_hour: null };
+    return result.rows[0] || { reminder_enabled: false, last_reminder_local_date: null, timezone: 'UTC', daily_summary_enabled: false, daily_summary_hour: null, weekly_insight_enabled: false };
   }
 
   async setReminderEnabled(userId, enabled) {
@@ -125,6 +125,10 @@ class UserRepository extends BaseRepository {
   // Час сводки включает её: выбор часа без включения не имел бы смысла
   async setDailySummaryHour(userId, hour) {
     await this.query('UPDATE users SET daily_summary_hour = $2, daily_summary_enabled = TRUE WHERE id = $1', [userId, hour]);
+  }
+
+  async setWeeklyInsightEnabled(userId, enabled) {
+    await this.query('UPDATE users SET weekly_insight_enabled = $2 WHERE id = $1', [userId, !!enabled]);
   }
 
   async updateUser(userId, updates) {
