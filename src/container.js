@@ -44,6 +44,7 @@ const ReceiptRepository = require('./repositories/ReceiptRepository');
 const PlanningRepository = require('./repositories/PlanningRepository');
 const AchievementRepository = require('./repositories/AchievementRepository');
 const ReferralRepository = require('./repositories/ReferralRepository');
+const AssistantRepository = require('./repositories/AssistantRepository');
 
 // Services
 const ExpenseService = require('./services/ExpenseService');
@@ -70,6 +71,8 @@ const PlanningService = require('./services/PlanningService');
 const AchievementService = require('./services/AchievementService');
 const ReferralService = require('./services/ReferralService');
 const { createProviderFromEnv: createReceiptProvider } = require('./services/receipt/chain');
+const AssistantService = require('./services/AssistantService');
+const { createAssistantProvider } = require('./services/assistant/model');
 
 // Handlers
 const CommandHandlers = require('./handlers/commands');
@@ -87,6 +90,7 @@ const ReceiptHandlers = require('./handlers/ReceiptHandlers');
 const PlanningHandlers = require('./handlers/PlanningHandlers');
 const AchievementHandlers = require('./handlers/AchievementHandlers');
 const ReferralHandlers = require('./handlers/ReferralHandlers');
+const AssistantHandlers = require('./handlers/AssistantHandlers');
 
 // State management
 const StateService = require('./services/StateService');
@@ -275,6 +279,35 @@ class Container {
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
           stateService: this.get('stateService')
+        });
+
+      case 'assistantRepository':
+        return new AssistantRepository();
+
+      // Модель для вопросов боту из ASSISTANT_AI_* (иначе слоты чеков); smoke-тесты подменяют её через instances
+      case 'assistantProvider':
+        return createAssistantProvider(process.env);
+
+      case 'assistantService':
+        return new AssistantService({
+          assistantRepository: this.get('assistantRepository'),
+          provider: this.get('assistantProvider'),
+          expenseService: this.get('expenseService'),
+          incomeService: this.get('incomeService'),
+          savingsService: this.get('savingsService'),
+          budgetService: this.get('budgetService'),
+          premiumService: this.get('premiumService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter'),
+          currencyUtils: this.get('currencyUtils')
+        });
+
+      case 'assistantHandlers':
+        return new AssistantHandlers({
+          assistantService: this.get('assistantService'),
+          userService: this.get('userService'),
+          stateService: this.get('stateService'),
+          localizationService: this.get('localizationService')
         });
 
       case 'currencyUtils':
@@ -519,7 +552,8 @@ class Container {
           budgetHandlers: this.get('budgetHandlers'),
           exportHandlers: this.get('exportHandlers'),
           savingsHandlers: this.get('savingsHandlers'),
-          planningHandlers: this.get('planningHandlers')
+          planningHandlers: this.get('planningHandlers'),
+          assistantHandlers: this.get('assistantHandlers')
         });
 
       case 'callbackHandlers':
@@ -693,6 +727,7 @@ class Container {
       receiptHandlers: this.get('receiptHandlers'),
       referralHandlers: this.get('referralHandlers'),
       referralService: this.get('referralService'),
+      assistantHandlers: this.get('assistantHandlers'),
       savingsHandlers: this.get('savingsHandlers'),
       planningHandlers: this.get('planningHandlers'),
       planningService: this.get('planningService'),

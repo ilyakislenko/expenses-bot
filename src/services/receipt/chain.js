@@ -30,15 +30,16 @@ function isLocalUrl(url) {
   }
 }
 
-// Настройки слотов из env (без пустых). Старые RECEIPT_AI_* без номера — слот 1, если RECEIPT_AI_1_PROVIDER не задан;
-// у старых настроек провайдер по умолчанию gemini, если задан ключ.
-// CONCURRENCY — сколько распознаваний одновременно (0 — без ограничения); по умолчанию 1 у локальных адресов
-function parseSlots(env = process.env) {
-  const read = (prefix) => Object.fromEntries(FIELDS.map(field => [field, String(env[`${prefix}${field}`] || '').trim()]));
+// Настройки слотов из env (без пустых). prefix — семейство переменных: RECEIPT_AI (чеки) или ASSISTANT_AI (вопросы боту).
+// Старые RECEIPT_AI_* без номера — слот 1, если RECEIPT_AI_1_PROVIDER не задан; у старых настроек провайдер
+// по умолчанию gemini, если задан ключ.
+// CONCURRENCY — сколько запросов одновременно (0 — без ограничения); по умолчанию 1 у локальных адресов
+function parseSlots(env = process.env, prefix = 'RECEIPT_AI') {
+  const read = (base) => Object.fromEntries(FIELDS.map(field => [field, String(env[`${base}${field}`] || '').trim()]));
   const slots = [];
   for (let n = 1; n <= MAX_SLOTS; n++) {
-    let values = read(`RECEIPT_AI_${n}_`);
-    if (n === 1 && !values.PROVIDER) {
+    let values = read(`${prefix}_${n}_`);
+    if (n === 1 && !values.PROVIDER && prefix === 'RECEIPT_AI') {
       values = read('RECEIPT_AI_');
       if (!values.PROVIDER && values.API_KEY) values.PROVIDER = 'gemini';
     }
@@ -98,26 +99,42 @@ class Limiter {
   }
 }
 
+// Очередь на один адрес общая для всех цепочек процесса: чеки и вопросы боту к одной Ollama идут по очереди
+// (видеокарта держит одну модель и считает один запрос за раз). Без ограничения — своя пустая очередь.
+const sharedLimiters = new Map();
+function limiterFor(config) {
+  if (!config.concurrency) return new Limiter(0);
+  let key = `${config.provider}|${config.baseUrl || ''}`;
+  try {
+    key = `${config.provider}|${new URL(config.baseUrl).host}`;
+  } catch (error) {
+    // адрес без схемы — ключ по строке
+  }
+  if (!sharedLimiters.has(key)) sharedLimiters.set(key, new Limiter(config.concurrency));
+  return sharedLimiters.get(key);
+}
+
 // Провайдер слота; null — слот не настроен до конца (gemini без ключа, openai без адреса или модели, неизвестный тип)
-function createSlotProvider(config) {
+function createSlotProvider(config, label = 'Receipt AI') {
   const options = { ...config, post: postJson };
   let provider = null;
   if (config.provider === 'gemini') provider = new GeminiProvider(options);
   else if (config.provider === 'openai') provider = new OpenAiCompatibleProvider(options);
   if (!provider || !provider.configured) {
-    logger.warn('Receipt AI slot skipped: incomplete settings', { slot: config.slot, provider: config.provider });
+    logger.warn(`${label} slot skipped: incomplete settings`, { slot: config.slot, provider: config.provider });
     return null;
   }
   provider.slot = config.slot;
-  provider.limiter = new Limiter(config.concurrency || 0);
+  provider.limiter = limiterFor(config);
   provider.isLocal = config.provider === 'openai' && isLocalUrl(config.baseUrl);
   return provider;
 }
 
 class ChainProvider {
-  constructor(providers) {
+  constructor(providers, label = 'Receipt AI') {
     this.name = 'chain';
     this.providers = providers;
+    this.label = label;
   }
 
   get configured() {
@@ -132,23 +149,36 @@ class ChainProvider {
   // input: { image, mimeType, prompt, onStatus({ position, local }) } — onStatus сообщает место в очереди занятого слота
   // (position > 0) и начало распознавания на слоте (position 0); local — слот в локальной сети (медленнее облака)
   async recognize(input) {
+    return this.run(input, provider => provider.recognize(input));
+  }
+
+  // Текстовый запрос с ответом JSON: input { messages, onStatus, isCancelled }. isCancelled() — запрос больше не нужен
+  // (вопрос дождался своего срока в очереди): слот освобождается, не спрашивая модель
+  async complete(input) {
+    return this.run(input, provider => provider.complete(input));
+  }
+
+  async run(input, call) {
     if (!this.configured) throw new ReceiptError('not_configured');
     const onStatus = input.onStatus || (() => {});
+    const isCancelled = input.isCancelled || (() => false);
     let lastError = null;
     for (const provider of this.providers) {
+      if (isCancelled()) throw new ReceiptError('network', 'cancelled');
       const started = Date.now();
       try {
         const limiter = provider.limiter || new Limiter(0);
         const local = !!provider.isLocal;
         const raw = await limiter.run(() => {
+          if (isCancelled()) return Promise.reject(new ReceiptError('network', 'cancelled'));
           onStatus({ position: 0, local });
-          return provider.recognize(input);
+          return call(provider);
         }, position => position && onStatus({ position, local }));
-        logger.info('Receipt AI slot served', { slot: provider.slot, provider: provider.name, model: provider.model, ms: Date.now() - started });
+        logger.info(`${this.label} slot served`, { slot: provider.slot, provider: provider.name, model: provider.model, ms: Date.now() - started });
         return raw;
       } catch (error) {
         const receiptError = error instanceof ReceiptError ? error : new ReceiptError('unavailable', error.message);
-        logger.warn('Receipt AI slot failed', { slot: provider.slot, provider: provider.name, model: provider.model, code: receiptError.code, error: receiptError.message, ms: Date.now() - started });
+        logger.warn(`${this.label} slot failed`, { slot: provider.slot, provider: provider.name, model: provider.model, code: receiptError.code, error: receiptError.message, ms: Date.now() - started });
         if (!FALL_THROUGH.has(receiptError.code)) throw receiptError;
         lastError = receiptError;
       }
@@ -159,12 +189,16 @@ class ChainProvider {
 
 // Цепочка из env. Повтор при 429/5xx — только у последнего слота: у остальных быстрее перейти к следующему
 function createProviderFromEnv(env = process.env) {
-  const providers = parseSlots(env).map(createSlotProvider).filter(Boolean);
+  return createChain(parseSlots(env));
+}
+
+function createChain(slots, label = 'Receipt AI') {
+  const providers = slots.map(slot => createSlotProvider(slot, label)).filter(Boolean);
   if (providers.length) providers[providers.length - 1].post = postJsonWithRetry;
-  return new ChainProvider(providers);
+  return new ChainProvider(providers, label);
 }
 
 module.exports = {
-  parseSlots, createSlotProvider, createProviderFromEnv, ChainProvider, Limiter, isLocalUrl,
+  parseSlots, createSlotProvider, createProviderFromEnv, createChain, ChainProvider, Limiter, isLocalUrl, limiterFor,
   DEFAULT_TIMEOUT_MS, DEFAULT_CONNECT_TIMEOUT_MS
 };

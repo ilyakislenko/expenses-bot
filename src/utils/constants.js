@@ -12,6 +12,7 @@ const USER_LIMITS = {
     PLANNING_INFLATION_ITEMS: 1, // «Моя инфляция»: тизер — одна позиция, без процента корзины
     STREAK_FREEZES_PER_WEEK: 1, // заморозок серии в неделю (закрывают пропущенный день автоматически)
     MAX_ACTIVE_CHALLENGES: 1, // челленджей одновременно
+    MAX_ASSISTANT_QUESTIONS_PER_DAY: 5, // отвеченных вопросов «🤖 Спроси бота» в локальный день
   },
   premium: {
     MAX_DESCRIPTION_LENGTH: 160,
@@ -23,6 +24,7 @@ const USER_LIMITS = {
     PLANNING_INFLATION_ITEMS: 10, // в списках «подорожало» / «подешевело»
     STREAK_FREEZES_PER_WEEK: 2,
     MAX_ACTIVE_CHALLENGES: Infinity,
+    MAX_ASSISTANT_QUESTIONS_PER_DAY: 100,
   }
 };
 
@@ -124,6 +126,7 @@ const LEGACY_MENU_BUTTON_KEYS = [
 function generateMoreMenu(localizationService, userLanguage, isAdmin = false) {
   const t = (key) => localizationService.getText(userLanguage, key);
   const keyboard = [
+    [{ text: t('button_ai'), callback_data: 'ai' }],
     [{ text: t('button_savings'), callback_data: 'sv' }],
     [{ text: t('button_planning'), callback_data: 'pl' }],
     [{ text: t('button_achievements'), callback_data: 'ach' }],

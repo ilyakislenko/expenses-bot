@@ -1,7 +1,8 @@
 const { LEGACY_MENU_BUTTON_KEYS } = require('../utils/constants');
+const AssistantHandlers = require('./AssistantHandlers');
 
 class MessageHandlers {
-constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, donationRepository, bugReportRepository, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, savingsHandlers, planningHandlers }) {
+constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, donationRepository, bugReportRepository, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, savingsHandlers, planningHandlers, assistantHandlers }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -23,6 +24,7 @@ constructor({ expenseService, userService, premiumService, familyService, catego
     this.exportHandlers = exportHandlers;
     this.savingsHandlers = savingsHandlers;
     this.planningHandlers = planningHandlers;
+    this.assistantHandlers = assistantHandlers;
   }
 
   async handleExpense(ctx) {
@@ -140,6 +142,10 @@ constructor({ expenseService, userService, premiumService, familyService, catego
           return await this.planningHandlers.handleInput(ctx, text, userLanguage, userState);
         }
 
+        if (typeof userState === 'string' && userState.startsWith('ai_in:')) {
+          return await this.assistantHandlers.handleInput(ctx, text, userLanguage);
+        }
+
         if (userState === 'adding_recurring') {
           return await this.recurringExpenseHandlers.handleAmountInput(ctx, text, userLanguage);
         }
@@ -203,6 +209,11 @@ constructor({ expenseService, userService, premiumService, familyService, catego
           const expenseUpdateErrorText = this.localizationService.getText(userLanguage, 'expense_update_error');
           return ctx.reply(expenseUpdateErrorText);
         }
+      }
+      // Вопрос боту: «? сколько я потратил на такси» или текст без суммы в начале со знаком вопроса в конце.
+      // Трата всегда начинается с суммы, поэтому «250 кофе» сюда не попадает
+      if (this.assistantHandlers && AssistantHandlers.isQuestion(text)) {
+        return await this.assistantHandlers.ask(ctx, text, userLanguage);
       }
       // Доход быстрым вводом: "+50000 зарплата", "+1000 USD фриланс"
       if (/^\s*\+\s*\d/.test(text)) {

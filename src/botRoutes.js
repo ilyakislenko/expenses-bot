@@ -1,5 +1,5 @@
 module.exports = function registerBotRoutes(bot, handlers) {
-  const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, importHandlers, receiptHandlers, savingsHandlers, planningHandlers, achievementHandlers, stateService } = handlers;
+  const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, importHandlers, receiptHandlers, savingsHandlers, planningHandlers, achievementHandlers, assistantHandlers, stateService } = handlers;
   const ReceiptHandlers = require('./handlers/ReceiptHandlers');
   const { BACK_VIEW_PATTERN } = require('./handlers/ExpenseHandlers');
 
@@ -39,6 +39,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.command('savings', errorHandler((ctx) => savingsHandlers.showMenu(ctx))); // накопления, цели, прогноз
   bot.command('achievements', errorHandler((ctx) => achievementHandlers.show(ctx))); // уровень, серия, достижения, челленджи
   bot.command('invite', errorHandler((ctx) => handlers.referralHandlers.showInvite(ctx))); // пригласить друга
+  bot.command('ask', errorHandler((ctx) => assistantHandlers.handleCommand(ctx))); // вопрос боту о своих тратах
   bot.command('cancel', errorHandler(async (ctx) => {
     const userId = ctx.from.id;
     const userLanguage = await handlers.userService.getUserLanguage(userId);
@@ -171,6 +172,10 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('achwo', errorHandler((ctx) => achievementHandlers.turnOffWrapped(ctx)));
   // Устаревшие или неизвестные кнопки раздела — экран достижений
   bot.action(/^ach/, errorHandler((ctx) => achievementHandlers.show(ctx)));
+  // «🤖 Спроси бота»: примеры (кнопка = вопрос), свой вопрос текстом (ai_in:q)
+  bot.action('ai', errorHandler((ctx) => assistantHandlers.showExamples(ctx)));
+  bot.action(/^ai\|([1-6])$/, errorHandler((ctx) => assistantHandlers.askExample(ctx)));
+  bot.action('aiq', errorHandler((ctx) => assistantHandlers.startInput(ctx)));
 
   // Текстовые сообщения
   bot.on('text', errorHandler((ctx) => messageHandlers.handleExpense(ctx))); // ввод трат, доходов и кнопки клавиатуры

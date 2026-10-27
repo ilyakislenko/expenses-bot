@@ -790,3 +790,19 @@ COMMENT ON TABLE referrals IS 'Кто кого пригласил: только 
 COMMENT ON COLUMN referrals.rewarded_at IS 'Когда выдана награда (приглашённый записал 3 траты); NULL — ещё нет';
 COMMENT ON COLUMN referrals.inviter_days IS 'Дней премиума пригласившему (0 — его лимит наград исчерпан)';
 CREATE INDEX IF NOT EXISTS idx_referrals_inviter ON referrals(inviter_id);
+
+-- ==== AI ASSISTANT ====
+-- «🤖 Спроси бота»: вопросы о своих тратах обычными словами. Текст вопроса не хранится — только факт ответа
+-- (дневной лимит по локальной дате пользователя), тип ответа, кто разобрал вопрос и время ответа.
+CREATE TABLE IF NOT EXISTS assistant_questions (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    local_date DATE NOT NULL,
+    intent_type VARCHAR(30) NOT NULL,
+    source VARCHAR(10) NOT NULL,
+    duration_ms INTEGER NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+COMMENT ON TABLE assistant_questions IS 'Отвеченные вопросы боту (без текста вопроса): дневной лимит и статистика';
+COMMENT ON COLUMN assistant_questions.source IS 'Кто разобрал вопрос: example — кнопка-пример, fast — быстрый разбор, model — нейросеть, fallback — быстрый разбор, когда нейросеть не ответила';
+CREATE INDEX IF NOT EXISTS idx_assistant_questions_user_date ON assistant_questions(user_id, local_date);

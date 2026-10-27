@@ -8,6 +8,7 @@
 - То, что ты вводишь: траты, доходы, регулярные траты, бюджеты, категории, описания, накопления и цели (суммы, названия, сроки, история пополнений), долги (суммы, названия, ставки, платежи в месяц, история изменений), параметры прогноза, настройки (валюта, часовой пояс, начало периода, напоминания, сводка).
 - Импорт банковской выписки: из присланного файла сохраняются только операции — дата, сумма, валюта, описание (обычно название магазина или получателя перевода) и категория. Сам файл, номера карт и счетов, остатки и прочие строки выписки не сохраняются: файл разбирается в памяти и удаляется сразу после обработки.
 - Фото чеков: из присланного фото сохраняются только траты по позициям чека (название, сумма, валюта, категория, дата) и сводка чека (продавец, дата, итог). Само фото бот не сохраняет.
+- Вопросы боту («🤖 Спроси бота»): текст вопроса не сохраняется — только факт ответа (дата, тип вопроса) для дневного лимита.
 - Семья: участие в семье и приглашения. Семейные траты видят участники семьи.
 - Покупки в Telegram Stars: тариф, сумма в звёздах, идентификатор платежа Telegram. Данные карт и счетов бот не получает — оплата проходит внутри Telegram.
 - Сообщения в поддержку и баг-репорты.
@@ -19,6 +20,7 @@
 
 ## Кому передаются
 Данные не продаются и не передаются для рекламы. Сообщения доставляет Telegram. Курсы валют загружаются с cbr-xml-daily.ru без твоих данных. Фото чека распознаёт нейросеть — только изображение, без твоего имени и ID. Обычно это модели, запущенные на компьютерах разработчика: тогда фото никуда не уходит. Если они недоступны и в боте настроен облачный сервис (например, Google Gemini или Mistral), фото отправляется ему; бесплатный тариф Gemini позволяет Google использовать присланные данные для улучшения своих продуктов, поэтому не присылай фото с лишними личными данными.
+Вопрос боту, который бот не разобрал сам, разбирает нейросеть — только текст вопроса, сегодняшняя дата и названия твоих категорий, без имени, ID и сумм. Суммы и ответ считает сам бот по твоим записям. Нейросеть та же, что для чеков (обычно на компьютерах разработчика, облачный сервис — только если локальные недоступны и он настроен).
 
 ## Хранение
 На сервере разработчика в России. Резервные копии базы хранятся 30 дней. Технические логи (в том числе начало текста запросов к боту, до 100 символов) — 14 дней, логи ошибок — 30 дней.
@@ -37,6 +39,7 @@ Version of 27.10.2026. Data controller: IE KISLENKO (Republic of Kazakhstan), II
 - What you enter: expenses, income, recurring expenses, budgets, categories, descriptions, savings and goals (amounts, names, deadlines, deposit history), debts (amounts, names, rates, monthly payments, change history), forecast parameters, settings (currency, time zone, period start, reminders, summary).
 - Bank statement import: only the operations from the file you send are stored — date, amount, currency, description (usually the merchant or transfer recipient) and category. The file itself, card and account numbers, balances and the rest of the statement are not stored: the file is processed in memory and discarded right after.
 - Receipt photos: only the expenses from the receipt lines (name, amount, currency, category, date) and a receipt summary (merchant, date, total) are stored. The bot does not store the photo itself.
+- Questions to the bot («🤖 Ask the bot»): the question text is not stored — only the fact of an answer (date, question type) for the daily limit.
 - Family: membership and invitations. Family expenses are visible to family members.
 - Telegram Stars purchases: plan, amount in Stars, Telegram payment ID. The bot never receives card or bank details — payment happens inside Telegram.
 - Support messages and bug reports.
@@ -48,6 +51,7 @@ To keep your records, calculate summaries and budgets, send reminders, summaries
 
 ## Sharing
 Data is not sold or shared for advertising. Messages are delivered by Telegram. Exchange rates are loaded from cbr-xml-daily.ru without your data. A receipt photo is recognized by an AI model — the image only, without your name or ID. Usually these are models running on the developer's own computers, so the photo doesn't leave them. If they are unavailable and a cloud service is configured in the bot (for example Google Gemini or Mistral), the photo is sent to it; Gemini's free tier allows Google to use submitted data to improve its products, so don't send photos with unnecessary personal information.
+A question the bot can't parse by itself is parsed by an AI model — only the question text, today's date and your category names, without your name, ID or amounts. The bot computes the amounts and the answer from your records itself. It's the same model as for receipts (usually on the developer's own computers; a cloud service only if those are unavailable and one is configured).
 
 ## Storage
 On the developer's server in Russia. Database backups are kept for 30 days. Technical logs (including the first 100 characters of requests to the bot) — 14 days, error logs — 30 days.

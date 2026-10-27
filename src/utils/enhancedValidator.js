@@ -48,13 +48,17 @@ class EnhancedValidator {
   }
 
   // Валидация команды. Аргумент допускается только у /start — это код из ссылки t.me/<bot>?start=<код>
-  // (Telegram разрешает в нём A-Z, a-z, 0-9, "_" и "-", до 64 символов).
+  // (Telegram разрешает в нём A-Z, a-z, 0-9, "_" и "-", до 64 символов) — и у /ask: вопрос боту обычным текстом
+  // (проверяется и обрезается в AssistantHandlers; в группах /ask@бот).
   validateCommand(command) {
     if (!command || typeof command !== 'string') {
       return { isValid: false, error: 'invalid_command' };
     }
 
     const [name, ...args] = command.trim().split(/\s+/);
+    if (/^\/ask(@[A-Za-z0-9_]+)?$/i.test(name)) {
+      return { isValid: true, command: '/ask' };
+    }
     if (!this.patterns.command.test(name)) {
       return { isValid: false, error: 'invalid_command_format' };
     }
