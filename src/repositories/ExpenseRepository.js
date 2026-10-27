@@ -76,12 +76,13 @@ class ExpenseRepository extends BaseRepository {
     return result.rows;
   }
 
-  // Категория последней траты пользователя с таким же описанием (без учёта регистра)
+  // Категория последней траты пользователя с таким же описанием (без учёта регистра).
+  // Траты из импорта выписок не учитываются: импорт не меняет запомненные категории
   async getLastCategoryIdForDescription(userId, description) {
     const query = `
       SELECT category_id
       FROM expenses
-      WHERE user_id = $1 AND category_id IS NOT NULL AND LOWER(TRIM(description)) = LOWER(TRIM($2))
+      WHERE user_id = $1 AND category_id IS NOT NULL AND import_hash IS NULL AND LOWER(TRIM(description)) = LOWER(TRIM($2))
       ORDER BY created_at_utc DESC
       LIMIT 1
     `;
