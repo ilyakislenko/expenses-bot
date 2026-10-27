@@ -12,7 +12,8 @@ const t = (key, params) => localizationService.getText('ru', key, params);
 const USER = 7;
 
 // Доходы в памяти; updateIncome как в репозитории — только своя запись
-function buildIncomeFlow({ premium = true, incomes } = {}) {
+// Правка бесплатна: по умолчанию пользователь без премиума
+function buildIncomeFlow({ premium = false, incomes } = {}) {
   const rows = incomes || [{ id: 1, user_id: USER, amount: '50000.00', currency: 'RUB', description: 'зарплата', created_at_utc: new Date('2026-10-05T10:00:00Z') }];
   const incomeService = {
     getIncome: jest.fn(async (userId, id) => rows.find(r => r.id === id && r.user_id === userId)),
@@ -80,36 +81,12 @@ describe('income edit', () => {
     expect(flow.rows[0].amount).toBe('55000.00');
   });
 
-  test('without premium the button only shows an alert', async () => {
-    const flow = buildIncomeFlow({ premium: false });
-    const ctx = await flow.tapEdit(1);
-    expect(ctx.answerCbQuery).toHaveBeenCalledWith(t('premium_required'), { show_alert: true });
-    expect(flow.stateService.getUserState(USER)).toBeUndefined();
-  });
-
-  test('premium ended between the tap and the input: nothing changes', async () => {
-    const flow = buildIncomeFlow();
-    await flow.tapEdit(1);
-    flow.handlers.premiumService.isPremiumUser.mockResolvedValue(false);
-    await flow.type('1');
-    expect(flow.rows[0].amount).toBe('50000.00');
-    expect(flow.stateService.getUserState(USER)).toBeUndefined();
-  });
-
   test('someone else\'s income cannot be edited by a forged callback', async () => {
     const flow = buildIncomeFlow({ incomes: [{ id: 9, user_id: 42, amount: '100.00', currency: 'RUB', description: 'чужой', created_at_utc: new Date() }] });
     const ctx = await flow.tapEdit(9);
     expect(ctx.reply).toHaveBeenCalledWith(t('income_not_found'), expect.anything());
     expect(flow.stateService.getUserState(USER)).toBeUndefined();
     expect(flow.rows[0].amount).toBe('100.00');
-  });
-
-  test('the card shows the edit button only to premium users', async () => {
-    const income = { id: 1, amount: '1.00', currency: 'RUB', description: 'x', created_at_utc: new Date() };
-    const premiumCard = await buildIncomeFlow({ premium: true }).handlers.buildCard(USER, 'ru', income);
-    const regularCard = await buildIncomeFlow({ premium: false }).handlers.buildCard(USER, 'ru', income);
-    expect(premiumCard.keyboard.flat().map(b => b.callback_data)).toContain('ie|1');
-    expect(regularCard.keyboard.flat().map(b => b.callback_data)).not.toContain('ie|1');
   });
 });
 

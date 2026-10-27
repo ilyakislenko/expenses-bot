@@ -205,7 +205,7 @@ class ExpenseHandlers {
         { text: this.t(lang, 'button_change_category'), callback_data: `xc|${expense.id}|${back}` }
       ]);
       const extraRow = [];
-      if (isPremium) extraRow.push({ text: this.t(lang, 'button_edit_record'), callback_data: `xe|${expense.id}` });
+      extraRow.push({ text: this.t(lang, 'button_edit_record'), callback_data: `xe|${expense.id}` });
       if (isPremium && family && !expense.family_id) {
         extraRow.push({ text: this.t(lang, 'button_mark_as_family'), callback_data: `xf|${expense.id}|${back}` });
       }
@@ -289,14 +289,10 @@ class ExpenseHandlers {
     await this.sendBudgetWarnings(ctx, userId, lang, category.name);
   }
 
-  // callback: xe|<id> — изменить сумму/описание (премиум), ввод следующим сообщением
+  // callback: xe|<id> — изменить сумму/описание, ввод следующим сообщением
   async handleEdit(ctx) {
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
-    const isPremium = await this.premiumService.isPremiumUser(userId);
-    if (!isPremium) {
-      return ctx.answerCbQuery(this.t(lang, 'premium_required'), { show_alert: true });
-    }
     this.stateService.setUserEditState(userId, ctx.match[1]);
     await ctx.answerCbQuery().catch(() => {});
     await ctx.reply(this.t(lang, 'edit_instructions'), {

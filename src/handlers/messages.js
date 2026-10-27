@@ -159,11 +159,6 @@ constructor({ expenseService, userService, premiumService, familyService, catego
           return ctx.reply(editCanceledText);
         }
         const expenseId = this.stateService.getUserEditState(ctx.from.id);
-        // Изменение записей — премиум; он мог закончиться между нажатием кнопки и вводом
-        if (!(await this.premiumService.isPremiumUser(userId))) {
-          this.stateService.deleteUserEditState(ctx.from.id);
-          return ctx.reply(this.localizationService.getText(userLanguage, 'premium_required'));
-        }
         const userLimits = await this.premiumService.getUserLimits(userId);
         const parsed = this.validator.parseEditExpense(ctx.message.text, userLimits.MAX_DESCRIPTION_LENGTH);
         if (!parsed.isValid) {
