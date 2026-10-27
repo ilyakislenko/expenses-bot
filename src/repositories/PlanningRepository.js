@@ -5,13 +5,16 @@ const BaseRepository = require('./BaseRepository');
 const LOCAL_DATE = "to_char((created_at_utc AT TIME ZONE $2)::date, 'YYYY-MM-DD')";
 
 class PlanningRepository extends BaseRepository {
-  // Траты с описанием с локальной даты since — для поиска подписок
+  // Траты с описанием с локальной даты since — для поиска подписок (с названием категории: еда/кафе/транспорт —
+  // привычки, а не подписки)
   async getExpenseRowsSince(userId, timezone, since) {
     const result = await this.query(`
-      SELECT ${LOCAL_DATE} AS date, description, amount::float AS amount, currency, category_id, recurring_expense_id
-      FROM expenses
-      WHERE user_id = $1 AND description IS NOT NULL AND (created_at_utc AT TIME ZONE $2) >= $3::date
-      ORDER BY created_at_utc
+      SELECT to_char((e.created_at_utc AT TIME ZONE $2)::date, 'YYYY-MM-DD') AS date, e.description,
+             e.amount::float AS amount, e.currency, e.category_id, c.name AS category_name, e.recurring_expense_id
+      FROM expenses e
+      LEFT JOIN categories c ON c.id = e.category_id
+      WHERE e.user_id = $1 AND e.description IS NOT NULL AND (e.created_at_utc AT TIME ZONE $2) >= $3::date
+      ORDER BY e.created_at_utc
     `, [userId, timezone, since]);
     return result.rows;
   }

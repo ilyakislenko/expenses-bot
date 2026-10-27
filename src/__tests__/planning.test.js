@@ -1,6 +1,7 @@
 const {
   computeAllowance, expectedIncome, paceOf, normalizeMerchant, normalizeItemName, detectSubscriptions,
-  detectPaydays, nextPayday, buildCalendar, computeInflation, monthlyDates, subscriptionDates
+  detectPaydays, nextPayday, buildCalendar, computeInflation, monthlyDates, subscriptionDates,
+  isKnownSubscription, isHabitCategory
 } = require('../utils/planning');
 const { customPeriod } = require('../utils/period');
 const RecurringExpenseService = require('../services/RecurringExpenseService');
@@ -103,16 +104,63 @@ describe('subscription detection', () => {
     expect(alternating).toEqual([]);
   });
 
-  test('weekly and yearly cadences; monthly cost is normalized', () => {
+  const SIX_WEEKS = ['2026-09-21', '2026-09-28', '2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26'];
+
+  test('weekly habits (coffee, lunch, taxi) are not subscriptions', () => {
     const subs = detectSubscriptions([
-      ...['2026-09-28', '2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26'].map(d => row(d, 'Кофейня у дома', 250)),
+      // кофе каждую неделю на одну и ту же сумму — в категории еды/кафе
+      ...SIX_WEEKS.map(d => row(d, 'Кофейня у дома', 250, { category_name: 'Еда' })),
+      ...SIX_WEEKS.map(d => row(d, 'Coffee Like', 190, { category_name: 'Кафе и рестораны' })),
+      // такси на работу по понедельникам
+      ...SIX_WEEKS.map(d => row(d, 'Яндекс Такси', 420, { category_name: 'Транспорт' })),
+      // неизвестный продавец, сумма гуляет в пределах 10%, но не ±1%
+      ...SIX_WEEKS.map((d, i) => row(d, 'Столовая', [300, 310, 290, 305, 295, 300][i], { category_name: 'Другое' })),
+      // одинаковая сумма, но только 5 недель
+      ...SIX_WEEKS.slice(1).map(d => row(d, 'Шаурма', 350, { category_name: 'Другое' }))
+    ], { today: TODAY });
+    expect(subs).toEqual([]);
+  });
+
+  test('weekly: known services, or ≥ 6 identical weeks outside food/cafe/transport', () => {
+    const subs = detectSubscriptions([
+      ...SIX_WEEKS.slice(2).map(d => row(d, 'Boosty: автор', 100, { category_name: 'Развлечения' })),
+      ...SIX_WEEKS.map(d => row(d, 'Репетитор английский', 2000, { category_name: 'Образование' })),
       row('2025-10-20', 'iCloud 2TB', 3588), row('2026-10-20', 'iCloud 2TB', 3588)
     ], { today: TODAY });
-    const weekly = subs.find(s => s.cadence === 'weekly');
-    const yearly = subs.find(s => s.cadence === 'yearly');
-    expect(weekly).toMatchObject({ key: 'кофейня дома', nextDate: '2026-11-02' });
-    expect(weekly.monthlyCost).toBeCloseTo(1083.33, 2);
-    expect(yearly).toMatchObject({ key: 'icloud tb', nextDate: '2027-10-20', monthlyCost: 299 });
+    const byKey = Object.fromEntries(subs.map(s => [s.key, s]));
+    expect(byKey['boosty автор']).toMatchObject({ cadence: 'weekly', known: true, nextDate: '2026-11-02', count: 4 });
+    expect(byKey['boosty автор'].monthlyCost).toBeCloseTo(433.33, 2);
+    expect(byKey['репетитор английский']).toMatchObject({ cadence: 'weekly', known: false, count: 6 });
+    expect(byKey['icloud tb']).toMatchObject({ cadence: 'yearly', known: true, nextDate: '2027-10-20', monthlyCost: 299 });
+  });
+
+  test('monthly in a food/cafe category only for known subscriptions', () => {
+    const months = ['2026-08-03', '2026-09-03', '2026-10-03'];
+    const subs = detectSubscriptions([
+      ...months.map(d => row(d, 'Обеды в офисе', 3500, { category_name: 'Еда' })),
+      ...months.map(d => row(d, 'Кинопоиск', 299, { category_name: 'Еда' }))
+    ], { today: TODAY });
+    expect(subs.map(s => [s.key, s.known])).toEqual([['кинопоиск', true]]);
+  });
+
+  test('Spotify stays monthly despite one-off and same-day noise', () => {
+    const subs = detectSubscriptions([
+      row('2026-08-19', 'Spotify', 169), row('2026-09-19', 'Spotify P0123', 169), row('2026-09-19', 'Spotify', 169),
+      row('2026-10-02', 'Spotify', 49), row('2026-10-19', 'SPOTIFY.COM', 169), row('2026-10-23', 'Spotify gift', 599)
+    ], { today: TODAY });
+    expect(subs).toHaveLength(1);
+    expect(subs[0]).toMatchObject({ key: 'spotify', cadence: 'monthly', amount: 169, count: 3, known: true, nextDate: '2026-11-19' });
+  });
+
+  test('known-subscription keywords and habit categories', () => {
+    for (const text of ['Оплата МТС', 'Tele2 +79001234567', 'ФИТНЕС-КЛУБ Alex', 'Яндекс Плюс', 'NETFLIX.COM', 'Google One 100GB', 'Хостинг Timeweb', 'Telegram Premium']) {
+      expect([text, isKnownSubscription(text)]).toEqual([text, true]);
+    }
+    for (const text of ['Кофейня у дома', 'Пятёрочка', 'Starbucks', 'Шаурма', 'Мтсуми', '']) {
+      expect([text, isKnownSubscription(text)]).toEqual([text, false]);
+    }
+    expect(['Еда', 'Кафе и рестораны', 'Транспорт', 'Coffee', 'Продукты'].every(isHabitCategory)).toBe(true);
+    expect(['Развлечения', 'Подписки', 'Другое', null].some(isHabitCategory)).toBe(false);
   });
 
   test('irregular purchases at the same shop, stale series and same-day duplicates are not subscriptions', () => {
@@ -285,6 +333,7 @@ describe('PlanningService', () => {
           { date: '2026-10-05', description: 'Зарплата', amount: 600, currency: 'USD' }
         ]),
         getBillReminderCandidates: jest.fn().mockResolvedValue([{ id: 1, language: 'ru', timezone: 'UTC' }]),
+        isBillRemindersEnabled: jest.fn().mockResolvedValue(false),
         setMark: jest.fn()
       },
       expenseService: {
@@ -396,6 +445,14 @@ describe('PlanningService', () => {
     expect(deps.userNotificationRepository.markSent).toHaveBeenCalledWith(777, 'subscription_found', 'netflix');
     deps.userNotificationRepository.markSent.mockResolvedValue(false);
     expect(await service.subscriptionNudge(777, 'ru')).toBe('');
+  });
+
+  test('calendar shows only confirmed or known subscriptions', async () => {
+    const { service } = createService();
+    const sub = (id, extra) => ({ id, label: id, amount: 100, currency: 'RUB', cadence: 'monthly', nextDate: '2026-10-30', confirmed: false, known: false, ...extra });
+    const subs = { visible: [sub('habit'), sub('netflix', { known: true }), sub('tutor', { confirmed: true })] };
+    const cal = await service.getCalendar(777, { subs });
+    expect(cal.items.filter(i => i.kind === 'subscription').map(i => i.label)).toEqual(['netflix', 'tutor']);
   });
 
   test('percent formatting follows the language decimal separator', () => {

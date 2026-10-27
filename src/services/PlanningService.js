@@ -298,7 +298,13 @@ class PlanningService {
       this.planningRepository.isBillRemindersEnabled(userId)
     ]);
     const calendar = buildCalendar({
-      today: ctx.today, days, recurring, debts, subscriptions: subscriptions.visible, paydays: outlook.streams
+      today: ctx.today,
+      days,
+      recurring,
+      debts,
+      // В календаре — только отмеченные пользователем или известные подписки (бренд, связь, интернет…)
+      subscriptions: subscriptions.visible.filter(sub => sub.confirmed || sub.known),
+      paydays: outlook.streams
     });
     let outTotal = 0;
     let inTotal = 0;

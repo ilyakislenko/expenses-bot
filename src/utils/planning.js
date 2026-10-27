@@ -147,6 +147,49 @@ const CADENCES = {
 };
 const AMOUNT_TOLERANCE = 0.1; // ±10% от медианы
 const SCAN_DAYS = 400; // годовые подписки видны только на длинной истории
+// Недельная серия у неизвестного продавца: ≥ 6 недель подряд с суммой ±1% и не еда/кафе/транспорт —
+// иначе это привычка (кофе, обеды, такси), а не подписка
+const WEEKLY_UNKNOWN_MIN = 6;
+const WEEKLY_UNKNOWN_TOLERANCE = 0.01;
+
+// Известные подписки и регулярные платежи (ru/en/kz/uz): стриминг, музыка, облака, ИИ, игры, донаты, связь,
+// интернет/ТВ, хостинг, спорт. Одно слово от 5 букв — по началу слова («фитнес» → «фитнес-клуб»), короче и фразы —
+// целиком. Сравнение — по описанию без регистра и знаков (цифры остаются: tele2, t2).
+const SUBSCRIPTION_KEYWORDS = [
+  'яндекс плюс', 'yandex plus', 'плюс мульти', 'кинопоиск', 'kinopoisk', 'яндекс музыка', 'netflix', 'spotify',
+  'apple', 'icloud', 'itunes', 'app store', 'google one', 'google play', 'youtube', 'ivi', 'иви', 'okko', 'окко',
+  'start', 'wink', 'винк', 'amediateka', 'амедиатека', 'premier', 'премьер', 'more tv', 'кион', 'kion',
+  'vk музыка', 'vk music', 'vk combo', 'вк музыка', 'вк комбо', 'boom', 'звук', 'zvuk', 'литрес', 'litres',
+  'storytel', 'bookmate', 'букмейт', 'deezer', 'tidal', 'disney', 'hbo', 'prime video', 'amazon prime', 'twitch',
+  'crunchyroll', 'telegram premium', 'телеграм премиум', 'chatgpt', 'openai', 'claude', 'anthropic', 'midjourney',
+  'copilot', 'github', 'notion', 'figma', 'canva', 'adobe', 'microsoft 365', 'office 365', 'dropbox', 'boosty',
+  'бусти', 'patreon', 'discord', 'nitro', 'steam', 'playstation', 'psn', 'ps plus', 'xbox', 'game pass', 'nintendo',
+  'ea play', 'ubisoft', 'мтс', 'mts', 'билайн', 'beeline', 'мегафон', 'megafon', 'tele2', 'теле2', 't2', 'yota', 'йота',
+  'сбермобайл', 'тинькофф мобайл', 'т мобайл', 'kcell', 'activ', 'altel', 'ucell', 'uzmobile', 'mobiuz',
+  'мобильная связь', 'сотовая связь', 'интернет', 'internet', 'ростелеком', 'rostelecom', 'дом ру', 'домру', 'dom ru',
+  'мгтс', 'mgts', 'триколор', 'tricolor', 'iptv', 'казахтелеком', 'kazakhtelecom', 'uztelecom', 'хостинг', 'hosting',
+  'домен', 'domain', 'reg ru', 'timeweb', 'таймвеб', 'beget', 'selectel', 'aws', 'digitalocean', 'hetzner', 'vps', 'vpn',
+  'cloudflare', 'спортзал', 'фитнес', 'fitness', 'gym', 'бассейн', 'world class', 'абонемент', 'membership',
+  'подписка', 'subscription'
+];
+
+function keywordText(text) {
+  return ` ${String(text || '').toLowerCase().replace(/ё/g, 'е').replace(/[^\p{L}\p{N}]+/gu, ' ').trim()} `;
+}
+
+// Описание похоже на известную подписку (бренд, связь, интернет, хостинг, спортзал…)
+function isKnownSubscription(text) {
+  const s = keywordText(text);
+  return SUBSCRIPTION_KEYWORDS.some(keyword => (keyword.length >= 5 && !keyword.includes(' ')
+    ? s.includes(` ${keyword}`)
+    : s.includes(` ${keyword} `)));
+}
+
+// Категория «привычных» трат (еда, кафе, продукты, транспорт) — по названию, в том числе своей категории
+const HABIT_CATEGORY = /(еда|продукт|кафе|кофе|ресторан|обед|завтрак|ужин|фастфуд|доставк|транспорт|такси|метро|бензин|топлив|парковк|food|grocer|cafe|coffee|restaurant|lunch|dinner|meal|transport|taxi|fuel|parking)/i;
+function isHabitCategory(name) {
+  return !!name && HABIT_CATEGORY.test(String(name));
+}
 
 function nextByCadence(date, cadence) {
   if (cadence === 'weekly') return addDays(date, 7);
@@ -185,8 +228,10 @@ function cadenceOf(dates) {
 
 // Повторяющиеся платежи: одинаковое (нормализованное) описание, валюта, сумма ±10%, раз в неделю/месяц/год.
 // Нужно ≥ 4 недельных, ≥ 3 месячных (2 — если сумма одинакова до копейки) или ≥ 2 годовых платежей, последний — недавно.
+// Привычки отсекаются: недельная серия — только у известной подписки (SUBSCRIPTION_KEYWORDS) или ≥ 6 недель подряд
+// с суммой ±1% не в категории еды/кафе/транспорта; месячная и годовая в такой категории — только у известной подписки.
 // Авто-записи регулярных трат и описания, совпадающие с уже заведёнными регулярными (excludeKeys), пропускаются.
-// rows: [{ date, description, amount, currency, category_id, recurring_expense_id }]
+// rows: [{ date, description, amount, currency, category_id, category_name, recurring_expense_id }]
 function detectSubscriptions(rows, { today, excludeKeys = new Set() } = {}) {
   const groups = new Map();
   for (const row of rows) {
@@ -196,8 +241,10 @@ function detectSubscriptions(rows, { today, excludeKeys = new Set() } = {}) {
     const key = normalizeMerchant(row.description);
     if (!key || excludeKeys.has(key)) continue;
     const groupKey = `${key}|${row.currency}`;
-    if (!groups.has(groupKey)) groups.set(groupKey, { key, currency: row.currency, rows: [] });
-    groups.get(groupKey).rows.push({ ...row, amount });
+    if (!groups.has(groupKey)) groups.set(groupKey, { key, currency: row.currency, rows: [], known: false });
+    const group = groups.get(groupKey);
+    group.rows.push({ ...row, amount });
+    if (!group.known && isKnownSubscription(row.description)) group.known = true;
   }
 
   const found = [];
@@ -207,7 +254,7 @@ function detectSubscriptions(rows, { today, excludeKeys = new Set() } = {}) {
       const byDate = new Map();
       for (const row of cluster) if (!byDate.has(row.date)) byDate.set(row.date, row);
       const series = [...byDate.values()].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-      const detected = detectSeries(series, today);
+      const detected = detectSeries(series, today, { known: group.known, habit: isHabitCategory(series[series.length - 1].category_name) });
       if (!detected) continue;
       const last = detected.series[detected.series.length - 1];
       const cfg = CADENCES[detected.cadence];
@@ -223,7 +270,8 @@ function detectSubscriptions(rows, { today, excludeKeys = new Set() } = {}) {
         lastDate: last.date,
         nextDate: nextByCadence(last.date, detected.cadence),
         monthlyCost: Math.round(last.amount * cfg.perMonth * 100) / 100,
-        categoryId: last.category_id || null
+        categoryId: last.category_id || null,
+        known: group.known
       });
     }
   }
@@ -236,12 +284,19 @@ function detectSubscriptions(rows, { today, excludeKeys = new Set() } = {}) {
   return [...best.values()].sort((a, b) => b.monthlyCost - a.monthlyCost);
 }
 
-function detectSeries(series, today) {
+// known — известная подписка, habit — категория еды/кафе/транспорта (см. detectSubscriptions)
+function detectSeries(series, today, { known = false, habit = false } = {}) {
   for (const [cadence, cfg] of Object.entries(CADENCES)) {
     const recent = series.filter(row => daysBetween(row.date, today) <= cfg.windowDays);
     if (recent.length < 2) continue;
     if (daysBetween(recent[recent.length - 1].date, today) > cfg.activeDays) continue;
     if (cadenceOf(recent.map(row => row.date)) !== cadence) continue;
+    if (!known && habit) continue;
+    if (cadence === 'weekly' && !known) {
+      const mid = median(recent.map(row => row.amount));
+      const stable = recent.every(row => Math.abs(row.amount - mid) <= mid * WEEKLY_UNKNOWN_TOLERANCE);
+      if (recent.length < WEEKLY_UNKNOWN_MIN || !stable) continue;
+    }
     const exact = recent.every(row => Math.abs(row.amount - recent[0].amount) < 0.005);
     const minCount = cadence === 'monthly' && exact ? 2 : cfg.minCount;
     if (recent.length < minCount) continue;
@@ -484,6 +539,8 @@ module.exports = {
   normalizeItemName,
   shortHash,
   detectSubscriptions,
+  isKnownSubscription,
+  isHabitCategory,
   detectPaydays,
   nextPayday,
   paydayDates,
