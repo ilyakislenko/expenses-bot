@@ -6,7 +6,7 @@ const MAX_LISTED_INCOMES = 30;
 const LIST_DESCRIPTION_LENGTH = 40;
 
 class IncomeHandlers {
-  constructor({ incomeService, expenseService, userService, premiumService, localizationService, formatter, stateService, validator }) {
+  constructor({ incomeService, expenseService, userService, premiumService, localizationService, formatter, stateService, validator, achievementService = null }) {
     this.incomeService = incomeService;
     this.expenseService = expenseService;
     this.userService = userService;
@@ -15,6 +15,7 @@ class IncomeHandlers {
     this.formatter = formatter;
     this.stateService = stateService;
     this.validator = validator;
+    this.achievementService = achievementService;
   }
 
   t(lang, key, params) {
@@ -192,7 +193,9 @@ class IncomeHandlers {
       { text: this.t(lang, 'button_edit_record'), callback_data: `ie|${income.id}` }
     ];
     const amount = this.formatter.formatAmount(Number(income.amount), income.currency);
-    await ctx.reply(this.t(lang, 'income_added', { amount, description: this.incomeLabel(income, lang) }), {
+    const note = this.achievementService ? await this.achievementService.track(userId, 'income_added', { lang }) : '';
+    const addedText = this.t(lang, 'income_added', { amount, description: this.incomeLabel(income, lang) });
+    await ctx.reply(note ? `${addedText}\n\n${note}` : addedText, {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [actions, [{ text: this.t(lang, 'button_income'), callback_data: 'income_menu' }]]

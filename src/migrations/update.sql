@@ -703,3 +703,65 @@ CREATE TABLE IF NOT EXISTS subscription_marks (
     PRIMARY KEY (user_id, merchant_key)
 );
 COMMENT ON TABLE subscription_marks IS 'Найденные подписки: merchant_key — нормализованное описание траты; confirmed — отмечена подпиской, dismissed — скрыта';
+
+-- ==== ACHIEVEMENTS ====
+-- Геймификация: серия дней с записями (заморозки), достижения, уровни, челленджи, «Итоги месяца».
+-- Статистика для правил и XP считается по записям; здесь — только то, что из истории не восстановить.
+
+-- Состояние: какой уровень уже показан (повышение празднуется один раз), когда сегодня сказали о серии,
+-- присылать ли «Итоги месяца». Строки нет — пользователь ещё не знакомился с достижениями
+CREATE TABLE IF NOT EXISTS user_gamification (
+    user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    level_seen INTEGER NOT NULL DEFAULT 1,
+    streak_seen_date DATE NULL,
+    wrapped_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+COMMENT ON COLUMN user_gamification.level_seen IS 'Уровень, о котором пользователь уже знает (повышение празднуется один раз)';
+COMMENT ON COLUMN user_gamification.streak_seen_date IS 'Локальный день, когда строка «🔥 N дней подряд» уже показана';
+COMMENT ON COLUMN user_gamification.wrapped_enabled IS 'Присылать «Итоги месяца» в первый день периода';
+
+-- Открытые достижения; retroactive — открыты при первом знакомстве за прошлую историю (без поздравления)
+CREATE TABLE IF NOT EXISTS user_achievements (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    code VARCHAR(40) NOT NULL,
+    unlocked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    retroactive BOOLEAN NOT NULL DEFAULT FALSE,
+    PRIMARY KEY (user_id, code)
+);
+
+-- Использованные заморозки серии: локальный пропущенный день, закрытый заморозкой
+CREATE TABLE IF NOT EXISTS user_streak_freezes (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    day DATE NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, day)
+);
+
+-- Отметки «сегодня без трат» (локальный день): продолжают серию, засчитываются, если в этот день не было трат
+CREATE TABLE IF NOT EXISTS user_no_spend_days (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    day DATE NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, day)
+);
+
+-- Челленджи: неделя без трат (target — дней без трат), неделя без категории (по имени), месяц в бюджете.
+-- Окно [start_date, end_date) в локальных датах пользователя
+CREATE TABLE IF NOT EXISTS user_challenges (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind VARCHAR(20) NOT NULL,
+    category_name VARCHAR(100) NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    target INTEGER NULL,
+    status VARCHAR(10) NOT NULL DEFAULT 'active',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    finished_at TIMESTAMPTZ NULL
+);
+ALTER TABLE user_challenges DROP CONSTRAINT IF EXISTS user_challenges_kind_check;
+ALTER TABLE user_challenges ADD CONSTRAINT user_challenges_kind_check CHECK (kind IN ('no_spend', 'no_category', 'budget_month'));
+ALTER TABLE user_challenges DROP CONSTRAINT IF EXISTS user_challenges_status_check;
+ALTER TABLE user_challenges ADD CONSTRAINT user_challenges_status_check CHECK (status IN ('active', 'won', 'lost', 'canceled'));
+CREATE INDEX IF NOT EXISTS idx_user_challenges_user ON user_challenges(user_id, status);

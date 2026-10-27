@@ -12,8 +12,9 @@ function localDateHour(timezone, now) {
 }
 
 // Напоминалки: в выбранные локальные часы (до 3 раз в день), только если за сегодняшний локальный день ещё нет трат.
+// Серия от 3 дней под угрозой и сработавшая заморозка — строкой в той же напоминалке (achievementService, если есть).
 // Ошибка у одного пользователя (невалидный пояс, заблокированный бот) не прерывает рассылку остальным.
-async function sendReminders({ userService, expenseService, notificationService }, now = new Date()) {
+async function sendReminders({ userService, expenseService, notificationService, achievementService = null }, now = new Date()) {
   const { rows } = await userService.userRepository.query(`
     SELECT id, timezone, language, reminder_hours, reminder_sent_today_hours,
            to_char(last_reminder_local_date, 'YYYY-MM-DD') AS last_reminder_local_date
@@ -39,7 +40,9 @@ async function sendReminders({ userService, expenseService, notificationService 
       const variants = localizationService.getText(lang, 'reminder_sample_variants');
       const title = localizationService.getText(lang, 'reminder_message_title');
       const message = Array.isArray(variants) && variants.length ? variants[Math.floor(Math.random() * variants.length)] : '';
-      await notificationService.bot.telegram.sendMessage(user.id, `🔔 *${title}*\n\n${message}`, { parse_mode: 'Markdown' });
+      const streakLine = achievementService ? await achievementService.reminderLine(user.id, lang) : '';
+      const text = `🔔 *${title}*\n\n${message}${streakLine ? `\n\n${streakLine}` : ''}`;
+      await notificationService.bot.telegram.sendMessage(user.id, text, { parse_mode: 'Markdown' });
       await userService.updateLastReminderLocalDate(user.id, date);
       await userService.setReminderSentTodayHours(user.id, [...sentHours, hour].sort((a, b) => a - b));
       sent++;
@@ -50,7 +53,7 @@ async function sendReminders({ userService, expenseService, notificationService 
   return sent;
 }
 
-function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, recurringExpenseService, premiumLifecycleService, reportService, dailySummaryService, weeklyInsightService, planningService, supportedCurrencies = currencyConfig.SUPPORTED_CURRENCIES) {
+function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, recurringExpenseService, premiumLifecycleService, reportService, dailySummaryService, weeklyInsightService, planningService, achievementService, supportedCurrencies = currencyConfig.SUPPORTED_CURRENCIES) {
   // Проверяем, нужно ли обновлять курсы при запуске
   (async () => {
     try {
@@ -168,10 +171,22 @@ function setupBotCron(cron, currencyUtils, donationRepository, userService, expe
     }
   });
 
+  // Челленджи (итоги — днём по местному времени) и «Итоги месяца» (первый день периода с 10:00), по разу
+  cron.schedule('5 * * * *', async () => {
+    try {
+      const { challenges, wrapped } = await achievementService.processDue();
+      if (challenges + wrapped > 0) {
+        console.log(`Достижения: итоги челленджей ${challenges}, итоги месяца ${wrapped}`);
+      }
+    } catch (err) {
+      console.error('Ошибка при обработке челленджей и итогов месяца:', err);
+    }
+  });
+
   // Ежедневные напоминалки до 3 раз в локальные часы пользователя
   cron.schedule('0 * * * *', async () => {
     try {
-      const sent = await sendReminders({ userService, expenseService, notificationService });
+      const sent = await sendReminders({ userService, expenseService, notificationService, achievementService });
       if (sent > 0) {
         console.log(`Напоминалки: отправлено ${sent}`);
       }
