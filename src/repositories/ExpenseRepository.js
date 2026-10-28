@@ -126,39 +126,25 @@ class ExpenseRepository extends BaseRepository {
     return result.rows.length > 0;
   }
 
-  async deleteLastExpense(userId) {
-    const query = `
-      DELETE FROM expenses 
-      WHERE id = (
-        SELECT id FROM expenses 
-        WHERE user_id = $1 
-        ORDER BY created_at_utc DESC 
-        LIMIT 1
-      )
-      RETURNING *
-    `;
-    const result = await this.query(query, [userId]);
-    return result.rows[0];
-  }
-
-  async deleteExpenseById(userId, expenseId) {
-    const query = `
-      DELETE FROM expenses
-      WHERE id = $1 AND user_id = $2
-      RETURNING *
-    `;
-    const result = await this.query(query, [expenseId, userId]);
-    return result.rows[0];
-  }
-
-  async updateExpenseById(userId, expenseId, { amount, description }) {
-    const query = `
-      UPDATE expenses
-      SET amount = $1, description = $2
-      WHERE id = $3 AND user_id = $4
-      RETURNING *
-    `;
-    const result = await this.query(query, [amount, description, expenseId, userId]);
+  // Последняя введённая пользователем запись — трата или доход — по моменту записи (recorded_at; «📅 Дата» меняет
+  // только created_at_utc). Автосписания регулярных не в счёт. { kind: 'expense' | 'income', id, amount, … } или undefined
+  async getLastRecord(userId) {
+    const result = await this.query(`
+      SELECT * FROM (
+        SELECT 'expense' AS kind, e.id, e.amount, e.currency, e.description, e.created_at_utc,
+               COALESCE(e.recorded_at, e.created_at_utc) AS recorded, c.name AS category_name, c.icon AS category_icon
+        FROM expenses e
+        LEFT JOIN categories c ON c.id = e.category_id
+        WHERE e.user_id = $1 AND e.recurring_expense_id IS NULL
+        UNION ALL
+        SELECT 'income' AS kind, i.id, i.amount, i.currency, i.description, i.created_at_utc,
+               COALESCE(i.recorded_at, i.created_at_utc) AS recorded, NULL AS category_name, NULL AS category_icon
+        FROM incomes i
+        WHERE i.user_id = $1
+      ) records
+      ORDER BY recorded DESC, id DESC
+      LIMIT 1
+    `, [userId]);
     return result.rows[0];
   }
 
@@ -339,14 +325,15 @@ class ExpenseRepository extends BaseRepository {
     return result.rows[0];
   }
 
-  async updateExpenseById(userId, expenseId, { amount, description }) {
+  // currency не задана — остаётся прежней
+  async updateExpenseById(userId, expenseId, { amount, description, currency = null }) {
     const query = `
       UPDATE expenses
-      SET amount = $1, description = $2
+      SET amount = $1, description = $2, currency = COALESCE($5, currency)
       WHERE id = $3 AND user_id = $4
       RETURNING *
     `;
-    const result = await this.query(query, [amount, description, expenseId, userId]);
+    const result = await this.query(query, [amount, description, expenseId, userId, currency]);
     return result.rows[0];
   }
 

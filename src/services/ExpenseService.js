@@ -88,8 +88,9 @@ class ExpenseService {
     return this.expenseRepository.updateExpenseCategory(userId, expenseId, categoryId);
   }
 
-  async deleteLastExpense(userId) {
-    return this.expenseRepository.deleteLastExpense(userId);
+  // Последняя введённая запись (трата или доход) для /undo
+  async getLastRecord(userId) {
+    return this.expenseRepository.getLastRecord(userId);
   }
 
   // Траты для экспорта: period = null — за всё время, categoryIds = null — все категории

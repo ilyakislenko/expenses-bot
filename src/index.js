@@ -13,6 +13,7 @@ async function startApplication() {
   let monitoringServer = null;
   let running = null;
   let shuttingDown = false;
+  let stateService = null;
 
   // Graceful shutdown: дообрабатываем текущую пачку обновлений и синхронизируем offset (bot.stop),
   // затем закрываем мониторинг и пул БД. Обработчики ставим до запуска бота.
@@ -31,6 +32,7 @@ async function startApplication() {
         await running.catch(() => {});
       }
       if (monitoringServer) await monitoringServer.stop();
+      if (stateService) await stateService.flush();
       await BaseRepository.closePool();
     } catch (error) {
       logger.error('Error during shutdown:', { error: error.message, stack: error.stack });
@@ -50,6 +52,9 @@ async function startApplication() {
     bot = container.get('bot');
     const handlers = container.getHandlers();
     monitoringServer = container.get('monitoringServer');
+    // Ожидаемый ввод и черновики, сохранённые до перезапуска (апдейты ждут загрузки в stateCleanupMiddleware)
+    stateService = handlers.stateService;
+    stateService.hydrate();
 
     // 1. Запускаем сервер мониторинга
     await monitoringServer.start();

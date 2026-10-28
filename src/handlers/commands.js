@@ -170,27 +170,52 @@ class CommandHandlers {
   }
 
 
+  // /undo — последняя введённая запись (трата или доход, не автосписание регулярной): сначала показываем, что
+  // удалится, удаление — кнопкой undo_ok|<x|i>|<id>
   async undo(ctx) {
-    let userLanguage = 'en'; // fallback язык
-    try {
-      const userId = ctx.from.id;
-      userLanguage = await this.userService.getUserLanguage(userId);
-      const deleted = await this.expenseService.deleteLastExpense(userId);
-      
-      if (deleted) {
-        const amount = this.formatter.formatAmount(deleted.amount, deleted.currency);
-        const description = deleted.description || this.localizationService.getText(userLanguage, 'not_found');
-        const expenseDeletedText = this.localizationService.getText(userLanguage, 'expense_deleted', { amount, description });
-        await ctx.reply(expenseDeletedText);
-      } else {
-        const noExpensesText = this.localizationService.getText(userLanguage, 'no_expenses');
-        await ctx.reply(noExpensesText);
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    const t = (key, params) => this.localizationService.getText(lang, key, params);
+    const record = await this.expenseService.getLastRecord(userId);
+    if (!record) return ctx.reply(t('no_expenses'));
+    const timezone = await this.userService.getUserTimezone(userId);
+    const label = record.description
+      || (record.category_name ? this.formatter.translateCategoryName(record.category_name, this.localizationService, lang) : '—');
+    const line = `${record.kind === 'income' ? '💵' : (record.category_icon || '💸')} *${this.formatter.formatAmount(Number(record.amount), record.currency)}* — `
+      + `${this.formatter.escapeMarkdown(label)} · ${this.formatter.formatDate(record.created_at_utc, timezone)}`;
+    await ctx.reply(t(record.kind === 'income' ? 'undo_confirm_income' : 'undo_confirm_expense', { record: line }), {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [[
+          { text: t('button_undo_delete'), callback_data: `undo_ok|${record.kind === 'income' ? 'i' : 'x'}|${record.id}` },
+          { text: t('button_cancel'), callback_data: 'undo_no' }
+        ]]
       }
-    } catch (error) {
-      console.error('Error in undo command:', error);
-      const errorText = this.localizationService.getText(userLanguage, 'error');
-      await ctx.reply(errorText);
-    }
+    });
+  }
+
+  // callback: undo_ok|x|<id> (трата) или undo_ok|i|<id> (доход) — удаление после /undo; повторное нажатие текст не меняет
+  async confirmUndo(ctx) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    const t = (key, params) => this.localizationService.getText(lang, key, params);
+    const id = parseInt(ctx.match[2], 10);
+    const deleted = ctx.match[1] === 'i'
+      ? await this.incomeService.deleteIncome(userId, id)
+      : await this.expenseService.deleteExpenseById(userId, id);
+    if (!deleted) return ctx.answerCbQuery(t('undo_already')).catch(() => {});
+    await ctx.answerCbQuery(t('callback_deleted')).catch(() => {});
+    await respond(ctx, t('expense_deleted', {
+      amount: this.formatter.formatAmount(Number(deleted.amount), deleted.currency),
+      description: deleted.description || '—'
+    }), { reply_markup: { inline_keyboard: [] } });
+  }
+
+  // callback: undo_no — запись остаётся
+  async cancelUndo(ctx) {
+    const lang = await this.userService.getUserLanguage(ctx.from.id);
+    await ctx.answerCbQuery().catch(() => {});
+    await respond(ctx, this.localizationService.getText(lang, 'undo_canceled'), { reply_markup: { inline_keyboard: [] } });
   }
 
 

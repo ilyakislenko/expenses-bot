@@ -1,6 +1,7 @@
 const respond = require('../utils/respond');
 const { localToday } = require('../utils/period');
 const { packDate, unpackDate, checkRecordDate, parseRecordDate, localDateOf, datePickerKeyboard, DATE_ERROR_KEYS } = require('../utils/recordDate');
+const { parseEntries } = require('../utils/multiEntry');
 
 const PAGE_SIZE = 10;
 const INCOME_HINT_DAYS = 14; // подсказку про доходы видят только новые пользователи
@@ -166,9 +167,13 @@ class ExpenseHandlers {
       // Черновик отменён, вытеснен или потерян при перезапуске бота
       return ctx.answerCbQuery(this.t(lang, 'expense_draft_outdated'), { show_alert: true });
     }
+    // Семейный черновик: пользователь мог выйти из семьи (или его исключили, семью удалили), пока карточка висела
     let expense;
+    let familyGone = false;
     try {
-      expense = await this.expenseService.addExpense(userId, { ...pending, categoryId });
+      const family = pending.familyId ? await this.familyService.getUserFamily(userId) : null;
+      familyGone = Boolean(pending.familyId) && (!family || family.id !== pending.familyId);
+      expense = await this.expenseService.addExpense(userId, { ...pending, familyId: familyGone ? null : pending.familyId, categoryId });
     } catch (error) {
       this.stateService.setPendingExpense(userId, messageId, pending);
       throw error;
@@ -177,7 +182,8 @@ class ExpenseHandlers {
       category: this.formatter.translateCategoryName(category.name, this.localizationService, lang)
     }));
     const note = await this.expenseNote(ctx, userId, lang, { ...expense, category_name: category.name });
-    await this.showCard(ctx, expense.id, 'n', { added: true, note });
+    const familyNote = familyGone ? this.t(lang, 'expense_family_gone') : '';
+    await this.showCard(ctx, expense.id, 'n', { added: true, note: [familyNote, note].filter(Boolean).join('\n\n') });
     await this.sendBudgetWarnings(ctx, userId, lang, category.name);
   }
 
@@ -349,15 +355,75 @@ class ExpenseHandlers {
     await this.sendBudgetWarnings(ctx, userId, lang, category.name);
   }
 
-  // callback: xe|<id> — изменить сумму/описание, ввод следующим сообщением
+  // callback: xe|<id> — изменить сумму/описание, ввод следующим сообщением (только своя запись)
   async handleEdit(ctx) {
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
+    if (!(await this.ownExpense(ctx, lang, parseInt(ctx.match[1], 10)))) return;
     this.stateService.setUserEditState(userId, ctx.match[1]);
     await ctx.answerCbQuery().catch(() => {});
     await ctx.reply(this.t(lang, 'edit_instructions'), {
       reply_markup: { inline_keyboard: [[{ text: this.t(lang, 'button_cancel'), callback_data: 'cancel_edit' }]] }
     });
+  }
+
+  // Разбор ввода при «✏️ Изменить» в том же формате, что и обычный ввод: «500» — сумма, «20 USD такси» — сумма,
+  // валюта и описание, «кофе 250» — сумма и описание, «такси» — только описание. Не задано — остаётся как было.
+  // { changes } или { error: ключ текста }: «+5000 премия», «кофе 250, такси 400» — это новые записи, «-5» — не сумма
+  parseEditInput(text, maxDescriptionLength) {
+    const value = String(text || '').trim();
+    if (/^\d/.test(value)) {
+      const parsed = this.validator.parseMoneyInput(value, { maxAmount: this.validator.limits.maxAmount, maxDescriptionLength, requireDescription: false });
+      if (!parsed.isValid) return { error: parsed.error };
+      return { changes: { amount: parsed.amount, currency: parsed.currency, description: parsed.description } };
+    }
+    const entries = parseEntries(value);
+    if (entries) {
+      if (entries.length !== 1 || entries[0].kind !== 'expense') return { error: 'one_record' };
+      const [entry] = entries;
+      if (!(entry.amount >= this.validator.limits.minAmount && entry.amount <= this.validator.limits.maxAmount)) return { error: 'amount' };
+      const description = entry.description ? this.validator.sanitizeText(entry.description, maxDescriptionLength) : null;
+      return { changes: { amount: entry.amount, currency: entry.currency, description } };
+    }
+    if (/^[+\-−]\s*\d/.test(value)) return { error: 'amount' };
+    const parsed = this.validator.parseEditExpense(value, maxDescriptionLength);
+    if (!parsed.isValid) return { error: parsed.error === 'too_long' ? 'too_long' : 'format' };
+    return { changes: { description: parsed.description } };
+  }
+
+  // Ввод при «✏️ Изменить» (StateService.userEditState — id из callback_data): запись обновляется, потом — предупреждения бюджета
+  async handleEditInput(ctx, text, lang, editState) {
+    const userId = ctx.from.id;
+    const expenseId = Number(editState);
+    const limits = await this.premiumService.getUserLimits(userId);
+    const parsed = this.parseEditInput(text, limits.MAX_DESCRIPTION_LENGTH);
+    if (parsed.error) {
+      const errorText = parsed.error === 'one_record' ? this.t(lang, 'edit_one_record') : await this.inputErrorText(userId, lang, parsed.error);
+      return ctx.reply(errorText, { parse_mode: 'Markdown' });
+    }
+    const oldExpense = await this.expenseService.getExpenseById(userId, expenseId);
+    if (!oldExpense || Number(oldExpense.user_id) !== userId) {
+      this.stateService.deleteUserEditState(userId);
+      return ctx.reply(this.t(lang, 'expense_not_found'));
+    }
+    const { changes } = parsed;
+    const amount = changes.amount !== undefined ? changes.amount : Number(oldExpense.amount);
+    const currency = changes.currency || oldExpense.currency;
+    const description = changes.description || oldExpense.description;
+    const updated = await this.expenseService.updateExpenseById(userId, expenseId, { amount, currency, description });
+    this.stateService.deleteUserEditState(userId);
+    if (!updated) return ctx.reply(this.t(lang, 'expense_update_error'));
+    await ctx.reply(this.t(lang, 'expense_updated', {
+      amount: this.formatter.formatAmount(amount, currency),
+      description: description || this.t(lang, 'not_found')
+    }));
+    if (oldExpense.category_name) await this.sendBudgetWarnings(ctx, userId, lang, oldExpense.category_name);
+  }
+
+  // После смены даты запись может попасть в текущий период бюджета
+  async sendBudgetWarningsFor(ctx, userId, lang, expense) {
+    const category = expense.category_id ? await this.expenseService.getCategoryById(userId, expense.category_id) : null;
+    if (category) await this.sendBudgetWarnings(ctx, userId, lang, category.name);
   }
 
   // ========================================
@@ -413,6 +479,7 @@ class ExpenseHandlers {
     }
     await ctx.answerCbQuery(this.t(lang, 'date_changed', { date: this.formatter.formatLocalDate(date) })).catch(() => {});
     await this.showCard(ctx, expenseId, back, { added: back === 'n' });
+    await this.sendBudgetWarningsFor(ctx, userId, lang, updated);
   }
 
   // callback: xto|<id>|<back> — другая дата текстом (состояние dt_in:x:<id>:<сообщение с подсказкой>:<back>)
@@ -443,6 +510,7 @@ class ExpenseHandlers {
     if (!updated) return ctx.reply(this.t(lang, 'expense_not_found'));
     await ctx.telegram.editMessageReplyMarkup(ctx.chat.id, Number(messagePart), undefined, { inline_keyboard: [] }).catch(() => {});
     await this.showCard(ctx, expenseId, back, { note: this.t(lang, 'date_changed', { date: this.formatter.formatLocalDate(parsed.date) }) });
+    await this.sendBudgetWarningsFor(ctx, userId, lang, updated);
   }
 
   // callback: xf|<id>|<back> — в семейный бюджет, xu|<id>|<back> — из семейного бюджета
