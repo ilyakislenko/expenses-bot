@@ -273,6 +273,7 @@ function trendSvg(data, engine = estimateText()) {
     parts.push(label(W / 2, (chartTop + chartBottom) / 2, data.emptyText || '', W - 160, { size: 28, color: THEME.muted, anchor: 'middle' }));
   }
   const valueLabels = []; // рисуются поверх линии средней
+  const averageY = data.average > 0 ? round(y(data.average)) : null;
   bars.forEach((bar, index) => {
     const cx = left + slot * index + slot / 2;
     const style = { bold: bar.current, color: bar.current ? THEME.text : THEME.muted, anchor: 'middle' };
@@ -282,13 +283,18 @@ function trendSvg(data, engine = estimateText()) {
       const x0 = round(cx - barW / 2);
       const x1 = round(cx + barW / 2);
       parts.push(`<path d="M${x0} ${chartBottom}V${round(top + radius)}Q${x0} ${round(top)} ${round(x0 + radius)} ${round(top)}H${round(x1 - radius)}Q${x1} ${round(top)} ${x1} ${round(top + radius)}V${chartBottom}Z" fill="${bar.current ? THEME.current : THEME.bar}"/>`);
-      valueLabels.push(label(cx, top - 12, bar.amount, slot - 6, { ...style, size: 19, halo: true }));
+      // Подпись над столбиком; если там проходит линия средней — внутрь столбика (или над линией, если столбик низкий)
+      let labelY = top - 12;
+      if (averageY !== null && Math.abs(labelY - 7 - averageY) < 20) {
+        labelY = chartBottom - top >= 48 ? top + 30 : averageY - 14;
+      }
+      valueLabels.push(label(cx, labelY, bar.amount, slot - 6, { ...style, color: labelY > top ? THEME.text : style.color, size: 19, halo: labelY <= top }));
     }
     parts.push(label(cx, chartBottom + 36, bar.label, slot - 6, { ...style, size: 21 }));
   });
 
   if (data.average > 0) {
-    const ay = round(y(data.average));
+    const ay = averageY;
     parts.push(`<line x1="${left}" y1="${ay}" x2="${right}" y2="${ay}" stroke="${THEME.average}" stroke-width="3" stroke-dasharray="12 9"/>`);
     // Подпись линии — над графиком, с образцом пунктира
     parts.push(`<line x1="48" y1="156" x2="96" y2="156" stroke="${THEME.average}" stroke-width="3" stroke-dasharray="12 9"/>`);
