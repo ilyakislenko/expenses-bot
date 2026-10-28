@@ -1,7 +1,6 @@
 variable "grafana_admin_password" {
-  description = "Admin password for Grafana"
+  description = "Admin password for Grafana (обязателен: TF_VAR_grafana_admin_password или terraform.tfvars, не в git)"
   type        = string
-  default     = "admin"
   sensitive   = true
 }
 

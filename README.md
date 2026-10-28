@@ -67,6 +67,12 @@ docker compose -f docker-compose.monitoring.yml up -d   # Prometheus/Loki/Grafan
 npm install && npm run migrate && npm start
 ```
 
+Neither compose file has default passwords: `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `PGADMIN_EMAIL`,
+`PGADMIN_PASSWORD` and `GF_SECURITY_ADMIN_PASSWORD` must be set in `.env`, otherwise compose refuses
+to start. Postgres (5432) and pgAdmin (5050) are published on all interfaces on purpose — reachable from
+the home LAN, so use long random passwords and never forward these ports from the internet. The
+monitoring stack (no auth) publishes on `127.0.0.1` only; reach it through a TLS reverse proxy or `ssh -L`.
+
 Config is entirely environment-driven — see `.env.example`. `SETUP.md` has the
 long-form walkthrough; `BOT_PAGES.md` documents every command and button.
 

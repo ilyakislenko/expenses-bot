@@ -105,10 +105,7 @@ class ReceiptHandlers {
   }
 
   async download(ctx, fileId) {
-    const link = await ctx.telegram.getFileLink(fileId);
-    const response = await fetch(link.href || String(link));
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return Buffer.from(await response.arrayBuffer());
+    return require('../utils/telegramFile').downloadTelegramFile(ctx.telegram, fileId, { maxBytes: MAX_FILE_BYTES });
   }
 
   // Сообщение «Распознаю чек…» превращается в результат или текст ошибки

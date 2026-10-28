@@ -1,5 +1,8 @@
 version: '3.8'
 
+# Порты публикуются только на 127.0.0.1: Docker обходит фаервол хоста, а у Loki, Prometheus, cAdvisor и
+# node-exporter нет авторизации (в Loki — логи бота). Доступ снаружи — через reverse proxy с TLS или ssh -L.
+# Пароль Grafana обязателен: GF_SECURITY_ADMIN_PASSWORD в .env (без него compose не запустится).
 services:
   # Prometheus - система сбора метрик
   prometheus:
@@ -7,7 +10,7 @@ services:
     container_name: prometheus
     restart: unless-stopped
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     volumes:
       - ./monitoring/config/prometheus:/etc/prometheus
       - prometheus_data:/prometheus
@@ -33,7 +36,7 @@ services:
     container_name: loki
     restart: unless-stopped
     ports:
-      - "3100:3100"
+      - "127.0.0.1:3100:3100"
     volumes:
       - ./monitoring/config/loki:/etc/loki
       - loki_data:/loki
@@ -53,7 +56,7 @@ services:
     container_name: promtail
     restart: unless-stopped
     ports:
-      - "9080:9080"
+      - "127.0.0.1:9080:9080"
     volumes:
       - ./monitoring/config/promtail:/etc/promtail
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
@@ -76,13 +79,13 @@ services:
     container_name: grafana
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     volumes:
       - ./monitoring/config/grafana/provisioning:/etc/grafana/provisioning
       - grafana_data:/var/lib/grafana
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:?set GF_SECURITY_ADMIN_PASSWORD in .env}
       - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
       - GF_FEATURE_TOGGLES_ENABLE=publicDashboards
     networks:
@@ -102,7 +105,7 @@ services:
     container_name: node-exporter
     restart: unless-stopped
     ports:
-      - "9100:9100"
+      - "127.0.0.1:9100:9100"
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -126,7 +129,7 @@ services:
     container_name: cadvisor
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
@@ -148,7 +151,7 @@ services:
     container_name: alertmanager
     restart: unless-stopped
     ports:
-      - "9093:9093"
+      - "127.0.0.1:9093:9093"
     volumes:
       - ./monitoring/config/alertmanager:/etc/alertmanager
       - alertmanager_data:/alertmanager

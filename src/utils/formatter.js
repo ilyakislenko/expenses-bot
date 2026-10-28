@@ -215,8 +215,9 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationServic
     localizationService.getText(userLanguage, 'description_label') : 'Description';
 
   let csv = '\uFEFF' + [dateHeader, amountHeader, currencyHeader, categoryHeader, descriptionHeader].join(SEP) + '\n';
-  const totalsByCurrency = {};
-  const totalsByCategory = {}; // { категория: { валюта: сумма } }
+  // Без прототипа: своя категория «__proto__»/«constructor» — обычный ключ, а не Object.prototype
+  const totalsByCurrency = Object.create(null);
+  const totalsByCategory = Object.create(null); // { категория: { валюта: сумма } }
   
   for (const expense of expenses) {
     // Используем created_at_utc как основной источник даты
@@ -240,7 +241,7 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationServic
     ].join(SEP) + '\n';
 
     totalsByCurrency[currency] = (totalsByCurrency[currency] || 0) + Number(amount);
-    totalsByCategory[category] = totalsByCategory[category] || {};
+    totalsByCategory[category] = totalsByCategory[category] || Object.create(null);
     totalsByCategory[category][currency] = (totalsByCategory[category][currency] || 0) + Number(amount);
   }
   csv += '\n';
@@ -309,7 +310,8 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationServic
       'Other': 'category_other'
     };
     
-    const translationKey = categoryMap[categoryName];
+    // hasOwn: своя категория «constructor»/«toString» иначе нашла бы метод Object.prototype
+    const translationKey = Object.hasOwn(categoryMap, categoryName) ? categoryMap[categoryName] : null;
     if (translationKey) {
       return localizationService.getText(userLanguage, translationKey);
     }

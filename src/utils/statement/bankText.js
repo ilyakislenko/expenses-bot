@@ -3,15 +3,18 @@
 const { parseAmount, parseDateTime, buildDate, normalizeCurrency, isTransferLabel, makeOperation } = require('./common');
 
 const SPACE = '[ \\u00a0\\u202f]';
-// '1 489,98', '18534,60'
-const AMOUNT = `(?:\\d{1,3}(?:${SPACE}\\d{3})+|\\d+),\\d{2}`;
+// '1 489,98', '18534,60'. Повторы ограничены, а перед суммой не может стоять цифра: иначе на длинной строке
+// цифр каждая позиция ленивого перебора дочитывает её до конца — квадратичное время на одном файле.
+const AMOUNT = `(?<!\\d)(?:\\d{1,3}(?:${SPACE}\\d{3}){1,4}|\\d{1,12}),\\d{2}`;
 const CATEGORY_TAIL_MAX = 25;
 const MAX_JOINED_LINES = 3;
+// Строка выписки короче; длиннее — мусор, который только замедляет регулярки
+const MAX_LINE_LENGTH = 500;
 
 function toLines(text) {
   return String(text || '')
     .split(/\r?\n/)
-    .map(line => line.replace(/[\u00a0\u202f\u2009]/g, ' ').replace(/\s+/g, ' ').trim())
+    .map(line => line.slice(0, MAX_LINE_LENGTH * 4).replace(/[\u00a0\u202f\u2009]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, MAX_LINE_LENGTH))
     .filter(Boolean);
 }
 

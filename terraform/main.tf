@@ -28,6 +28,7 @@ resource "docker_container" "prometheus" {
   
   ports {
     internal = 9090
+    ip       = "127.0.0.1"
     external = 9090
   }
   
@@ -67,6 +68,7 @@ resource "docker_container" "loki" {
   
   ports {
     internal = 3100
+    ip       = "127.0.0.1"
     external = 3100
   }
   
@@ -101,6 +103,7 @@ resource "docker_container" "promtail" {
   
   ports {
     internal = 9080
+    ip       = "127.0.0.1"
     external = 9080
   }
   
@@ -142,6 +145,7 @@ resource "docker_container" "grafana" {
   
   ports {
     internal = 3000
+    ip       = "127.0.0.1"
     external = 3000
   }
   
@@ -158,12 +162,12 @@ resource "docker_container" "grafana" {
   
   environment {
     name  = "GF_SECURITY_ADMIN_PASSWORD"
-    value = "admin"
+    value = var.grafana_admin_password
   }
   
   environment {
     name  = "GF_SECURITY_ADMIN_USER"
-    value = "admin"
+    value = var.grafana_admin_user
   }
   
   environment {
@@ -187,6 +191,7 @@ resource "docker_container" "node_exporter" {
   
   ports {
     internal = 9100
+    ip       = "127.0.0.1"
     external = 9100
   }
   
@@ -231,6 +236,7 @@ resource "docker_container" "cadvisor" {
   
   ports {
     internal = 8080
+    ip       = "127.0.0.1"
     external = 8080
   }
   

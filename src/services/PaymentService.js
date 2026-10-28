@@ -4,6 +4,7 @@ const logger = require('../utils/logger');
 const STARS_SUBSCRIPTION_PERIOD_SECONDS = 2592000;
 const SUBSCRIPTION_TARIFF_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const INVOICE_LINK_TIMEOUT_MS = 10000;
 
 class PaymentService {
   constructor(donationRepository, localizationService, funnelService, premiumTransactionRepository, userRepository) {
@@ -98,7 +99,12 @@ class PaymentService {
           logger.warn('Donation payment received without repository or donation_id');
           return { type: 'donation', status: 'ignored' };
         }
-        await this.donationRepository.markDonationCompleted(donation_id, telegram_payment_charge_id || null);
+        // Повторная доставка того же платежа не засчитывается второй раз
+        const donation = await this.donationRepository.markDonationCompleted(donation_id, telegram_payment_charge_id || null);
+        if (!donation) {
+          logger.warn('Donation payment for an already completed or refunded donation ignored', { user_id, donation_id, telegram_payment_charge_id });
+          return { type: 'donation', status: 'duplicate' };
+        }
         logger.info(`Donation completed for user ${user_id}, stars: ${stars}`);
         return { type: 'donation', status: 'completed' };
       } else if (type === 'premium_subscription') {
@@ -190,6 +196,15 @@ class PaymentService {
     if (payload.type === 'premium_subscription' && payload.tariff === SUBSCRIPTION_TARIFF_DAYS
       && await this.premiumTransactionRepository.getActiveRecurringSubscription(payerId)) {
       return { ok: false, reason: 'subscription_active' };
+    }
+    // Ссылка на донат живёт вечно, а донат могли отменить (новый донат отменяет прежние) или он истёк:
+    // принимаем оплату только ожидающего доната этого пользователя на ту же сумму
+    if (payload.type === 'donation' && this.donationRepository) {
+      const donation = await this.donationRepository.getDonationById(payload.donation_id);
+      if (!donation || donation.status !== 'pending' || Number(donation.user_id) !== Number(payerId)
+        || Number(donation.stars) !== Number(query.total_amount)) {
+        return { ok: false, reason: 'donation_outdated' };
+      }
     }
     return check;
   }
@@ -305,40 +320,38 @@ class PaymentService {
       user_id: userId
     });
     
-    const prices = JSON.stringify([{
-      label: productName,
-      amount: stars
-    }]);
-    
     const invoiceParams = {
       title: title,
       description: description,
       payload: payload,
       provider_token: '', // Для Telegram Stars токен провайдера не нужен
       currency: 'XTR',
-      prices: prices
+      prices: [{ label: productName, amount: stars }]
     };
     if (duration === SUBSCRIPTION_TARIFF_DAYS) {
-      invoiceParams.subscription_period = String(STARS_SUBSCRIPTION_PERIOD_SECONDS);
+      invoiceParams.subscription_period = STARS_SUBSCRIPTION_PERIOD_SECONDS;
     }
-    const params = new URLSearchParams(invoiceParams).toString();
-    
-    const url = `https://api.telegram.org/bot${this.bot.token}/createInvoiceLink?${params}`;
-    
+
     try {
-      const response = await fetch(url);
-      const result = await response.json();
-      
-      if (!result.ok) {
-        throw new Error(`Telegram API error: ${result.description}`);
-      }
-      
+      const link = await this.requestInvoiceLink(invoiceParams);
       logger.info(`Created invoice link for user ${userId}, tariff: ${duration} days, stars: ${stars}`);
-      return result.result;
-      
+      return link;
     } catch (error) {
       logger.error('Error creating invoice link:', error);
       throw error;
+    }
+  }
+
+  // createInvoiceLink через Telegraf (токен не попадает в URL, вызов идёт тем же путём, что и остальные — через
+  // callApi) с таймаутом: зависший запрос не держит экран тарифов минутами
+  async requestInvoiceLink(invoiceParams) {
+    if (!this.bot) throw new Error('Bot instance is not set');
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), INVOICE_LINK_TIMEOUT_MS);
+    try {
+      return await this.bot.telegram.callApi('createInvoiceLink', invoiceParams, { signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
     }
   }
 
@@ -355,26 +368,15 @@ class PaymentService {
       donation_id: donationId
     });
 
-    const prices = JSON.stringify([{ label: title, amount: stars }]);
-
-    const params = new URLSearchParams({
-      title,
-      description,
-      payload,
-      provider_token: '',
-      currency: 'XTR',
-      prices
-    }).toString();
-
-    const url = `https://api.telegram.org/bot${this.bot.token}/createInvoiceLink?${params}`;
-
     try {
-      const response = await fetch(url);
-      const result = await response.json();
-      if (!result.ok) {
-        throw new Error(`Telegram API error: ${result.description}`);
-      }
-      return result.result;
+      return await this.requestInvoiceLink({
+        title,
+        description,
+        payload,
+        provider_token: '',
+        currency: 'XTR',
+        prices: [{ label: title, amount: stars }]
+      });
     } catch (error) {
       logger.error('Error creating donation invoice link:', error);
       throw error;

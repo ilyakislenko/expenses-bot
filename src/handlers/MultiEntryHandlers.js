@@ -188,10 +188,7 @@ class MultiEntryHandlers {
   }
 
   async download(ctx, fileId) {
-    const link = await ctx.telegram.getFileLink(fileId);
-    const response = await fetch(link.href || String(link));
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return Buffer.from(await response.arrayBuffer());
+    return require('../utils/telegramFile').downloadTelegramFile(ctx.telegram, fileId, { maxBytes: MAX_FILE_BYTES });
   }
 
   // Голосовое в личном чате: проверки, «🎙 Распознаю голос…», распознавание — в фоне (обработчик апдейта не ждёт)

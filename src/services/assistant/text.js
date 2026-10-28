@@ -51,6 +51,9 @@ function searchStem(text) {
   }).join(' ');
 }
 
+// Синонимы системной категории; hasOwn — своя категория «constructor»/«toString» не находит методы Object.prototype
+const systemAliases = (name) => (Object.hasOwn(SYSTEM_CATEGORY_ALIASES, name) ? SYSTEM_CATEGORY_ALIASES[name] : []);
+
 // categories: [{ id, name, icon, label }] (label — как видит пользователь). Ищем по имени и подписи, затем по английским
 // синонимам системных категорий; в каждом случае сначала точно, затем по основам слов. Своя категория «Продукты»
 // важнее синонима системной «Еда».
@@ -59,7 +62,7 @@ function matchCategory(term, categories) {
   if (!plain) return null;
   const stemmed = stemPhrase(plain);
   const own = (category) => [category.name, category.label].filter(Boolean);
-  const aliases = (category) => SYSTEM_CATEGORY_ALIASES[category.name] || [];
+  const aliases = (category) => systemAliases(category.name);
   for (const variants of [own, aliases]) {
     const exact = categories.find(category => variants(category).some(v => plainWords(v) === plain));
     if (exact) return exact;
@@ -72,7 +75,7 @@ function matchCategory(term, categories) {
 // Названа ли категория в тексте вопроса (по основам слов): «на еду» — да, «на кофе» — нет
 function mentionsCategory(question, category) {
   const words = ` ${stemPhrase(question)} `;
-  return [category.name, category.label, ...(SYSTEM_CATEGORY_ALIASES[category.name] || [])]
+  return [category.name, category.label, ...systemAliases(category.name)]
     .filter(Boolean)
     .some(variant => words.includes(` ${stemPhrase(variant)} `));
 }

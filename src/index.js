@@ -56,7 +56,7 @@ async function startApplication() {
     logger.startup('Monitoring server started successfully');
 
     // 2. Middleware
-    applyBotMiddleware(bot, handlers.errorHandler, handlers.callbackDeduplicator, handlers.securityMiddleware);
+    applyBotMiddleware(bot, handlers.errorHandler, handlers.callbackDeduplicator, handlers.securityMiddleware, handlers.localizationService);
     logger.startup('Bot middleware applied');
 
     // 3. Cron задачи (обновление курсов валют, донаты, напоминалки)

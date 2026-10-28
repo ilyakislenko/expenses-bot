@@ -1,5 +1,8 @@
 version: '3.8'
 
+# Postgres и pgAdmin намеренно доступны из домашней локальной сети (порты на всех интерфейсах) — поэтому
+# паролей по умолчанию нет: DB_USER, DB_PASSWORD, DB_NAME, PGADMIN_EMAIL, PGADMIN_PASSWORD должны быть в .env
+# (длинные, случайные), иначе compose не запустится. Наружу из интернета эти порты не пробрасывать.
 services:
   # PostgreSQL Database
   db:
@@ -7,16 +10,16 @@ services:
     container_name: ${DB_CONTAINER_NAME:-postgres-db}
     restart: always
     environment:
-      POSTGRES_USER: ${DB_USER:-myuser}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-mypassword}
-      POSTGRES_DB: ${DB_NAME:-mydatabase}
+      POSTGRES_USER: ${DB_USER:?set DB_USER in .env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      POSTGRES_DB: ${DB_NAME:?set DB_NAME in .env}
     ports:
       - "${DB_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./src/migrations/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-myuser} -d ${DB_NAME:-mydatabase}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -29,8 +32,8 @@ services:
     ports:
       - "${PGADMIN_PORT:-5050}:80"
     environment:
-      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@admin.com}
-      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-admin}
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:?set PGADMIN_EMAIL in .env}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:?set PGADMIN_PASSWORD in .env}
       - PGADMIN_CONFIG_SERVER_MODE=False
     volumes:
       - pgadmin_data:/var/lib/pgadmin

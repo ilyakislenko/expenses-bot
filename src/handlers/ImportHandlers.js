@@ -1,13 +1,16 @@
 const respond = require('../utils/respond');
 const logger = require('../utils/logger');
-const { ImportError, MAX_FILE_BYTES, isSupportedDocument, parseStatement } = require('../utils/statement');
+const { ImportError, MAX_FILE_BYTES, isSupportedDocument } = require('../utils/statement');
+const { parseStatementIsolated } = require('../utils/statement/worker');
+const { downloadTelegramFile } = require('../utils/telegramFile');
 
 const ERROR_KEYS = {
   csv_columns: 'import_csv_columns',
   unknown_format: 'import_unknown_format',
   pdf: 'import_pdf_error',
   empty: 'import_empty',
-  too_many: 'import_too_many'
+  too_many: 'import_too_many',
+  too_complex: 'import_too_complex'
 };
 
 // Импорт банковской выписки: файл (.csv/.pdf/.txt) в любой момент → превью (ничего не записано) →
@@ -42,10 +45,7 @@ class ImportHandlers {
   }
 
   async download(ctx, fileId) {
-    const link = await ctx.telegram.getFileLink(fileId);
-    const response = await fetch(link.href || String(link));
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return Buffer.from(await response.arrayBuffer());
+    return downloadTelegramFile(ctx.telegram, fileId, { maxBytes: MAX_FILE_BYTES });
   }
 
   async handleDocument(ctx) {
@@ -78,7 +78,7 @@ class ImportHandlers {
     const userCurrency = await this.userService.getUserCurrency(userId);
     let parsed;
     try {
-      parsed = await parseStatement(buffer, { defaultCurrency: userCurrency });
+      parsed = await parseStatementIsolated(buffer, { defaultCurrency: userCurrency });
     } catch (error) {
       if (!(error instanceof ImportError)) throw error;
       logger.info('Statement not imported', { userId, reason: error.code });

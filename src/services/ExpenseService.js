@@ -128,7 +128,7 @@ class ExpenseService {
       'Другое': 'category_other'
     };
     
-    const translationKey = categoryMap[categoryName];
+    const translationKey = Object.hasOwn(categoryMap, categoryName) ? categoryMap[categoryName] : null;
     if (translationKey) {
       return localizationService.getText(userLanguage, translationKey);
     }
