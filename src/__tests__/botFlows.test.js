@@ -109,17 +109,6 @@ describe('CommandHandlers flows', () => {
       expect(extra.reply_markup.keyboard).toEqual(generateMainMenuKeyboard(localizationService, 'ru', false));
     });
 
-    test('after onboarding: completes funnel step and sends the full welcome', async () => {
-      const ctx = createCtx();
-
-      await handlers.start(ctx, { afterOnboarding: true });
-
-      expect(funnelService.track).toHaveBeenCalledWith(1, 'onboarding_completed');
-      expect(ctx.reply.mock.calls[0][0]).toBe(
-        `${t('en', 'start_message')}\n\n${t('en', 'start_reminders_note')}`
-      );
-    });
-
     test('main menu shows family expense button only for premium users in a family', async () => {
       premiumService.isPremiumUser.mockResolvedValue(true);
       familyService.getUserFamily.mockResolvedValue({ id: 7 });
@@ -159,7 +148,7 @@ describe('CommandHandlers flows', () => {
 
       const [text, extra] = ctx.reply.mock.calls[0];
       // без распознавания чеков: справка, строка про вопросы боту и «Разнос месяца»
-      expect(text).toBe(`${t('en', 'help_message')}\n\n${t('en', 'help_assistant')}\n\n${t('en', 'help_roast')}`);
+      expect(text).toBe(`${t('en', 'help_message')}\n\n${t('en', 'help_assistant')}\n\n${t('en', 'help_roast')}\n\n${t('en', 'help_setup')}`);
       expect(buttons(extra.reply_markup.inline_keyboard).map((b) => b.callback_data))
         .toEqual(['bug_report', 'back_to_menu']);
     });
@@ -170,7 +159,7 @@ describe('CommandHandlers flows', () => {
       await handlers.help(ctx);
 
       expect(ctx.answerCbQuery).toHaveBeenCalled();
-      expect(ctx.editMessageText).toHaveBeenCalledWith(`${t('en', 'help_message')}\n\n${t('en', 'help_assistant')}\n\n${t('en', 'help_roast')}`, expect.any(Object));
+      expect(ctx.editMessageText).toHaveBeenCalledWith(`${t('en', 'help_message')}\n\n${t('en', 'help_assistant')}\n\n${t('en', 'help_roast')}\n\n${t('en', 'help_setup')}`, expect.any(Object));
       expect(ctx.reply).not.toHaveBeenCalled();
     });
   });

@@ -677,3 +677,11 @@ CREATE TABLE IF NOT EXISTS roast_state (
     recent TEXT[] NOT NULL DEFAULT '{}'
 );
 COMMENT ON TABLE roast_state IS 'Злой режим: подколок за локальный день (day, day_count), время последней и последние варианты шаблонов';
+
+-- ==== ONBOARDING ====
+-- Опрос «🧭 Настроим бота под тебя» (после выбора языка и по /setup): цели, способы записи, ответы и пропущенные
+-- вопросы, статус (active | completed | skipped) и текущий шаг — опрос продолжается после рестарта и со старых кнопок.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_answers JSONB NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed_at TIMESTAMPTZ NULL;
+COMMENT ON COLUMN users.onboarding_answers IS 'Опрос «Настроим бота под тебя»: черновик и ответы (goals, inputs, answers, skipped, status, step)';
+COMMENT ON COLUMN users.onboarding_completed_at IS 'Когда опрос последний раз закончен (пройден или «Пропустить всё»)';

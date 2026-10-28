@@ -25,16 +25,19 @@ function stateCleanupMiddleware(handlers) {
         'adding_income',
         'adding_recurring',
         'adding_recurring_day',
-        'export_date_range'
+        'export_date_range',
+        'onb_budget'
       ];
       // Состояния с параметром после двоеточия (например, setting_budget:<цель>)
       const autoResetPrefixes = ['setting_budget:', 'renaming_custom_category:', 'admin_refund_search:', 'editing_income:', 'sv_in:', 'pl_in:', 'ai_in:'];
       // Найденная транзакция для возврата живёт только до кнопки «Вернуть» на её карточке
       const isStaleRefundConfirm = userState?.type === 'admin_refund_confirm'
         && ctx.callbackQuery?.data !== 'panel_refund_exec';
-      const shouldReset = autoResetStates.includes(userState)
+      // Вопрос о бюджете в опросе ждёт сумму и после траты, записанной посреди него («250 кофе» → выбор категории)
+      const keepForExpenseCard = userState === 'onb_budget' && /^category\|/.test(ctx.callbackQuery?.data || '');
+      const shouldReset = (autoResetStates.includes(userState)
         || (typeof userState === 'string' && autoResetPrefixes.some(prefix => userState.startsWith(prefix)))
-        || isStaleRefundConfirm;
+        || isStaleRefundConfirm) && !keepForExpenseCard;
 
       // Сбрасываем состояния при любых действиях пользователя (кроме текстовых сообщений)
       if (shouldReset && ctx.updateType !== 'message') {

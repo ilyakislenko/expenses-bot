@@ -14,7 +14,9 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.use(profileRefreshMiddleware(handlers.userService.userRepository));
 
   // Команды
-  bot.command('start', errorHandler((ctx) => commandHandlers.start(ctx))); // приветствие и главная клавиатура
+  // приветствие и главная клавиатура; незаконченный опрос «🧭 Настроим бота под тебя» — продолжить с текущего вопроса
+  bot.command('start', errorHandler((ctx) => handlers.onboardingHandlers.start(ctx)));
+  bot.command('setup', errorHandler((ctx) => handlers.onboardingHandlers.setup(ctx))); // опрос «🧭 Настроим бота под тебя» заново
   bot.command('help', errorHandler((ctx) => commandHandlers.help(ctx))); // короткая справка
   bot.command('stats', errorHandler((ctx) => expenseHandlers.showOverview(ctx, 0))); // обзор текущего периода
   bot.command('total', errorHandler((ctx) => expenseHandlers.showOverview(ctx, 0))); // обзор текущего периода
@@ -177,12 +179,13 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('ai', errorHandler((ctx) => assistantHandlers.showExamples(ctx)));
   bot.action(/^ai\|([1-6])$/, errorHandler((ctx) => assistantHandlers.askExample(ctx)));
   bot.action('aiq', errorHandler((ctx) => assistantHandlers.startInput(ctx)));
-  // «😈 Злой режим»: настройка (rst), уровень (rstl), обращение (rstg → rstgs), 18+ (rsty), «Разнос месяца» (rsm)
+  // «😈 Злой режим»: настройка (rst), уровень (rstl), обращение (rstg → rstgs), 18+ (rsty), «Разнос месяца» (rsm);
+  // источник `o` — вопрос о злом режиме в опросе «🧭 Настроим бота под тебя»
   bot.action('rst', errorHandler((ctx) => handlers.roastHandlers.showSettings(ctx)));
-  bot.action(/^rstl\|(off|spicy|savage)\|(s|m)$/, errorHandler((ctx) => handlers.roastHandlers.chooseLevel(ctx)));
-  bot.action(/^rstg\|(s|m)$/, errorHandler((ctx) => handlers.roastHandlers.showGender(ctx, { origin: ctx.match[1] })));
-  bot.action(/^rstgs\|(m|f|x)\|(off|spicy|savage|-)\|(s|m)$/, errorHandler((ctx) => handlers.roastHandlers.setGender(ctx)));
-  bot.action(/^rsty\|(s|m)$/, errorHandler((ctx) => handlers.roastHandlers.confirmAdult(ctx)));
+  bot.action(/^rstl\|(off|spicy|savage)\|(s|m|o)$/, errorHandler((ctx) => handlers.roastHandlers.chooseLevel(ctx)));
+  bot.action(/^rstg\|(s|m|o)$/, errorHandler((ctx) => handlers.roastHandlers.showGender(ctx, { origin: ctx.match[1] })));
+  bot.action(/^rstgs\|(m|f|x)\|(off|spicy|savage|-)\|(s|m|o)$/, errorHandler((ctx) => handlers.roastHandlers.setGender(ctx)));
+  bot.action(/^rsty\|(s|m|o)$/, errorHandler((ctx) => handlers.roastHandlers.confirmAdult(ctx)));
   bot.action('rsm', errorHandler((ctx) => handlers.roastHandlers.showMonth(ctx)));
 
   // Текстовые сообщения
@@ -244,26 +247,25 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('settings', errorHandler((ctx) => commandHandlers.settings(ctx)));
   bot.action('back_to_settings', errorHandler((ctx) => commandHandlers.settings(ctx)));
   bot.action('settings_currencies', errorHandler((ctx) => commandHandlers.settingsCurrencies(ctx)));
-  // set_currency|<код>[|ob]: `|ob` — шаг онбординга, после него выбор часового пояса
+  // set_currency|<код>[|ob]: `|ob` — вопрос о валюте в опросе «🧭 Настроим бота под тебя»
   bot.action(/^set_currency\|([A-Z]{3})(\|ob)?$/, errorHandler(async (ctx) => {
     const userId = ctx.from.id;
     const currency = ctx.match[1];
-    const onboarding = !!ctx.match[2];
     const validation = handlers.enhancedValidator.validateCurrency(currency);
     if (!validation.isValid) return ctx.answerCbQuery();
+    if (ctx.match[2]) return handlers.onboardingHandlers.answerCurrency(ctx, currency);
     await handlers.userService.setUserCurrency(userId, currency);
     const userLanguage = await handlers.userService.getUserLanguage(userId);
     await ctx.answerCbQuery(handlers.localizationService.getText(userLanguage, 'currency_set', { currency }));
-    if (onboarding) {
-      await commandHandlers.timezone(ctx, { onboarding: true });
-      return;
-    }
     await commandHandlers.settingsCurrencies(ctx);
   })); // установка основной валюты
   bot.action('change_currency', errorHandler((ctx) => commandHandlers.currency(ctx)));
-  // «Назад» на шагах онбординга — к предыдущему шагу, а не в Настройки
+  // «Назад» в опросе: с первого вопроса — к выбору языка, с часового пояса — к валюте
   bot.action('ob_language', errorHandler((ctx) => commandHandlers.onboardingLanguage(ctx)));
-  bot.action('ob_currency', errorHandler((ctx) => commandHandlers.currency(ctx, { onboarding: true })));
+  bot.action('ob_currency', errorHandler((ctx) => handlers.onboardingHandlers.openCurrency(ctx)));
+  // Опрос «🧭 Настроим бота под тебя»: onb|<шаг>[|<действие>[|<значение>]], вход из Настроек — onb_setup
+  bot.action(/^onb\|[a-z](\|[a-z]{1,2}(\|[a-z0-9]{1,10})?)?$/, errorHandler((ctx) => handlers.onboardingHandlers.handle(ctx)));
+  bot.action('onb_setup', errorHandler((ctx) => handlers.onboardingHandlers.setup(ctx)));
   bot.action('change_timezone', errorHandler((ctx) => commandHandlers.timezone(ctx)));
   bot.action('change_language', errorHandler((ctx) => commandHandlers.language(ctx)));
   bot.action('change_period_start', errorHandler((ctx) => callbackHandlers.handleChangePeriodStart(ctx)));

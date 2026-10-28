@@ -161,6 +161,23 @@ class UserRepository extends BaseRepository {
     await this.query(query, [day, userId]);
   }
 
+  // Опрос «🧭 Настроим бота под тебя»: черновик/ответы (JSONB) и когда опрос закончен (пройден или пропущен)
+  async getOnboarding(userId) {
+    const result = await this.query('SELECT onboarding_answers, onboarding_completed_at FROM users WHERE id = $1', [userId]);
+    const row = result.rows[0];
+    return row ? { answers: row.onboarding_answers || null, completedAt: row.onboarding_completed_at || null } : null;
+  }
+
+  // finished — опрос закончен этим сохранением: ставим onboarding_completed_at
+  async saveOnboarding(userId, answers, { finished = false } = {}) {
+    await this.query(
+      `UPDATE users SET onboarding_answers = $2::jsonb,
+         onboarding_completed_at = CASE WHEN $3::boolean THEN NOW() ELSE onboarding_completed_at END
+       WHERE id = $1`,
+      [userId, JSON.stringify(answers), finished]
+    );
+  }
+
   async isUserAdmin(userId) {
     const result = await this.query('SELECT is_admin FROM users WHERE id = $1', [userId]);
     return result.rows[0]?.is_admin || false;

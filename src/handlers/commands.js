@@ -74,15 +74,14 @@ class CommandHandlers {
     await ctx.reply(text, { disable_web_page_preview: true });
   }
 
-  // afterOnboarding — первый показ после выбора языка/валюты/часового пояса: полное приветствие.
-  // Вернувшемуся пользователю — коротко, без простыни текста.
-  // Шаг онбординга живёт в callback_data кнопок (`|ob`), а не в памяти, поэтому переживает рестарт процесса.
-  async start(ctx, { afterOnboarding = false } = {}) {
+  // Новому пользователю — выбор языка, за ним опрос «🧭 Настроим бота под тебя» (OnboardingHandlers).
+  // Вернувшемуся — коротко, без простыни текста.
+  async start(ctx) {
     const user = ctx.from;
     // Новый пользователь — только тот, чей вызов создал строку (без гонки двух /start подряд)
     const registered = await this.userService.registerUser(user.id, user.username, user.first_name);
 
-    // Новый пользователь: одноразовый onboarding (язык → валюта → часовой пояс)
+    // Новый пользователь: язык, затем опрос (шаг — в callback_data `|ob` и в users.onboarding_answers)
     if (registered && registered.isNew) {
       // Источник из ссылки t.me/<bot>?start=<код> и первый шаг воронки. Приглашения друзей (ref_<код>) —
       // один источник «ref», а не отдельный у каждого пригласившего
@@ -98,22 +97,10 @@ class CommandHandlers {
       return;
     }
     // Дубль первого /start из той же пачки: экран выбора языка уже показан
-    if (registered && registered.justCreated && !afterOnboarding) return;
+    if (registered && registered.justCreated) return;
 
     const userLanguage = await this.userService.getUserLanguage(user.id);
-    let message = this.localizationService.getText(userLanguage, 'start_returning');
-    if (afterOnboarding) {
-      await this.funnelService.track(user.id, 'onboarding_completed');
-      message = `${this.localizationService.getText(userLanguage, 'start_message')}\n\n${this.localizationService.getText(userLanguage, 'start_reminders_note')}`;
-      // Пришёл по приглашению друга — напоминаем, как получить бонус
-      if (this.referralService && await this.referralService.getPendingInviter(user.id).catch(() => null)) {
-        message += `\n\n${this.localizationService.getText(userLanguage, 'referral_welcome_note', {
-          expenses: this.referralService.config.ACTIVATION_EXPENSES,
-          days: this.referralService.rewardDays
-        })}`;
-      }
-    }
-    await ctx.reply(message, {
+    await ctx.reply(this.localizationService.getText(userLanguage, 'start_returning'), {
       parse_mode: 'Markdown',
       reply_markup: await this.mainKeyboardMarkup(user.id, userLanguage)
     });
@@ -168,6 +155,7 @@ class CommandHandlers {
     if (this.voiceService && this.voiceService.configured) hints.push(t('help_voice'));
     hints.push(t('help_assistant'));
     hints.push(t('help_roast'));
+    hints.push(t('help_setup'));
     const text = hints.join('\n\n');
     await respond(ctx, text, {
       parse_mode: 'Markdown',
@@ -205,7 +193,7 @@ class CommandHandlers {
   }
 
 
-  // Шаг онбординга «язык»; повторный показ — по «Назад» с шага валюты
+  // Новый пользователь: выбор языка (дальше — опрос); повторный показ — по «Назад» с первого вопроса
   async onboardingLanguage(ctx, language) {
     const userLanguage = language || await this.userService.getUserLanguage(ctx.from.id);
     if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
@@ -214,15 +202,12 @@ class CommandHandlers {
     });
   }
 
-  // onboarding: кнопки с признаком шага (`|ob`), «Назад» — к выбору языка
-  async currency(ctx, { onboarding = false } = {}) {
+  async currency(ctx) {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
     const message = this.localizationService.getText(userLanguage, 'currency_select');
     const { generateCurrencyKeyboard } = require('../utils/constants');
-    const currencyKeyboard = onboarding
-      ? generateCurrencyKeyboard(this.localizationService, userLanguage, 'set_currency', 'ob_language', '|ob')
-      : generateCurrencyKeyboard(this.localizationService, userLanguage, 'set_currency', 'settings_currencies');
+    const currencyKeyboard = generateCurrencyKeyboard(this.localizationService, userLanguage, 'set_currency', 'settings_currencies');
     if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
     await respond(ctx, message, { reply_markup: { inline_keyboard: currencyKeyboard } });
   }
@@ -320,8 +305,7 @@ class CommandHandlers {
     });
   }
 
-  // onboarding: кнопки с признаком шага (`|ob`), «Назад» — к выбору валюты
-  async timezone(ctx, { onboarding = false } = {}) {
+  async timezone(ctx) {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
     const { generateTimeKeyboard } = require('../utils/constants');
@@ -330,7 +314,7 @@ class CommandHandlers {
     await respond(ctx, message, {
       parse_mode: 'Markdown',
       reply_markup: {
-        inline_keyboard: generateTimeKeyboard(this.localizationService, userLanguage, { onboarding })
+        inline_keyboard: generateTimeKeyboard(this.localizationService, userLanguage)
       }
     });
   }

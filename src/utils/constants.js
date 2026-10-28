@@ -199,6 +199,7 @@ function generateSettingsKeyboard(localizationService, userLanguage) {
     [{ text: t('button_change_language'), callback_data: 'change_language' }, { text: t('button_change_period_start'), callback_data: 'change_period_start' }],
     [{ text: t('button_reminders'), callback_data: 'configure_reminder_hours' }, { text: t('button_custom_categories'), callback_data: 'custom_categories' }],
     [{ text: t('button_roast_settings'), callback_data: 'rst' }],
+    [{ text: t('button_onboarding_setup'), callback_data: 'onb_setup' }],
     [{ text: t('button_back'), callback_data: 'back_to_menu' }]
   ];
 }

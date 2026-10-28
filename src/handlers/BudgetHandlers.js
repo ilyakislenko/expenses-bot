@@ -200,4 +200,6 @@ class BudgetHandlers {
   }
 }
 
+BudgetHandlers.MAX_BUDGET_AMOUNT = MAX_BUDGET_AMOUNT;
+
 module.exports = BudgetHandlers;

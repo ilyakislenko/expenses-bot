@@ -1,7 +1,7 @@
 # SpendTracker — Политика конфиденциальности / Privacy Policy
 
 ## Русский
-Редакция от 27.10.2026. Оператор персональных данных — ИП KISLENKO (Республика Казахстан), ИИН 010320550645. Бот SpendTracker (@ExpensesAssistant_bot). Контакт: ikis.dev01@gmail.com, в боте — /paysupport.
+Редакция от 28.10.2026. Оператор персональных данных — ИП KISLENKO (Республика Казахстан), ИИН 010320550645. Бот SpendTracker (@ExpensesAssistant_bot). Контакт: ikis.dev01@gmail.com, в боте — /paysupport.
 
 ## Какие данные бот хранит
 - Из Telegram: ID, имя, username, язык.
@@ -16,6 +16,7 @@
 - Код рекламной ссылки, по которой ты пришёл, и шаги первого запуска — для обезличенной статистики.
 - Приглашения друзей: кто кого пригласил по личной ссылке и выданные за это дни премиума. Пригласивший видит в боте число приглашённых и получает сообщение с именем друга из Telegram, когда тот пришёл по ссылке и когда начал вести учёт; траты друга ему не видны.
 - «😈 Злой режим» (по желанию): уровень, обращение (мужской / женский / «не скажу» — только чтобы правильно согласовать фразы) и счётчик подколок за день. Сами подколки не сохраняются.
+- Ответы на вопросы «🧭 Настроим бота под тебя» (по желанию, любой можно пропустить): зачем тебе бот (цели), как удобнее записывать, какие вопросы пропущены и когда опрос пройден — чтобы настроить бот и показать нужные разделы, а также для обезличенной статистики. Остальные ответы сразу становятся обычными настройками.
 
 ## Зачем
 Чтобы вести учёт, считать итоги и бюджеты, присылать напоминания, сводки и уведомления, выдавать премиум, отвечать в поддержке и улучшать бот.
@@ -34,7 +35,7 @@
 О существенных изменениях сообщим в боте. Актуальная версия — по команде /privacy.
 
 ## English
-Version of 27.10.2026. Data controller: IE KISLENKO (Republic of Kazakhstan), IIN 010320550645. SpendTracker bot (@ExpensesAssistant_bot). Contact: ikis.dev01@gmail.com, in the bot — /paysupport.
+Version of 28.10.2026. Data controller: IE KISLENKO (Republic of Kazakhstan), IIN 010320550645. SpendTracker bot (@ExpensesAssistant_bot). Contact: ikis.dev01@gmail.com, in the bot — /paysupport.
 
 ## What the bot stores
 - From Telegram: ID, name, username, language.
@@ -49,6 +50,7 @@ Version of 27.10.2026. Data controller: IE KISLENKO (Republic of Kazakhstan), II
 - The code of the ad link you came from and first-run steps — for anonymous statistics.
 - Friend invites: who invited whom via a personal link and the premium days granted for it. The inviter sees the number of invited friends in the bot and gets a message with the friend's Telegram name when the friend joins via the link and when they start tracking; the friend's expenses are never shown to them.
 - Roast mode (opt-in): the level, the form of address (male / female / «rather not say» — only to get the grammar right) and a per-day counter of roasts. The roast texts are not stored.
+- «🧭 Let's set the bot up for you» answers (optional, any question can be skipped): what you need the bot for (goals), how you prefer to record, which questions were skipped and when the setup was finished — to configure the bot, show the right sections and for anonymous statistics. The other answers simply become regular settings.
 
 ## Why
 To keep your records, calculate summaries and budgets, send reminders, summaries and notifications, grant premium, answer support requests and improve the bot.

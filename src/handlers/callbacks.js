@@ -4,7 +4,7 @@ const { summaryHour } = require('../services/DailySummaryService');
 const hourLabel = (hour) => `${String(hour).padStart(2, '0')}:00`;
 
 class CallbackHandlers {
-  constructor({ expenseService, premiumService, paymentService, familyService, categoryService, localizationService, formatter, stateService, userService, commandHandlers, keyboardGenerators, donationRepository, funnelService, weeklyInsightService, planningService = null, achievementService = null }) {
+  constructor({ expenseService, premiumService, paymentService, familyService, categoryService, localizationService, formatter, stateService, userService, commandHandlers, keyboardGenerators, donationRepository, funnelService, weeklyInsightService, planningService = null, achievementService = null, onboardingHandlers = null }) {
     this.expenseService = expenseService;
     this.premiumService = premiumService;
     this.paymentService = paymentService;
@@ -21,6 +21,7 @@ class CallbackHandlers {
     this.weeklyInsightService = weeklyInsightService;
     this.planningService = planningService;
     this.achievementService = achievementService;
+    this.onboardingHandlers = onboardingHandlers; // опрос «🧭 Настроим бота под тебя»: шаги языка и часового пояса
   }
 
   async handleToggleReminders(ctx) {
@@ -336,7 +337,7 @@ class CallbackHandlers {
     }
   }
 
-  // time|<час>|<минуты>[|ob]: время пользователя на момент показа клавиатуры; `|ob` — последний шаг онбординга
+  // time|<час>|<минуты>[|ob]: время пользователя на момент показа клавиатуры; `|ob` — вопрос опроса нового пользователя
   async handleTimezoneSelection(ctx) {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
@@ -361,9 +362,8 @@ class CallbackHandlers {
       });
       await ctx.answerCbQuery(this.localizationService.getText(userLanguage, 'timezone_set', { timezone: displayName }));
       if (onboarding) {
-        // Убираем кнопки онбординга и завершаем его: приветствие с главной клавиатурой
-        await respond(ctx, timezoneUpdatedText, { parse_mode: 'Markdown' });
-        await this.commandHandlers.start(ctx, { afterOnboarding: true });
+        // Дальше — следующий вопрос опроса в том же сообщении
+        await this.onboardingHandlers.afterTimezone(ctx, timezone);
       } else {
         await respond(ctx, timezoneUpdatedText, {
           parse_mode: 'Markdown',
@@ -389,7 +389,7 @@ class CallbackHandlers {
     }
   }
 
-  // set_language|<код>[|ob]: `|ob` — первый шаг онбординга, после него выбор валюты
+  // set_language|<код>[|ob]: `|ob` — язык нового пользователя, после него опрос «🧭 Настроим бота под тебя»
   async handleLanguageSelection(ctx) {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
@@ -411,9 +411,9 @@ class CallbackHandlers {
       const languageSetMessage = this.localizationService.getText(languageCode, 'language_set');
       await ctx.answerCbQuery(languageSetMessage);
 
-      // Шаг онбординга — сразу просим выбрать валюту
+      // Язык нового пользователя — дальше первый вопрос опроса
       if (onboardingFlag === 'ob') {
-        await this.commandHandlers.currency(ctx, { onboarding: true });
+        await this.onboardingHandlers.beginNew(ctx, languageCode);
         return;
       }
 

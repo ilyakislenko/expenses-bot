@@ -2,15 +2,26 @@ const respond = require('../utils/respond');
 const ReferralService = require('../services/ReferralService');
 
 const ORIGINS = { s: 'settings', m: 'month' };
+const BACK = { s: 'rst', m: 'rsm' };
 
 // «😈 Злой режим»: экран настройки (⚙️ Настройки → «😈 Злой режим», `rst`), пол для согласования фраз, 18+ для
 // уровня «без цензуры» и «Разнос месяца» (`/roast`, `rsm`). origin в callback_data — куда вернуться после выбора:
-// `s` — экран настройки, `m` — «Разнос месяца».
+// `s` — экран настройки, `m` — «Разнос месяца», `o` — опрос «🧭 Настроим бота под тебя» (registerOrigin).
 class RoastHandlers {
   constructor({ roastService, userService, localizationService }) {
     this.roastService = roastService;
     this.userService = userService;
     this.localizationService = localizationService;
+    this.extraOrigins = {};
+  }
+
+  // Другой экран, который переиспользует выбор уровня, пол и 18+: show(ctx, notice) после сохранения уровня, back — «Назад»
+  registerOrigin(code, { show, back }) {
+    this.extraOrigins[code] = { show, back };
+  }
+
+  backFor(origin) {
+    return (this.extraOrigins[origin] && this.extraOrigins[origin].back) || BACK[origin] || 'rst';
   }
 
   t(lang, key, params) {
@@ -65,6 +76,7 @@ class RoastHandlers {
 
   // Куда вернуться после выбора
   async showOrigin(ctx, origin, notice = null) {
+    if (this.extraOrigins[origin]) return this.extraOrigins[origin].show(ctx, notice);
     if (ORIGINS[origin] === 'month') {
       await this.answer(ctx, notice);
       return this.showMonth(ctx);
@@ -72,7 +84,7 @@ class RoastHandlers {
     return this.showSettings(ctx, { notice });
   }
 
-  // callback: rstl|<off|spicy|savage>|<s|m>. Не off: сначала пол (если не указан), для savage — право на него
+  // callback: rstl|<off|spicy|savage>|<s|m|o>. Не off: сначала пол (если не указан), для savage — право на него
   // (USER_LIMITS.*.ROAST_SAVAGE) и разовое подтверждение 18+
   async chooseLevel(ctx) {
     const [, level, origin] = ctx.match;
@@ -94,7 +106,7 @@ class RoastHandlers {
     return this.showOrigin(ctx, origin, this.t(lang, 'roast_saved', { level: this.levelLabel(lang, level) }));
   }
 
-  // callback: rstg|<s|m> — сменить обращение; при включении режима без пола — то же с уровнем, к которому идём
+  // callback: rstg|<s|m|o> — сменить обращение; при включении режима без пола — то же с уровнем, к которому идём
   async showGender(ctx, { level = '-', origin = 's' } = {}) {
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
@@ -106,13 +118,13 @@ class RoastHandlers {
         inline_keyboard: [
           [button('m'), button('f')],
           [button('x')],
-          [{ text: this.t(lang, 'button_back'), callback_data: origin === 'm' ? 'rsm' : 'rst' }]
+          [{ text: this.t(lang, 'button_back'), callback_data: this.backFor(origin) }]
         ]
       }
     });
   }
 
-  // callback: rstgs|<m|f|x>|<уровень или ->|<s|m>
+  // callback: rstgs|<m|f|x>|<уровень или ->|<s|m|o>
   async setGender(ctx) {
     const [, gender, level, origin] = ctx.match;
     const userId = ctx.from.id;
@@ -142,13 +154,13 @@ class RoastHandlers {
         inline_keyboard: [
           [{ text: this.t(lang, 'button_premium'), callback_data: 'premium_subscription' }],
           [{ text: this.levelLabel(lang, 'spicy'), callback_data: `rstl|spicy|${origin}` }],
-          [{ text: this.t(lang, 'button_back'), callback_data: origin === 'm' ? 'rsm' : 'rst' }]
+          [{ text: this.t(lang, 'button_back'), callback_data: this.backFor(origin) }]
         ]
       }
     }));
   }
 
-  // callback: rsty|<s|m> — «Мне есть 18»: подтверждение запоминается, уровень — без цензуры
+  // callback: rsty|<s|m|o> — «Мне есть 18»: подтверждение запоминается, уровень — без цензуры
   async confirmAdult(ctx) {
     const origin = ctx.match[1];
     const userId = ctx.from.id;

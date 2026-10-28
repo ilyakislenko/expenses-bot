@@ -37,8 +37,9 @@ function build({ language = 'en' } = {}) {
       generateMainMenuKeyboard: (lang, showFamily) => generateMainMenuKeyboard(localizationService, lang, showFamily)
     }
   });
-  const callbackHandlers = new CallbackHandlers({ userService, localizationService, stateService, commandHandlers });
-  return { localizationService, stateService, userService, funnelService, commandHandlers, callbackHandlers };
+  const onboardingHandlers = { beginNew: jest.fn(async () => {}), afterTimezone: jest.fn(async () => {}) };
+  const callbackHandlers = new CallbackHandlers({ userService, localizationService, stateService, commandHandlers, onboardingHandlers });
+  return { localizationService, stateService, userService, funnelService, commandHandlers, callbackHandlers, onboardingHandlers };
 }
 
 function callbackCtx(data, message = { message_id: 10, date: nowSeconds() }) {
@@ -182,44 +183,30 @@ describe('time| reference time is when the keyboard was shown (PLT-8)', () => {
 });
 
 describe('onboarding survives a restart (PLT-7 / TG-12)', () => {
-  test('language → currency → timezone continue after StateService.clearAll() and finish with the welcome', async () => {
-    const { callbackHandlers, stateService, userService, funnelService, localizationService } = build();
-    const t = (lang, key, params) => localizationService.getText(lang, key, params);
+  test('language |ob and time |ob hand over to the questionnaire after StateService.clearAll()', async () => {
+    const { callbackHandlers, stateService, userService, onboardingHandlers } = build();
 
-    // Шаг 1: язык. Перед нажатием процесс «перезапустился»
+    // Язык. Перед нажатием процесс «перезапустился»: шаг — в callback_data, дальше — первый вопрос опроса
     stateService.clearAll();
     const langCtx = callbackCtx('set_language|de|ob');
     await callbackHandlers.handleLanguageSelection(langCtx);
     expect(userService.setUserLanguage).toHaveBeenCalledWith(1, 'de');
-    const [currencyText, currencyExtra] = langCtx.editMessageText.mock.calls[0];
-    expect(currencyText).toBe(t('de', 'currency_select'));
-    const currencyData = buttons(currencyExtra.reply_markup.inline_keyboard).map((b) => b.callback_data);
-    expect(currencyData).toContain('set_currency|EUR|ob');
-    expect(currencyData[currencyData.length - 1]).toBe('ob_language'); // «Назад» — к языку, не в Настройки
-    expect(currencyData).not.toContain('back_to_settings');
+    expect(onboardingHandlers.beginNew).toHaveBeenCalledWith(langCtx, 'de');
     expect(langCtx.telegram.sendMessage).not.toHaveBeenCalled();
 
-    // Шаг 3 (после ещё одного рестарта): часовой пояс завершает онбординг
+    // Часовой пояс (после ещё одного рестарта): сохраняется и передаётся опросу
     stateService.clearAll();
     const shownAt = new Date();
     const timeCtx = callbackCtx(timeButton(shownAt, 1, '|ob'), { message_id: 10, date: Math.floor(shownAt.getTime() / 1000) });
     await callbackHandlers.handleTimezoneSelection(timeCtx);
     expect(userService.setUserTimezone).toHaveBeenCalledWith(1, 'Etc/GMT-1');
-    expect(funnelService.track).toHaveBeenCalledWith(1, 'onboarding_completed');
-    // Сообщение с кнопками онбординга закрыто, приветствие пришло новым сообщением с главной клавиатурой
-    expect(timeCtx.editMessageText.mock.calls[0][1].reply_markup).toBeUndefined();
-    const [welcome, welcomeExtra] = timeCtx.reply.mock.calls[0];
-    expect(welcome).toBe(`${t('de', 'start_message')}\n\n${t('de', 'start_reminders_note')}`);
-    expect(welcomeExtra.reply_markup.keyboard).toEqual(generateMainMenuKeyboard(localizationService, 'de', false));
+    expect(onboardingHandlers.afterTimezone).toHaveBeenCalledWith(timeCtx, 'Etc/GMT-1');
+    expect(timeCtx.reply).not.toHaveBeenCalled();
   });
 
-  test('currency step with |ob moves on to the onboarding timezone keyboard', async () => {
-    const { commandHandlers } = build({ language: 'ru' });
-    const ctx = callbackCtx('set_currency|RUB|ob');
-
-    await commandHandlers.timezone(ctx, { onboarding: true });
-
-    const data = buttons(ctx.editMessageText.mock.calls[0][1].reply_markup.inline_keyboard).map((b) => b.callback_data);
+  test('onboarding timezone keyboard: every hour button carries |ob, Back goes to the currency question', () => {
+    const localizationService = new LocalizationService();
+    const data = buttons(generateTimeKeyboard(localizationService, 'ru', { onboarding: true })).map((b) => b.callback_data);
     expect(data.filter((d) => d.startsWith('time|')).every((d) => /^time\|\d{1,2}\|\d{1,2}\|ob$/.test(d))).toBe(true);
     expect(data[data.length - 1]).toBe('ob_currency');
   });

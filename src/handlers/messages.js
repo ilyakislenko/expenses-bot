@@ -2,7 +2,7 @@ const { LEGACY_MENU_BUTTON_KEYS } = require('../utils/constants');
 const AssistantHandlers = require('./AssistantHandlers');
 
 class MessageHandlers {
-constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, donationRepository, bugReportRepository, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, savingsHandlers, planningHandlers, assistantHandlers, multiEntryHandlers }) {
+constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, donationRepository, bugReportRepository, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, savingsHandlers, planningHandlers, assistantHandlers, multiEntryHandlers, onboardingHandlers = null }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -26,6 +26,7 @@ constructor({ expenseService, userService, premiumService, familyService, catego
     this.planningHandlers = planningHandlers;
     this.assistantHandlers = assistantHandlers;
     this.multiEntryHandlers = multiEntryHandlers;
+    this.onboardingHandlers = onboardingHandlers;
   }
 
   async handleExpense(ctx) {
@@ -161,6 +162,13 @@ constructor({ expenseService, userService, premiumService, familyService, catego
 
         if (userState === 'export_date_range') {
           return await this.exportHandlers.handleRangeInput(ctx, text, userLanguage);
+        }
+
+        // Сумма бюджета в опросе «🧭 Настроим бота под тебя»; не сумма (например, «250 кофе») — обычная запись ниже,
+        // вопрос о бюджете ждёт дальше
+        if (userState === 'onb_budget' && this.onboardingHandlers
+          && await this.onboardingHandlers.handleBudgetInput(ctx, text, userLanguage)) {
+          return;
         }
       }
       

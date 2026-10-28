@@ -9,6 +9,11 @@ class FunnelRepository extends BaseRepository {
     );
   }
 
+  async hasEvent(userId, event) {
+    const result = await this.query('SELECT 1 FROM user_funnel_events WHERE user_id = $1 AND event = $2', [userId, event]);
+    return result.rows.length > 0;
+  }
+
   async setSourceIfEmpty(userId, source) {
     await this.query('UPDATE users SET source = $2 WHERE id = $1 AND source IS NULL', [userId, source]);
   }
@@ -25,7 +30,8 @@ class FunnelRepository extends BaseRepository {
       ),
       steps AS (
         SELECT c.*,
-          EXISTS (SELECT 1 FROM user_funnel_events e WHERE e.user_id = c.id AND e.event = 'onboarding_completed') AS onboarded,
+          -- Дошёл до главной клавиатуры: опрос пройден или пропущен («Пропустить всё»)
+          EXISTS (SELECT 1 FROM user_funnel_events e WHERE e.user_id = c.id AND e.event IN ('onboarding_completed', 'onboarding_skipped')) AS onboarded,
           EXISTS (SELECT 1 FROM user_funnel_events e WHERE e.user_id = c.id AND e.event = 'first_expense') AS first_expense,
           EXISTS (SELECT 1 FROM expenses x WHERE x.user_id = c.id AND x.recurring_expense_id IS NULL
                     AND x.created_at_utc >= c.registered_at + INTERVAL '7 days') AS returned_week2,

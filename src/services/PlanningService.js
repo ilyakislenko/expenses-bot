@@ -330,8 +330,12 @@ class PlanningService {
   // Переключить утренние напоминания о платежах; новое значение
   async toggleBillReminders(userId) {
     const value = !(await this.planningRepository.isBillRemindersEnabled(userId));
-    await this.planningRepository.setBillRemindersEnabled(userId, value);
+    await this.setBillRemindersEnabled(userId, value);
     return value;
+  }
+
+  async setBillRemindersEnabled(userId, enabled) {
+    await this.planningRepository.setBillRemindersEnabled(userId, enabled);
   }
 
   // ========================================

@@ -1,7 +1,8 @@
 const logger = require('../utils/logger');
 
-// Шаги воронки (первое наступление для пользователя)
-const FUNNEL_EVENTS = ['registered', 'onboarding_completed', 'first_expense', 'paywall_viewed', 'tariffs_viewed', 'paid'];
+// Шаги воронки (первое наступление для пользователя). onboarding_started / onboarding_skipped — опрос
+// «🧭 Настроим бота под тебя»: начат и пропущен целиком («Пропустить всё»); onboarding_completed — пройден до конца
+const FUNNEL_EVENTS = ['registered', 'onboarding_started', 'onboarding_completed', 'onboarding_skipped', 'first_expense', 'paywall_viewed', 'tariffs_viewed', 'paid'];
 
 // Код источника из /start: латиница, цифры, "_" и "-", до 64 символов (ограничение Telegram для start-параметра)
 const SOURCE_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
@@ -18,6 +19,16 @@ class FunnelService {
       await this.funnelRepository.track(userId, event);
     } catch (error) {
       logger.error('Failed to track funnel event', { userId, event, error: error.message });
+    }
+  }
+
+  // Шаг воронки уже был (например, first_expense — пользователь уже что-то записал); ошибка — «нет»
+  async hasEvent(userId, event) {
+    try {
+      return await this.funnelRepository.hasEvent(userId, event);
+    } catch (error) {
+      logger.error('Failed to read funnel event', { userId, event, error: error.message });
+      return false;
     }
   }
 

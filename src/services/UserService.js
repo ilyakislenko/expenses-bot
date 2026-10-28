@@ -160,6 +160,14 @@ class UserService {
     return this.userRepository.getUserPeriodStartDay(userId);
   }
 
+  async getOnboarding(userId) {
+    return this.userRepository.getOnboarding(userId);
+  }
+
+  async saveOnboarding(userId, answers, options) {
+    return this.userRepository.saveOnboarding(userId, answers, options);
+  }
+
   // Методы для премиум-категорий
   async createUserCategory(userId, name, icon) {
     const isPremium = await this.getUserPremium(userId);

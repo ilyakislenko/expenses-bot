@@ -99,6 +99,8 @@ const ReferralHandlers = require('./handlers/ReferralHandlers');
 const AssistantHandlers = require('./handlers/AssistantHandlers');
 const MultiEntryHandlers = require('./handlers/MultiEntryHandlers');
 const RoastHandlers = require('./handlers/RoastHandlers');
+const OnboardingHandlers = require('./handlers/OnboardingHandlers');
+const OnboardingService = require('./services/OnboardingService');
 
 // State management
 const StateService = require('./services/StateService');
@@ -341,6 +343,33 @@ class Container {
           roastService: this.get('roastService'),
           userService: this.get('userService'),
           localizationService: this.get('localizationService')
+        });
+
+      case 'onboardingService':
+        return new OnboardingService({
+          userService: this.get('userService'),
+          budgetService: this.get('budgetService'),
+          planningService: this.get('planningService'),
+          achievementService: this.get('achievementService'),
+          premiumService: this.get('premiumService'),
+          funnelService: this.get('funnelService')
+        });
+
+      case 'onboardingHandlers':
+        return new OnboardingHandlers({
+          onboardingService: this.get('onboardingService'),
+          userService: this.get('userService'),
+          roastService: this.get('roastService'),
+          roastHandlers: this.get('roastHandlers'),
+          commandHandlers: this.get('commandHandlers'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter'),
+          stateService: this.get('stateService'),
+          validator: this.get('enhancedValidator'),
+          premiumService: this.get('premiumService'),
+          referralService: this.get('referralService'),
+          voiceService: this.get('voiceService'),
+          receiptService: this.get('receiptService')
         });
 
       case 'entryBatchRepository':
@@ -632,7 +661,8 @@ class Container {
           savingsHandlers: this.get('savingsHandlers'),
           planningHandlers: this.get('planningHandlers'),
           assistantHandlers: this.get('assistantHandlers'),
-          multiEntryHandlers: this.get('multiEntryHandlers')
+          multiEntryHandlers: this.get('multiEntryHandlers'),
+          onboardingHandlers: this.get('onboardingHandlers')
         });
 
       case 'callbackHandlers':
@@ -652,7 +682,8 @@ class Container {
           funnelService: this.get('funnelService'),
           weeklyInsightService: this.get('weeklyInsightService'),
           planningService: this.get('planningService'),
-          achievementService: this.get('achievementService')
+          achievementService: this.get('achievementService'),
+          onboardingHandlers: this.get('onboardingHandlers')
         });
 
       case 'adminHandlers':
@@ -810,6 +841,7 @@ class Container {
       assistantHandlers: this.get('assistantHandlers'),
       multiEntryHandlers: this.get('multiEntryHandlers'),
       roastHandlers: this.get('roastHandlers'),
+      onboardingHandlers: this.get('onboardingHandlers'),
       savingsHandlers: this.get('savingsHandlers'),
       planningHandlers: this.get('planningHandlers'),
       planningService: this.get('planningService'),
