@@ -14,6 +14,8 @@ const RETRO_CELEBRATE_MAX = 2;
 const MAX_NOTE_LINES = 3;
 // Сообщения cron (итоги челленджей, «Итоги месяца») — только днём по местному времени
 const DAY_HOURS = { from: 10, to: 21 };
+// Подпись к фото в Telegram — до 1024 символов
+const CAPTION_LIMIT = 1024;
 
 function localParts(timezone, now) {
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -30,7 +32,7 @@ function shortDate(day) {
 class AchievementService {
   constructor({
     achievementRepository, userService, premiumService, expenseService, reportService, budgetService, savingsService,
-    currencyUtils, formatter, localizationService, notificationService, userNotificationRepository
+    currencyUtils, formatter, localizationService, notificationService, userNotificationRepository, chartService = null
   }) {
     this.achievementRepository = achievementRepository;
     this.userService = userService;
@@ -44,6 +46,7 @@ class AchievementService {
     this.localizationService = localizationService;
     this.notificationService = notificationService;
     this.userNotificationRepository = userNotificationRepository;
+    this.chartService = chartService;
   }
 
   t(lang, key, params) {
@@ -407,7 +410,8 @@ class AchievementService {
     return localParts(timezone, new Date(date)).date;
   }
 
-  // offset: -1 — прошлый период, 0 — текущий (на сегодня). → { text, period } или null (трат нет)
+  // offset: -1 — прошлый период, 0 — текущий (на сегодня). → { text, period, card } или null (трат нет).
+  // card — числа для картинки (ChartService.wrappedCard), без описаний трат и названий целей
   async buildWrapped(userId, lang, offset = -1) {
     const { timezone, currency, period } = await this.expenseService.getPeriodContext(userId, 'month', offset);
     const expenses = await this.expenseService.getExpenses(userId, timezone, period);
@@ -434,13 +438,14 @@ class AchievementService {
 
     const categories = await this.reportService.categoryBreakdown(userId, timezone, period, currency);
     const top = categories[0];
+    let comparison = null;
     if (top && total > 0) {
       lines.push(`🏆 ${this.t(lang, 'ach_wrapped_top', {
         category: this.reportService.categoryLabel(top, lang), amount: money(top.total), percent: Math.round(top.total / total * 100)
       })}`);
       const prices = {};
       for (const item of COMPARISON_ITEMS) prices[item.key] = await this.currencyUtils.convert(item.usd, 'USD', currency);
-      const comparison = pickComparison(top.total, prices);
+      comparison = pickComparison(top.total, prices);
       if (comparison) {
         lines.push(`      ${this.t(lang, 'ach_wrapped_comparison', { count: comparison.count, item: this.t(lang, `ach_wrapped_item_${comparison.key}`) })}`);
       }
@@ -471,7 +476,24 @@ class AchievementService {
     const goal = await this.closestGoal(userId).catch(() => null);
     if (goal) lines.push(`🎯 ${this.t(lang, 'ach_wrapped_goal', { name: this.formatter.escapeMarkdown(goal.name), percent: goal.percent })}`);
     lines.push('', this.t(lang, offset < 0 ? 'ach_wrapped_outro' : 'ach_wrapped_outro_current'));
-    return { text: lines.join('\n'), period };
+
+    // Самая крупная покупка — по сумме в основной валюте, показывается в своей валюте (как в итогах периода)
+    let largest = null;
+    for (const expense of expenses) {
+      const value = await this.currencyUtils.convert(Number(expense.amount), expense.currency, currency);
+      if (!largest || value > largest.value) largest = { value, expense };
+    }
+    const card = {
+      period, currency, total, count: expenses.length, days: dayTotals.size, streak,
+      top: top && total > 0 ? { name: top.name, total: top.total, percent: Math.round(top.total / total * 100) } : null,
+      comparison: comparison ? { count: comparison.count, key: comparison.key } : null,
+      largest: largest ? {
+        amount: Number(largest.expense.amount), currency: largest.expense.currency,
+        categoryName: largest.expense.category_name || null, day: this.localDay(largest.expense.created_at_utc, timezone)
+      } : null,
+      biggestDay: biggest && dayTotals.size > 1 ? { day: biggest.day, total: biggest.total } : null
+    };
+    return { text: lines.join('\n'), period, card };
   }
 
   // Цель, ближе всего к достижению (не достигнутая): { name, percent } или null
@@ -555,21 +577,31 @@ class AchievementService {
           const note = await this.track(user.id, 'under_budget_period', { lang });
           if (note) text += `\n\n${note}`;
         }
-        await this.notificationService.sendMessage(user.id, text, {
-          parse_mode: 'Markdown',
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: this.t(lang, 'button_achievements'), callback_data: 'ach' }],
-              [{ text: this.t(lang, 'ach_button_wrapped_off'), callback_data: 'achwo' }]
-            ]
-          }
-        });
+        const keyboard = [[{ text: this.t(lang, 'button_achievements'), callback_data: 'ach' }]];
+        if (this.chartService && this.chartService.available) keyboard.push([{ text: this.t(lang, 'button_wrapped_share'), callback_data: 'achwi|-1' }]);
+        keyboard.push([{ text: this.t(lang, 'ach_button_wrapped_off'), callback_data: 'achwo' }]);
+        const extra = { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } };
+        // Карточка-картинка с итогами в подписи (подпись — до 1024 символов); не вышло — как раньше, текстом
+        const card = text.length <= CAPTION_LIMIT ? await this.wrappedCardImage(wrapped.card, lang) : null;
+        if (card) await this.notificationService.sendPhoto(user.id, card, { ...extra, caption: text });
+        else await this.notificationService.sendMessage(user.id, text, extra);
         sent++;
       } catch (error) {
         logger.warn('Monthly wrapped not delivered', { userId: user.id, error: error.message });
       }
     }
     return sent;
+  }
+
+  // PNG карточки «Итоги месяца» для рассылки или null (графики выключены, нет шрифта, ошибка рисования)
+  async wrappedCardImage(card, lang) {
+    if (!this.chartService || !this.chartService.available || !this.notificationService.sendPhoto) return null;
+    try {
+      return await this.chartService.wrappedCard(card, lang, { botUsername: this.notificationService.botUsername() });
+    } catch (error) {
+      logger.warn('Wrapped card not rendered', { error: error.message });
+      return null;
+    }
   }
 }
 

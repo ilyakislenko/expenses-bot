@@ -34,7 +34,7 @@ function groupByCurrency(expenses) {
 }
 
 class ExpenseHandlers {
-  constructor({ expenseService, incomeService, recurringExpenseService, familyService, premiumService, userService, localizationService, formatter, stateService, validator, budgetService, reportService, planningService = null, achievementService = null, roastService = null }) {
+  constructor({ expenseService, incomeService, recurringExpenseService, familyService, premiumService, userService, localizationService, formatter, stateService, validator, budgetService, reportService, planningService = null, achievementService = null, roastService = null, chartService = null }) {
     this.expenseService = expenseService;
     this.incomeService = incomeService;
     this.recurringExpenseService = recurringExpenseService;
@@ -50,6 +50,7 @@ class ExpenseHandlers {
     this.planningService = planningService; // строка «💸 Можно сегодня» в «Сегодня» и обзоре текущего периода
     this.achievementService = achievementService;
     this.roastService = roastService; // «😈 Злой режим»: строка к подтверждению записи
+    this.chartService = chartService; // графики картинками (кнопки — только если рендер доступен)
     this.backViews = {}; // экраны других разделов: kind → (ctx, args) => …, см. registerBackView
   }
 
@@ -696,6 +697,12 @@ class ExpenseHandlers {
     const nav = [{ text: this.t(lang, 'button_prev_period'), callback_data: `ov|${offset - 1}` }];
     if (offset < 0) nav.push({ text: this.t(lang, 'button_next_period'), callback_data: `ov|${offset + 1}` });
     keyboard.push(nav);
+    if (this.chartService && this.chartService.available) {
+      keyboard.push([
+        { text: this.t(lang, 'button_chart'), callback_data: `chp|${offset}` },
+        { text: this.t(lang, 'button_chart_trend'), callback_data: `cht|${offset}` }
+      ]);
+    }
     keyboard.push([
       { text: this.t(lang, 'button_budgets'), callback_data: 'bg_menu' },
       { text: this.t(lang, 'button_report'), callback_data: `rp|${offset}` }
@@ -741,6 +748,9 @@ class ExpenseHandlers {
       text += `${this.t(lang, 'overview_spent', { amount: this.formatter.formatAmount(spent, currency), count: expenses.length })}\n\n`;
       text += lines.join('\n');
       text += `\n\n${this.t(lang, 'list_tap_number')}`;
+    }
+    if (this.chartService && this.chartService.available) {
+      keyboard.push([{ text: this.t(lang, 'button_chart_trend'), callback_data: `chc|${categoryId}|${offset}` }]);
     }
     keyboard.push([{ text: this.t(lang, 'button_back_to_overview'), callback_data: `ov|${offset}` }]);
     await respond(ctx, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });

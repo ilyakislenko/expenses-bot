@@ -8,12 +8,13 @@ const BUTTON_NAME_LENGTH = 24;
 
 // Экран «🏆 Достижения» (ach…): уровень и XP, серия, значки, ближайшие цели, челленджи, «Итоги месяца»
 class AchievementHandlers {
-  constructor({ achievementService, expenseService, userService, localizationService, formatter }) {
+  constructor({ achievementService, expenseService, userService, localizationService, formatter, chartService = null }) {
     this.achievementService = achievementService;
     this.expenseService = expenseService;
     this.userService = userService;
     this.localizationService = localizationService;
     this.formatter = formatter;
+    this.chartService = chartService; // «📤 Поделиться» — карточка итогов картинкой (ChartHandlers.shareWrapped)
   }
 
   t(lang, key, params) {
@@ -307,11 +308,14 @@ class AchievementHandlers {
     }
     const nav = [{ text: this.t(lang, 'button_prev_period'), callback_data: `achw|${safeOffset - 1}` }];
     if (safeOffset < 0) nav.push({ text: this.t(lang, 'button_next_period'), callback_data: `achw|${safeOffset + 1}` });
-    const keyboard = [
-      nav,
+    const keyboard = [nav];
+    if (wrapped && this.chartService && this.chartService.available) {
+      keyboard.push([{ text: this.t(lang, 'button_wrapped_share'), callback_data: `achwi|${safeOffset}` }]);
+    }
+    keyboard.push(
       [{ text: this.t(lang, enabled ? 'ach_button_wrapped_off' : 'ach_button_wrapped_on'), callback_data: `achwt|${safeOffset}` }],
       this.backRow(lang)
-    ];
+    );
     await respond(ctx, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
   }
 

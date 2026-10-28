@@ -86,6 +86,10 @@ module.exports = function registerBotRoutes(bot, handlers) {
   const back = `(${BACK_VIEW_PATTERN})`;
   bot.action(/^ov\|(-?\d+)$/, errorHandler((ctx) => expenseHandlers.showOverview(ctx, parseInt(ctx.match[1], 10))));
   bot.action(/^oc\|(\d+)\|(-?\d+)\|(\d+)$/, errorHandler((ctx) => expenseHandlers.showCategoryList(ctx, parseInt(ctx.match[1], 10), parseInt(ctx.match[2], 10), parseInt(ctx.match[3], 10))));
+  // Графики картинками: кольцо по категориям, столбики за 6 периодов (всего / по категории)
+  bot.action(/^chp\|(-?\d+)$/, errorHandler((ctx) => handlers.chartHandlers.showDonut(ctx, parseInt(ctx.match[1], 10))));
+  bot.action(/^cht\|(-?\d+)$/, errorHandler((ctx) => handlers.chartHandlers.showTrend(ctx, parseInt(ctx.match[1], 10))));
+  bot.action(/^chc\|(\d+)\|(-?\d+)$/, errorHandler((ctx) => handlers.chartHandlers.showTrend(ctx, parseInt(ctx.match[2], 10), parseInt(ctx.match[1], 10))));
   bot.action(/^dy\|(-?\d+)\|(\d+)$/, errorHandler((ctx) => expenseHandlers.showDay(ctx, parseInt(ctx.match[1], 10), parseInt(ctx.match[2], 10))));
   bot.action(/^fd\|(\d+)$/, errorHandler((ctx) => expenseHandlers.showFamilyDay(ctx, parseInt(ctx.match[1], 10))));
   bot.action(new RegExp(`^ex\\|(\\d+)\\|${back}$`), errorHandler((ctx) => expenseHandlers.handleOpenCard(ctx)));
@@ -181,6 +185,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^achw\|(-?\d+)$/, errorHandler((ctx) => achievementHandlers.showWrapped(ctx, parseInt(ctx.match[1], 10))));
   bot.action(/^achwt\|(-?\d+)$/, errorHandler((ctx) => achievementHandlers.toggleWrapped(ctx)));
   bot.action('achwo', errorHandler((ctx) => achievementHandlers.turnOffWrapped(ctx)));
+  bot.action(/^achwi\|(-?\d+)$/, errorHandler((ctx) => handlers.chartHandlers.shareWrapped(ctx, parseInt(ctx.match[1], 10)))); // карточка итогов картинкой
   // Устаревшие или неизвестные кнопки раздела — экран достижений
   bot.action(/^ach/, errorHandler((ctx) => achievementHandlers.show(ctx)));
   // «🤖 Спроси бота»: примеры (кнопка = вопрос), свой вопрос текстом (ai_in:q)
