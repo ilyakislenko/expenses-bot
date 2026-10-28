@@ -68,17 +68,19 @@ class SecurityMiddleware {
     };
   }
 
-  // Текст на языке пользователя; язык по умолчанию, если пользователь неизвестен или БД недоступна
-  async t(ctx, key, params) {
-    let language = 'en';
-    if (ctx.from?.id) {
-      try {
-        language = await this.userService.getUserLanguage(ctx.from.id);
-      } catch (error) {
-        logger.warn('Failed to get user language for security message', { userId: ctx.from.id, error: error.message });
-      }
+  // Язык пользователя; язык по умолчанию, если пользователь неизвестен или БД недоступна
+  async userLanguage(ctx) {
+    if (!ctx.from?.id) return 'en';
+    try {
+      return await this.userService.getUserLanguage(ctx.from.id);
+    } catch (error) {
+      logger.warn('Failed to get user language for security message', { userId: ctx.from.id, error: error.message });
+      return 'en';
     }
-    return this.localizationService.getText(language, key, params);
+  }
+
+  async t(ctx, key, params) {
+    return this.localizationService.getText(await this.userLanguage(ctx), key, params);
   }
 
   // Проверка rate limit
@@ -151,13 +153,16 @@ class SecurityMiddleware {
     });
 
     try {
-      const duration = async (seconds) => (seconds < 60
-        ? this.t(ctx, 'rate_wait_seconds', { n: Math.max(1, Math.ceil(seconds)) })
-        : this.t(ctx, 'rate_wait_minutes', { n: Math.ceil(seconds / 60) }));
-      const message = await this.t(ctx, 'security_rate_limit', {
-        resetTime: await duration(Number(resetTime) || 0),
+      // Язык — один запрос на сообщение: текст собирается из нескольких фраз
+      const language = await this.userLanguage(ctx);
+      const text = (key, params) => this.localizationService.getText(language, key, params);
+      const duration = (seconds) => (seconds < 60
+        ? text('rate_wait_seconds', { n: Math.max(1, Math.ceil(seconds)) })
+        : text('rate_wait_minutes', { n: Math.ceil(seconds / 60) }));
+      const message = text('security_rate_limit', {
+        resetTime: duration(Number(resetTime) || 0),
         limit,
-        window: await duration(windowMs / 1000)
+        window: duration(windowMs / 1000)
       });
       if (ctx.updateType === 'callback_query') {
         // Всплывающее окно не поддерживает разметку
