@@ -174,6 +174,18 @@ class SavingsHandlers {
         else if (status.etaNominal !== null) line += ` · ≈ ${this.duration(status.etaNominal, lang)}`;
         lines.push(line);
       }
+      // Цели «от всех накоплений» считают одни и те же деньги: две такие цели могут обе показать ✅, хотя денег хватит
+      // на одну. Не распределяем, а честно пишем, сколько нужно на все сразу
+      const shared = goals.filter(goal => goal.goal_mode === 'total');
+      if (shared.length > 1) {
+        const need = shared.reduce((sum, goal) => sum + statuses.get(goal.id).target, 0);
+        const short = need - state.total;
+        lines.push('', this.t(lang, short > 0 ? 'savings_shared_goals_short' : 'savings_shared_goals', {
+          count: shared.length,
+          need: this.money(need, currency),
+          short: this.money(Math.max(0, short), currency)
+        }));
+      }
     }
     if (debts.length) {
       lines.push('', `*${this.t(lang, 'savings_section_debts')}*`);

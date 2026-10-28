@@ -409,10 +409,12 @@ function seededRepository(rows, answered = 0, modelCalls = 0) {
     async countAnswered() { return answered; },
     async countModelCalls() { return modelCalls; },
     async logQuestion(userId, date, entry) { this.logged.push(entry); return this.logged.length; },
-    async markWrong(userId, id) {
-      if (this.wrong.includes(id) || id > this.logged.length) return false;
+    async markWrong(userId, id, { refundsPerDay }) {
+      if (userId !== 1 || id > this.logged.length) return 'missing';
+      if (this.wrong.includes(id)) return 'done';
+      if (this.wrong.length >= refundsPerDay) return 'used';
       this.wrong.push(id);
-      return true;
+      return 'marked';
     }
   };
 }
@@ -722,14 +724,75 @@ describe('fix D: periods, filters and limits of «Спроси бота»', () =
     expect(capped.repository.logged).toEqual([expect.objectContaining({ source: 'fast', modelCalls: 0 })]);
   });
 
-  test('«🙅 Не то» returns the answer to the limit once', async () => {
+  test('«🙅 Не то» returns at most one answer a day to the limit; foreign ids are «not found»', async () => {
     const { service, repository } = makeService();
     const result = await service.answer(1, 'сколько я потратил вчера', { lang: 'ru' });
     const wrong = result.keyboard[result.keyboard.length - 1].find(b => b.callback_data.startsWith('aiw|'));
     expect(wrong.callback_data).toBe(`aiw|${result.questionId}`);
-    expect(await service.markWrong(1, result.questionId)).toBe(true);
-    expect(await service.markWrong(1, result.questionId)).toBe(false);
+    expect(await service.markWrong(1, result.questionId)).toBe('marked');
+    expect(await service.markWrong(1, result.questionId)).toBe('done');
+    const second = await service.answer(1, 'сколько я потратил позавчера', { lang: 'ru' });
+    expect(await service.markWrong(1, second.questionId)).toBe('used');
+    expect(await service.markWrong(2, result.questionId)).toBe('missing');
     expect(repository.wrong).toEqual([result.questionId]);
+  });
+
+  test('repository: «Не то» refunds only while today\'s refunds are under the cap, never a foreign row', async () => {
+    const repo = Object.create(AssistantRepository.prototype); // без пула: query подменён
+    const queries = [];
+    let row = { answered: true, local_date: '2026-10-28' };
+    let refundedToday = 0;
+    repo.query = async (sql, params) => {
+      queries.push({ sql, params });
+      if (/^\s*SELECT answered/.test(sql)) return { rows: row && params[1] === 1 ? [row] : [] };
+      return { rowCount: refundedToday < params[4] ? 1 : 0 };
+    };
+    expect(await repo.markWrong(1, 10, { refundsPerDay: 1 })).toBe('marked');
+    const update = queries[1];
+    expect(update.params.slice(0, 3)).toEqual([10, 1, '2026-10-28']);
+    expect(update.params[3]).toEqual(expect.arrayContaining(['not_understood', 'model_down', 'model_busy']));
+    refundedToday = 1;
+    expect(await repo.markWrong(1, 11, { refundsPerDay: 1 })).toBe('used');
+    expect(await repo.markWrong(2, 11, { refundsPerDay: 1 })).toBe('missing');
+    row = { answered: false, local_date: '2026-10-28' };
+    expect(await repo.markWrong(1, 12, { refundsPerDay: 1 })).toBe('done');
+  });
+
+  test('round 2: «с 20 числа», «since the 15th», вб, averages per week / month', async () => {
+    expect(fastIntent('сколько я потратил с 20 числа')).toMatchObject({ confident: true, period: { kind: 'custom', from: '2026-10-20', to: TODAY }, terms: [] });
+    expect(fastIntent('траты с 5-го')).toMatchObject({ period: { kind: 'custom', from: '2026-10-05', to: TODAY } });
+    expect(fastIntent('spending since the 15th')).toMatchObject({ confident: true, period: { kind: 'custom', from: '2026-10-15', to: TODAY } });
+    expect(fastIntent('сколько потратил с 30 числа')).toMatchObject({ period: { kind: 'custom', from: '2026-09-30', to: TODAY } });
+    expect(fastIntent('сколько ушло на вб в этом году')).toMatchObject({ confident: true, terms: ['вб'] });
+    expect(fastIntent('сколько уходит на транспорт в неделю')).toMatchObject({
+      confident: true, type: 'average_daily', per: 'week', period: { kind: 'last_n_days', n: 90 }
+    });
+    expect(fastIntent('сколько трачу на еду в среднем в месяц')).toMatchObject({ confident: true, type: 'average_daily', per: 'month' });
+    expect(fastIntent('сколько стоил ноутбук')).toMatchObject({ confident: true, period: { kind: 'all' }, terms: ['ноутбук'] });
+    expect(fastIntent('сколько я сэкономил в сентябре')).toMatchObject({ confident: true, type: 'balance' });
+    // модель положила в поиск дату — это не слово из описания
+    expect(check({ type: 'spend_total', text_filter: 'с 20 числа' }).intent.terms).toEqual([]);
+    expect(check({ type: 'spend_total', text_filter: 'iphone 15' }).intent.terms).toEqual(['iphone 15']);
+    expect(check({ type: 'spend_total', text_filter: 'лunch' }).intent.terms).toEqual([]);
+    expect(fastIntent('сколько ушло с начала месяца')).toMatchObject({ confident: true, period: { kind: 'month', offset: 0 } });
+    expect(fastIntent('сколько я получил в сентябре')).toMatchObject({ confident: true, type: 'income_total', period: { kind: 'named_month', month: 9 } });
+
+    const { service, repository } = makeService({ rows: [...SEED, expense('2026-10-05', 3000, 'Wildberries кроссовки', 'Покупки')] });
+    const wb = await service.answer(1, 'сколько ушло на вб в этом году', { lang: 'ru' });
+    expect(repository.calls[0].terms).toEqual(['вб', 'вайлдберриз', 'wildberry', 'wildberries']);
+    expect(sp(wb.text)).toContain('3 000 ₽');
+    const week = await service.answer(1, 'сколько уходит на транспорт в неделю', { lang: 'ru' });
+    // транспорт за 90 дней: 450 + 2700 + 700 = 3850 → ×7/90
+    expect(sp(week.text)).toContain(sp(formatter.formatAmount(3850 / 90 * 7, 'RUB')));
+    expect(week.text).toContain('в неделю');
+  });
+
+  test('a model that accepted the request but did not answer in time is «busy», a refused connection is «down»', async () => {
+    const { ReceiptError } = require('../services/receipt/errors');
+    const slow = makeService({ provider: { configured: true, complete: async () => { throw new ReceiptError('network', 'timeout'); } } });
+    expect(await slow.service.answer(1, 'посчитай подарки маме', { lang: 'ru' })).toMatchObject({ status: 'model_busy' });
+    const refused = makeService({ provider: { configured: true, complete: async () => { throw new ReceiptError('network', 'connect ECONNREFUSED 127.0.0.1:11434'); } } });
+    expect(await refused.service.answer(1, 'посчитай подарки маме', { lang: 'ru' })).toMatchObject({ status: 'model_down' });
   });
 
   test('a question waiting behind a receipt gets «busy» with its queue position, without a model call', async () => {
@@ -787,7 +850,7 @@ describe('fix D: shared model queue', () => {
     const hanging = { configured: true, complete: ({ isCancelled }) => { cancelledCheck = isCancelled; return new Promise(() => {}); } };
     const { service } = makeService({ provider: hanging, modelDeadlineMs: 30 });
     const result = await service.answer(1, 'посчитай подарки маме', { lang: 'ru' });
-    expect(result).toMatchObject({ status: 'model_down' });
+    expect(result).toMatchObject({ status: 'model_busy' });
     expect(cancelledCheck()).toBe(true);
   });
 

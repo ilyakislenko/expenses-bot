@@ -226,18 +226,19 @@ class AssistantHandlers {
     }
   }
 
-  // aiw|<id> — «🙅 Не то» под ответом: ответ не засчитывается в дневной лимит, следующее сообщение — уточнённый вопрос
+  // aiw|<id> — «🙅 Не то» под ответом: ответ не засчитывается в дневной лимит (один раз в день), следующее
+  // сообщение — уточнённый вопрос. Сверх раза в день — тоже можно уточнить, но ответ остаётся в лимите
   async markWrong(ctx) {
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
-    const marked = await this.assistantService.markWrong(userId, parseInt(ctx.match[1], 10));
-    if (!marked) {
-      await ctx.answerCbQuery(this.t(lang, 'ai_wrong_done')).catch(() => {});
+    const result = await this.assistantService.markWrong(userId, parseInt(ctx.match[1], 10));
+    if (result === 'missing' || result === 'done') {
+      await ctx.answerCbQuery(this.t(lang, result === 'missing' ? 'ai_wrong_missing' : 'ai_wrong_done')).catch(() => {});
       return;
     }
     await ctx.answerCbQuery().catch(() => {});
     this.stateService.setUserState(userId, 'ai_in:q');
-    await ctx.reply(this.t(lang, 'ai_wrong_ack'), {
+    await ctx.reply(this.t(lang, result === 'marked' ? 'ai_wrong_ack' : 'ai_wrong_used'), {
       parse_mode: 'Markdown',
       reply_markup: { inline_keyboard: [[{ text: this.t(lang, 'button_back'), callback_data: 'ai' }]] }
     });

@@ -393,3 +393,32 @@ describe('savings goal already reached at creation gives no «Dream come true»'
     expect(calls[0]).toMatch(/kind = 'goal' AND achieved_at > created_at\)::int AS goals_reached/);
   });
 });
+
+describe('fix D round 2: goals «from all savings» share the same money', () => {
+  const SavingsHandlers = require('../handlers/SavingsHandlers');
+  const goal = (id, name, target) => ({ id, kind: 'goal', name, goal_mode: 'total', target_amount: target, currency: 'RUB', balance: 0, balanceMain: 0 });
+  const menu = async (goals, total) => {
+    const handlers = new SavingsHandlers({
+      userService: { getUserLanguage: async () => 'ru' },
+      localizationService: localization,
+      formatter: new Formatter(identity),
+      savingsService: {
+        getState: async () => ({ currency: 'RUB', total, debtTotal: 0, netWorth: total, today: '2026-10-28', pots: goals, accounts: [], goals, debts: [], monthly: null, parts: [], settings: {} }),
+        goalStatus: async (g) => ({ current: total, target: g.target_amount, ratio: total / g.target_amount, achieved: total >= g.target_amount, etaNominal: null })
+      }
+    });
+    let text = null;
+    await handlers.showMenu({ from: { id: 1 }, chat: { id: 1, type: 'private' }, reply: async (t) => { text = t; return { message_id: 1 }; } });
+    return text;
+  };
+
+  test('two goals from all savings: the note says how much all of them need and what is missing', async () => {
+    const short = await menu([goal(1, 'отпуск', 150000), goal(2, 'ноутбук', 150000)], 271000);
+    expect(short).toContain('считают одни и те же деньги');
+    expect(short.replace(/\s/g, ' ')).toContain('не хватает 29 000');
+    const enough = await menu([goal(1, 'отпуск', 100000), goal(2, 'ноутбук', 50000)], 271000);
+    expect(enough).toContain('считают одни и те же деньги');
+    expect(enough).not.toContain('не хватает');
+    expect(await menu([goal(1, 'отпуск', 100000)], 271000)).not.toContain('одни и те же деньги');
+  });
+});

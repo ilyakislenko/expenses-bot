@@ -148,6 +148,17 @@ const PERIODS = [
   [word(`(?:since|starting)\\s+(${EN_MONTH})\\s+(\\d{1,2})(?:,?\\s+(\\d{4}))?`),
     (m, today) => ({ kind: 'custom', from: withYear(Number(m[2]), monthNumber(m[1]), m[3] ? Number(m[3]) : null, today), to: today })],
   [word(`(?:since|starting|с|начиная\\s+с)\\s+(${DATE})`), (m, today) => ({ kind: 'custom', from: numericDate(m[1], today), to: today })],
+  // «с начала месяца / недели / года», «since the start of the month» — этот период до сегодня
+  [word('(?:с|начиная\\s+с)\\s+начала\\s+(месяца|недели|года)|since\\s+the\\s+(?:start|beginning)\\s+of\\s+(?:the|this)\\s+(month|week|year)'),
+    (m) => ({ kind: { месяца: 'month', недели: 'week', года: 'year' }[m[1]] || m[2], offset: 0 })],
+  // «с 20 числа», «с 5-го», «since the 15th» — от этого числа текущего месяца (ещё не наступило — прошлого)
+  [word('(?:since|starting|from|с|начиная\\s+с)\\s+(?:the\\s+)?(\\d{1,2})(?:-?(?:го|ого)(?:\\s+числа)?|\\s+числа|st|nd|rd|th)'),
+    (m, today) => {
+      const t = parseYmd(today);
+      const day = Number(m[1]);
+      const month = day > t.d ? addMonths(t.y, t.m, -1) : { y: t.y, m: t.m };
+      return { kind: 'custom', from: ymd(month.y, month.m, Math.min(day, daysInMonth(month.y, month.m))), to: today };
+    }],
   // только родительный падеж: «сравни сентябрь с августом» — это не «с августа»
   [word(`(?:since|starting)\\s+(?:the\\s+start\\s+of\\s+)?(${EN_MONTH})(?:\\s+(\\d{4}))?|(?:с|начиная\\s+с)\\s+(?:начала\\s+)?(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря)(?:\\s+(\\d{4}))?`),
     (m, today) => {
@@ -230,16 +241,22 @@ const TYPES = [
   ['largest_purchase', word('(?:сама[яю]|самой)\\s+(?:крупн|больш|дорог)\\p{L}*\\s+(?:трат|покупк)\\p{L}*|(?:biggest|largest|most expensive)\\s+(?:expense|purchase)')],
   ['budget_status', word('бюджет\\p{L}*|лимит\\p{L}*|budgets?')],
   ['average_daily', word('(?:в\\s+среднем|средн\\p{L}*)(?:\\s+(?:трат\\p{L}*\\s+)?(?:в|за)\\s+день)?|в\\s+день|per\\s+day|a\\s+day|daily\\s+average|(?:on\\s+)?average(?:\\s+(?:daily|per\\s+day))?')],
-  ['spend_by_category', word('по\\s+категориям|by\\s+categor\\p{L}*|на\\s+что\\s+(?:я\\s+)?(?:больше\\s+всего\\s+)?(?:трачу|тратил\\p{L}*|потратил\\p{L}*|ушли|уходят|ушло|уходит)(?:\\s+больше\\s+всего)?(?:\\s+денег|\\s+деньги)?|куда\\s+(?:ушли|уходят|ушло|делись)(?:\\s+(?:все\\s+)?деньги)?|what\\s+did\\s+i\\s+spend\\s+(?:the\\s+)?most\\s+on|where\\s+did\\s+(?:all\\s+)?(?:my\\s+)?money\\s+go|(?:top|main)\\s+categor\\p{L}*')],
-  ['income_total', word('доход\\p{L}*|заработ\\p{L}*|зарплат\\p{L}*|income\\p{L}*|earn\\p{L}*|salary')],
+  ['spend_by_category', word('по\\s+категориям|by\\s+categor\\p{L}*|(?:на\\s+что|где)\\s+(?:я\\s+)?(?:больше\\s+всего\\s+)?(?:трачу|тратил\\p{L}*|потратил\\p{L}*|ушли|уходят|ушло|уходит)(?:\\s+больше\\s+всего)?(?:\\s+денег|\\s+деньги)?|куда\\s+(?:ушли|уходят|ушло|делись)(?:\\s+(?:все\\s+)?деньги)?|what\\s+did\\s+i\\s+spend\\s+(?:the\\s+)?most\\s+on|where\\s+did\\s+(?:all\\s+)?(?:my\\s+)?money\\s+go|(?:top|main)\\s+categor\\p{L}*')],
+  ['income_total', word('доход\\p{L}*|заработ\\p{L}*|зарплат\\p{L}*|получил\\p{L}*|income\\p{L}*|earn\\p{L}*|salary|got\\s+paid')],
   ['savings_status', word('накоп\\p{L}*|сбереж\\p{L}*|копил\\p{L}*|копилк\\p{L}*|отложил\\p{L}*|цел[иьей]\\p{L}*|savings?|saved|goals?')],
-  ['balance', word('остат\\p{L}*|баланс\\p{L}*|сколько\\s+(?:у\\s+меня\\s+)?осталось|в\\s+плюсе|в\\s+минусе|in\\s+the\\s+(?:plus|black|red)|balance|left\\s+over|how\\s+much\\s+(?:do\\s+i\\s+have\\s+)?left')],
-  ['spend_total', word(`${SKOLKO}\\s+(?:я\\s+)?(?:всего\\s+)?(?:потратил\\p{L}*|трачу|тратил\\p{L}*|ушло|ушли|уходит|отдал\\p{L}*|заплатил\\p{L}*|плачу)|${SKOLKO}(?=\\s+(?:на|за|в|во)\\s)|how\\s+much\\s+(?:did|have|do)\\s+i\\s+(?:spend|spent|pay|paid)|how\\s+much\\s+i\\s+(?:spent|paid)|how\\s+much(?=\\s+(?:on|for)\\s)|(?:total\\s+)?(?:траты|расходы|потрачено|spending|expenses)`)]
+  ['balance', word('остат\\p{L}*|баланс\\p{L}*|сколько\\s+(?:у\\s+меня\\s+)?осталось|сэкономил\\p{L}*|в\\s+плюсе|в\\s+минусе|in\\s+the\\s+(?:plus|black|red)|balance|left\\s+over|how\\s+much\\s+(?:do\\s+i\\s+have\\s+)?left')],
+  // «сколько стоил ноутбук» — цена покупки: без периода ищем за всё время
+  ['spend_total', word(`${SKOLKO}\\s+(?:мне\\s+)?(?:стоил\\p{L}*|обош[её]л\\p{L}*|обошл\\p{L}*)|how\\s+much\\s+(?:did|was)\\s+(?:the|my)\\b`), { period: { kind: 'all' } }],
+  ['spend_total', word(`${SKOLKO}\\s+(?:я\\s+)?(?:всего\\s+)?(?:потратил\\p{L}*|трачу|тратил\\p{L}*|ушло|ушли|уходит|отдал\\p{L}*|заплатил\\p{L}*|плачу|прокутил\\p{L}*|спустил\\p{L}*|просадил\\p{L}*|прогулял\\p{L}*)|${SKOLKO}(?=\\s+(?:на|за|в|во)\\s)|how\\s+much\\s+(?:did|have|do)\\s+i\\s+(?:spend|spent|pay|paid|blow|blew|blown)|how\\s+much\\s+i\\s+(?:spent|paid)|how\\s+much(?=\\s+(?:on|for)\\s)|(?:total\\s+)?(?:траты|расходы|потрачено|spending|expenses)`)]
 ];
 // Типы, у которых слово без предлога («сколько раз я брал такси») — это поиск по описаниям
 const SEARCH_TYPES = new Set(['spend_total', 'count_records', 'top_expenses', 'largest_purchase', 'average_daily']);
 // Сравнение с прошлым периодом: «больше, чем в прошлом месяце» — этот месяц с прошлым
 const PREVIOUS_TO_CURRENT = { day: true, week: true, month: true, year: true };
+// «в неделю», «в месяц», «per week», «monthly» — средняя трата за неделю/месяц
+const PER = word('(?:в|per|a|each)\\s+(недел[юи]|week|месяц|month)|(weekly|monthly|еженедельно|ежемесячно)');
+// Средняя в неделю/месяц без названного периода — за последние 90 дней (около трёх месяцев)
+const PER_DEFAULT_DAYS = 90;
 
 // Остатки «сравни этот месяц с прошлым»
 const COMPARE_TAIL = word('(?:с|and|with)\\s+(?:прошлым|предыдущим|previous|last(?:\\s+one)?)(?:\\s+(?:месяцем|периодом|неделей|годом|month|week|year))?');
@@ -315,6 +332,13 @@ function parseFastPath(question, { today }) {
     text = money.rest;
   }
 
+  let per = null;
+  const perMatch = take(text, PER);
+  if (perMatch) {
+    per = /недел|week/u.test(perMatch.match[0]) ? 'week' : 'month';
+    text = perMatch.rest;
+  }
+
   let type = null;
   let limit = null;
   for (const [candidate, regex, defaults = {}] of TYPES) {
@@ -326,9 +350,17 @@ function parseFastPath(question, { today }) {
       const n = found.match.slice(1).find(Boolean);
       limit = n ? Number(n) : (defaults.limit || null);
     }
+    if (defaults.period && !period) period = defaults.period;
     // «per day … on average» — оба куска про одно и то же
     for (let again = take(text, regex); again; again = take(text, regex)) text = again.rest;
     break;
+  }
+  // «сколько уходит на транспорт в неделю», «в среднем в месяц» — средняя за неделю/месяц
+  if (per && (!type || type === 'spend_total' || type === 'average_daily')) {
+    type = 'average_daily';
+    if (!period) period = { kind: 'last_n_days', n: PER_DEFAULT_DAYS };
+  } else {
+    per = null;
   }
 
   let compareTo = null;
@@ -387,7 +419,8 @@ function parseFastPath(question, { today }) {
       categories,
       text_filter: filters.length > 1 ? filters : (filters[0] || null),
       limit,
-      currency
+      currency,
+      per
     }
   };
 }
