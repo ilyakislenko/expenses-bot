@@ -45,13 +45,21 @@ function stateCleanupMiddleware(handlers) {
 
     if (userId && ctx.updateType === 'message') {
       const command = commandName(ctx.message);
-      if (command && command !== 'cancel' && (stateService.hasUserState(userId) || stateService.hasUserEditState(userId))) {
-        logger.debug('Input state reset by command', { userId, command });
+      if (command && command !== 'cancel') {
+        if (stateService.hasUserState(userId) || stateService.hasUserEditState(userId)) {
+          logger.debug('Input state reset by command', { userId, command });
+        }
+        stateService.clearInputs(userId); // и пометку «ввод устарел»: следующий текст — обычная запись
+      }
+      // Голосовое — новая запись, а не ответ на подсказку: подсказка снимается, иначе следующий текст ушёл бы
+      // в брошенный ввод (доход, правка…). Вопрос о бюджете в опросе ждёт дальше, как и при «250 кофе» текстом
+      if ((ctx.message?.voice || ctx.message?.audio) && stateService.getUserState(userId) !== 'onb_budget') {
         stateService.clearInputs(userId);
       }
     }
 
     if (userId && ctx.updateType !== 'message') {
+      stateService.dropExpiredInput(userId);
       if (ctx.callbackQuery?.data !== 'cancel_edit') stateService.deleteUserEditState(userId);
 
       if (stateService.hasUserState(userId)) {

@@ -11,7 +11,8 @@ const TTL_MS = {
   expense: 7 * 24 * HOUR_MS, // черновик траты на карточке выбора категории (по сообщению)
   recurring: 24 * HOUR_MS, // черновик регулярной траты до выбора категории
   export: 7 * 24 * HOUR_MS, // фильтр экспорта по категориям
-  question: 24 * HOUR_MS // текст, который бот предложил задать вопросом (кнопка «🤖 Спросить бота»)
+  question: 24 * HOUR_MS, // текст, который бот предложил задать вопросом (кнопка «🤖 Спросить бота»)
+  record: 24 * HOUR_MS // текст после истёкшего ввода, который бот предложил записать (кнопка «✅ Записать …»)
 };
 // Истёкший ожидаемый ввод помним столько, чтобы на следующий текст сказать «ввод устарел», а не записать его тратой
 const EXPIRED_NOTICE_MS = 7 * 24 * HOUR_MS;
@@ -26,7 +27,9 @@ class StateService {
     this.userStates = new Map(); // ожидаемый текстовый ввод (строка вида 'adding_income', 'dt_in:x:…' или объект)
     this.pendingRecurring = new Map(); // черновик регулярной траты до выбора категории (привязан к карточке)
     this.exportState = new Map(); // фильтр экспорта: { categoryIds } (null — все категории)
-    this.pendingQuestions = new Map(); // userId → { messageId, text }: «🤖 Спросить бота» под «Не понял»
+    // Текст под кнопкой сообщения: kind → Map(userId → { messageId, text }). question — «🤖 Спросить бота» под
+    // «Не понял», record — «✅ Записать …» под «ввод устарел»
+    this.pendingTexts = { question: new Map(), record: new Map() };
     this.expiresAt = new Map(); // `${kind}|${userId}|${slot}` → мс
     this.expiredInputs = new Set(); // у кого ожидаемый ввод истёк, а пользователь ещё не узнал об этом
     this.writes = new Map(); // userId → цепочка записей в БД (порядок изменений одного пользователя сохраняется)
@@ -109,7 +112,8 @@ class StateService {
       }
       case 'recurring': this.pendingRecurring.set(userId, row.value); break;
       case 'export': this.exportState.set(userId, row.value); break;
-      case 'question': this.pendingQuestions.set(userId, row.value); break;
+      case 'question':
+      case 'record': this.pendingTexts[row.kind].set(userId, row.value); break;
       default: this.expiresAt.delete(this.key(row.kind, userId, row.slot));
     }
   }
@@ -127,6 +131,11 @@ class StateService {
     this.expireInput('state', userId);
     this.expireInput('edit', userId);
     return this.expiredInputs.delete(userId);
+  }
+
+  // Пользователь уже сделал другое действие (команда, кнопка, голосовое): про истёкший ввод не напоминаем
+  dropExpiredInput(userId) {
+    this.takeExpiredInput(userId);
   }
 
   // ---------- Правка записи (✏️) ----------
@@ -264,21 +273,21 @@ class StateService {
     return deleted;
   }
 
-  // ---------- Текст, который можно задать вопросом боту ----------
+  // ---------- Текст под кнопкой сообщения (question, record) ----------
 
-  setPendingQuestion(userId, messageId, text) {
+  setPendingText(kind, userId, messageId, text) {
     const value = { messageId, text };
-    this.pendingQuestions.set(userId, value);
-    this.touch('question', userId, '', value);
+    this.pendingTexts[kind].set(userId, value);
+    this.touch(kind, userId, '', value);
   }
 
   // Текст для кнопки сообщения messageId (один раз); undefined — кнопка устарела
-  takePendingQuestion(userId, messageId) {
-    const value = this.pendingQuestions.get(userId);
+  takePendingText(kind, userId, messageId) {
+    const value = this.pendingTexts[kind].get(userId);
     if (!value || value.messageId !== messageId) return undefined;
-    this.pendingQuestions.delete(userId);
-    const expired = this.isExpired('question', userId);
-    this.forget('question', userId);
+    this.pendingTexts[kind].delete(userId);
+    const expired = this.isExpired(kind, userId);
+    this.forget(kind, userId);
     return expired ? undefined : value.text;
   }
 
@@ -322,7 +331,9 @@ class StateService {
     this.deleteAllPendingExpenses(userId);
     this.deletePendingRecurring(userId);
     this.deleteExportState(userId);
-    if (this.pendingQuestions.delete(userId)) this.forget('question', userId);
+    for (const [kind, texts] of Object.entries(this.pendingTexts)) {
+      if (texts.delete(userId)) this.forget(kind, userId);
+    }
   }
 
   // Только память (тесты: «перезапуск» без БД)
@@ -332,7 +343,7 @@ class StateService {
     this.pendingRecurring.clear();
     this.exportState.clear();
     this.userStates.clear();
-    this.pendingQuestions.clear();
+    for (const texts of Object.values(this.pendingTexts)) texts.clear();
     this.expiresAt.clear();
     this.expiredInputs.clear();
   }

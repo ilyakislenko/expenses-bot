@@ -68,10 +68,13 @@ constructor({ expenseService, userService, premiumService, familyService, catego
         return;
       }
 
-      // Бот ждал ответ на подсказку, но срок вышел (в том числе пока бот был выключен): не превращаем ответ
-      // («25.10», «50000 зарплата») в новую трату, а говорим, что ввод устарел
+      // Бот ждал ответ на подсказку, но срок вышел (в том числе пока бот был выключен). Ответ («25.10», «50000 зарплата»)
+      // не превращаем молча в новую трату и не теряем: текст с числами — кнопка «✅ Записать …» (обычная запись),
+      // вопрос — как обычно, остальное — «ввод устарел»
       const inputExpired = this.stateService.takeExpiredInput(userId);
-      if (inputExpired && !this.stateService.hasUserState(userId) && !this.stateService.hasUserEditState(userId)) {
+      if (inputExpired && !this.stateService.hasUserState(userId) && !this.stateService.hasUserEditState(userId)
+        && !(this.assistantHandlers && AssistantHandlers.isQuestion(text))) {
+        if (/\d/.test(text)) return await this.offerRecordAfterExpired(ctx, text, userLanguage);
         return ctx.reply(t('input_expired'));
       }
 
@@ -203,18 +206,7 @@ constructor({ expenseService, userService, premiumService, familyService, catego
         return await this.assistantHandlers.ask(ctx, text, userLanguage);
       }
 
-      // Несколько записей одним сообщением («кофе 250, такси 400», по строке на запись, «+50000 зарплата, обед 600»)
-      // и одна запись с суммой в конце («кофе 250», «хлеб, молоко 300»)
-      if (await this.multiEntryHandlers.handleText(ctx, text, userLanguage)) return;
-      // Доход быстрым вводом: "+50000 зарплата", "+1000 USD фриланс"
-      if (/^\s*\+\s*\d/.test(text)) {
-        return await this.incomeHandlers.handleIncomeInput(ctx, text, userLanguage);
-      }
-      // Текст без суммы — не запись. Возможно, вопрос без «?»: подсказка и кнопка «🤖 Спросить бота» с этим текстом
-      if (this.assistantHandlers && !/\d/.test(text) && /\p{L}{2,}/u.test(text)) {
-        return await this.offerQuestion(ctx, text, userLanguage);
-      }
-      await this.expenseHandlers.handleExpenseInput(ctx, text, userLanguage);
+      await this.routeEntry(ctx, text, userLanguage);
     } catch (error) {
       console.error('Error handling expense:', error);
       const userId = ctx.from.id;
@@ -224,6 +216,43 @@ constructor({ expenseService, userService, premiumService, familyService, catego
     }
   }
 
+  // Обычная запись без ожидаемого ввода: несколько записей одним сообщением («кофе 250, такси 400», по строке на
+  // запись, «+50000 зарплата, обед 600») и одна с суммой в конце («кофе 250»), доход «+50000 зарплата», текст без
+  // суммы — «Не понял» с «🤖 Спросить бота», иначе трата «250 кофе»
+  async routeEntry(ctx, text, userLanguage) {
+    if (await this.multiEntryHandlers.handleText(ctx, text, userLanguage)) return;
+    if (/^\s*\+\s*\d/.test(text)) {
+      return this.incomeHandlers.handleIncomeInput(ctx, text, userLanguage);
+    }
+    if (this.assistantHandlers && !/\d/.test(text) && /\p{L}{2,}/u.test(text)) {
+      return this.offerQuestion(ctx, text, userLanguage);
+    }
+    return this.expenseHandlers.handleExpenseInput(ctx, text, userLanguage);
+  }
+
+  // Текст после истёкшего ввода: «ввод устарел» и кнопка «✅ Записать «…»» — одно нажатие, и это обычная запись (ixr)
+  async offerRecordAfterExpired(ctx, text, userLanguage) {
+    const t = (key, params) => this.localizationService.getText(userLanguage, key, params);
+    const label = this.formatter.shorten(text.replace(/\s+/g, ' ').trim(), 32);
+    const sent = await ctx.reply(t('input_expired_record', { text: label }), {
+      reply_markup: { inline_keyboard: [[{ text: t('button_record_text', { text: label }), callback_data: 'ixr' }]] }
+    });
+    if (sent?.message_id) this.stateService.setPendingText('record', ctx.from.id, sent.message_id, text);
+  }
+
+  // callback: ixr — «✅ Записать «…»» после «ввод устарел»: текст того сообщения — обычной записью (один раз)
+  async recordPendingText(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const text = this.stateService.takePendingText('record', userId, ctx.callbackQuery.message?.message_id);
+    if (!text) {
+      return ctx.answerCbQuery(this.localizationService.getText(userLanguage, 'record_button_outdated'), { show_alert: true });
+    }
+    await ctx.answerCbQuery().catch(() => {});
+    await ctx.editMessageReplyMarkup({ inline_keyboard: [] }).catch(() => {});
+    await this.routeEntry(ctx, text, userLanguage);
+  }
+
   // Текст без суммы: «Не понял» с подсказкой про вопрос и кнопкой, которая задаёт этот текст боту (aitx)
   async offerQuestion(ctx, text, userLanguage) {
     const t = (key) => this.localizationService.getText(userLanguage, key);
@@ -231,14 +260,14 @@ constructor({ expenseService, userService, premiumService, familyService, catego
       parse_mode: 'Markdown',
       reply_markup: { inline_keyboard: [[{ text: t('button_ask_bot_this'), callback_data: 'aitx' }]] }
     });
-    if (sent?.message_id) this.stateService.setPendingQuestion(ctx.from.id, sent.message_id, text);
+    if (sent?.message_id) this.stateService.setPendingText('question', ctx.from.id, sent.message_id, text);
   }
 
   // callback: aitx — «🤖 Спросить бота» под «Не понял»: текст того сообщения — вопросом
   async askPendingQuestion(ctx) {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
-    const question = this.stateService.takePendingQuestion(userId, ctx.callbackQuery.message?.message_id);
+    const question = this.stateService.takePendingText('question', userId, ctx.callbackQuery.message?.message_id);
     if (!question) {
       return ctx.answerCbQuery(this.localizationService.getText(userLanguage, 'ask_bot_outdated'), { show_alert: true });
     }

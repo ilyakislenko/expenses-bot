@@ -1,5 +1,6 @@
 const logger = require('./logger');
 const currencyConfig = require('../config/currencies');
+const { resolveCurrencyWord } = require('./multiEntry');
 
 // Сумма в начале ввода: «1500», «1500,5», «1 500», «1 000,50» — пробел (в т.ч. неразрывный) отделяет тысячи.
 // Группа 1 — целая часть, 2 — дробная, 3 — остаток строки.
@@ -225,12 +226,15 @@ class EnhancedValidator {
     return { isValid: true, amount, currency, description: this.sanitizeText(rest, maxDescriptionLength) };
   }
 
+  // Валюта после суммы: код (USD), символ ($) или слово, как в нескольких записях: «250 руб кофе», «20 долларов такси»
   resolveCurrencyToken(token) {
     if (!token) return null;
     const symbols = { '$': 'USD', '€': 'EUR', '₽': 'RUB', '₸': 'KZT', '₾': 'GEL', '₺': 'TRY', '₹': 'INR', '฿': 'THB' };
     if (symbols[token]) return symbols[token];
     const code = token.toUpperCase();
-    return currencyConfig.SUPPORTED_CURRENCIES.includes(code) ? code : null;
+    if (currencyConfig.SUPPORTED_CURRENCIES.includes(code)) return code;
+    const word = resolveCurrencyWord(token);
+    return word && currencyConfig.SUPPORTED_CURRENCIES.includes(word) ? word : null;
   }
 
   // Санитизация текста

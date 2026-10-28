@@ -33,8 +33,11 @@ function makeWorld({ premium = [OWNER, MEMBER, OUTSIDER, OTHER_OWNER] } = {}) {
     getFamilyByOwnerId: jest.fn(async (ownerId) => [...families.values()].find(f => f.owner_id === ownerId)),
     getUserFamily: jest.fn(async (userId) => families.get(members.get(userId))),
     addMemberToFamily: jest.fn(async (familyId, userId) => { members.set(userId, familyId); }),
+    // Как репозиторий: удалённая строка family_user или undefined, если участника уже нет
     removeMemberFromFamily: jest.fn(async (familyId, userId) => {
-      if (members.get(userId) === familyId) members.delete(userId);
+      if (members.get(userId) !== familyId) return undefined;
+      members.delete(userId);
+      return { family_id: familyId, user_id: userId };
     }),
     isUserInFamily: jest.fn(async (userId, familyId) => members.get(userId) === familyId),
     getFamilyMembers: jest.fn(async (familyId) => [...members.entries()]
