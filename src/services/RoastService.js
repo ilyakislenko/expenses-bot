@@ -2,7 +2,7 @@ const logger = require('../utils/logger');
 const { USER_LIMITS, ROAST } = require('../utils/constants');
 const { addDays } = require('../utils/period');
 const { daysBetween } = require('../utils/planning');
-const { LEVELS, GENDERS, TRIGGER_PRIORITY, junkKind, median, renderTemplate, pickVariant } = require('../utils/roast');
+const { LEVELS, GENDERS, TRIGGER_PRIORITY, junkKind, median, renderTemplate, pickVariant, timeContexts, isPayday } = require('../utils/roast');
 const roastTemplates = require('../locales/roast');
 
 const PREFIX = '😈 ';
@@ -12,12 +12,13 @@ const MONTH_SAME_PERCENT = 5;
 const MONTH_BAD_PERCENT = 10; // «плохой» итог месяца: на 10% дороже прошлого к этому же дню…
 const MONTH_BAD_JUNK = 5; // …или 5+ вредных трат, или общий бюджет превышен
 const MONTH_JUNK_MIN = 2;
+const PAYDAY_HISTORY_DAYS = 180; // медиана дохода — по доходам за полгода
 
 // «😈 Злой режим»: подколка к подтверждению записи (один самый сильный повод на действие, с лимитом в день),
 // строка к сводке недели и «Разнос месяца». Тексты — src/locales/roast, правила — utils/roast.js.
 // Никогда не бросает исключение наружу из afterExpenses/weeklyLine: запись траты важнее шутки.
 class RoastService {
-  constructor({ roastRepository, expenseService, budgetService, planningService = null, premiumService, reportService, userNotificationRepository, localizationService, formatter, currencyUtils, random = Math.random }) {
+  constructor({ roastRepository, expenseService, budgetService, planningService = null, premiumService, reportService, userNotificationRepository, localizationService, formatter, currencyUtils, random = Math.random, now = () => new Date() }) {
     this.roastRepository = roastRepository;
     this.expenseService = expenseService;
     this.budgetService = budgetService;
@@ -29,6 +30,7 @@ class RoastService {
     this.formatter = formatter;
     this.currencyUtils = currencyUtils;
     this.random = random;
+    this.now = now;
   }
 
   t(lang, key, params) {
@@ -73,18 +75,28 @@ class RoastService {
   // ШАБЛОНЫ
   // ========================================
 
-  // Варианты семейства (у вредной траты — свои для вида + общие)
+  // Варианты семейства (у вредной траты — свои для вида + общие; у языка без вариантов для вида — только общие)
   variants(lang, level, family, kind = null) {
     const set = roastTemplates(lang)[level] || {};
     const own = kind ? (set[`${family}_${kind}`] || []) : [];
     return own.concat(set[family] || []);
   }
 
-  pick(lang, level, family, params, gender, recent, kind = null) {
+  // Выбор варианта: в ситуации (ночь, выходные, понедельник, зарплата) с вероятностью ROAST.CONTEXT_CHANCE —
+  // ситуационный; у вредной траты с вероятностью ROAST.SUBTYPE_CHANCE — свой для вида (у языка без них — общий);
+  // иначе — любой обычный. Свои для вида идут первыми в variants(), поэтому ключи вариантов одинаковые во всех ветках
+  pick(lang, level, family, params, gender, recent, kind = null, contexts = []) {
     const name = kind ? `${level}.${family}.${kind}` : `${level}.${family}`;
-    const picked = pickVariant(name, this.variants(lang, level, family, kind), {
-      params, gender: gender || 'x', recent, random: this.random
-    });
+    const all = this.variants(lang, level, family, kind);
+    const ownCount = kind ? all.length - this.variants(lang, level, family).length : 0;
+    const base = { params, gender: gender || 'x', recent, random: this.random };
+    const situational = contexts.length && this.random() < ROAST.CONTEXT_CHANCE
+      ? pickVariant(name, all, { ...base, contexts, situational: true, freshOnly: true })
+      : null;
+    const own = !situational && ownCount && this.random() < ROAST.SUBTYPE_CHANCE
+      ? pickVariant(name, all.slice(0, ownCount), { ...base, freshOnly: true })
+      : null;
+    const picked = situational || own || pickVariant(name, all, base);
     // Шаблон может начинаться с параметра («общий бюджет — уже 80%») — фраза всё равно с заглавной
     return picked && { ...picked, text: picked.text.charAt(0).toUpperCase() + picked.text.slice(1) };
   }
@@ -154,7 +166,8 @@ class RoastService {
       }
       if (!trigger) return '';
 
-      const picked = this.pick(lang, level, trigger.family, trigger.params, settings.gender, state.recent, trigger.junk);
+      const contexts = await this.contexts(data);
+      const picked = this.pick(lang, level, trigger.family, trigger.params, settings.gender, state.recent, trigger.junk, contexts);
       if (!picked) return '';
       const claimed = await this.roastRepository.claim(userId, {
         today: data.today,
@@ -165,12 +178,27 @@ class RoastService {
         keep: ROAST.RECENT_VARIANTS
       });
       if (!claimed) return '';
-      logger.info('Roast sent', { userId, trigger: trigger.kind, level, variant: picked.key });
+      logger.info('Roast sent', { userId, trigger: trigger.kind, level, variant: picked.key, contexts });
       return PREFIX + picked.text;
     } catch (error) {
       logger.warn('Roast failed', { userId, error: error.message });
       return '';
     }
+  }
+
+  // Ситуации сейчас в поясе пользователя: ночь, выходные, понедельник и «только зарплата пришла» (доход не меньше
+  // медианы своих доходов за полгода — в последние 3 дня). Ошибка — просто без ситуации
+  async contexts(data) {
+    const contexts = timeContexts(this.now(), data.timezone);
+    try {
+      const rows = await this.roastRepository.getIncomes(data.userId, data.timezone, addDays(data.today, -PAYDAY_HISTORY_DAYS));
+      const incomes = [];
+      for (const row of rows) incomes.push({ value: await data.convert(row.amount, row.currency), date: row.local_date });
+      if (isPayday(incomes, data.today)) contexts.push('payday');
+    } catch (error) {
+      logger.warn('Roast payday check failed', { userId: data.userId, error: error.message });
+    }
+    return contexts;
   }
 
   // Всё о действии, что нужно поводам; дорогое (бюджеты, лимит дня, история) — лениво и один раз
@@ -324,6 +352,11 @@ class RoastService {
     });
   }
 
+  // Вид вредной траты; авто-запись регулярной (подписка, списанная сама) — не повод
+  junkOf(expense) {
+    return junkKind(expense.description, { recurring: !!expense.recurring_expense_id });
+  }
+
   // Самая крупная трата действия — в IMPULSE_FACTOR раз больше медианы своих трат (нужна история)
   async detectImpulse(data) {
     if (data.source === 'receipt') return null;
@@ -353,7 +386,7 @@ class RoastService {
   // медианы) или уже привычка (JUNK_HABIT_COUNT-я такая за период)
   async detectJunk(data) {
     const junk = data.items
-      .map(item => ({ ...item, kind: junkKind(item.expense.description) }))
+      .map(item => ({ ...item, kind: this.junkOf(item.expense) }))
       .filter(item => item.kind)
       .sort((a, b) => b.value - a.value)[0];
     if (!junk) return null;
@@ -361,7 +394,7 @@ class RoastService {
     let count = 0;
     let sum = 0;
     for (const expense of periodExpenses) {
-      if (junkKind(expense.description) !== junk.kind) continue;
+      if (this.junkOf(expense) !== junk.kind) continue;
       count += 1;
       sum += await data.convert(expense.amount, expense.currency);
     }
@@ -501,7 +534,7 @@ class RoastService {
       }
     }
 
-    const junk = values.filter(item => junkKind(item.expense.description));
+    const junk = values.filter(item => this.junkOf(item.expense));
     if (junk.length >= MONTH_JUNK_MIN) {
       const junkLine = line('month_junk', { count: junk.length, sum: money(junk.reduce((sum, item) => sum + item.value, 0)) });
       if (junkLine) { lines.push(`🍟 ${junkLine}`); share.push(`🍟 ${junkLine}`); }

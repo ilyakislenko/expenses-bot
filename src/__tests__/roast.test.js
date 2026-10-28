@@ -1,5 +1,6 @@
 const {
-  TRIGGER_PRIORITY, junkKind, median, selectTrigger, pluralForm, fitsGender, renderTemplate, pickVariant
+  TRIGGER_PRIORITY, CONTEXTS, junkKind, median, selectTrigger, pluralForm, fitsGender, renderTemplate, pickVariant,
+  timeContexts, isPayday, variantText, variantContext
 } = require('../utils/roast');
 const roastTemplates = require('../locales/roast');
 const RoastService = require('../services/RoastService');
@@ -13,6 +14,12 @@ const PERIOD = { start: '2026-10-01', end: '2026-11-01', last: '2026-10-31' };
 const LANGS = Object.keys(roastTemplates.ROAST_LOCALES);
 const TRIGGER_FAMILIES = ['budget_over', 'budget_80', 'allowance', 'challenge', 'impulse', 'junk'];
 const OPTIONAL = ['days', 'times', 'cat_times', 'count', 'sum'];
+// Новые виды вредных трат — только ru и en; остальным языкам хватает общих вариантов junk
+const NEW_SUBTYPES = ['junk_coffee', 'junk_marketplace', 'junk_games', 'junk_subscription'];
+const SUBTYPES = ['junk_fastfood', 'junk_delivery', 'junk_alcohol', 'junk_smoking', 'junk_energy', 'junk_taxi', ...NEW_SUBTYPES];
+const WEEK_FAMILIES = ['week_more', 'week_less', 'week_same'];
+const MONTH_FAMILIES = ['month_empty', 'month_open', 'month_top', 'month_biggest', 'month_more', 'month_less',
+  'month_budget_over', 'month_budget_ok', 'month_junk', 'month_verdict_bad', 'month_verdict_good'];
 
 // Все параметры, которые бывают у семейств (для проверки шаблонов)
 const FULL_PARAMS = {
@@ -103,6 +110,124 @@ describe('roast templates engine', () => {
   });
 });
 
+describe('junk subtypes and situations', () => {
+  test('new junk subtypes: marketplaces, coffee, games, subscriptions (ru/en)', () => {
+    for (const d of ['Ozon', 'заказ на озоне', 'Wildberries', 'вб', 'WB заказ', 'AliExpress', 'али', 'Яндекс Маркет', 'Amazon', 'Temu']) {
+      expect([d, junkKind(d)]).toEqual([d, 'marketplace']);
+    }
+    for (const d of ['кофе', 'латте', 'капучино', 'раф', 'Starbucks', 'coffee']) expect([d, junkKind(d)]).toEqual([d, 'coffee']);
+    for (const d of ['Steam', 'донат стримеру', 'PlayStation Store', 'PS Store', 'Xbox', 'игра', 'игры', 'games']) {
+      expect([d, junkKind(d)]).toEqual([d, 'games']);
+    }
+    for (const d of ['Netflix', 'Spotify', 'Кинопоиск', 'ivi', 'Яндекс Плюс', 'YouTube Premium']) {
+      expect([d, junkKind(d)]).toEqual([d, 'subscription']);
+    }
+    // Не вредное: кафе — не кофе, «альбом», «вбить» — не маркетплейс, «игрушки» — не игры
+    for (const d of ['кафе', 'альбом', 'вбить гвоздь', 'игрушки ребёнку', 'продукты']) expect([d, junkKind(d)]).toEqual([d, null]);
+    // Подписка, которую бот списал сам как регулярную, — не повод
+    expect(junkKind('Netflix', { recurring: true })).toBeNull();
+    expect(junkKind('кофе', { recurring: true })).toBe('coffee');
+  });
+
+  test('time situations in the user\'s timezone: night 00:00–04:59, Friday 18:00+ and weekend, Monday', () => {
+    const at = (iso, tz) => timeContexts(new Date(iso), tz);
+    // Москва UTC+3: 21:30 UTC вторника — 00:30 среды
+    expect(at('2026-10-20T21:30:00Z', 'Europe/Moscow')).toEqual(['night']);
+    expect(at('2026-10-21T01:59:00Z', 'Europe/Moscow')).toEqual(['night']); // 04:59
+    expect(at('2026-10-21T02:00:00Z', 'Europe/Moscow')).toEqual([]); // 05:00
+    expect(at('2026-10-20T20:59:00Z', 'Europe/Moscow')).toEqual([]); // 23:59 вторника
+    // Пятница: 17:59 — ещё нет, 18:00 — уже выходные
+    expect(at('2026-10-23T14:59:00Z', 'Europe/Moscow')).toEqual([]);
+    expect(at('2026-10-23T15:00:00Z', 'Europe/Moscow')).toEqual(['weekend']);
+    expect(at('2026-10-24T12:00:00Z', 'Europe/Moscow')).toEqual(['weekend']); // суббота
+    expect(at('2026-10-24T23:30:00Z', 'Europe/Moscow')).toEqual(['night', 'weekend']); // 02:30 воскресенья
+    // Понедельник по местному времени, хотя в UTC ещё воскресенье
+    expect(at('2026-10-25T22:00:00Z', 'Asia/Novosibirsk')).toEqual(['monday']); // 05:00 пн в UTC+7
+    expect(at('2026-10-25T20:00:00Z', 'Asia/Novosibirsk')).toEqual(['night', 'monday']); // 03:00 пн
+    expect(at('2026-10-25T20:00:00Z', 'UTC')).toEqual(['weekend']); // а в UTC это вечер воскресенья
+  });
+
+  test('payday: an income not below the median within the last 3 days', () => {
+    const incomes = [
+      { value: 100000, date: '2026-08-05' }, { value: 100000, date: '2026-09-05' }, { value: 5000, date: '2026-09-20' },
+      { value: 100000, date: '2026-10-05' }
+    ];
+    expect(isPayday(incomes, '2026-10-05')).toBe(true);
+    expect(isPayday(incomes, '2026-10-07')).toBe(true);
+    expect(isPayday(incomes, '2026-10-08')).toBe(false); // прошло 3 дня
+    expect(isPayday(incomes, '2026-10-04')).toBe(false); // доход ещё в будущем
+    // Мелкий доход меньше медианы — не зарплата
+    expect(isPayday(incomes, '2026-09-21')).toBe(false);
+    expect(isPayday([], '2026-10-05')).toBe(false);
+  });
+
+  test('situational variants only in their situation, with the context chance; subtype lines preferred', async () => {
+    const variants = ['обычный {x}', { when: 'night', text: 'ночной {x}' }, { when: 'payday', text: 'зарплатный {x}' }];
+    const pick = (contexts, situational) => {
+      const picked = pickVariant('f', variants, { params: { x: 1 }, contexts, situational, random: () => 0 });
+      return picked && picked.text;
+    };
+    expect(pick([], false)).toBe('обычный 1');
+    expect(pick(['night'], false)).toBe('обычный 1'); // ситуационные в обычный выбор не попадают
+    expect(pick(['night'], true)).toBe('ночной 1');
+    expect(pick(['payday'], true)).toBe('зарплатный 1');
+    expect(pick(['monday'], true)).toBeNull(); // для понедельника вариантов нет — вызывающий берёт обычный
+    expect(pick([], true)).toBeNull();
+
+    // Сервис: вероятность ситуации — ROAST.CONTEXT_CHANCE, вида траты — ROAST.SUBTYPE_CHANCE
+    const rolls = (...values) => { let i = 0; return () => values[Math.min(i++, values.length - 1)]; };
+    const { service } = makeService();
+    const ru = (key) => service.variants('ru', 'spicy', 'junk', 'fastfood')[Number(key.split(':')[1])];
+    const ownCount = roastTemplates('ru').spicy.junk_fastfood.length;
+    const params = { amount: '450 ₽', desc: 'шаурма', count: null, sum: null };
+    service.random = rolls(0.1, 0);
+    expect(variantContext(ru(service.pick('ru', 'spicy', 'junk', params, 'm', [], 'fastfood', ['night']).key))).toBe('night');
+    service.random = rolls(0.9, 0.1, 0); // ситуация не выпала, вид выпал
+    let picked = service.pick('ru', 'spicy', 'junk', params, 'm', [], 'fastfood', ['night']);
+    expect(Number(picked.key.split(':')[1])).toBeLessThan(ownCount);
+    expect(variantContext(ru(picked.key))).toBeNull();
+    service.random = rolls(0.9, 0.9, 0.99); // ни ситуации, ни вида — любой обычный из общего набора
+    picked = service.pick('ru', 'spicy', 'junk', params, 'm', [], 'fastfood', ['night']);
+    expect(variantContext(ru(picked.key))).toBeNull();
+    expect(Number(picked.key.split(':')[1])).toBeGreaterThanOrEqual(ownCount);
+  });
+
+  test('languages without a subtype fall back to the generic junk variants', async () => {
+    expect(roastTemplates('de').spicy.junk_marketplace).toBeUndefined();
+    const { service, repo } = makeService({
+      history: Array.from({ length: 20 }, () => ({ amount: 300, currency: 'RUB', category_name: 'Еда' }))
+    });
+    const text = await service.afterExpenses({ chat: { type: 'private', id: 7 }, from: { id: 7 } }, {
+      userId: 7, lang: 'de', expenses: [{ id: 1, user_id: 7, amount: 600, currency: 'RUB', description: 'Ozon', category_name: 'Покупки' }]
+    });
+    expect(text).not.toBe('');
+    const key = repo.claim.mock.calls[0][1].variantKey;
+    expect(key).toMatch(/^spicy\.junk\.marketplace:\d+$/);
+    const index = Number(key.split(':')[1]);
+    expect(service.variants('de', 'spicy', 'junk', 'marketplace')[index]).toBe(roastTemplates('de').spicy.junk[index]);
+  });
+
+  test('service: payday and night variants are used when the situation matches', async () => {
+    const history = Array.from({ length: 20 }, () => ({ amount: 500, currency: 'RUB', category_name: 'Еда' }));
+    const expense = { id: 1, user_id: 7, amount: 600, currency: 'RUB', description: 'шаурма', category_name: 'Еда' };
+    const ctx = { chat: { type: 'private', id: 7 }, from: { id: 7 } };
+    const situational = (service, key) => variantContext(service.variants('ru', 'spicy', 'junk', 'fastfood')[Number(key.split(':')[1])]);
+
+    const payday = makeService({ history, incomes: [{ amount: 90000, currency: 'RUB', local_date: TODAY }] });
+    await payday.service.afterExpenses(ctx, { userId: 7, lang: 'ru', expenses: [expense] });
+    expect(situational(payday.service, payday.repo.claim.mock.calls[0][1].variantKey)).toBe('payday');
+
+    // Пояс пользователя в моке — UTC: 23:30 вторника ещё не ночь
+    const evening = makeService({ history, now: new Date('2026-10-20T23:30:00Z') });
+    await evening.service.afterExpenses(ctx, { userId: 7, lang: 'ru', expenses: [expense] });
+    expect(situational(evening.service, evening.repo.claim.mock.calls[0][1].variantKey)).toBeNull();
+
+    const lateNight = makeService({ history, now: new Date('2026-10-21T02:30:00Z') }); // 02:30 UTC, среда
+    await lateNight.service.afterExpenses(ctx, { userId: 7, lang: 'ru', expenses: [expense] });
+    expect(situational(lateNight.service, lateNight.repo.claim.mock.calls[0][1].variantKey)).toBe('night');
+  });
+});
+
 describe('roast copy in all languages', () => {
   const en = roastTemplates('en');
 
@@ -112,10 +237,13 @@ describe('roast copy in all languages', () => {
     expect(set.labels.category_budget).toContain('{category}');
     for (const level of ['spicy', 'savage']) {
       for (const family of Object.keys(en[level])) {
-        expect(Array.isArray(set[level][family]) && set[level][family].length).toBeTruthy();
+        if (NEW_SUBTYPES.includes(family) && !['ru', 'en'].includes(lang)) continue;
+        expect([lang, level, family, Array.isArray(set[level][family]) && set[level][family].length > 0]).toEqual([lang, level, family, true]);
       }
       for (const [family, variants] of Object.entries(set[level])) {
-        for (const template of variants) {
+        for (const variant of variants) {
+          const template = variantText(variant);
+          if (variantContext(variant)) expect(CONTEXTS).toContain(variantContext(variant));
           expect(template.replace(/\{[^{}]*\}/g, '')).not.toMatch(/[*_`[]/);
           for (const name of placeholders(template)) expect(FULL_PARAMS).toHaveProperty(name);
           for (const gender of ['m', 'f', 'x']) {
@@ -127,30 +255,46 @@ describe('roast copy in all languages', () => {
         }
         // Каждому повод нужен и тем, кто не сказал пол, и без необязательных чисел
         if (TRIGGER_FAMILIES.includes(family)) {
-          const neutralBasic = variants.filter(v => fitsGender(v, 'x') && !placeholders(v).some(p => OPTIONAL.includes(p)));
+          const plain = variants.filter(v => !variantContext(v)).map(variantText);
+          const neutralBasic = plain.filter(v => fitsGender(v, 'x') && !placeholders(v).some(p => OPTIONAL.includes(p)));
           expect(neutralBasic.length).toBeGreaterThanOrEqual(lang === 'ru' ? 2 : 1);
-          expect(variants.filter(v => fitsGender(v, 'x')).length).toBeGreaterThanOrEqual(2);
+          expect(plain.filter(v => fitsGender(v, 'x')).length).toBeGreaterThanOrEqual(2);
         }
       }
     }
   });
 
-  test('ru: at least 6 variants per trigger and level, 3+ without gender forms', () => {
+  test('ru and en pool sizes; at least half of every ru family works for «не скажу»', () => {
     const ru = roastTemplates('ru');
+    const en = roastTemplates('en');
+    const size = (set, level, family) => set[level][family].length;
     for (const level of ['spicy', 'savage']) {
-      for (const family of TRIGGER_FAMILIES) {
-        expect(ru[level][family].length).toBeGreaterThanOrEqual(6);
-        expect(ru[level][family].filter(v => fitsGender(v, 'x')).length).toBeGreaterThanOrEqual(3);
+      for (const family of TRIGGER_FAMILIES) expect([level, family, size(ru, level, family) >= 15]).toEqual([level, family, true]);
+      for (const family of TRIGGER_FAMILIES) expect([level, family, size(en, level, family) >= 10]).toEqual([level, family, true]);
+      for (const family of SUBTYPES) expect([level, family, size(ru, level, family) >= 8]).toEqual([level, family, true]);
+      for (const family of NEW_SUBTYPES) expect([level, family, size(en, level, family) >= 4]).toEqual([level, family, true]);
+      for (const family of WEEK_FAMILIES) expect([level, family, size(ru, level, family) >= 8]).toEqual([level, family, true]);
+      for (const family of MONTH_FAMILIES) expect([level, family, size(ru, level, family) >= 5]).toEqual([level, family, true]);
+      for (const [family, variants] of Object.entries(ru[level])) {
+        const neutral = variants.filter(v => fitsGender(variantText(v), 'x')).length;
+        expect([level, family, neutral * 2 >= variants.length]).toEqual([level, family, true]);
+      }
+      // Ситуационные: ru — от 6 на ситуацию, en — от 4
+      for (const [set, min] of [[ru, 6], [en, 4]]) {
+        const all = Object.values(set[level]).flat();
+        for (const context of CONTEXTS) expect([level, context, all.filter(v => variantContext(v) === context).length >= min]).toEqual([level, context, true]);
       }
     }
   });
 
   test('ru «не скажу» never gets a gendered form', () => {
     const ru = roastTemplates('ru');
-    const gendered = /(купил|купила|доволен|довольна|долбоёб|сам |сама |потратил|решил|охуел|проебал)/i;
+    // «ты …л(ся)», «долбоёб», «сам/сама себе» — формы о самом пользователе (про бюджет, бармена и т.п. можно)
+    const gendered = /(^|[^а-яё])(ты\s+[а-яё]+л(ся)?|ты\s+[а-яё]+(ый|ой)|долбоёб|купил|купила|сама?\s+себе)(?=[^а-яё]|$)/i;
     for (const level of ['spicy', 'savage']) {
       for (const variants of Object.values(ru[level])) {
-        for (const template of variants) {
+        for (const variant of variants) {
+          const template = variantText(variant);
           if (!fitsGender(template, 'x')) continue;
           const text = renderTemplate(template, FULL_PARAMS, 'x');
           expect(text).not.toMatch(gendered);
@@ -179,9 +323,12 @@ describe('roast copy in all languages', () => {
 
 // ---------- RoastService ----------
 
+// По умолчанию — среда, 12:00 UTC: ни ночи, ни выходных, ни понедельника
+const WEDNESDAY_NOON = new Date('2026-10-21T12:00:00Z');
+
 function makeService({
   level = 'spicy', gender = 'm', state = {}, statuses = [], isPremium = true, allowance = null, history = [],
-  periodExpenses = [], markSent = true, claim = true
+  periodExpenses = [], markSent = true, claim = true, incomes = [], now = WEDNESDAY_NOON
 } = {}) {
   const repo = {
     getSettings: jest.fn(async () => ({ level, gender, adultConfirmed: true })),
@@ -189,7 +336,8 @@ function makeService({
     claim: jest.fn(async () => claim),
     rememberVariants: jest.fn(async () => {}),
     getActionRows: jest.fn(async (userId, timezone, ids) => ids.map(id => ({ id, local_date: TODAY }))),
-    getHistory: jest.fn(async () => history)
+    getHistory: jest.fn(async () => history),
+    getIncomes: jest.fn(async () => incomes)
   };
   const deps = {
     roastRepository: repo,
@@ -206,7 +354,8 @@ function makeService({
     localizationService: new LocalizationService(),
     formatter: new Formatter({ convert: async (amount) => amount }),
     currencyUtils: { convert: async (amount) => amount },
-    random: () => 0
+    random: () => 0,
+    now: () => now
   };
   return { service: new RoastService(deps), repo, deps };
 }

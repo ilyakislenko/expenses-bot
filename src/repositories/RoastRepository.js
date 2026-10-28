@@ -81,6 +81,16 @@ class RoastRepository extends BaseRepository {
     return result.rows;
   }
 
+  // Свои доходы с локальной даты since — для «только зарплата пришла»: [{ amount, currency, local_date }]
+  async getIncomes(userId, timezone, since) {
+    const result = await this.query(`
+      SELECT amount::float AS amount, currency, ((created_at_utc AT TIME ZONE $2)::date)::text AS local_date
+      FROM incomes
+      WHERE user_id = $1 AND (created_at_utc AT TIME ZONE $2) >= $3::date
+    `, [userId, timezone, since]);
+    return result.rows;
+  }
+
   // Свои траты за days дней до сегодня (без авто-записей регулярных и без трат действия) — для медианы:
   // [{ amount, currency, category_name }]
   async getHistory(userId, timezone, since, excludeIds) {

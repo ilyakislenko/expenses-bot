@@ -1,5 +1,8 @@
-// «😈 Злой режим»: чистые функции — выбор повода, шаблоны с родом и числом, выбор варианта без повторов.
-// Данные и Telegram — в services/RoastService.js, тексты — src/locales/roast/<язык>.js.
+// «😈 Злой режим»: чистые функции — выбор повода, шаблоны с родом и числом, ситуация (ночь, выходные, понедельник,
+// зарплата), выбор варианта без повторов. Данные и Telegram — в services/RoastService.js, тексты —
+// src/locales/roast/<язык>.js.
+
+const { addDays } = require('./period');
 
 const LEVELS = ['off', 'spicy', 'savage'];
 const GENDERS = ['m', 'f', 'x'];
@@ -14,14 +17,58 @@ const JUNK_KINDS = [
   { key: 'alcohol', pattern: /(?:^|[^а-яё])(?:пив[оауе]|пивас|пивко|вин[оа]|ром|джин|бар|паб|алко)(?:[^а-яё]|$)|водк|виски|коньяк|текил|сидр|шампанск|алкогол|\bbeer|\bwine\b|vodka|whisk|cognac|\brum\b|tequila|\bgin\b|cider|champagne|booze|\bpub\b|\bbier\b|\bwein\b|cerveza|\bvino\b|bière|\bvin\b|cerveja|\bbira\b|şarap|rakı|ღვინო|ლუდი|\bpivo\b|शराब|बीयर|ビール|啤酒|白酒/i },
   { key: 'smoking', pattern: /(?:^|[^а-яё])(?:сиги|сиг|стики|жижа)(?:[^а-яё]|$)|сигарет|сигар|табак|вейп|айкос|кальян|снюс|cigarette|cigar|tobacco|\bvape|juul|iqos|hookah|shisha|\bsnus\b|zigarette|\btabak\b|cigarrillo|tabaco|cigarro|sigara|nargile|სიგარეტ|sigaret|सिगरेट|タバコ|たばこ|香烟/i },
   { key: 'energy', pattern: /энергетик|ред\s*бул|редбул|адреналин\s*раш|монстр|флеш\s*ап|energy\s*drink|energydrink|red\s*bull|redbull|monster\s*energy|\bburn\b|energético|energetico|énergisant|enerji\s*içeceği|ენერგეტიკ|энергетик|energetik|エナジードリンク|红牛|能量饮料/i },
-  { key: 'taxi', pattern: /такси|taxi|\buber\b(?!\s*eats)|\bbolt\b|yandex\s*go|яндекс\s*go|taksi|ტაქსი|टैक्सी|タクシー|出租|滴滴/i }
+  { key: 'taxi', pattern: /такси|taxi|\buber\b(?!\s*eats)|\bbolt\b|yandex\s*go|яндекс\s*go|taksi|ტაქსი|टैक्सी|タクシー|出租|滴滴/i },
+  // Подписки — только разовые платежи: авто-запись регулярной траты (recurring_expense_id) поводом не считается
+  { key: 'subscription', pattern: /netflix|нетфликс|spotify|спотифай|кинопоиск|kinopoisk|(?:^|[^а-яё])иви(?:[^а-яё]|$)|\bivi\b|яндекс\s*плюс|yandex\s*plus|youtube\s*premium|ютуб\s*премиум|ютуб\s*premium/i },
+  { key: 'games', pattern: /steam|(?:^|[^а-яё])стим(?:[^а-яё]|$)|донат|playstation|ps\s*store|\bpsn\b|xbox|nintendo|(?:^|[^а-яё])игр[аыу](?:[^а-яё]|$)|\bgames?\b|in-?game|v-?bucks|robux|робукс/i },
+  { key: 'marketplace', pattern: /озон|ozon|wildberries|вайлдберриз|валдберр?из|(?:^|[^а-яё])вб(?:[^а-яё]|$)|\bwb\b|aliexpress|алиэкспресс|(?:^|[^а-яё])али(?:[^а-яё]|$)|яндекс\s*маркет|yandex\s*market|amazon|амазон|\btemu\b|(?:^|[^а-яё])тему(?:[^а-яё]|$)/i },
+  { key: 'coffee', pattern: /кофе|капучин|латте|американо|эспрессо|(?:^|[^а-яё])раф(?:[^а-яё]|$)|старбакс|coffee|latte|cappuccino|espresso|americano|starbucks/i }
 ];
 
-function junkKind(description) {
+// Вид вредной траты по описанию или null. recurring — авто-запись регулярной траты: подписка, которая списывается
+// сама, — не повод (подкалываем только разовые оплаты Netflix и т.п.)
+function junkKind(description, { recurring = false } = {}) {
   const text = String(description || '');
   if (!text) return null;
   const found = JUNK_KINDS.find(({ pattern }) => pattern.test(text));
-  return found ? found.key : null;
+  if (!found) return null;
+  if (found.key === 'subscription' && recurring) return null;
+  return found.key;
+}
+
+// ---------- Ситуация ----------
+
+const CONTEXTS = ['night', 'weekend', 'monday', 'payday'];
+const NIGHT_UNTIL_HOUR = 5; // 00:00–04:59
+const FRIDAY_EVENING_HOUR = 18;
+const PAYDAY_DAYS = 3;
+
+// Локальные дата, час и день недели (1 — понедельник … 7 — воскресенье) момента now в поясе пользователя
+function localMoment(now, timezone) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone || 'UTC', hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', weekday: 'short'
+  }).formatToParts(now).reduce((acc, p) => (acc[p.type] = p.value, acc), {});
+  const weekday = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 }[parts.weekday];
+  return { date: `${parts.year}-${parts.month}-${parts.day}`, hour: Number(parts.hour) % 24, weekday };
+}
+
+// Ситуации по времени: ночь (00:00–04:59), выходные (пятница с 18:00, суббота, воскресенье), понедельник
+function timeContexts(now, timezone) {
+  const { hour, weekday } = localMoment(now, timezone);
+  const contexts = [];
+  if (hour < NIGHT_UNTIL_HOUR) contexts.push('night');
+  if ((weekday === 5 && hour >= FRIDAY_EVENING_HOUR) || weekday === 6 || weekday === 7) contexts.push('weekend');
+  if (weekday === 1) contexts.push('monday');
+  return contexts;
+}
+
+// «Только зарплата пришла»: за последние PAYDAY_DAYS дней (включая сегодня) записан доход не меньше медианы своих
+// доходов. incomes — [{ value (в основной валюте), date 'YYYY-MM-DD' }]
+function isPayday(incomes, today) {
+  const typical = median((incomes || []).map(income => income.value));
+  if (!(typical > 0)) return false;
+  const since = addDays(today, -PAYDAY_DAYS);
+  return incomes.some(income => income.date > since && income.date <= today && income.value >= typical);
 }
 
 function median(values) {
@@ -100,20 +147,36 @@ function renderTemplate(template, params = {}, gender = 'x') {
   return missing ? null : text;
 }
 
+// Вариант семейства — строка или { when: 'night' | 'weekend' | 'monday' | 'payday', text } (ситуационный: только
+// когда ситуация сейчас есть)
+function variantText(variant) {
+  return typeof variant === 'string' ? variant : variant.text;
+}
+
+function variantContext(variant) {
+  return typeof variant === 'string' ? null : variant.when;
+}
+
 // Случайный вариант семейства, который годится для пола и параметров, кроме недавно показанных (recent — ключи
-// «семейство:номер»); если подходящих новых нет — любой, кроме самого последнего. null — подходящих нет вовсе
-function pickVariant(family, variants, { params = {}, gender = 'x', recent = [], random = Math.random } = {}) {
-  const usable = [];
-  (variants || []).forEach((template, index) => {
+// «семейство:номер»); если подходящих новых нет — любой, кроме самого последнего. null — подходящих нет вовсе.
+// situational: true — только ситуационные варианты для ситуаций contexts, false — только обычные (ситуационные вне
+// выбора). freshOnly — null, если все подходящие недавно были (тогда вызывающий берёт другой набор)
+function pickVariant(family, variants, { params = {}, gender = 'x', recent = [], contexts = [], situational = false, freshOnly = false, random = Math.random } = {}) {
+  const candidates = [];
+  (variants || []).forEach((variant, index) => {
+    const template = variantText(variant);
+    const when = variantContext(variant);
+    if (situational ? !(when && contexts.includes(when)) : when) return;
     if (!fitsGender(template, gender)) return;
     const text = renderTemplate(template, params, gender);
-    if (text !== null) usable.push({ key: `${family}:${index}`, text });
+    if (text !== null) candidates.push({ key: `${family}:${index}`, text, when });
   });
-  if (!usable.length) return null;
+  if (!candidates.length) return null;
   const recentSet = new Set(recent);
-  let pool = usable.filter(item => !recentSet.has(item.key));
-  if (!pool.length) pool = usable.filter(item => item.key !== recent[0]);
-  if (!pool.length) pool = usable;
+  let pool = candidates.filter(item => !recentSet.has(item.key));
+  if (!pool.length && freshOnly) return null;
+  if (!pool.length) pool = candidates.filter(item => item.key !== recent[0]);
+  if (!pool.length) pool = candidates;
   return pool[Math.min(pool.length - 1, Math.floor(random() * pool.length))];
 }
 
@@ -122,11 +185,17 @@ module.exports = {
   GENDERS,
   TRIGGER_PRIORITY,
   JUNK_KINDS,
+  CONTEXTS,
   junkKind,
+  localMoment,
+  timeContexts,
+  isPayday,
   median,
   selectTrigger,
   pluralForm,
   fitsGender,
   renderTemplate,
+  variantText,
+  variantContext,
   pickVariant
 };
