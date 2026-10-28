@@ -2,7 +2,8 @@ const logger = require('../utils/logger');
 const { SUPPORTED_CURRENCIES } = require('../config/currencies');
 const { USER_LIMITS } = require('../utils/constants');
 const { buildPrompt, SYSTEM_CATEGORY_HINTS } = require('./receipt/prompt');
-const { normalizeReceipt, resolveReceiptTime, localMonthStart, localNow } = require('./receipt/normalize');
+const { normalizeReceipt, receiptDate, localMonthStart, localNow } = require('./receipt/normalize');
+const { withLineIds } = require('./receipt/draftEdit');
 const { runImageTask } = require('./receipt/imageWorker');
 const { ReceiptError } = require('./receipt/errors');
 const { MAX_RECORD_AGE_DAYS } = require('../utils/recordDate');
@@ -10,9 +11,10 @@ const { MAX_RECORD_AGE_DAYS } = require('../utils/recordDate');
 const DRAFT_TTL_DAYS = 7; // черновик чека и кадр для «повернуть» (receipt_drafts)
 const DRAFT_TAKE_STALE_SECONDS = 300; // захват черновика под запись, после которого его можно взять снова (сбой записи)
 
-// Повторять с поворотом: ответ не разобран (в том числе битый JSON) или цифрам нельзя верить
+// Повторять с поворотом: ответ не разобран (в том числе битый JSON) или цифрам нельзя верить. Чек с текстом-«командой»
+// не повторяем: поворот его не исправит, а локальная модель занята минуты
 function needsRetry(result) {
-  return result.error ? result.error.code === 'unreadable' : result.receipt.lowConfidence;
+  return result.error ? result.error.code === 'unreadable' : result.receipt.lowConfidence && !result.receipt.checks.suspicious;
 }
 
 // Строки, где сумма = round(количество × цена)
@@ -65,12 +67,18 @@ class ReceiptService {
     return USER_LIMITS.premium.MAX_RECEIPTS_PER_MONTH;
   }
 
-  // Месячный лимит распознаваний (локальный календарный месяц; неудачные распознавания не считаются)
+  // Месячный лимит распознаваний (локальный календарный месяц): записанные чеки и попытки без записи — показанные
+  // черновики и «не получилось распознать» (addAttempt). Сбои сервиса, «не чек» и «валюта не поддерживается» не считаются
   async checkLimit(userId, timezone) {
     const isPremium = await this.premiumService.isPremiumUser(userId);
     const limit = (isPremium ? USER_LIMITS.premium : USER_LIMITS.regular).MAX_RECEIPTS_PER_MONTH;
     const used = await this.receiptRepository.countSince(userId, localMonthStart(timezone), timezone);
     return { isPremium, limit, used, remaining: Math.max(0, limit - used) };
+  }
+
+  // Попытка распознавания, показанная без записи ('draft' | 'unreadable'): засчитывается в лимит, id — в черновик
+  async addAttempt(userId, outcome) {
+    return this.receiptRepository.addAttempt(userId, outcome);
   }
 
   // Категории пользователя для подсказки модели и обратного сопоставления (по названию на его языке и в БД)
@@ -96,7 +104,7 @@ class ReceiptService {
     const { labels, fallbackLabel, fallbackCategoryId, choices } = await this.categoryChoices(userId, lang);
     const prompt = buildPrompt({ categories: labels, fallbackCategory: fallbackLabel, defaultCurrency: currency, today: localNow(timezone).date });
     const started = Date.now();
-    const raw = await this.provider.recognize({ image, mimeType, prompt, onStatus });
+    const raw = await this.provider.recognize({ image, mimeType, prompt, onStatus, owner: userId });
     const receipt = normalizeReceipt(raw, { categories: choices, fallbackCategoryId, defaultCurrency: currency, supportedCurrencies: SUPPORTED_CURRENCIES });
     logger.info('Receipt recognized', {
       userId, items: receipt.items.length, mismatch: receipt.mismatch, lowConfidence: receipt.lowConfidence, checks: receipt.checks, ms: Date.now() - started
@@ -165,15 +173,18 @@ class ReceiptService {
     await this.receiptRepository.deleteDraft(userId, messageId);
   }
 
-  // Черновик для показа: { status: 'ok', receipt, frame, timezone } | { status: 'busy' } | { status: 'missing' }
+  // Черновик для показа: { status: 'ok', receipt, frame, timezone } | { status: 'busy' } | { status: 'missing' }.
+  // У строк всегда есть id (старые черновики получают их по порядку)
   async getDraft(userId, messageId) {
-    return this.receiptRepository.getDraft(userId, messageId, DRAFT_TAKE_STALE_SECONDS);
+    const draft = await this.receiptRepository.getDraft(userId, messageId, DRAFT_TAKE_STALE_SECONDS);
+    return draft.receipt ? { ...draft, receipt: withLineIds(draft.receipt) } : draft;
   }
 
   // Правка черновика: change(receipt) — функция из receipt/draftEdit.js (новый черновик или null — менять нечего).
   // Записывающийся черновик не правится. { status: 'ok' | 'unchanged', receipt, frame, timezone } | busy | missing
   async updateDraft(userId, messageId, change) {
-    return this.receiptRepository.updateDraft(userId, messageId, DRAFT_TAKE_STALE_SECONDS, change);
+    const draft = await this.receiptRepository.updateDraft(userId, messageId, DRAFT_TAKE_STALE_SECONDS, (receipt) => change(withLineIds(receipt)));
+    return draft.receipt ? { ...draft, receipt: withLineIds(draft.receipt) } : draft;
   }
 
   // Черновик переехал на новое сообщение (прислан заново после ввода текстом). false — уже не переедет
@@ -181,9 +192,15 @@ class ReceiptService {
     return this.receiptRepository.moveDraft(userId, fromMessageId, toMessageId);
   }
 
-  // Кадр для «повернуть» (черновик этого сообщения уходит вместе с ним). null — нет или устарел
+  // Кадр для «повернуть»: { frame, receipt (прежний черновик или null), timezone }; черновик остаётся в БД с отметкой
+  // «поворачивается», пока новое распознавание не закончится. null — нет, устарел или уже поворачивается
   async takeFrame(userId, messageId) {
-    return this.receiptRepository.takeFrame(userId, messageId);
+    return this.receiptRepository.takeFrame(userId, messageId, DRAFT_TAKE_STALE_SECONDS);
+  }
+
+  // Поворот прервался перезапуском: черновик и кадр снова доступны ({ frame, receipt, timezone } или null)
+  async releaseFrame(userId, messageId) {
+    return this.receiptRepository.releaseFrame(userId, messageId);
   }
 
   // Категории пользователя по id (для черновика чека до записи)
@@ -194,7 +211,8 @@ class ReceiptService {
 
   // Записывает позиции тратами (описание — название позиции в пределах лимита описания пользователя).
   // Дата трат — дата чека, если она не в будущем и не старше 60 дней (выбранная в черновике вручную — года), иначе
-  // сейчас. Возвращает id чека.
+  // сегодня (receiptDate); её же получает чек (заголовок показывает день, где лежат траты). Черновик заменяет в лимите
+  // свою попытку (receipt.attemptId). Возвращает id чека.
   async record(userId, receipt, { timezone, familyId = null }) {
     const limits = await this.premiumService.getUserLimits(userId);
     const items = receipt.items.map(item => ({
@@ -204,17 +222,19 @@ class ReceiptService {
       quantity: item.quantity,
       unitPrice: item.price
     }));
+    const when = receiptDate(receipt, timezone, new Date(), MAX_RECORD_AGE_DAYS);
     const receiptId = await this.receiptRepository.create(userId, {
       merchant: receipt.merchant,
-      date: receipt.date,
-      time: receipt.time,
+      date: when.date,
+      time: when.time,
       currency: receipt.currency,
       total: receipt.total,
       itemsTotal: receipt.itemsTotal,
-      localAt: resolveReceiptTime(receipt.date, receipt.time, timezone, new Date(), receipt.dateManual ? MAX_RECORD_AGE_DAYS : undefined),
+      localAt: when.localAt,
       timezone,
       familyId,
-      items
+      items,
+      attemptId: receipt.attemptId || null
     });
     await this.funnelService.track(userId, 'first_expense');
     // Позиции чека — тоже траты: награда за приглашение в фоне (сервис сам ловит ошибки)

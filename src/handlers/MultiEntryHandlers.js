@@ -33,7 +33,8 @@ function startsWithAmount(text) {
 // Записи сразу пишутся партией (EntryBatchService), сводка — номера → обычные карточки (back v.<batchId>),
 // «↩️ Отменить всё». Одна запись — обычный ввод (выбор категории и т.д.).
 class MultiEntryHandlers {
-  constructor({ entryBatchService, voiceService, expenseHandlers, incomeHandlers, expenseService, incomeService, premiumService, userService, localizationService, formatter, validator, achievementService = null, assistantHandlers = null }) {
+  constructor({ entryBatchService, voiceService, expenseHandlers, incomeHandlers, expenseService, incomeService, premiumService, userService, localizationService, formatter, validator, achievementService = null, assistantHandlers = null, pendingJobService = null }) {
+    this.pendingJobService = pendingJobService; // «🎙 Распознаю голос…» в БД: после перезапуска — «прервалось»
     this.entryBatchService = entryBatchService;
     this.voiceService = voiceService;
     this.expenseHandlers = expenseHandlers;
@@ -255,7 +256,9 @@ class MultiEntryHandlers {
         return;
       }
       const status = await ctx.reply(this.t(lang, 'voice_recognizing'));
-      // Распознавание — секунды или очередь за другими голосовыми: polling не ждёт, при рестарте бота оно теряется
+      // Распознавание — секунды или очередь за другими голосовыми: polling не ждёт; задача отмечена в БД,
+      // после перезапуска бота статус станет «прервалось — пришли ещё раз»
+      if (this.pendingJobService) await this.pendingJobService.start('voice', { userId, chatId: ctx.chat.id, messageId: status.message_id });
       this.track(userId, this.recognizeVoice(ctx, { fileId: voice.file_id, durationSec: voice.duration, userId, lang, timezone, statusId: status.message_id }));
       started = true;
     } finally {
@@ -334,6 +337,7 @@ class MultiEntryHandlers {
       await this.editStatus(ctx, statusId, this.t(lang, 'voice_error'), { parse_mode: 'Markdown' }).catch(() => {});
     } finally {
       stopTyping();
+      if (this.pendingJobService) await this.pendingJobService.finish(ctx.chat.id, statusId);
     }
   }
 }

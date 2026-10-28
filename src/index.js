@@ -91,6 +91,10 @@ async function startApplication() {
     // 5. Запуск бота: ждём только подключения, polling работает в фоне до bot.stop()
     ({ running } = await launchBot(bot));
     logger.startup('Bot launched successfully');
+    // Распознавания, прерванные прошлым перезапуском: «прервалось — пришли ещё раз» или прежний черновик чека
+    handlers.pendingJobService.recoverInterrupted(bot.telegram, {
+      receipt: (job) => handlers.receiptHandlers.restoreInterrupted(bot.telegram, job)
+    }).catch((error) => logger.error('Interrupted jobs recovery failed', { error: error.message }));
     running.catch((error) => {
       if (shuttingDown) return;
       logger.error('Bot stopped with error:', { error: error.message, stack: error.stack });

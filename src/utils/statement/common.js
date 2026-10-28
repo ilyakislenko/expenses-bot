@@ -97,18 +97,44 @@ function parseDateTime(raw, order = 'dmy') {
   return buildDate(year, month, day, ...toTime(dmy[5], dmy[6], dmy[7]));
 }
 
-// Порядок дня и месяца по всем значениям столбца: первое число > 12 — dd/mm, второе > 12 — mm/dd,
-// иначе (неоднозначно) — dd/mm
-function detectDateOrder(values) {
+// Порядок дня и месяца по всем значениям столбца: { order: 'dmy' | 'mdy', guessed }. Первое число > 12 — dd/mm,
+// второе > 12 — mm/dd. Если все числа ≤ 12 и есть даты, где порядок что-то меняет (10/05 и 05/10), а разделитель
+// не точка (с точкой пишут только дд.мм) — выбирается порядок, при котором меньше дат в будущем, затем даты меньше
+// «прыгают» (порядок строк выписки) и ближе друг к другу; при равенстве — dd/mm. guessed — выбор угадан (показать в превью).
+// today — 'YYYY-MM-DD' (по умолчанию завтра по UTC: запас на часовые пояса)
+function dateOrderInfo(values, today = new Date(Date.now() + 86400000).toISOString().slice(0, 10)) {
   let dayFirst = false;
   let monthFirst = false;
+  let ambiguous = false;
+  let dotted = false;
+  const matches = [];
   for (const value of values) {
     const match = String(value || '').trim().match(DMY_DATE);
     if (!match) continue;
+    matches.push(match);
     if (Number(match[1]) > 12) dayFirst = true;
     if (Number(match[3]) > 12) monthFirst = true;
+    if (match[1] !== match[3] && Number(match[1]) !== Number(match[3])) ambiguous = true;
+    if (match[2] === '.') dotted = true;
   }
-  return monthFirst && !dayFirst ? 'mdy' : 'dmy';
+  if (dayFirst || monthFirst) return { order: monthFirst && !dayFirst ? 'mdy' : 'dmy', guessed: false };
+  if (!ambiguous || dotted) return { order: 'dmy', guessed: false };
+  const score = (order) => {
+    const days = matches.map(match => parseDateTime(match[0], order)).filter(Boolean).map(date => Date.parse(`${date.slice(0, 10)}T00:00:00Z`) / 86400000);
+    const future = matches.map(match => parseDateTime(match[0], order)).filter(date => date && date.slice(0, 10) > today).length;
+    let up = 0;
+    let down = 0;
+    for (let i = 1; i < days.length; i++) {
+      if (days[i] < days[i - 1]) up++;
+      if (days[i] > days[i - 1]) down++;
+    }
+    const span = days.length ? Math.max(...days) - Math.min(...days) : 0;
+    return [matches.length - days.length, future, Math.min(up, down), span];
+  };
+  const dmy = score('dmy');
+  const mdy = score('mdy');
+  const better = mdy.findIndex((value, i) => value !== dmy[i]);
+  return { order: better >= 0 && mdy[better] < dmy[better] ? 'mdy' : 'dmy', guessed: true };
 }
 
 const CURRENCY_ALIASES = {
@@ -171,7 +197,7 @@ module.exports = {
   decodeText,
   parseAmount,
   parseDateTime,
-  detectDateOrder,
+  dateOrderInfo,
   buildDate,
   normalizeCurrency,
   isTransferLabel,

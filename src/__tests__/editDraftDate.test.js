@@ -1,6 +1,6 @@
 // Правка черновика чека (чистые функции) и смена даты записи: разбор даты, время суток в поясе, транзакция чека,
 // карточки трат и доходов, сброс ввода
-const { sumCheck, editLine, setLineCategory, removeLine, addLine, setDraftDate, MAX_ITEMS } = require('../services/receipt/draftEdit');
+const { sumCheck, editLine, setLineCategory, removeLine, addLine, setDraftDate, withLineIds, lineIndex, MAX_ITEMS } = require('../services/receipt/draftEdit');
 const { parseRecordDate, checkRecordDate, moveToDate, localDateOf, datePickerKeyboard, packDate, unpackDate, MAX_RECORD_AGE_DAYS } = require('../utils/recordDate');
 const { resolveReceiptTime } = require('../services/receipt/normalize');
 const { addDays, localToday } = require('../utils/period');
@@ -21,28 +21,29 @@ describe('receipt draft edits', () => {
   const draft = () => ({
     merchant: 'Ярче', date: '2026-10-27', time: '11:47', currency: 'RUB', total: 200, itemsTotal: 180, mismatch: true, lowConfidence: true,
     items: [
-      { name: 'Хлеб', amount: 45, quantity: 1, price: 45, categoryId: 1 },
-      { name: 'Молоко', amount: 90, quantity: 2, price: 45, categoryId: 1, lineMismatch: true },
-      { name: 'Сыр', amount: 45, quantity: 0.5, price: 90, categoryId: 1 }
-    ]
+      { id: 1, name: 'Хлеб', amount: 45, quantity: 1, price: 45, categoryId: 1 },
+      { id: 2, name: 'Молоко', amount: 90, quantity: 2, price: 45, categoryId: 1, lineMismatch: true },
+      { id: 3, name: 'Сыр', amount: 45, quantity: 0.5, price: 90, categoryId: 1 }
+    ],
+    nextLineId: 4
   });
 
   it('every change recomputes the sum of lines and the check against the printed total', () => {
     expect(sumCheck(draft())).toMatchObject({ itemsTotal: 180, total: 200, diff: -20, matches: false, exact: false });
-    const edited = editLine(draft(), 1, { amount: 110, name: undefined });
+    const edited = editLine(draft(), 2, { amount: 110, name: undefined });
     expect(edited.items[1]).toMatchObject({ name: 'Молоко', amount: 110, quantity: 2, price: 55, lineMismatch: false });
     expect(edited).toMatchObject({ itemsTotal: 200, mismatch: false, edited: true });
     expect(sumCheck(edited)).toMatchObject({ exact: true, matches: true, diff: 0 });
     // В пределах 3% — «почти сходится»
-    expect(sumCheck(editLine(draft(), 1, { amount: 105 }))).toMatchObject({ itemsTotal: 195, matches: true, exact: false, diff: -5 });
-    expect(editLine(draft(), 2, { name: 'Сыр российский' }).items[2]).toMatchObject({ name: 'Сыр российский', amount: 45, price: 90 });
-    expect(setLineCategory(draft(), 0, 7).items[0].categoryId).toBe(7);
-    const removed = removeLine(draft(), 2);
+    expect(sumCheck(editLine(draft(), 2, { amount: 105 }))).toMatchObject({ itemsTotal: 195, matches: true, exact: false, diff: -5 });
+    expect(editLine(draft(), 3, { name: 'Сыр российский' }).items[2]).toMatchObject({ name: 'Сыр российский', amount: 45, price: 90 });
+    expect(setLineCategory(draft(), 1, 7).items[0].categoryId).toBe(7);
+    const removed = removeLine(draft(), 3);
     expect(removed.items.map(item => item.name)).toEqual(['Хлеб', 'Молоко']);
     expect(removed.itemsTotal).toBe(135);
     const added = addLine(draft(), { amount: 20, name: 'пакет', categoryId: 6 });
-    expect(added.items[3]).toMatchObject({ name: 'пакет', amount: 20, quantity: 1, price: 20, categoryId: 6 });
-    expect(added).toMatchObject({ itemsTotal: 200, mismatch: false });
+    expect(added.items[3]).toMatchObject({ id: 4, name: 'пакет', amount: 20, quantity: 1, price: 20, categoryId: 6 });
+    expect(added).toMatchObject({ itemsTotal: 200, mismatch: false, nextLineId: 5 });
     // Исходный черновик не меняется
     expect(draft().items).toHaveLength(3);
   });
@@ -50,14 +51,38 @@ describe('receipt draft edits', () => {
   it('missing lines and the line limit change nothing; the last line can be removed', () => {
     expect(editLine(draft(), 5, { amount: 1 })).toBeNull();
     expect(setLineCategory(draft(), -1, 1)).toBeNull();
-    expect(removeLine(draft(), 3)).toBeNull();
-    const full = { ...draft(), items: Array.from({ length: MAX_ITEMS }, () => ({ name: 'x', amount: 1, quantity: 1, price: 1, categoryId: 1 })) };
+    expect(removeLine(draft(), 4)).toBeNull();
+    const full = { ...draft(), items: Array.from({ length: MAX_ITEMS }, (_, i) => ({ id: i + 1, name: 'x', amount: 1, quantity: 1, price: 1, categoryId: 1 })) };
     expect(addLine(full, { amount: 1, name: 'y', categoryId: 1 })).toBeNull();
     let empty = draft();
-    for (let i = 0; i < 3; i += 1) empty = removeLine(empty, 0);
+    for (let id = 1; id <= 3; id += 1) empty = removeLine(empty, id);
     expect(empty.items).toEqual([]);
     expect(empty.itemsTotal).toBe(0);
     expect(sumCheck({ ...draft(), total: null })).toMatchObject({ itemsTotal: 180, total: null, matches: null });
+  });
+
+  it('lines are addressed by a stable id: a double «remove» removes one line, a stale button never hits a shifted line', () => {
+    const once = removeLine(draft(), 1);
+    // Второе нажатие той же кнопки (тот же id) — строки уже нет, ничего не меняется
+    expect(removeLine(once, 1)).toBeNull();
+    expect(once.items.map(item => item.name)).toEqual(['Молоко', 'Сыр']);
+    // Кнопка «Молоко» со старого экрана правит «Молоко», хотя строка сдвинулась на первое место
+    expect(editLine(once, 2, { amount: 100 }).items[0]).toMatchObject({ name: 'Молоко', amount: 100 });
+    // id убранных строк не переиспользуются
+    expect(addLine(once, { amount: 5, name: 'пакет', categoryId: 1 }).items[2].id).toBe(4);
+    // Черновик, сохранённый до появления id, получает их по порядку
+    const legacy = withLineIds({ ...draft(), items: draft().items.map(({ id, ...item }) => item), nextLineId: undefined });
+    expect(legacy.items.map(item => item.id)).toEqual([1, 2, 3]);
+    expect(legacy.nextLineId).toBe(4);
+    expect(lineIndex(legacy, 3)).toBe(2);
+    expect(lineIndex(legacy, null)).toBe(-1);
+  });
+
+  it('an edited amount never overflows the unit price column (tiny weight quantity)', () => {
+    const tiny = { ...draft(), items: [{ id: 1, name: 'Шафран', amount: 900, quantity: 0.001, price: 900000, categoryId: 1 }] };
+    expect(editLine(tiny, 1, { amount: 999999 }).items[0]).toMatchObject({ quantity: 0.001, price: null, amount: 999999 });
+    const huge = { ...draft(), items: [{ id: 1, name: 'x', amount: 100, quantity: 4600000000000, price: 100, categoryId: 1 }] };
+    expect(editLine(huge, 1, { amount: 200 }).items[0]).toMatchObject({ quantity: 1, price: 200 });
   });
 
   it('the draft date keeps the printed time unless it has not come yet today; a manual date is recorded up to a year back', () => {

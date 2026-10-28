@@ -113,7 +113,8 @@ class RateLimiter {
         remaining: 0,
         resetTime: Math.ceil(resetTime / 1000),
         limit: limit.requests,
-        notify
+        notify,
+        windowMs: limit.windowMs
       };
     }
     

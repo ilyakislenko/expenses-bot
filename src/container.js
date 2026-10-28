@@ -41,6 +41,8 @@ const UserNotificationRepository = require('./repositories/UserNotificationRepos
 const BudgetRepository = require('./repositories/BudgetRepository');
 const ImportRepository = require('./repositories/ImportRepository');
 const ReceiptRepository = require('./repositories/ReceiptRepository');
+const PendingJobRepository = require('./repositories/PendingJobRepository');
+const PendingJobService = require('./services/PendingJobService');
 const PlanningRepository = require('./repositories/PlanningRepository');
 const AchievementRepository = require('./repositories/AchievementRepository');
 const ReferralRepository = require('./repositories/ReferralRepository');
@@ -191,6 +193,14 @@ class Container {
       case 'receiptRepository':
         return new ReceiptRepository();
 
+      // Фоновые распознавания (чек, голос) с сообщением-статусом: после перезапуска — «прервалось»
+      case 'pendingJobService':
+        return new PendingJobService({
+          pendingJobRepository: new PendingJobRepository(),
+          userService: this.get('userService'),
+          localizationService: this.get('localizationService')
+        });
+
       case 'achievementRepository':
         return new AchievementRepository();
 
@@ -266,7 +276,8 @@ class Container {
           stateService: this.get('stateService'),
           validator: this.get('enhancedValidator'),
           achievementService: this.get('achievementService'),
-          referralService: this.get('referralService')
+          referralService: this.get('referralService'),
+          pendingJobService: this.get('pendingJobService')
         });
 
       case 'planningRepository':
@@ -417,7 +428,8 @@ class Container {
           formatter: this.get('formatter'),
           validator: this.get('enhancedValidator'),
           achievementService: this.get('achievementService'),
-          assistantHandlers: this.get('assistantHandlers')
+          assistantHandlers: this.get('assistantHandlers'),
+          pendingJobService: this.get('pendingJobService')
         });
 
       case 'currencyUtils':
@@ -851,6 +863,7 @@ class Container {
       referralService: this.get('referralService'),
       assistantHandlers: this.get('assistantHandlers'),
       multiEntryHandlers: this.get('multiEntryHandlers'),
+      pendingJobService: this.get('pendingJobService'),
       roastHandlers: this.get('roastHandlers'),
       onboardingHandlers: this.get('onboardingHandlers'),
       savingsHandlers: this.get('savingsHandlers'),

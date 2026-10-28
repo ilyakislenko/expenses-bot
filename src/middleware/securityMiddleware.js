@@ -113,8 +113,9 @@ class SecurityMiddleware {
     if (ctx.message?.document) {
       limitType = 'import';
     }
-    // Фото чеков (скачивание и запрос к нейросети) — отдельный лимит; картинки файлом считаются как документы
-    if (ctx.message?.photo) {
+    // Фото чеков (скачивание и запрос к нейросети) — отдельный лимит; картинки файлом считаются как документы.
+    // «🔄 Повернуть» (rvr) — тоже новый запрос к нейросети
+    if (ctx.message?.photo || ctx.callbackQuery?.data === 'rvr') {
       limitType = 'receipt';
     }
     // Голосовые (скачивание и распознавание речи) — отдельный лимит
@@ -130,9 +131,9 @@ class SecurityMiddleware {
     return this.rateLimiter.checkLimit(userId, limitType);
   }
 
-  // Обработка превышения rate limit
+  // Обработка превышения rate limit: через сколько можно и лимит за окно (секунды до минуты, дальше — минуты)
   async handleRateLimitExceeded(ctx, rateLimitResult) {
-    const { resetTime, limit, notify } = rateLimitResult;
+    const { resetTime, limit, notify, windowMs = 60000 } = rateLimitResult;
 
     securityRateLimitExceeded.inc({ limit_type: ctx.updateType });
 
@@ -150,7 +151,14 @@ class SecurityMiddleware {
     });
 
     try {
-      const message = await this.t(ctx, 'security_rate_limit', { resetTime, limit });
+      const duration = async (seconds) => (seconds < 60
+        ? this.t(ctx, 'rate_wait_seconds', { n: Math.max(1, Math.ceil(seconds)) })
+        : this.t(ctx, 'rate_wait_minutes', { n: Math.ceil(seconds / 60) }));
+      const message = await this.t(ctx, 'security_rate_limit', {
+        resetTime: await duration(Number(resetTime) || 0),
+        limit,
+        window: await duration(windowMs / 1000)
+      });
       if (ctx.updateType === 'callback_query') {
         // Всплывающее окно не поддерживает разметку
         await ctx.answerCbQuery(message.replace(/\*/g, ''), { show_alert: true });

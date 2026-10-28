@@ -2,7 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const {
-  ImportError, parseAmount, parseDateTime, detectDateOrder, normalizeCurrency, isTransferLabel, isTransferDescription, makeOperation
+  ImportError, parseAmount, parseDateTime, dateOrderInfo, normalizeCurrency, isTransferLabel, isTransferDescription, makeOperation
 } = require('./common');
 
 const DELIMITERS = [';', ',', '\t', '|'];
@@ -173,7 +173,7 @@ const cell = (row, index) => (index >= 0 && index < row.length ? row[index] : ''
 function parseRows(rows, columns, { defaultCurrency = null, amountFallback = -1, currencyFallback = -1, altAmount = -1, altCurrency = -1 } = {}) {
   const operations = [];
   const skipped = { failed: 0, invalid: 0 };
-  const dateOrder = detectDateOrder(rows.map(row => cell(row, columns.date)));
+  const dateOrder = dateOrderInfo(rows.map(row => cell(row, columns.date)));
   const amountOf = (row) => {
     let value = parseAmount(cell(row, columns.amount));
     if (value === null && amountFallback >= 0) value = parseAmount(cell(row, amountFallback));
@@ -206,7 +206,7 @@ function parseRows(rows, columns, { defaultCurrency = null, amountFallback = -1,
     // Итоговые и пустые строки (нет суммы) не считаем
     const amountCells = splitAmounts ? [columns.debit, columns.credit] : [columns.amount, amountFallback];
     if (signed === null && amountCells.every(index => !cell(row, index))) continue;
-    const date = parseDateTime(dateCell, dateOrder);
+    const date = parseDateTime(dateCell, dateOrder.order);
     if (!date || signed === null) {
       skipped.invalid++;
       continue;
@@ -237,7 +237,7 @@ function parseRows(rows, columns, { defaultCurrency = null, amountFallback = -1,
     if (op) operations.push(op);
     else skipped.invalid++;
   }
-  return { operations, skipped };
+  return { operations, skipped, dateOrder };
 }
 
 const TBANK_HEADERS = ['дата операции', 'статус', 'сумма операции', 'валюта операции', 'сумма платежа', 'валюта платежа', 'категория', 'описание'];
