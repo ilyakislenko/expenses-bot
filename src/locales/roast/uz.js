@@ -155,7 +155,7 @@ module.exports = {
     ],
     // {count} {sum}
     month_junk: [
-      'Fastfud, yetkazib berish va boshqa lazzatlar: {count} marta, {sum}. Muzlatgich tushkunlikda.',
+      { needs: ['fastfood', 'delivery'], text: 'Fastfud, yetkazib berish va boshqa lazzatlar: {count} marta, {sum}. Muzlatgich tushkunlikda.' },
       '{count} ta keraksiz xarid, jami {sum}. Bu zaiflik emas, xobbi.',
       'Har xil bema’nilikka {sum}, {count} ta xaridda. Tejash mumkin edi, lekin kim ham shunday qiladi.'
     ],
@@ -303,7 +303,7 @@ module.exports = {
       'Byudjetning {percent}% ketdi, zaxirada {left}. Tag‘in buzib qo‘yma.'
     ],
     month_junk: [
-      'Fastfud, yetkazib berish va boshqa axlat: {count} marta, {sum}. Muzlatgichning jahli chiqqan.',
+      { needs: ['fastfood', 'delivery'], text: 'Fastfud, yetkazib berish va boshqa axlat: {count} marta, {sum}. Muzlatgichning jahli chiqqan.' },
       '{count} ta keraksiz xarid, jami {sum}. Zaiflik emas — la’nati turmush tarzi.',
       'Har xil bema’nilikka {sum}, {count} ta xaridda. Tejash mumkin edi, lekin senga nima, a?'
     ],

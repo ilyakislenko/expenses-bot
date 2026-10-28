@@ -1,6 +1,6 @@
 const {
   TRIGGER_PRIORITY, CONTEXTS, junkKind, median, selectTrigger, pluralForm, fitsGender, renderTemplate, pickVariant,
-  timeContexts, isPayday, variantText, variantContext
+  timeContexts, isPayday, variantText, variantContext, variantMatch, matchesGate, variantFits
 } = require('../utils/roast');
 const roastTemplates = require('../locales/roast');
 const RoastService = require('../services/RoastService');
@@ -25,7 +25,7 @@ const MONTH_FAMILIES = ['month_empty', 'month_open', 'month_top', 'month_biggest
 const FULL_PARAMS = {
   budget: 'бюджет на «Еда»', limit: '10 000 ₽', spent: '10 500 ₽', over: '500 ₽', left: '1 500 ₽', percent: 105,
   amount: '1 000 ₽', desc: 'крылья кфс', days_left: 11, daily: '700 ₽', times: 3, category: 'Еда', days: 3,
-  median: '300 ₽', cat_times: 4, count: 5, sum: '4 200 ₽', total: '12 000 ₽', share: 42
+  median: '300 ₽', cat_times: 4, count: 5, sum: '4 200 ₽', total: '12 000 ₽', share: 42, kinds: 'фастфуд, доставка'
 };
 
 const placeholders = (template) => [...template.matchAll(/\{([^{}|#]+)\}/g)].map(m => m[1]);
@@ -107,6 +107,104 @@ describe('roast templates engine', () => {
     expect(median([5, 1, 3])).toBe(3);
     expect(median([1, 2, 3, 4])).toBe(2.5);
     expect(median([])).toBeNull();
+  });
+});
+
+describe('product gates (match) and period kinds (needs)', () => {
+  const variants = [
+    'обычный {x}',
+    { match: 'кальян|hookah', text: 'кальянный {x}' },
+    { match: 'кальян|hookah', when: 'night', text: 'ночной кальянный {x}' },
+    { match: 'кальян|hookah', text: '{Ты курил|Ты курила} кальян {x}' }
+  ];
+  const pick = (subject, { situational = false, contexts = [], gender = 'm', recent = [] } = {}) => {
+    const picked = pickVariant('f', variants, { params: { x: 1 }, subject, situational, contexts, gender, recent, random: () => 0.99 });
+    return picked && picked.text;
+  };
+
+  test('word-start, case-insensitive match in ru/en', () => {
+    expect(matchesGate('кальян|hookah', 'Кальян в баре')).toBe(true);
+    expect(matchesGate('кальян|hookah', 'Hookah lounge')).toBe(true);
+    expect(matchesGate('кальян|hookah', 'вечер, кальянная')).toBe(true);
+    expect(matchesGate('бар|pub', 'барбекю')).toBe(true); // начало слова — да
+    expect(matchesGate('бар|pub', 'амбар')).toBe(false); // середина слова — нет
+    expect(matchesGate('кальян', 'сигареты')).toBe(false);
+    expect(matchesGate('кальян', '')).toBe(false);
+  });
+
+  test('a gated variant is never picked without a match and is picked when the description matches', () => {
+    for (let i = 0; i < 20; i++) expect(pickVariant('f', variants, { params: { x: 1 }, subject: 'сигареты', random: Math.random }).text).toBe('обычный 1');
+    expect(pick('')).toBe('обычный 1');
+    // random 0.99 — последний подходящий: с совпадением это гейт-вариант
+    expect(pick('кальян на двоих')).toBe('Ты курил кальян 1');
+    expect(pick('Hookah')).toBe('Ты курил кальян 1');
+  });
+
+  test('gate combined with a situation and with «не скажу»', () => {
+    expect(pick('кальян', { situational: true, contexts: ['night'] })).toBe('ночной кальянный 1');
+    expect(pick('сигареты', { situational: true, contexts: ['night'] })).toBeNull();
+    expect(pick('кальян', { situational: true, contexts: ['weekend'] })).toBeNull();
+    // Гейт и пол: двухформенный вариант про кальян «не скажу» не достаётся, нейтральный — да
+    expect(pick('кальян', { gender: 'x' })).toBe('кальянный 1');
+    expect(variantFits(variants[1], { subject: 'кальян' })).toBe(true);
+    expect(variantFits({ needs: ['fastfood', 'delivery'], text: 't' }, { kinds: ['fastfood'] })).toBe(false);
+    expect(variantFits({ needs: ['fastfood', 'delivery'], text: 't' }, { kinds: ['delivery', 'fastfood', 'taxi'] })).toBe(true);
+  });
+
+  test('every gate compiles; ru keeps ≥ 7 ungated non-situational variants per junk kind and level', () => {
+    for (const lang of LANGS) {
+      for (const level of ['spicy', 'savage']) {
+        for (const variants of Object.values(roastTemplates(lang)[level])) {
+          for (const variant of variants) if (variantMatch(variant)) expect(() => matchesGate(variantMatch(variant), 'x')).not.toThrow();
+        }
+      }
+    }
+    const ru = roastTemplates('ru');
+    for (const level of ['spicy', 'savage']) {
+      for (const family of SUBTYPES) {
+        const plain = ru[level][family].filter(v => typeof v === 'string' || (!v.match && !v.when)).length;
+        expect([level, family, plain >= 7]).toEqual([level, family, true]);
+      }
+    }
+  });
+
+  test('service: product lines only for matching descriptions; month junk names only kinds that happened', async () => {
+    const history = Array.from({ length: 20 }, () => ({ amount: 300, currency: 'RUB', category_name: 'Еда' }));
+    const ctx = { chat: { type: 'private', id: 7 }, from: { id: 7 } };
+    const smoke = (description) => ({ id: 1, user_id: 7, amount: 600, currency: 'RUB', description, category_name: 'Другое' });
+    const gatesOf = (service, key) => variantMatch(service.variants('ru', 'savage', 'junk', 'smoking')[Number(key.split(':')[1])]);
+    for (let i = 0; i < 30; i++) {
+      const { service, repo } = makeService({ level: 'savage', history });
+      service.random = Math.random;
+      await service.afterExpenses(ctx, { userId: 7, lang: 'ru', expenses: [smoke('сигареты')] });
+      const gate = gatesOf(service, repo.claim.mock.calls[0][1].variantKey);
+      if (gate) expect(matchesGate(gate, 'сигареты')).toBe(true); // кальян / вейп / стики — никогда
+    }
+
+    const { service, deps } = makeService({ level: 'savage', gender: 'x' });
+    deps.expenseService.getExpenses.mockResolvedValue([
+      { id: 1, user_id: 7, amount: 400, currency: 'RUB', description: 'такси' },
+      { id: 2, user_id: 7, amount: 300, currency: 'RUB', description: 'такси' },
+      { id: 3, user_id: 7, amount: 350, currency: 'RUB', description: 'латте' }
+    ]);
+    for (let i = 0; i < 15; i++) {
+      service.random = Math.random;
+      const roast = await service.monthRoast(7, 'ru', { level: 'savage', gender: 'x' });
+      const junkLine = roast.text.split('\n').find(line => line.startsWith('🍟'));
+      expect(junkLine).toBeTruthy();
+      expect(junkLine).not.toMatch(/фастфуд|доставк|бухло|игры|подписк|маркетплейс/i);
+    }
+    // Языки без {kinds}: строка «фастфуд, доставка…» только когда оба вида были
+    const de = makeService({ level: 'spicy', gender: 'x' });
+    de.deps.expenseService.getExpenses.mockResolvedValue([
+      { id: 1, user_id: 7, amount: 400, currency: 'RUB', description: 'Taxi' },
+      { id: 2, user_id: 7, amount: 300, currency: 'RUB', description: 'Taxi' }
+    ]);
+    for (let i = 0; i < 10; i++) {
+      de.service.random = Math.random;
+      const roast = await de.service.monthRoast(7, 'de', { level: 'spicy', gender: 'x' });
+      expect(roast.text).not.toMatch(/Fast Food, Lieferdienste/);
+    }
   });
 });
 
@@ -503,7 +601,11 @@ describe('RoastService.afterExpenses', () => {
   });
 
   test('savage level and gender: female gets feminine forms, «не скажу» gets none', async () => {
-    const female = makeService({ level: 'savage', gender: 'f', history: history(20, 500) });
+    // Вариант «Молодец, {долбоёб|долбоёбка}, {купил|купила}…»: все предыдущие варианты вида — «недавние»
+    const own = roastTemplates('ru').savage.junk_fastfood;
+    const index = own.findIndex(v => variantText(v).startsWith('Молодец'));
+    const recent = own.slice(0, index).map((v, i) => `savage.junk.fastfood:${i}`);
+    const female = makeService({ level: 'savage', gender: 'f', history: history(20, 500), state: { recent } });
     const forF = await run(female.service, { expenses: [expense({ amount: 600 })] });
     expect(claimedFamily(female.repo)).toBe('savage.junk.fastfood');
     expect(forF).toContain('купила');

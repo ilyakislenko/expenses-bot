@@ -155,7 +155,7 @@ module.exports = {
     ],
     // {count} {sum}
     month_junk: [
-      'Fast food, sipariş ve diğer keyifler: {count} kez, {sum}. Buzdolabın depresyonda.',
+      { needs: ['fastfood', 'delivery'], text: 'Fast food, sipariş ve diğer keyifler: {count} kez, {sum}. Buzdolabın depresyonda.' },
       '{sum} tutarında {count} gereksiz alışveriş. Bu zaaf değil, hobi.',
       '{count} alışverişte çeşit çeşit saçmalığa {sum}. Biriktirebilirdin ama kim yapar ki.'
     ],
@@ -303,7 +303,7 @@ module.exports = {
       'Bütçenin %{percent} kadarı gitti, {left} yedekte. Sakın batırma.'
     ],
     month_junk: [
-      'Fast food, sipariş ve diğer zırvalıklar: {count} kez, {sum}. Buzdolabın kudurmuş.',
+      { needs: ['fastfood', 'delivery'], text: 'Fast food, sipariş ve diğer zırvalıklar: {count} kez, {sum}. Buzdolabın kudurmuş.' },
       '{sum} tutarında {count} gereksiz alışveriş. Zaaf değil, lanet bir yaşam tarzı.',
       '{count} alışverişte çeşit çeşit saçmalığa {sum}. Biriktirebilirdin ama ne gerek var, di mi be.'
     ],

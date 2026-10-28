@@ -84,12 +84,13 @@ class RoastService {
 
   // Выбор варианта: в ситуации (ночь, выходные, понедельник, зарплата) с вероятностью ROAST.CONTEXT_CHANCE —
   // ситуационный; у вредной траты с вероятностью ROAST.SUBTYPE_CHANCE — свой для вида (у языка без них — общий);
-  // иначе — любой обычный. Свои для вида идут первыми в variants(), поэтому ключи вариантов одинаковые во всех ветках
-  pick(lang, level, family, params, gender, recent, kind = null, contexts = []) {
+  // иначе — любой обычный. Свои для вида идут первыми в variants(), поэтому ключи вариантов одинаковые во всех ветках.
+  // subject — описание траты (варианты с match — только про подходящий товар), kinds — виды вредных трат периода (needs)
+  pick(lang, level, family, params, gender, recent, kind = null, contexts = [], { subject = '', kinds = [] } = {}) {
     const name = kind ? `${level}.${family}.${kind}` : `${level}.${family}`;
     const all = this.variants(lang, level, family, kind);
     const ownCount = kind ? all.length - this.variants(lang, level, family).length : 0;
-    const base = { params, gender: gender || 'x', recent, random: this.random };
+    const base = { params, gender: gender || 'x', recent, subject, kinds, random: this.random };
     const situational = contexts.length && this.random() < ROAST.CONTEXT_CHANCE
       ? pickVariant(name, all, { ...base, contexts, situational: true, freshOnly: true })
       : null;
@@ -167,7 +168,7 @@ class RoastService {
       if (!trigger) return '';
 
       const contexts = await this.contexts(data);
-      const picked = this.pick(lang, level, trigger.family, trigger.params, settings.gender, state.recent, trigger.junk, contexts);
+      const picked = this.pick(lang, level, trigger.family, trigger.params, settings.gender, state.recent, trigger.junk, contexts, { subject: trigger.subject });
       if (!picked) return '';
       const claimed = await this.roastRepository.claim(userId, {
         today: data.today,
@@ -264,9 +265,13 @@ class RoastService {
     });
   }
 
+  topItem(items) {
+    return items.reduce((best, item) => (!best || item.value > best.value ? item : best), null);
+  }
+
   budgetParams(data, entry) {
     const { status } = entry;
-    const top = entry.relevant.reduce((best, item) => (!best || item.value > best.value ? item : best), null);
+    const top = this.topItem(entry.relevant);
     const budget = status.category_name === null
       ? this.label(data.lang, 'total_budget')
       : this.label(data.lang, 'category_budget', { category: this.categoryText(status.category_name, data.lang) });
@@ -287,13 +292,13 @@ class RoastService {
     const crossings = await this.budgetCrossings(data);
     if (which === '80') {
       const entry = crossings.warn[0];
-      return entry ? { kind: 'budget_80', family: 'budget_80', params: this.budgetParams(data, entry) } : null;
+      return entry ? { kind: 'budget_80', family: 'budget_80', params: this.budgetParams(data, entry), subject: this.topItem(entry.relevant).expense.description } : null;
     }
     // Превышение — по разу на бюджет за период (и лимит: после его изменения — снова), даже если день исчерпан
     for (const entry of crossings.over) {
       const refKey = `${entry.status.id}:${data.period.start}:${Number(entry.status.amount)}`;
       if (await this.userNotificationRepository.markSent(data.userId, 'roast_budget_over', refKey)) {
-        return { kind: 'budget_over', family: 'budget_over', params: this.budgetParams(data, entry) };
+        return { kind: 'budget_over', family: 'budget_over', params: this.budgetParams(data, entry), subject: this.topItem(entry.relevant).expense.description };
       }
     }
     return null;
@@ -307,6 +312,7 @@ class RoastService {
     return {
       kind: 'challenge',
       family: 'challenge',
+      subject: item.expense.description,
       params: {
         category: this.categoryText(challenge.category_name, data.lang),
         days: held >= 1 ? held : null,
@@ -325,11 +331,12 @@ class RoastService {
     if (!allowance || allowance.mode === 'none' || !(allowance.daily > 0)) return null;
     const before = allowance.spentToday - todayValue;
     if (before > allowance.daily || allowance.spentToday <= allowance.daily) return null;
-    const top = data.items.reduce((best, item) => (!best || item.value > best.value ? item : best), null);
+    const top = this.topItem(data.items);
     const times = Math.floor(allowance.spentToday / allowance.daily);
     return {
       kind: 'allowance',
       family: 'allowance',
+      subject: top.expense.description,
       params: {
         daily: this.money(allowance.daily, data.currency),
         spent: this.money(allowance.spentToday, data.currency),
@@ -371,6 +378,7 @@ class RoastService {
     return {
       kind: 'impulse',
       family: 'impulse',
+      subject: top.expense.description,
       params: {
         amount: this.money(top.value, data.currency),
         desc: this.describe(top.expense, data.lang),
@@ -409,6 +417,7 @@ class RoastService {
       kind: 'junk',
       family: 'junk',
       junk: junk.kind,
+      subject: junk.expense.description,
       params: {
         amount: this.money(junk.value, data.currency),
         desc: this.describe(junk.expense, data.lang),
@@ -460,8 +469,8 @@ class RoastService {
     const state = await this.roastRepository.getState(userId);
     const recent = [...state.recent];
     const shown = [];
-    const line = (family, params, kind = null) => {
-      const picked = this.pick(lang, level, family, params, gender, recent, kind);
+    const line = (family, params, extra = {}) => {
+      const picked = this.pick(lang, level, family, params, gender, recent, null, [], extra);
       if (!picked) return null;
       recent.unshift(picked.key);
       shown.unshift(picked.key);
@@ -499,7 +508,7 @@ class RoastService {
     }
 
     const biggest = values.reduce((best, item) => (!best || item.value > best.value ? item : best), null);
-    const biggestLine = line('month_biggest', { amount: money(biggest.value), desc: this.describe(biggest.expense, lang) });
+    const biggestLine = line('month_biggest', { amount: money(biggest.value), desc: this.describe(biggest.expense, lang) }, { subject: biggest.expense.description });
     if (biggestLine) lines.push(`💥 ${biggestLine}`);
 
     // К этому же дню прошлого периода
@@ -536,7 +545,16 @@ class RoastService {
 
     const junk = values.filter(item => this.junkOf(item.expense));
     if (junk.length >= MONTH_JUNK_MIN) {
-      const junkLine = line('month_junk', { count: junk.length, sum: money(junk.reduce((sum, item) => sum + item.value, 0)) });
+      // Виды вредных трат периода — по числу трат: {kinds} — до трёх самых частых словами языка, needs у вариантов
+      const byKind = new Map();
+      for (const item of junk) byKind.set(this.junkOf(item.expense), (byKind.get(this.junkOf(item.expense)) || 0) + 1);
+      const kinds = [...byKind.entries()].sort((a, b) => b[1] - a[1]).map(([kind]) => kind);
+      const names = kinds.slice(0, 3).map(kind => roastTemplates(lang).labels[`kind_${kind}`]);
+      const junkLine = line('month_junk', {
+        count: junk.length,
+        sum: money(junk.reduce((sum, item) => sum + item.value, 0)),
+        kinds: names.every(Boolean) ? names.join(', ') : null
+      }, { kinds });
       if (junkLine) { lines.push(`🍟 ${junkLine}`); share.push(`🍟 ${junkLine}`); }
     }
 

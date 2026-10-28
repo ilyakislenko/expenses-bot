@@ -140,7 +140,7 @@ module.exports = {
       '{percent} % des Budgets ausgegeben, {left} Puffer. Bloß nicht verschreien.'
     ],
     month_junk: [
-      'Fast Food, Lieferdienste und andere Freuden: {count}-mal, {sum}. Dein Kühlschrank fühlt sich ungeliebt.',
+      { needs: ['fastfood', 'delivery'], text: 'Fast Food, Lieferdienste und andere Freuden: {count}-mal, {sum}. Dein Kühlschrank fühlt sich ungeliebt.' },
       '{count} {count#Quatschkauf|Quatschkäufe} für {sum}. Das ist keine Schwäche, das ist ein Hobby.',
       '{sum} für allerlei Unsinn bei {count} {count#Einkauf|Einkäufen}. Hätte man sparen können, aber wer macht das schon.'
     ],
@@ -289,7 +289,7 @@ module.exports = {
       '{percent} % des Budgets ausgegeben, {left} Puffer. Versau’s jetzt bloß nicht.'
     ],
     month_junk: [
-      'Fast Food, Lieferdienste und anderer Mist: {count}-mal, {sum}. Dein Kühlschrank ist stinksauer.',
+      { needs: ['fastfood', 'delivery'], text: 'Fast Food, Lieferdienste und anderer Mist: {count}-mal, {sum}. Dein Kühlschrank ist stinksauer.' },
       '{count} {count#Mistkauf|Mistkäufe} für {sum}. Keine Schwäche, ein verdammter Lebensstil.',
       '{sum} für allerlei Scheiß bei {count} {count#Einkauf|Einkäufen}. Hättest sparen können, aber warum zur Hölle solltest du.'
     ],

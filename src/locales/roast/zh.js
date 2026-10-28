@@ -141,7 +141,7 @@ module.exports = {
       '预算用了{percent}%，还剩{left}。别乌鸦嘴。'
     ],
     month_junk: [
-      '快餐、外卖和其他小快乐：{count}次，{sum}。你的冰箱抑郁了。',
+      { needs: ['fastfood', 'delivery'], text: '快餐、外卖和其他小快乐：{count}次，{sum}。你的冰箱抑郁了。' },
       '{count}笔没用的消费，共{sum}。这不是弱点，是爱好。',
       '{count}次乱七八糟的消费，共{sum}。本来能存下来，但谁会存呢。'
     ],
@@ -290,7 +290,7 @@ module.exports = {
       '预算用了{percent}%，还剩{left}。别搞砸了，败家子。'
     ],
     month_junk: [
-      '快餐、外卖和其他破玩意：{count}次，{sum}。你的冰箱气炸了。',
+      { needs: ['fastfood', 'delivery'], text: '快餐、外卖和其他破玩意：{count}次，{sum}。你的冰箱气炸了。' },
       '{count}笔没用的消费，共{sum}。这不是弱点，是他妈的生活方式。',
       '{count}次乱七八糟的消费，共{sum}。本来能存下来，你他妈凭什么存呢。'
     ],

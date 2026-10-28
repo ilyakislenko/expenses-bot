@@ -5,7 +5,17 @@
 module.exports = {
   labels: {
     total_budget: 'your total budget',
-    category_budget: 'your «{category}» budget'
+    category_budget: 'your «{category}» budget',
+    kind_fastfood: 'fast food',
+    kind_delivery: 'delivery',
+    kind_alcohol: 'booze',
+    kind_smoking: 'smokes',
+    kind_energy: 'energy drinks',
+    kind_taxi: 'taxis',
+    kind_coffee: 'coffee',
+    kind_marketplace: 'marketplaces',
+    kind_games: 'games',
+    kind_subscription: 'subscriptions'
   },
 
   spicy: {
@@ -170,11 +180,12 @@ module.exports = {
       { when: 'night', text: 'Night taxi for {amount}. Surge pricing thanks you for your loyalty.' }
     ],
     junk_coffee: [
+      '«{desc}» for {amount}. An hour of buzz, a permanent line on the statement.',
       '«{desc}» for {amount}. A coffee machine would have paid for itself by now.',
       'Coffee number {count} this period, {sum} total. Barista knows your name, the bank knows your balance.',
-      '{amount} for hot milk with a hint of coffee. Premium hydration.',
+      { match: 'латте|latte|капучин|cappuccino|раф|флэт|flat\\s*white', text: '{amount} for hot milk with a hint of coffee. Premium hydration.' },
       '«{desc}» again. {sum} this period — that\'s a whole espresso machine in paper cups.',
-      'Another {amount} latte. The foam art is nice; the price art is nicer.',
+      { match: 'латте|latte', text: 'Another {amount} latte. The foam art is nice; the price art is nicer.' },
       { when: 'monday', text: 'Monday coffee for {amount}. Understandable. Still {amount}.' }
     ],
     junk_marketplace: [
@@ -186,18 +197,20 @@ module.exports = {
       { when: 'night', text: 'Marketplace scrolling at night ended with «{desc}» for {amount}. Of course it did.' }
     ],
     junk_games: [
-      '«{desc}» for {amount}. Your backlog of unplayed games just grew again.',
-      '{amount} on in-game stuff. Virtual items, very real money.',
-      'Games this period: {sum}. Your Steam library is bigger than your savings.',
+      '«{desc}» for {amount}. Game budget buffed, real budget nerfed.',
+      'Games this period: {sum}. Too bad you can\'t reload a save.',
+      { match: 'steam|стим|игр|game|ps\\s*store|playstation|xbox|nintendo|epic|gog', text: '«{desc}» for {amount}. Your backlog of unplayed games just grew again.' },
+      '{amount} on «{desc}». Virtual items, very real money.',
+      { match: 'steam|стим', text: 'Games this period: {sum}. Your Steam library is bigger than your savings.' },
       '«{desc}» — {amount}. A sale is not a reason, it\'s a trap.',
-      'Donation number {count} this period. The streamer thanks you; your wallet doesn\'t.',
+      { match: 'донат|donat|donation|робукс|robux|v-?bucks|в-?баксы|gems', text: 'Donation number {count} this period. The streamer thanks you; your wallet doesn\'t.' },
       { when: 'weekend', text: 'Weekend gaming budget: {amount} on «{desc}». Achievement unlocked: broke.' }
     ],
     junk_subscription: [
       'Another subscription: «{desc}» for {amount}. You\'re subscribed to more things than you use.',
-      '{amount} a month for «{desc}». Do you even remember the last time you opened it?',
+      '{amount} for «{desc}». Do you even remember the last time you opened it?',
       'Subscriptions this period: {sum}. That\'s a small salary for services you forget exist.',
-      '«{desc}» renewed for {amount}. Autopay never sleeps.',
+      '«{desc}» paid again: {amount}. Easy to pay, easy to forget.',
       'Subscription number {count}. Streaming everything, saving nothing.',
       { when: 'payday', text: 'Salary arrived, «{desc}» grabbed {amount} first. Subscriptions always get paid before you do.' }
     ],
@@ -264,7 +277,7 @@ module.exports = {
     ],
     // {count} {sum}
     month_junk: [
-      'Fast food, delivery and other joys: {count} {count#time|times}, {sum}. Your fridge is depressed.',
+      'Junk joys of the period — {kinds}: {count} {count#time|times}, {sum}. Your wallet is depressed.',
       '{count} junk purchases worth {sum}. That\'s not a weakness, that\'s a hobby.',
       '{sum} on assorted nonsense across {count} {count#purchase|purchases}. Could have saved it, but who does that.'
     ],
@@ -441,10 +454,11 @@ module.exports = {
       { when: 'night', text: 'Night taxi for {amount}. Surge pricing is fucking you and you\'re letting it.' }
     ],
     junk_coffee: [
+      '«{desc}» for {amount}. A one-hour buzz for a permanent dent, genius.',
       '«{desc}» for {amount}. Overpriced bean water, damn.',
       'Coffee number {count} this period, {sum} total. Buy a fucking coffee machine.',
-      '{amount} for a latte. The milk better be made of gold.',
-      'Coffee crap this period: {sum}. That\'s a lot of cash for hot milk.',
+      { match: 'латте|latte', text: '{amount} for a latte. The milk better be made of gold.' },
+      { match: 'латте|latte|капучин|cappuccino|раф|флэт|flat\\s*white', text: 'Coffee crap this period: {sum}. That\'s a lot of cash for hot milk.' },
       '«{desc}» again for {amount}. The barista is getting rich off your dumb ass.',
       { when: 'monday', text: 'Monday coffee for {amount}. Fine, Mondays suck. Still overpriced as hell.' }
     ],
@@ -457,18 +471,19 @@ module.exports = {
       { when: 'night', text: 'Night scrolling ended with «{desc}» for {amount}. Delete the damn app.' }
     ],
     junk_games: [
-      '«{desc}» for {amount}. Another game you won\'t fucking finish.',
-      '{amount} on in-game shit. Pixels cost real money, genius.',
+      '«{desc}» for {amount}. Game budget buffed, real budget fucking nerfed.',
+      { match: 'steam|стим|игр|game|ps\\s*store|playstation|xbox|nintendo|epic|gog', text: '«{desc}» for {amount}. Another game you won\'t fucking finish.' },
+      '{amount} on «{desc}». Pixels cost real money, genius.',
       'Games this period: {sum}. Your library is huge, your savings are shit.',
       '«{desc}» — {amount}. A sale isn\'t a fucking reason.',
-      'Donation number {count}. The streamer\'s living large off your dumb ass.',
+      { match: 'донат|donat|donation|робукс|robux|v-?bucks|в-?баксы|gems', text: 'Donation number {count}. The streamer\'s living large off your dumb ass.' },
       { when: 'weekend', text: 'Weekend gaming spree: {amount} on «{desc}». Game over for your wallet, damn it.' }
     ],
     junk_subscription: [
       'Another fucking subscription: «{desc}», {amount}. Do you even use half of them?',
       '{amount} for «{desc}». Paying for shit you forgot you had.',
       'Subscriptions this period: {sum}. Cancel some of this crap.',
-      '«{desc}» auto-renewed for {amount}. Autopay is fucking you quietly.',
+      '«{desc}» paid again: {amount}. Quietly fucking you every single time.',
       'Subscription number {count}. Streaming everything, saving fuck all.',
       { when: 'payday', text: 'Salary hit and «{desc}» grabbed {amount} first. Subscriptions eat before you do, damn it.' }
     ],
@@ -535,7 +550,7 @@ module.exports = {
     ],
     // {count} {sum}
     month_junk: [
-      'Fast food, delivery and other crap: {count} {count#time|times}, {sum}. Your fridge is pissed.',
+      'Top crap of the period — {kinds}: {count} {count#time|times}, {sum}. Your wallet is pissed.',
       '{count} junk purchases worth {sum}. Not a weakness — a fucking lifestyle.',
       '{sum} on assorted crap across {count} {count#purchase|purchases}. Could\'ve saved it, but why the hell would you.'
     ],

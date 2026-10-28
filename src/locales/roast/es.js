@@ -130,7 +130,7 @@ module.exports = {
       'Gastado el {percent}% del presupuesto, quedan {left}. No lo gafes.'
     ],
     month_junk: [
-      'Comida rápida, pedidos y otros placeres: {count} {count#vez|veces}, {sum}. Tu nevera está deprimida.',
+      { needs: ['fastfood', 'delivery'], text: 'Comida rápida, pedidos y otros placeres: {count} {count#vez|veces}, {sum}. Tu nevera está deprimida.' },
       '{sum} en tonterías varias en {count} {count#compra|compras}. Podías haberlo ahorrado, pero quién hace eso.'
     ],
     month_verdict_bad: [
@@ -262,7 +262,7 @@ module.exports = {
       'Gastado el {percent}% del presupuesto, quedan {left}. No la cagues.'
     ],
     month_junk: [
-      'Comida rápida, pedidos y demás mierdas: {count} {count#vez|veces}, {sum}. Tu nevera está cabreada.',
+      { needs: ['fastfood', 'delivery'], text: 'Comida rápida, pedidos y demás mierdas: {count} {count#vez|veces}, {sum}. Tu nevera está cabreada.' },
       '{count} compras basura por {sum}. No es una debilidad, es un puto estilo de vida.'
     ],
     month_verdict_bad: [

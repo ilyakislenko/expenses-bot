@@ -147,26 +147,51 @@ function renderTemplate(template, params = {}, gender = 'x') {
   return missing ? null : text;
 }
 
-// Вариант семейства — строка или { when: 'night' | 'weekend' | 'monday' | 'payday', text } (ситуационный: только
-// когда ситуация сейчас есть)
+// Вариант семейства — строка или объект { text, when?, match?, needs? }:
+//   when  — ситуация ('night' | 'weekend' | 'monday' | 'payday'): вариант только в этой ситуации;
+//   match — слова в описании траты (регулярное выражение, без учёта регистра, с начала слова: 'кальян|hookah'):
+//           вариант про конкретный товар/место/бренд — только когда описание о нём (иначе он сообщал бы неправду);
+//   needs — виды вредных трат, которые все должны быть в периоде (для «Разноса месяца»: ['fastfood', 'delivery'])
 function variantText(variant) {
   return typeof variant === 'string' ? variant : variant.text;
 }
 
 function variantContext(variant) {
-  return typeof variant === 'string' ? null : variant.when;
+  return typeof variant === 'string' ? null : (variant.when || null);
 }
 
-// Случайный вариант семейства, который годится для пола и параметров, кроме недавно показанных (recent — ключи
-// «семейство:номер»); если подходящих новых нет — любой, кроме самого последнего. null — подходящих нет вовсе.
-// situational: true — только ситуационные варианты для ситуаций contexts, false — только обычные (ситуационные вне
-// выбора). freshOnly — null, если все подходящие недавно были (тогда вызывающий берёт другой набор)
-function pickVariant(family, variants, { params = {}, gender = 'x', recent = [], contexts = [], situational = false, freshOnly = false, random = Math.random } = {}) {
+function variantMatch(variant) {
+  return typeof variant === 'string' ? null : (variant.match || null);
+}
+
+const gateCache = new Map();
+
+// Описание подходит под match: совпадение с начала слова (ru/en и другие алфавиты), без учёта регистра
+function matchesGate(match, subject) {
+  if (!subject) return false;
+  if (!gateCache.has(match)) gateCache.set(match, new RegExp(`(?:^|[^\\p{L}\\p{N}])(?:${match})`, 'iu'));
+  return gateCache.get(match).test(String(subject));
+}
+
+// Подходит ли вариант к этой трате и периоду: match — по описанию subject, needs — по видам kinds
+function variantFits(variant, { subject = '', kinds = [] } = {}) {
+  if (typeof variant === 'string') return true;
+  if (variant.match && !matchesGate(variant.match, subject)) return false;
+  if (variant.needs && !variant.needs.every(kind => kinds.includes(kind))) return false;
+  return true;
+}
+
+// Случайный вариант семейства, который годится для пола, параметров и траты (match / needs), кроме недавно
+// показанных (recent — ключи «семейство:номер»); если подходящих новых нет — любой, кроме самого последнего. null —
+// подходящих нет вовсе. situational: true — только ситуационные варианты для ситуаций contexts, false — только
+// обычные (ситуационные вне выбора). freshOnly — null, если все подходящие недавно были (вызывающий берёт другой набор)
+function pickVariant(family, variants, { params = {}, gender = 'x', recent = [], contexts = [], situational = false, freshOnly = false, subject = '', kinds = [], random = Math.random } = {}) {
   const candidates = [];
   (variants || []).forEach((variant, index) => {
     const template = variantText(variant);
     const when = variantContext(variant);
     if (situational ? !(when && contexts.includes(when)) : when) return;
+    if (!variantFits(variant, { subject, kinds })) return;
     if (!fitsGender(template, gender)) return;
     const text = renderTemplate(template, params, gender);
     if (text !== null) candidates.push({ key: `${family}:${index}`, text, when });
@@ -197,5 +222,8 @@ module.exports = {
   renderTemplate,
   variantText,
   variantContext,
+  variantMatch,
+  matchesGate,
+  variantFits,
   pickVariant
 };

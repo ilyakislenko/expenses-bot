@@ -143,7 +143,7 @@ module.exports = {
       '{percent} % du budget dépensés, {left} de marge. Ne crie pas victoire trop vite.'
     ],
     month_junk: [
-      'Fast-food, livraisons et autres petits plaisirs : {count} fois, {sum}. Ton frigo déprime.',
+      { needs: ['fastfood', 'delivery'], text: 'Fast-food, livraisons et autres petits plaisirs : {count} fois, {sum}. Ton frigo déprime.' },
       '{count} {count#achat inutile|achats inutiles} pour {sum}. Ce n’est pas une faiblesse, c’est un hobby.',
       '{sum} de bêtises en {count} {count#achat|achats}. Tu aurais pu économiser, mais qui fait ça ?'
     ],
@@ -292,7 +292,7 @@ module.exports = {
       '{percent} % du budget dépensés, {left} de marge. Va pas tout foutre en l’air.'
     ],
     month_junk: [
-      'Fast-food, livraisons et autres conneries : {count} fois, {sum}. Ton frigo est vénère.',
+      { needs: ['fastfood', 'delivery'], text: 'Fast-food, livraisons et autres conneries : {count} fois, {sum}. Ton frigo est vénère.' },
       '{count} {count#achat inutile|achats inutiles} pour {sum}. Pas une faiblesse, un putain de mode de vie.',
       '{sum} de conneries en {count} {count#achat|achats}. T’aurais pu économiser, mais pourquoi, bordel ?'
     ],

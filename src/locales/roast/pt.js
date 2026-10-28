@@ -130,7 +130,7 @@ module.exports = {
       '{percent}% do orçamento gasto, sobram {left}. Não vai zicar.'
     ],
     month_junk: [
-      'Fast food, delivery e outras alegrias: {count} {count#vez|vezes}, {sum}. Sua geladeira está deprimida.',
+      { needs: ['fastfood', 'delivery'], text: 'Fast food, delivery e outras alegrias: {count} {count#vez|vezes}, {sum}. Sua geladeira está deprimida.' },
       '{sum} em besteiras variadas em {count} {count#compra|compras}. Dava pra ter guardado, mas quem faz isso.'
     ],
     month_verdict_bad: [
@@ -262,7 +262,7 @@ module.exports = {
       '{percent}% do orçamento gasto, sobram {left}. Não vai cagar tudo.'
     ],
     month_junk: [
-      'Fast food, delivery e outras merdas: {count} {count#vez|vezes}, {sum}. Sua geladeira está puta.',
+      { needs: ['fastfood', 'delivery'], text: 'Fast food, delivery e outras merdas: {count} {count#vez|vezes}, {sum}. Sua geladeira está puta.' },
       '{count} compras inúteis somando {sum}. Não é fraqueza, é a porra de um estilo de vida.'
     ],
     month_verdict_bad: [
