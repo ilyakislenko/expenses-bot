@@ -6,6 +6,9 @@ const { normalizeReceipt, resolveReceiptTime, localMonthStart, localNow } = requ
 const { runImageTask } = require('./receipt/imageWorker');
 const { ReceiptError } = require('./receipt/errors');
 
+const DRAFT_TTL_DAYS = 7; // черновик чека и кадр для «повернуть» (receipt_drafts)
+const DRAFT_TAKE_STALE_SECONDS = 300; // захват черновика под запись, после которого его можно взять снова (сбой записи)
+
 // Повторять с поворотом: ответ не разобран (в том числе битый JSON) или цифрам нельзя верить
 function needsRetry(result) {
   return result.error ? result.error.code === 'unreadable' : result.receipt.lowConfidence;
@@ -113,8 +116,9 @@ class ReceiptService {
   // нельзя верить — ещё одна попытка с кадром, повёрнутым на 180°, и выбор лучшего ответа.
   // prepared — image уже подготовлен (повтор по кнопке «повернуть»; small/lowResolution — из первой подготовки),
   // retry — разрешена вторая попытка. onRetry() — перед второй попыткой.
-  // Возвращает { receipt | error, image, mimeType, attempts, small, lowResolution } — image/mimeType кадра, давшего ответ
-  // (его поворачивает кнопка «повернуть на 90°»); small — чек мелкий в кадре, lowResolution — к тому же сжатое фото
+  // Возвращает { receipt | error, image, mimeType, turn, attempts, small, lowResolution } — image/mimeType кадра, давшего ответ
+  // (его поворачивает кнопка «повернуть на 90°»), turn — на сколько градусов он повёрнут относительно подготовленного
+  // (0 или 180); small — чек мелкий в кадре, lowResolution — к тому же сжатое фото
   async recognizePhoto(userId, { image, mimeType, lang, currency, timezone, onStatus, onRetry, prepared = false, retry = true, small = false, lowResolution = false }) {
     let prep = { image, mimeType, info: { prepared: true, reused: true, small, lowResolution } };
     if (!prepared) {
@@ -123,13 +127,13 @@ class ReceiptService {
     }
     const isSmall = Boolean(prep.info.small);
     const options = { lang, currency, timezone, onStatus };
-    const run = async (frame, frameType) => ({ ...distrustSparse(await this.attempt(userId, { ...options, image: frame, mimeType: frameType }), isSmall), image: frame, mimeType: frameType });
-    let best = await run(prep.image, prep.mimeType);
+    const run = async (frame, frameType, turn) => ({ ...distrustSparse(await this.attempt(userId, { ...options, image: frame, mimeType: frameType }), isSmall), image: frame, mimeType: frameType, turn });
+    let best = await run(prep.image, prep.mimeType, 0);
     let attempts = 1;
     if (retry && needsRetry(best) && prep.mimeType === 'image/jpeg' && prep.info.prepared) {
       if (onRetry) await onRetry();
       const rotated = (await runImageTask('rotate', prep.image, { degrees: 180 })).image;
-      best = pickBetter(best, await run(rotated, 'image/jpeg'));
+      best = pickBetter(best, await run(rotated, 'image/jpeg', 180));
       attempts = 2;
     }
     logger.info('Receipt recognition result', {
@@ -137,6 +141,32 @@ class ReceiptService {
       lowConfidence: best.receipt ? best.receipt.lowConfidence : null, checks: best.receipt ? best.receipt.checks : null
     });
     return { ...best, attempts, small: isSmall, lowResolution: Boolean(prep.info.lowResolution) };
+  }
+
+  // ---------- Черновик неуверенно распознанного чека и кадр для «повернуть» ----------
+  // Хранятся в БД (receipt_drafts) DRAFT_TTL_DAYS дней: кнопки работают и после перезапуска бота.
+  // Сам кадр не хранится — только file_id фото в Telegram и поворот (frame.turn), по ним кадр готовится заново.
+
+  async saveDraft(userId, messageId, { receipt = null, timezone = null, frame = null }) {
+    await this.receiptRepository.saveDraft(userId, messageId, { receipt, timezone, frame }, DRAFT_TTL_DAYS);
+  }
+
+  // { status: 'ok', receipt, timezone } | { status: 'busy' } | { status: 'missing' }
+  async takeDraft(userId, messageId) {
+    return this.receiptRepository.takeDraft(userId, messageId, DRAFT_TAKE_STALE_SECONDS);
+  }
+
+  async releaseDraft(userId, messageId) {
+    await this.receiptRepository.releaseDraft(userId, messageId);
+  }
+
+  async deleteDraft(userId, messageId) {
+    await this.receiptRepository.deleteDraft(userId, messageId);
+  }
+
+  // Кадр для «повернуть» (черновик этого сообщения уходит вместе с ним). null — нет или устарел
+  async takeFrame(userId, messageId) {
+    return this.receiptRepository.takeFrame(userId, messageId);
   }
 
   // Категории пользователя по id (для черновика чека до записи)

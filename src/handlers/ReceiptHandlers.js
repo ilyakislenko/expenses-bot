@@ -8,7 +8,7 @@ const PAGE_SIZE = 20;
 const MAX_FILE_BYTES = 20 * 1024 * 1024; // предел скачивания файлов ботом в Telegram
 const MAX_RAW_IMAGE_BYTES = 1.5 * 1024 * 1024;
 const NAME_IN_LIST = 40;
-const DRAFT_TTL_MS = 30 * 60 * 1000; // черновик и кадр для кнопки «повернуть»
+const FRAME_CACHE_MS = 30 * 60 * 1000; // подготовленный кадр для «повернуть» в памяти (без него — скачать и подготовить заново)
 const DRAFT_LINES = 40; // черновик без пагинации — показываем первые строки
 const TYPING_INTERVAL_MS = 4000;
 
@@ -61,8 +61,9 @@ class ReceiptHandlers {
     this.referralService = referralService;
     this.tasks = new Set(); // фоновые распознавания
     this.busyUsers = new Set(); // у кого сейчас распознаётся чек (по одному на пользователя)
-    this.drafts = new Map(); // `${userId}:${messageId}` → неуверенно распознанный чек до подтверждения | null — уже записывается
-    this.rotations = new Map(); // `${userId}:${messageId}` → подготовленный кадр для кнопки «повернуть на 90°»
+    // `${userId}:${messageId}` → подготовленный кадр для «повернуть на 90°». Только ускорение: черновик и сведения
+    // о кадре — в БД (receiptService.saveDraft), после перезапуска кадр готовится заново из фото в Telegram
+    this.frames = new Map();
     // «⬅️ Назад» на карточке позиции (back r.<receiptId>.<page>) и экран после удаления позиции
     expenseHandlers.registerBackView('r', (ctx, [receiptId, page]) => this.showReceipt(ctx, receiptId, page));
   }
@@ -163,7 +164,7 @@ class ReceiptHandlers {
       // Распознавание может идти минуту-две (локальная модель на сервере): обработчик апдейта его не ждёт,
       // иначе polling задержит остальных пользователей, а Telegraf оборвёт обработчик по таймауту (90 с).
       // При перезапуске бота незаконченное распознавание просто теряется.
-      this.track(userId, this.recognizeAndRecord(ctx, { image, mimeType, userId, lang, timezone, currency, statusId: status.message_id }));
+      this.track(userId, this.recognizeAndRecord(ctx, { image, mimeType, userId, lang, timezone, currency, statusId: status.message_id, fileId, sourceMime: mimeType }));
       started = true;
     } finally {
       if (!started) this.busyUsers.delete(userId);
@@ -185,8 +186,9 @@ class ReceiptHandlers {
 
   // Фоновая часть: подготовить кадр, распознать (при неудаче — ещё раз повёрнутым на 180°), записать или показать
   // черновик/ошибку с кнопкой «повернуть на 90°». Ошибки не выходят наружу — превращаются в текст.
-  // prepared — image уже подготовлен (кнопка «повернуть»), retry — разрешена вторая попытка
-  async recognizeAndRecord(ctx, { image, mimeType, userId, lang, timezone, currency, statusId, prepared = false, retry = true, small = false, lowResolution = false }) {
+  // prepared — image уже подготовлен (кнопка «повернуть»), retry — разрешена вторая попытка; fileId/sourceMime — фото
+  // в Telegram, turn — на сколько градусов image повёрнут относительно подготовленного фото (для «повернуть» после рестарта)
+  async recognizeAndRecord(ctx, { image, mimeType, userId, lang, timezone, currency, statusId, fileId = null, sourceMime = mimeType, turn = 0, prepared = false, retry = true, small = false, lowResolution = false }) {
     const stopTyping = keepTyping(ctx);
     let statusText = prepared ? this.t(lang, 'receipt_retrying') : this.t(lang, 'receipt_recognizing');
     let statusEdits = Promise.resolve();
@@ -204,16 +206,20 @@ class ReceiptHandlers {
     const onRetry = () => setStatus(this.t(lang, 'receipt_retrying'));
     try {
       const result = await this.receiptService.recognizePhoto(userId, { image, mimeType, lang, currency, timezone, onStatus, onRetry, prepared, retry, small, lowResolution });
-      const frame = { image: result.image, small: result.small, lowResolution: result.lowResolution, lang, timezone, currency };
+      // Кадр для «повернуть»: фото в Telegram и поворот — в БД, сам подготовленный кадр — в памяти на 30 минут
+      const frame = fileId ? {
+        fileId, mimeType: sourceMime, turn: (turn + (result.turn || 0)) % 360,
+        small: result.small, lowResolution: result.lowResolution, lang, timezone, currency
+      } : null;
       await statusEdits;
       stopTyping();
       if (result.error) {
         const code = result.error.code;
         logger.warn('Receipt not recognized', { userId, code, error: result.error.message, attempts: result.attempts });
         if (code === 'unreadable') {
-          // Не разобрали даже повёрнутым: советы и кнопка «повернуть на 90°» (кадр — в памяти; только для JPEG)
-          const canRotate = result.mimeType === 'image/jpeg';
-          if (canRotate) this.saveRotation(userId, statusId, frame);
+          // Не разобрали даже повёрнутым: советы и кнопка «повернуть на 90°» (только для JPEG)
+          const canRotate = result.mimeType === 'image/jpeg' && !!frame;
+          if (canRotate) await this.keepFrame(userId, statusId, frame, result.image, null);
           await this.editStatus(ctx, statusId, `${this.t(lang, 'receipt_unreadable')}\n\n${this.photoTips(lang, result.lowResolution)}`, {
             parse_mode: 'Markdown',
             reply_markup: { inline_keyboard: canRotate ? [[{ text: this.t(lang, 'button_receipt_rotate'), callback_data: 'rvr' }]] : [] }
@@ -226,9 +232,8 @@ class ReceiptHandlers {
       const { receipt } = result;
       if (receipt.lowConfidence) {
         // Цифры не сходятся — не записываем сами: черновик, советы и кнопка «повернуть на 90°»
-        const canRotate = result.mimeType === 'image/jpeg';
-        this.saveDraft(userId, statusId, { receipt, timezone });
-        if (canRotate) this.saveRotation(userId, statusId, frame);
+        const canRotate = result.mimeType === 'image/jpeg' && !!frame;
+        await this.keepFrame(userId, statusId, canRotate ? frame : null, canRotate ? result.image : null, { receipt, timezone });
         const view = await this.buildDraftView(userId, lang, receipt, { canRotate, lowResolution: result.lowResolution });
         await this.editStatus(ctx, statusId, view.text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: view.keyboard } });
         return;
@@ -248,12 +253,29 @@ class ReceiptHandlers {
 
   // ---------- Кнопка «повернуть на 90° и попробовать» ----------
 
-  saveRotation(userId, messageId, entry) {
+  // Черновик и/или сведения о кадре — в БД, подготовленный кадр — в памяти (ускорение)
+  async keepFrame(userId, messageId, frame, image, draft) {
+    await this.receiptService.saveDraft(userId, messageId, { receipt: draft ? draft.receipt : null, timezone: draft ? draft.timezone : null, frame });
     const now = Date.now();
-    for (const [key, stored] of this.rotations) {
-      if (stored.expiresAt <= now) this.rotations.delete(key);
+    for (const [key, stored] of this.frames) {
+      if (stored.expiresAt <= now) this.frames.delete(key);
     }
-    this.rotations.set(`${userId}:${messageId}`, { ...entry, expiresAt: now + DRAFT_TTL_MS });
+    if (frame && image) this.frames.set(`${userId}:${messageId}`, { image, expiresAt: now + FRAME_CACHE_MS });
+  }
+
+  // Подготовленный кадр с учётом уже сделанных поворотов: из памяти или заново из фото в Telegram
+  async frameImage(ctx, key, frame) {
+    const cached = this.frames.get(key);
+    this.frames.delete(key);
+    if (cached && cached.expiresAt > Date.now()) return cached.image;
+    const prep = await runImageTask('prepare', await this.download(ctx, frame.fileId), { mimeType: frame.mimeType });
+    return frame.turn ? (await runImageTask('rotate', prep.image, { degrees: frame.turn })).image : prep.image;
+  }
+
+  // Кнопки сообщения больше ничего не сделают: объяснить и убрать их, чтобы не нажимать снова
+  async expireButtons(ctx, lang, key) {
+    await ctx.answerCbQuery(this.t(lang, key), { show_alert: true }).catch(() => {});
+    await Promise.resolve().then(() => ctx.editMessageReplyMarkup({ inline_keyboard: [] })).catch(() => {});
   }
 
   // rvr — тот же подготовленный кадр, повёрнутый ещё на 90° по часовой; одна попытка, очередь и «один чек за раз»
@@ -263,27 +285,33 @@ class ReceiptHandlers {
     const lang = await this.userService.getUserLanguage(userId);
     const messageId = ctx.callbackQuery.message?.message_id;
     const key = `${userId}:${messageId}`;
-    const entry = this.rotations.get(key);
-    if (!entry || entry.expiresAt <= Date.now()) {
-      this.rotations.delete(key);
-      await ctx.answerCbQuery(this.t(lang, 'receipt_rotate_outdated'), { show_alert: true }).catch(() => {});
-      return;
-    }
     if (this.busyUsers.has(userId)) {
       await ctx.answerCbQuery(this.t(lang, 'receipt_busy'), { show_alert: true }).catch(() => {});
       return;
     }
     this.busyUsers.add(userId);
-    this.rotations.delete(key);
-    this.drafts.delete(key);
     let started = false;
     try {
+      const frame = await this.receiptService.takeFrame(userId, messageId);
+      if (!frame) {
+        this.frames.delete(key);
+        await this.expireButtons(ctx, lang, 'receipt_rotate_outdated');
+        return;
+      }
       await ctx.answerCbQuery().catch(() => {});
-      const { image } = await runImageTask('rotate', entry.image, { degrees: 90 });
       await respond(ctx, this.t(lang, 'receipt_retrying'), { reply_markup: { inline_keyboard: [] } });
+      let image;
+      try {
+        image = (await runImageTask('rotate', await this.frameImage(ctx, key, frame), { degrees: 90 })).image;
+      } catch (error) {
+        logger.warn('Receipt frame restore failed', { userId, error: error.message });
+        await respond(ctx, this.t(lang, 'receipt_draft_outdated'), { reply_markup: { inline_keyboard: [] } });
+        return;
+      }
       this.track(userId, this.recognizeAndRecord(ctx, {
-        image, mimeType: 'image/jpeg', userId, lang: entry.lang, timezone: entry.timezone, currency: entry.currency,
-        statusId: messageId, prepared: true, retry: false, small: entry.small, lowResolution: entry.lowResolution
+        image, mimeType: 'image/jpeg', userId, lang: frame.lang, timezone: frame.timezone, currency: frame.currency,
+        statusId: messageId, fileId: frame.fileId, sourceMime: frame.mimeType, turn: (frame.turn + 90) % 360,
+        prepared: true, retry: false, small: frame.small, lowResolution: frame.lowResolution
       }));
       started = true;
     } finally {
@@ -297,27 +325,6 @@ class ReceiptHandlers {
   }
 
   // ---------- Черновик неуверенно распознанного чека ----------
-
-  saveDraft(userId, messageId, draft) {
-    const now = Date.now();
-    for (const [key, stored] of this.drafts) {
-      if (stored && stored.expiresAt <= now) this.drafts.delete(key);
-    }
-    this.drafts.set(`${userId}:${messageId}`, { ...draft, expiresAt: now + DRAFT_TTL_MS });
-  }
-
-  // Синхронно забирает черновик: undefined — нет или устарел, null — уже записывается
-  takeDraft(userId, messageId) {
-    const key = `${userId}:${messageId}`;
-    if (!this.drafts.has(key)) return undefined;
-    const draft = this.drafts.get(key);
-    if (draft && draft.expiresAt <= Date.now()) {
-      this.drafts.delete(key);
-      return undefined;
-    }
-    if (draft) this.drafts.set(key, null);
-    return draft;
-  }
 
   // Советы по съёмке; у сжатого Telegram-фото с мелким чеком — ещё «пришли файлом»
   photoTips(lang, lowResolution) {
@@ -356,31 +363,32 @@ class ReceiptHandlers {
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
     const messageId = ctx.callbackQuery.message?.message_id;
-    const draft = this.takeDraft(userId, messageId);
-    if (draft === undefined) {
-      await ctx.answerCbQuery(this.t(lang, 'receipt_draft_outdated'), { show_alert: true }).catch(() => {});
+    const key = `${userId}:${messageId}`;
+    const taken = await this.receiptService.takeDraft(userId, messageId);
+    if (taken.status === 'missing') {
+      await this.expireButtons(ctx, lang, 'receipt_draft_outdated');
       return;
     }
-    if (draft === null) {
+    if (taken.status === 'busy') {
       await ctx.answerCbQuery().catch(() => {});
       return;
     }
     await ctx.answerCbQuery().catch(() => {});
     if (!record) {
-      this.drafts.delete(`${userId}:${messageId}`);
-      this.rotations.delete(`${userId}:${messageId}`);
+      await this.receiptService.deleteDraft(userId, messageId);
+      this.frames.delete(key);
       await respond(ctx, this.t(lang, 'receipt_draft_canceled'), { reply_markup: { inline_keyboard: [] } });
       return;
     }
     let receiptId;
     try {
-      receiptId = await this.recordReceipt(userId, draft.receipt, draft.timezone);
+      receiptId = await this.recordReceipt(userId, taken.receipt, taken.timezone);
     } catch (error) {
-      this.drafts.set(`${userId}:${messageId}`, draft);
+      await this.receiptService.releaseDraft(userId, messageId).catch(() => {});
       throw error;
     }
-    this.drafts.delete(`${userId}:${messageId}`);
-    this.rotations.delete(`${userId}:${messageId}`);
+    await this.receiptService.deleteDraft(userId, messageId);
+    this.frames.delete(key);
     const view = await this.buildReceiptView(userId, lang, receiptId, 0);
     const text = await this.withNotes(ctx, userId, lang, receiptId, view.text);
     await respond(ctx, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: view.keyboard } });

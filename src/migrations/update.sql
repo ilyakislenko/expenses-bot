@@ -870,3 +870,22 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_answers JSONB NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed_at TIMESTAMPTZ NULL;
 COMMENT ON COLUMN users.onboarding_answers IS 'Опрос «Настроим бота под тебя»: черновик и ответы (goals, inputs, answers, skipped, status, step)';
 COMMENT ON COLUMN users.onboarding_completed_at IS 'Когда опрос последний раз закончен (пройден или «Пропустить всё»)';
+
+-- ==== RECEIPT DRAFTS ====
+-- Черновик неуверенно распознанного чека («Записать как есть» / «Отмена») и кадр для «повернуть на 90°» — по сообщению
+-- с кнопками. Живут 7 дней и переживают перезапуск бота. Фото не хранится: frame — file_id в Telegram и поворот.
+CREATE TABLE IF NOT EXISTS receipt_drafts (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    message_id BIGINT NOT NULL,
+    receipt JSONB NULL,
+    timezone VARCHAR(64) NULL,
+    frame JSONB NULL,
+    taken_at TIMESTAMPTZ NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, message_id)
+);
+COMMENT ON TABLE receipt_drafts IS 'Черновики чеков до подтверждения и кадры для «повернуть»: receipt NULL — только кадр, frame NULL — повернуть нельзя';
+COMMENT ON COLUMN receipt_drafts.frame IS '{ fileId, mimeType, turn, small, lowResolution, lang, currency } — фото в Telegram и поворот относительно подготовленного';
+COMMENT ON COLUMN receipt_drafts.taken_at IS 'Черновик сейчас записывается (повторное нажатие ждёт); старше 5 минут — считается сбоем и снова доступен';
+CREATE INDEX IF NOT EXISTS idx_receipt_drafts_expires ON receipt_drafts(expires_at);

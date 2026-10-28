@@ -618,6 +618,37 @@ describe('confidence gate and prompt', () => {
   });
 });
 
+// Хранилище черновиков как в receipt_drafts: живёт отдельно от обработчика (переживает «перезапуск» — новый ReceiptHandlers)
+function memoryDraftStore() {
+  const rows = new Map();
+  const key = (userId, messageId) => `${userId}:${messageId}`;
+  const copy = (value) => (value == null ? null : JSON.parse(JSON.stringify(value)));
+  return {
+    rows,
+    saveDraft: jest.fn(async (userId, messageId, { receipt = null, timezone = null, frame = null }) => {
+      rows.set(key(userId, messageId), { receipt: copy(receipt), timezone, frame: copy(frame), taken: false });
+    }),
+    takeDraft: jest.fn(async (userId, messageId) => {
+      const row = rows.get(key(userId, messageId));
+      if (!row || !row.receipt) return { status: 'missing' };
+      if (row.taken) return { status: 'busy' };
+      row.taken = true;
+      return { status: 'ok', receipt: copy(row.receipt), timezone: row.timezone };
+    }),
+    releaseDraft: jest.fn(async (userId, messageId) => {
+      const row = rows.get(key(userId, messageId));
+      if (row) row.taken = false;
+    }),
+    deleteDraft: jest.fn(async (userId, messageId) => { rows.delete(key(userId, messageId)); }),
+    takeFrame: jest.fn(async (userId, messageId) => {
+      const row = rows.get(key(userId, messageId));
+      if (!row || !row.frame || row.taken) return null;
+      rows.delete(key(userId, messageId));
+      return copy(row.frame);
+    })
+  };
+}
+
 describe('ReceiptHandlers background recognition', () => {
   const Formatter = require('../utils/formatter');
   const jpegJs = require('jpeg-js');
@@ -635,17 +666,22 @@ describe('ReceiptHandlers background recognition', () => {
       record: jest.fn(async () => 1),
       getReceipt: jest.fn(async () => ({ id: 1, merchant: 'Ярче', purchased_day: '2026-10-27', purchased_hm: '11:47', status: 'active', printed_total: '45', items_total: '45', currency: 'RUB' })),
       getExpenses: jest.fn(async () => [{ id: 5, amount: '45', currency: 'RUB', description: 'Хлеб', category_name: 'Еда', category_icon: '🍕' }]),
-      categoriesById: jest.fn(async () => new Map([[1, { id: 1, name: 'Еда', icon: '🍕' }]]))
+      categoriesById: jest.fn(async () => new Map([[1, { id: 1, name: 'Еда', icon: '🍕' }]])),
+      ...memoryDraftStore()
     };
-    const handlers = new ReceiptHandlers({
-      receiptService,
-      expenseHandlers: { registerBackView: jest.fn(), familyModeTarget: jest.fn(async () => null), roastNote: jest.fn(async () => '') },
-      budgetService: { checkAfterExpense: jest.fn(async () => []) },
-      userService: { getUserLanguage: async () => 'ru', getUserTimezone: async () => 'Europe/Moscow', getUserCurrency: async () => 'RUB' },
-      localizationService: new LocalizationService(),
-      formatter: new Formatter({ convert: async (amount) => amount })
-    });
-    handlers.download = jest.fn(async () => Buffer.from('image'));
+    const createHandlers = () => {
+      const created = new ReceiptHandlers({
+        receiptService,
+        expenseHandlers: { registerBackView: jest.fn(), familyModeTarget: jest.fn(async () => null), roastNote: jest.fn(async () => '') },
+        budgetService: { checkAfterExpense: jest.fn(async () => []) },
+        userService: { getUserLanguage: async () => 'ru', getUserTimezone: async () => 'Europe/Moscow', getUserCurrency: async () => 'RUB' },
+        localizationService: new LocalizationService(),
+        formatter: new Formatter({ convert: async (amount) => amount })
+      });
+      created.download = jest.fn(async () => Buffer.from('image'));
+      return created;
+    };
+    const handlers = createHandlers();
     let messageId = 100;
     const ctx = {
       chat: { id: 7, type: 'private' },
@@ -656,7 +692,7 @@ describe('ReceiptHandlers background recognition', () => {
     };
     const receipt = (overrides = {}) => ({ merchant: 'Ярче', date: '2026-10-27', time: '11:47', currency: 'RUB', total: 45, itemsTotal: 45, mismatch: false, lowConfidence: false, items: [{ name: 'Хлеб', amount: 45, categoryId: 1 }], ...overrides });
     const ok = (value, image = tinyJpeg(16, 32)) => ({ receipt: value, image, mimeType: 'image/jpeg', attempts: 1 });
-    return { handlers, receiptService, ctx, finish, receipt, ok };
+    return { handlers, createHandlers, receiptService, ctx, finish, receipt, ok };
   }
   const t = (key, params) => new LocalizationService().getText('ru', key, params);
 
@@ -744,6 +780,48 @@ describe('ReceiptHandlers background recognition', () => {
     expect(receiptService.record).toHaveBeenCalledTimes(1);
     await handlers.rotateAndRetry(callbackCtx);
     expect(callbackCtx.answerCbQuery).toHaveBeenLastCalledWith(t('receipt_rotate_outdated'), { show_alert: true });
+  });
+
+  it('a draft and «rotate» survive a bot restart; buttons that can do nothing more are removed', async () => {
+    const { createHandlers, handlers, receiptService, ctx, finish, receipt, ok } = setup();
+    const { runImageTask } = require('../services/receipt/imageWorker');
+    const photo = tinyJpeg(48, 96);
+    await handlers.processImage(ctx, { fileId: 'photo-1', fileSize: 1000, mimeType: 'image/jpeg' });
+    const prepared = (await runImageTask('prepare', photo, { mimeType: 'image/jpeg' })).image;
+    finish({ ...ok(receipt({ lowConfidence: true, total: 100 }), prepared), turn: 180 });
+    await handlers.idle();
+    expect(receiptService.rows.get('7:101').frame).toMatchObject({ fileId: 'photo-1', mimeType: 'image/jpeg', turn: 180 });
+
+    // Перезапуск: памяти обработчика больше нет, черновик — в хранилище
+    const restarted = createHandlers();
+    restarted.download = jest.fn(async () => photo);
+    const callbackCtx = () => ({
+      ...ctx, callbackQuery: { message: { message_id: 101 } }, answerCbQuery: jest.fn(async () => true),
+      editMessageText: jest.fn(async () => true), editMessageReplyMarkup: jest.fn(async () => true)
+    });
+    receiptService.recognizePhoto.mockImplementation(async () => ({ error: new (require('../services/receipt/errors').ReceiptError)('unreadable'), image: prepared, mimeType: 'image/jpeg', attempts: 1, turn: 0 }));
+    const rotate = callbackCtx();
+    await restarted.rotateAndRetry(rotate);
+    await restarted.idle();
+    expect(restarted.download).toHaveBeenCalledWith(rotate, 'photo-1');
+    const [, options] = receiptService.recognizePhoto.mock.calls[receiptService.recognizePhoto.mock.calls.length - 1];
+    // Тот же кадр, что был до перезапуска (подготовленное фото, уже повёрнутое на 180°), и ещё 90° по кнопке
+    const turned = (await runImageTask('rotate', prepared, { degrees: 180 })).image;
+    const expected = (await runImageTask('rotate', turned, { degrees: 90 })).image;
+    expect(Buffer.compare(options.image, expected)).toBe(0);
+    expect(options).toMatchObject({ prepared: true, retry: false });
+    expect(receiptService.rows.get('7:101').frame.turn).toBe(270);
+
+    // Черновик после перезапуска записывается; повторное нажатие объясняет и убирает кнопки
+    await receiptService.saveDraft(7, 101, { receipt: receipt({ lowConfidence: true }), timezone: 'Europe/Moscow', frame: null });
+    const again = createHandlers();
+    await again.resolveDraft(callbackCtx(), true);
+    expect(receiptService.record).toHaveBeenCalledWith(7, expect.objectContaining({ merchant: 'Ярче' }), expect.objectContaining({ timezone: 'Europe/Moscow' }));
+    const stale = callbackCtx();
+    await again.resolveDraft(stale, true);
+    expect(receiptService.record).toHaveBeenCalledTimes(1);
+    expect(stale.answerCbQuery).toHaveBeenCalledWith(t('receipt_draft_outdated'), { show_alert: true });
+    expect(stale.editMessageReplyMarkup).toHaveBeenCalledWith({ inline_keyboard: [] });
   });
 
   it('accepts JPEG files up to 20 MB at full resolution; HEIC, huge files and big non-JPEG get a hint', async () => {
@@ -1027,7 +1105,8 @@ describe('small receipt with one or two lines', () => {
       checkLimit: jest.fn(async () => ({ isPremium: false, limit: 10, used: 0, remaining: 10 })),
       recognizePhoto: jest.fn(async () => ({ receipt: ReceiptService.distrustSparse({ receipt: check(invented) }, true).receipt, image: frame, mimeType: 'image/jpeg', attempts: 2, small: true, lowResolution: true })),
       record: jest.fn(async () => 1),
-      categoriesById: jest.fn(async () => new Map([[1, { id: 1, name: 'Еда', icon: '🍕' }]]))
+      categoriesById: jest.fn(async () => new Map([[1, { id: 1, name: 'Еда', icon: '🍕' }]])),
+      ...memoryDraftStore()
     };
     const handlers = new ReceiptHandlers({
       receiptService,

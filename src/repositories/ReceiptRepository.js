@@ -78,6 +78,56 @@ class ReceiptRepository extends BaseRepository {
       return { expenses: deleted.rowCount };
     });
   }
+
+  // ---------- Черновики неуверенно распознанных чеков и кадры для «повернуть» (receipt_drafts) ----------
+  // Ключ — сообщение с кнопками (user_id, message_id). receipt — черновик чека (NULL — только кадр для поворота),
+  // frame — { fileId, mimeType, turn, small, lowResolution, lang, currency } (NULL — повернуть нельзя).
+
+  // Создаёт или заменяет черновик сообщения; заодно удаляет просроченные
+  async saveDraft(userId, messageId, { receipt, timezone, frame }, ttlDays) {
+    await this.query('DELETE FROM receipt_drafts WHERE expires_at <= NOW()');
+    await this.query(`
+      INSERT INTO receipt_drafts (user_id, message_id, receipt, timezone, frame, taken_at, expires_at)
+      VALUES ($1, $2, $3, $4, $5, NULL, NOW() + make_interval(days => $6))
+      ON CONFLICT (user_id, message_id) DO UPDATE
+        SET receipt = EXCLUDED.receipt, timezone = EXCLUDED.timezone, frame = EXCLUDED.frame,
+            taken_at = NULL, expires_at = EXCLUDED.expires_at, created_at = NOW()`,
+    [userId, messageId, receipt ? JSON.stringify(receipt) : null, timezone, frame ? JSON.stringify(frame) : null, ttlDays]);
+  }
+
+  // Забирает черновик под запись. { status: 'ok', receipt, timezone } | { status: 'busy' } — уже записывается
+  // (захват не старше staleSeconds) | { status: 'missing' } — нет, просрочен или это только кадр
+  async takeDraft(userId, messageId, staleSeconds) {
+    const taken = await this.query(`
+      UPDATE receipt_drafts SET taken_at = NOW()
+      WHERE user_id = $1 AND message_id = $2 AND receipt IS NOT NULL AND expires_at > NOW()
+        AND (taken_at IS NULL OR taken_at < NOW() - make_interval(secs => $3))
+      RETURNING receipt, timezone`, [userId, messageId, staleSeconds]);
+    if (taken.rows[0]) return { status: 'ok', receipt: taken.rows[0].receipt, timezone: taken.rows[0].timezone };
+    const busy = await this.query(
+      'SELECT 1 FROM receipt_drafts WHERE user_id = $1 AND message_id = $2 AND receipt IS NOT NULL AND expires_at > NOW() AND taken_at IS NOT NULL',
+      [userId, messageId]
+    );
+    return { status: busy.rowCount ? 'busy' : 'missing' };
+  }
+
+  // Запись не удалась — черновик снова доступен
+  async releaseDraft(userId, messageId) {
+    await this.query('UPDATE receipt_drafts SET taken_at = NULL WHERE user_id = $1 AND message_id = $2', [userId, messageId]);
+  }
+
+  async deleteDraft(userId, messageId) {
+    await this.query('DELETE FROM receipt_drafts WHERE user_id = $1 AND message_id = $2', [userId, messageId]);
+  }
+
+  // Кнопка «повернуть»: забирает кадр (черновик сообщения тоже уходит — его заменит новое распознавание). null — нет
+  async takeFrame(userId, messageId) {
+    const result = await this.query(`
+      DELETE FROM receipt_drafts
+      WHERE user_id = $1 AND message_id = $2 AND frame IS NOT NULL AND expires_at > NOW() AND taken_at IS NULL
+      RETURNING frame`, [userId, messageId]);
+    return result.rows[0] ? result.rows[0].frame : null;
+  }
 }
 
 module.exports = ReceiptRepository;
