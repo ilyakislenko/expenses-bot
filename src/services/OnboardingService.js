@@ -134,11 +134,13 @@ class OnboardingService {
     return this.save(userId, this.advance(draft, 'z'));
   }
 
-  // «Пропустить всё» у нового пользователя без своего времени: остаётся один вопрос — о времени (lastCall).
-  // Ответ или «Пропустить» на нём заканчивают опрос
-  async askTimezoneLast(userId, draft) {
-    draft.lastCall = true;
-    draft.step = 'z';
+  // Ответ на необязательный вопрос о времени, который приходит отдельным сообщением после конца опроса (lastCall):
+  // опрос уже закончен, пояс сохранён обработчиком time|…|ob; напоминание по умолчанию теперь можно включить
+  async answerTimezoneLater(userId, draft, timezone) {
+    draft.answers.timezone = timezone;
+    delete draft.answers.timezoneAuto;
+    delete draft.lastCall;
+    await this.defaultSchedule(userId, draft, null);
     return this.save(userId, draft);
   }
 

@@ -5,7 +5,7 @@ const ReferralService = require('../services/ReferralService');
 const { getTimezoneDisplayName } = require('../utils/timezoneCalculator');
 const { summaryHour } = require('../services/DailySummaryService');
 const { localToday, lastDaysPeriod } = require('../utils/period');
-const { PREMIUM_TARIFFS, tariffDiscount, USER_LIMITS } = require('../utils/constants');
+const { PREMIUM_TARIFFS, tariffDiscount, USER_LIMITS, DEFAULT_REMINDER_HOURS } = require('../utils/constants');
 
 class CommandHandlers {
   constructor({ expenseService, userService, premiumService, familyService, localizationService, formatter, stateService, keyboardGenerators, paymentService, incomeService, funnelService, receiptService, referralService = null, voiceService = null, roastService = null }) {
@@ -256,7 +256,7 @@ class CommandHandlers {
       this.userService.getReminderSettings(userId)
     ]);
     const language = this.localizationService.getLanguageInfo(userLanguage);
-    const reminderHours = (Array.isArray(reminders.reminder_hours) ? [...reminders.reminder_hours] : [10, 14, 18])
+    const reminderHours = (Array.isArray(reminders.reminder_hours) ? [...reminders.reminder_hours] : [...DEFAULT_REMINDER_HOURS])
       .sort((a, b) => a - b).map(h => `${String(h).padStart(2, '0')}:00`).join(', ');
 
     const lines = [

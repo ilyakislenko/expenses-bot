@@ -2,7 +2,7 @@ const respond = require('../utils/respond');
 const logger = require('../utils/logger');
 const rules = require('../utils/onboarding');
 const { SAVAGE_LANGUAGES } = require('../utils/roast');
-const { generateCurrencyKeyboard, generateTimeKeyboard } = require('../utils/constants');
+const { generateCurrencyKeyboard, generateTimeKeyboard, DEFAULT_REMINDER_HOURS } = require('../utils/constants');
 const { getTimezoneDisplayName } = require('../utils/timezoneCalculator');
 const BudgetHandlers = require('./BudgetHandlers');
 
@@ -63,6 +63,8 @@ class OnboardingHandlers {
       logger.error('Failed to load onboarding', { userId: ctx.from.id, error: error.message });
       return null;
     });
+    // Опрос, застрявший на вопросе о времени после «Пропустить всё» (так было в прошлой версии), — закончить
+    if (draft && draft.lastCall) return this.finish(ctx, draft, 'skipped');
     if (draft) return this.show(ctx, draft, draft.step, { fresh: true });
     return this.commandHandlers.start(ctx);
   }
@@ -127,19 +129,55 @@ class OnboardingHandlers {
     const userId = ctx.from.id;
     const draft = await this.draftForLegacyStep(userId);
     if (!draft) {
+      // Необязательный вопрос о времени после конца опроса: включаем напоминание и пишем, что настроено
+      const { answers: finished } = await this.onboardingService.getState(userId);
+      if (finished && finished.lastCall) {
+        await this.onboardingService.answerTimezoneLater(userId, finished, timezone);
+        return respond(ctx, await this.timezoneSavedText(userId, await this.lang(ctx), timezone), { parse_mode: 'Markdown' });
+      }
       await ctx.editMessageReplyMarkup({ inline_keyboard: [] }).catch(() => {});
       return;
     }
     const updated = await this.onboardingService.answerTimezone(userId, draft, timezone);
-    // Вопрос о времени после «Пропустить всё» — последний
+    // Вопрос о времени после «Пропустить всё» в прошлой версии был последним
     if (updated.lastCall) return this.finish(ctx, updated, 'skipped');
     return this.showStep(ctx, updated, rules.nextStep(updated, 'z'));
   }
 
+  // «🕐 Часовой пояс: …» и что теперь с напоминаниями — ответ на необязательный вопрос о времени
+  async timezoneSavedText(userId, lang, timezone) {
+    const settings = await this.userService.getReminderSettings(userId);
+    const hours = Array.isArray(settings.reminder_hours) ? settings.reminder_hours : DEFAULT_REMINDER_HOURS;
+    return [
+      this.t(lang, 'onb_done_timezone', { timezone: this.formatter.escapeMarkdown(getTimezoneDisplayName(timezone)) }),
+      settings.reminder_enabled && hours.length
+        ? this.t(lang, 'onb_done_reminders', { hours: hours.map(hourLabel).join(', ') })
+        : this.t(lang, 'onb_done_reminders_off')
+    ].join('\n');
+  }
+
+  // Необязательный вопрос о времени отдельным сообщением после конца опроса: кнопки time|…|ob и tzh|…|ob работают
+  // и потом. edit — переключатель минут (tzh) редактирует то же сообщение
+  async sendTimezoneQuestion(ctx, lang, { half, edit = false } = {}) {
+    const keyboard = generateTimeKeyboard(this.localizationService, lang, { onboarding: true, half });
+    keyboard.pop(); // «Назад» к валюте — опрос уже закончен
+    const current = await this.userService.getUserTimezone(ctx.from.id);
+    const text = this.t(lang, 'onb_q_timezone_last', { timezone: this.formatter.escapeMarkdown(getTimezoneDisplayName(current || 'UTC')) });
+    const extra = { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } };
+    if (edit) return respond(ctx, text, extra);
+    return ctx.reply(text, extra);
+  }
+
   // tzh|<0|1>|ob — те же кнопки времени с минутами, сдвинутыми на полчаса (Индия, Иран…), и обратно
   async showTimezone(ctx, half) {
-    const draft = await this.onboardingService.getActive(ctx.from.id);
-    if (!draft || draft.step !== 'z') return this.stale(ctx, await this.lang(ctx));
+    const userId = ctx.from.id;
+    const draft = await this.onboardingService.getActive(userId);
+    if (!draft || draft.step !== 'z') {
+      const { answers: finished } = await this.onboardingService.getState(userId);
+      if (!(finished && finished.lastCall)) return this.stale(ctx, await this.lang(ctx));
+      await ctx.answerCbQuery().catch(() => {});
+      return this.sendTimezoneQuestion(ctx, await this.lang(ctx), { half, edit: true });
+    }
     await ctx.answerCbQuery().catch(() => {});
     return this.show(ctx, draft, 'z', { half });
   }
@@ -164,11 +202,8 @@ class OnboardingHandlers {
 
     if (step === 'x') {
       await ctx.answerCbQuery().catch(() => {});
-      // Новый пользователь без своего времени: один вопрос напоследок — иначе «сегодня» и напоминания не по его часам
-      if (draft.mode === 'new' && !draft.answers.timezone && !draft.lastCall) {
-        const updated = await this.onboardingService.askTimezoneLast(userId, draft);
-        return this.show(ctx, updated, 'z');
-      }
+      // Опрос заканчивается сразу (с главной клавиатурой); вопрос о времени, если его не было, — отдельным
+      // необязательным сообщением (finish)
       return this.finish(ctx, draft, 'skipped');
     }
     if (step === 'o') {
@@ -355,12 +390,6 @@ class OnboardingHandlers {
       case 'z': {
         const keyboard = generateTimeKeyboard(this.localizationService, lang, { onboarding: true, half });
         keyboard.pop(); // «Назад» (ob_currency) — в controls
-        if (draft.lastCall) {
-          // После «Пропустить всё»: без счётчика и «Назад», «Пропустить» — закончить
-          const current = await this.userService.getUserTimezone(userId);
-          const text = t('onb_q_timezone_last', { timezone: this.formatter.escapeMarkdown(getTimezoneDisplayName(current || 'UTC')) });
-          return { text, keyboard: [...keyboard, [{ text: t('onb_button_skip'), callback_data: 'onb|z|s' }]] };
-        }
         return { ...body(t('onb_q_timezone')), keyboard: [...keyboard, ...controls] };
       }
       case 'p': {
@@ -453,6 +482,9 @@ class OnboardingHandlers {
     const userId = ctx.from.id;
     const lang = await this.lang(ctx);
     if (this.stateService.getUserState(userId) === BUDGET_STATE) this.stateService.deleteUserState(userId);
+    // Новый пользователь без своего времени: после итога — необязательный вопрос о времени (lastCall)
+    const askTime = draft.mode === 'new' && !draft.answers.timezone;
+    if (askTime) draft.lastCall = true;
     const finished = await this.onboardingService.finish(userId, draft, status, { language: lang });
     // Уже записывал траты (повторный проход или трата посреди опроса) — без «первой траты»
     const recorded = await this.onboardingService.hasRecorded(userId);
@@ -470,6 +502,7 @@ class OnboardingHandlers {
       })}`;
     }
     await ctx.reply(note, { parse_mode: 'Markdown', reply_markup: await this.commandHandlers.mainKeyboardMarkup(userId, lang) });
+    if (askTime) await this.sendTimezoneQuestion(ctx, lang);
   }
 
   // Злой режим включён в опросе — пример подколки, чтобы было понятно, чего ждать (молчит он до первого повода)

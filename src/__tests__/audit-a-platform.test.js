@@ -86,8 +86,9 @@ describe('Reminder cron', () => {
     };
     return { userService, expenseService, notificationService };
   };
+  // Явные часы: по умолчанию (NULL) теперь одно напоминание в 21:00, а тесты — про механику рассылки
   const user = (id, extra = {}) => ({
-    id, timezone: 'UTC', language: 'ru', reminder_hours: null, reminder_sent_today_hours: null, last_reminder_local_date: null, ...extra
+    id, timezone: 'UTC', language: 'ru', reminder_hours: [10, 14, 18], reminder_sent_today_hours: null, last_reminder_local_date: null, ...extra
   });
   const sentTo = (deps) => deps.notificationService.bot.telegram.sendMessage.mock.calls.map(([id]) => id);
   const at10 = new Date('2026-10-26T10:00:00Z');

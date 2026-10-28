@@ -40,6 +40,9 @@ const TRIAL_PERIOD = {
   TYPE: 'trial'
 };
 
+// Часы напоминаний по умолчанию (users.reminder_hours = NULL, «Сбросить», опрос без ответа) — одно вечером
+const DEFAULT_REMINDER_HOURS = [21];
+
 // «😈 Злой режим»: не больше одной подколки на действие, MAX_PER_DAY за локальный день и не чаще раза в
 // MIN_GAP_MINUTES — кроме превышения бюджета (по разу на бюджет за период). Импульсная покупка — трата не меньше
 // IMPULSE_FACTOR медиан своих трат за HISTORY_DAYS дней (нужно хотя бы IMPULSE_MIN_HISTORY трат); вредная трата
@@ -295,6 +298,7 @@ module.exports = {
   PREMIUM_TARIFFS,
   tariffDiscount,
   TRIAL_PERIOD,
+  DEFAULT_REMINDER_HOURS,
   REFERRAL,
   ROAST,
   generateMainMenuKeyboard,

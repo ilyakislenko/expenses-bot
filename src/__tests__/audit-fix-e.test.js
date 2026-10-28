@@ -361,3 +361,36 @@ describe('new texts are valid Markdown in every language (Fix E)', () => {
     }
   });
 });
+
+describe('one default for reminder hours (Fix E, round 2)', () => {
+  const { sendReminders } = require('../botCron');
+  const { DEFAULT_REMINDER_HOURS } = require('../utils/constants');
+  const CallbackHandlers = require('../handlers/callbacks');
+
+  test('default is one reminder at 21:00 — in cron, in «Reset» and in the questionnaire', async () => {
+    expect(DEFAULT_REMINDER_HOURS).toEqual([21]);
+    expect(require('../utils/onboarding').reminderPlan(require('../utils/onboarding').DEFAULT_REMINDERS).hours).toEqual(DEFAULT_REMINDER_HOURS);
+    const sendMessage = jest.fn(async () => ({}));
+    const deps = {
+      userService: {
+        userRepository: { query: jest.fn(async () => ({ rows: [{ id: 1, timezone: 'UTC', language: 'en', reminder_hours: null, reminder_sent_today_hours: null, last_reminder_local_date: null }] })) },
+        updateLastReminderLocalDate: jest.fn(async () => {}),
+        setReminderSentTodayHours: jest.fn(async () => {})
+      },
+      expenseService: { hasAnyExpenseToday: jest.fn(async () => false) },
+      notificationService: { localizationService, bot: { telegram: { sendMessage } } }
+    };
+    for (const hour of [10, 14, 18]) expect(await sendReminders(deps, new Date(`2026-10-28T${hour}:00:00Z`))).toBe(0);
+    expect(await sendReminders(deps, new Date('2026-10-28T21:00:00Z'))).toBe(1);
+
+    // «Сбросить», когда часы уже по умолчанию, называет 21:00
+    const handlers = Object.create(CallbackHandlers.prototype);
+    Object.assign(handlers, {
+      localizationService,
+      userService: { getReminderSettings: jest.fn(async () => ({ reminder_hours: null })), getUserLanguage: jest.fn(async () => 'ru') }
+    });
+    const ctx = ctxFor('clear_reminder_hours');
+    await handlers.handleClearReminderHours(ctx);
+    expect(ctx.answerCbQuery).toHaveBeenCalledWith(t('ru', 'reminder_hours_default_already', { hours: '21:00' }), { show_alert: true });
+  });
+});
