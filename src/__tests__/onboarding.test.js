@@ -255,19 +255,22 @@ describe('skip and skip all', () => {
     expect(env.store.onboarding.goals).toEqual([]);
     expect(env.store.onboarding.skipped).toEqual(['g']);
     expect(screen.text).toContain('2/8');
-    // «Пропустить всё» без своего времени — сначала один вопрос о времени, его «Пропустить» заканчивает опрос
-    await press(env, 'onb|x');
-    expect(env.store.onboarding.status).toBe('active');
-    const done = await press(env, 'onb|z|s');
+    // «Пропустить всё» заканчивает опрос сразу: итог, главная клавиатура, затем необязательный вопрос о времени
+    const done = await press(env, 'onb|x');
     expect(env.funnelService.track).toHaveBeenCalledWith(1, 'onboarding_skipped');
     expect(env.store.onboarding.status).toBe('skipped');
     expect(env.userService.setUserPeriodStartDay).not.toHaveBeenCalled();
-    // Без пояса (en не угадать) напоминания выключены, а не 3 раза в день по UTC
+    // Без пояса (en не угадать) напоминания выключены, а не каждый день в 21:00 по UTC
     expect(env.store.reminder_enabled).toBe(false);
     const finalText = done.editMessageText.mock.calls[0][0];
     expect(finalText).toContain(t('en', 'onb_done_currency', { currency: 'USD' })); // валюта по языку — уже стоит
     expect(finalText).toContain(t('en', 'onb_done_first_step'));
+    expect(finalText).toContain(t('en', 'onb_done_reminders_auto_off'));
     expect(done.reply.mock.calls[0][1].reply_markup.keyboard).toEqual([['MAIN']]);
+    const [question, questionExtra] = done.reply.mock.calls[1];
+    expect(question).toBe(t('en', 'onb_q_timezone_last', { timezone: 'UTC+0' }));
+    expect(dataOf(questionExtra).filter((d) => d.startsWith('time|')).every((d) => d.endsWith('|ob'))).toBe(true);
+    expect(dataOf(questionExtra)).not.toContain('ob_currency');
   });
 
   test('skipping the last question completes the run', async () => {
@@ -589,7 +592,7 @@ describe('routing', () => {
 
 // Fix E: «Пропустить всё» не оставляет пояс UTC и 3 напоминания в день по UTC
 describe('skip all: timezone and reminders are not left at UTC', () => {
-  test('ru: timezone guessed from language, one evening reminder, one last question about time, summary says it', async () => {
+  test('ru: timezone guessed from language, one evening reminder; skip all finishes at once, the time question is optional', async () => {
     const env = build({ store: createStore({ premium: false }) });
     const { store } = env;
     await env.onboardingHandlers.beginNew(callbackCtx('set_language|ru|ob'), 'ru');
@@ -597,23 +600,21 @@ describe('skip all: timezone and reminders are not left at UTC', () => {
     expect(store.reminder_hours).toEqual([21]);
     expect(store.reminder_enabled).toBe(true);
 
-    // «Пропустить всё» — остаётся один вопрос: время
-    let ctx = await press(env, 'onb|x');
-    let screen = lastScreen(ctx);
-    expect(screen.text).toBe(t('ru', 'onb_q_timezone_last', { timezone: 'Europe/Moscow (UTC+3)' }));
-    expect(screen.data).toContain('onb|z|s');
-    expect(screen.data).not.toContain('onb|x');
-    expect(store.completedAt).toBeNull();
-
-    // «Пропустить» на нём — опрос закончен, итог называет пояс и напоминание
-    ctx = await press(env, 'onb|z|s');
+    const ctx = await press(env, 'onb|x');
     expect(store.completedAt).not.toBeNull();
-    screen = lastScreen(ctx);
-    expect(screen.text).toContain(t('ru', 'onb_done_timezone_guess', { timezone: 'Europe/Moscow (UTC+3)' }));
-    expect(screen.text).toContain(t('ru', 'onb_done_reminders', { hours: '21:00' }));
+    expect(store.onboarding.status).toBe('skipped');
+    const summary = ctx.editMessageText.mock.calls[0][0];
+    expect(summary).toContain(t('ru', 'onb_done_timezone_guess', { timezone: 'Europe/Moscow (UTC+3)' }));
+    expect(summary).toContain(t('ru', 'onb_done_reminders', { hours: '21:00' }));
+    expect(ctx.reply.mock.calls[0][1].reply_markup.keyboard).toEqual([['MAIN']]);
+    expect(ctx.reply.mock.calls[1][0]).toBe(t('ru', 'onb_q_timezone_last', { timezone: 'Europe/Moscow (UTC+3)' }));
+
+    // /start после этого — обычный, а не снова вопрос о времени
+    await env.onboardingHandlers.start(textCtx('/start'));
+    expect(env.commandHandlers.start).toHaveBeenCalledTimes(1);
   });
 
-  test('en: no guess possible — reminders off until the time is known; answering the time turns the evening one on', async () => {
+  test('en: reminders stay off until the time is known; a later answer to the time question turns the evening one on', async () => {
     const env = build({ store: createStore({ language: 'en', premium: false }) });
     const { store } = env;
     await env.onboardingHandlers.beginNew(callbackCtx('set_language|en|ob'), 'en');
@@ -621,27 +622,38 @@ describe('skip all: timezone and reminders are not left at UTC', () => {
     expect(store.reminder_enabled).toBe(false);
 
     await press(env, 'onb|x');
-    const draft = await env.onboardingService.getActive(1);
-    expect(draft.lastCall).toBe(true);
-    // Ответ на вопрос о времени заканчивает опрос и включает вечернее напоминание
+    expect(store.onboarding.status).toBe('skipped');
+    expect(store.reminder_enabled).toBe(false);
+    expect(store.onboarding.lastCall).toBe(true);
+
+    // Переключатель минут на необязательном вопросе работает и после конца опроса
+    const toggle = callbackCtx('tzh|1|ob');
+    await env.onboardingHandlers.showTimezone(toggle, true);
+    expect(lastScreen(toggle).data.some((d) => /^time\|\d+\|\d+\|h\|ob$/.test(d))).toBe(true);
+
+    // Ответ позже: пояс сохранён обработчиком time|…|ob, напоминание включается, сообщение говорит что настроено
     store.timezone = 'Etc/GMT+5';
     const ctx = callbackCtx('time|9|0|ob');
     await env.onboardingHandlers.afterTimezone(ctx, 'Etc/GMT+5');
-    expect(store.completedAt).not.toBeNull();
     expect(store.reminder_enabled).toBe(true);
     expect(store.reminder_hours).toEqual([21]);
-    expect(lastScreen(ctx).text).toContain(t('en', 'onb_done_reminders', { hours: '21:00' }));
+    expect(store.onboarding.answers.timezone).toBe('Etc/GMT+5');
+    const { text, data } = lastScreen(ctx);
+    expect(text).toContain(t('en', 'onb_done_timezone', { timezone: 'UTC-5' }));
+    expect(text).toContain(t('en', 'onb_done_reminders', { hours: '21:00' }));
+    expect(data).toEqual([]);
   });
 
-  test('en skipped twice: summary says timezone is UTC and reminders are off', async () => {
+  test('an old questionnaire stuck on the last time question is finished by /start', async () => {
     const env = build({ store: createStore({ language: 'en', premium: false }) });
     await env.onboardingHandlers.beginNew(callbackCtx('set_language|en|ob'), 'en');
-    await press(env, 'onb|x');
-    const ctx = await press(env, 'onb|z|s');
-    const { text } = lastScreen(ctx);
-    expect(text).toContain(t('en', 'onb_done_timezone_unknown'));
-    expect(text).toContain(t('en', 'onb_done_reminders_auto_off'));
-    expect(env.store.reminder_enabled).toBe(false);
+    env.store.onboarding = { ...env.store.onboarding, lastCall: true, step: 'z' };
+    const ctx = textCtx('/start');
+    ctx.editMessageText = jest.fn(async () => ({}));
+    await env.onboardingHandlers.start(ctx);
+    expect(env.store.onboarding.status).toBe('skipped');
+    expect(env.commandHandlers.start).not.toHaveBeenCalled();
+    expect(ctx.reply.mock.calls.some(([, extra]) => extra && extra.reply_markup && extra.reply_markup.keyboard)).toBe(true);
   });
 
   test('an explicit reminders answer is kept; changing the language moves the guessed timezone', async () => {

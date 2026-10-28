@@ -1,5 +1,6 @@
 const respond = require('../utils/respond');
 const { summaryHour } = require('../services/DailySummaryService');
+const { DEFAULT_REMINDER_HOURS } = require('../utils/constants');
 
 const hourLabel = (hour) => `${String(hour).padStart(2, '0')}:00`;
 
@@ -42,7 +43,7 @@ class CallbackHandlers {
     const settings = await this.userService.getReminderSettings(userId);
     const current = Array.isArray(settings.reminder_hours)
       ? [...settings.reminder_hours].sort((a,b)=>a-b)
-      : [10,14,18];
+      : [...DEFAULT_REMINDER_HOURS];
     const backText = t('button_back');
     const saveText = t('button_save');
     const clearText = t('button_clear');
@@ -175,7 +176,7 @@ class CallbackHandlers {
     const settings = await this.userService.getReminderSettings(userId);
     const hours = Array.isArray(settings.reminder_hours)
       ? [...settings.reminder_hours]
-      : [10, 14, 18];
+      : [...DEFAULT_REMINDER_HOURS];
     const hour = parseInt(ctx.callbackQuery.data.split('|')[1], 10);
     if (!(hour >= 0 && hour <= 23)) return ctx.answerCbQuery().catch(() => {}); // подменённая кнопка
     const idx = hours.indexOf(hour);
@@ -292,7 +293,7 @@ class CallbackHandlers {
     // Уже дефолтные часы — объясняем, а не молчим
     if (!('reminder_hours' in settings) || settings.reminder_hours === null) {
       const userLanguage = await this.userService.getUserLanguage(userId);
-      await ctx.answerCbQuery(this.localizationService.getText(userLanguage, 'reminder_hours_default_already', { hours: '10:00, 14:00, 18:00' }), { show_alert: true }).catch(() => {});
+      await ctx.answerCbQuery(this.localizationService.getText(userLanguage, 'reminder_hours_default_already', { hours: DEFAULT_REMINDER_HOURS.map(hourLabel).join(', ') }), { show_alert: true }).catch(() => {});
       return;
     }
     // Сбрасываем к дефолтной логике (NULL в БД => показываются 10,14,18)

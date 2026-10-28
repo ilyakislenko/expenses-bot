@@ -1,7 +1,7 @@
 const currencyConfig = require('./config/currencies');
 const logger = require('./utils/logger');
 
-const DEFAULT_REMINDER_HOURS = [10, 14, 18];
+const { DEFAULT_REMINDER_HOURS } = require('./utils/constants');
 
 // Локальные дата (YYYY-MM-DD) и час. hourCycle h23: в полночь час 0, а не 24
 function localDateHour(timezone, now) {
