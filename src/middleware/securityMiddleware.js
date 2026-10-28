@@ -132,7 +132,15 @@ class SecurityMiddleware {
 
   // Обработка превышения rate limit
   async handleRateLimitExceeded(ctx, rateLimitResult) {
-    const { resetTime, limit } = rateLimitResult;
+    const { resetTime, limit, notify } = rateLimitResult;
+
+    securityRateLimitExceeded.inc({ limit_type: ctx.updateType });
+
+    // Уже предупредили в этом окне: молча отбрасываем (на кнопку — пустой ответ, чтобы не крутились часики)
+    if (notify === false) {
+      if (ctx.updateType === 'callback_query') await ctx.answerCbQuery().catch(() => {});
+      return;
+    }
 
     logger.warn('Rate limit exceeded', {
       userId: ctx.from?.id,
@@ -140,8 +148,6 @@ class SecurityMiddleware {
       resetTime,
       limit
     });
-
-    securityRateLimitExceeded.inc({ limit_type: ctx.updateType });
 
     try {
       const message = await this.t(ctx, 'security_rate_limit', { resetTime, limit });

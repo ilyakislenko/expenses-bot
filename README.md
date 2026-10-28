@@ -67,6 +67,11 @@ docker compose -f docker-compose.monitoring.yml up -d   # Prometheus/Loki/Grafan
 npm install && npm run migrate && npm start
 ```
 
+Both compose files publish ports on `127.0.0.1` only (Docker bypasses the host firewall) and have no
+default passwords: `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `PGADMIN_EMAIL`, `PGADMIN_PASSWORD` and
+`GF_SECURITY_ADMIN_PASSWORD` must be set in `.env`, otherwise compose refuses to start. Reach the
+web UIs from another machine through a TLS reverse proxy or `ssh -L`.
+
 Config is entirely environment-driven — see `.env.example`. `SETUP.md` has the
 long-form walkthrough; `BOT_PAGES.md` documents every command and button.
 

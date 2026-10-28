@@ -96,18 +96,24 @@ class RateLimiter {
     // Проверяем лимит
     if (userRequests.count >= limit.requests) {
       const resetTime = userRequests.timestamp + limit.windowMs - now;
-      logger.warn('Rate limit exceeded', {
-        userId,
-        type,
-        limit: limit.requests,
-        resetTime: Math.ceil(resetTime / 1000)
-      });
-      
+      // О превышении сообщаем один раз за окно: на флуд не отвечаем флудом (и не ходим в БД за языком)
+      const notify = !userRequests.notified;
+      userRequests.notified = true;
+      if (notify) {
+        logger.warn('Rate limit exceeded', {
+          userId,
+          type,
+          limit: limit.requests,
+          resetTime: Math.ceil(resetTime / 1000)
+        });
+      }
+
       return {
         allowed: false,
         remaining: 0,
         resetTime: Math.ceil(resetTime / 1000),
-        limit: limit.requests
+        limit: limit.requests,
+        notify
       };
     }
     

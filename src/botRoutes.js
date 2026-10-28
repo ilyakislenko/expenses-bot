@@ -363,7 +363,8 @@ module.exports = function registerBotRoutes(bot, handlers) {
   // платит тот, для кого создана ссылка, и вторая месячная подписка не оформляется
   const preCheckoutRejectionKeys = {
     foreign_payer: 'payment_foreign_payer',
-    subscription_active: 'payment_subscription_already_active'
+    subscription_active: 'payment_subscription_already_active',
+    donation_outdated: 'donation_outdated'
   };
   bot.on('pre_checkout_query', errorHandler(async (ctx) => {
     const check = await handlers.paymentService.checkPreCheckout(ctx.preCheckoutQuery, ctx.from.id);
@@ -395,6 +396,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
     const userLanguage = await handlers.userService.getUserLanguage(ctx.from.id);
 
     if (result.type === 'donation') {
+      if (result.status === 'duplicate') return; // повторная доставка того же платежа
       // Для донатов показываем сообщение о благодарности
       const donationSuccessText = handlers.localizationService.getText(userLanguage, 'donation_success');
       await ctx.reply(donationSuccessText, { parse_mode: 'Markdown' });

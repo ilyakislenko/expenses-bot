@@ -15,25 +15,31 @@ function readCsv(text, delimiter) {
   let field = '';
   let inQuotes = false;
   let quoted = false;
+  let blank = true; // в поле пока только пробелы: field.trim() на каждой кавычке давал квадратичное время
+  const append = (c) => {
+    field += c;
+    if (blank && c.trim() !== '') blank = false;
+  };
   const pushField = () => {
     row.push(quoted ? field : field.trim());
     field = '';
     quoted = false;
+    blank = true;
   };
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
     if (inQuotes) {
       if (c === '"') {
         if (text[i + 1] === '"') {
-          field += '"';
+          append('"');
           i++;
         } else {
           inQuotes = false;
         }
       } else {
-        field += c;
+        append(c);
       }
-    } else if (c === '"' && field.trim() === '') {
+    } else if (c === '"' && blank) {
       inQuotes = true;
       quoted = true;
       field = '';
@@ -44,7 +50,7 @@ function readCsv(text, delimiter) {
       rows.push(row);
       row = [];
     } else if (c !== '\r') {
-      field += c;
+      append(c);
     }
   }
   if (field !== '' || row.length) {

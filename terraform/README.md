@@ -43,7 +43,7 @@ terraform apply
 
 После развертывания будут доступны следующие сервисы:
 
-- **Grafana**: http://localhost:3000 (admin/admin)
+- **Grafana**: http://localhost:3000 (admin / пароль из `grafana_admin_password`)
 - **Prometheus**: http://localhost:9090
 - **Loki**: http://localhost:3100
 - **Promtail**: http://localhost:9080
@@ -56,7 +56,9 @@ terraform apply
 
 Основные переменные можно настроить в файле `variables.tf`:
 
-- `grafana_admin_password` - пароль администратора Grafana
+- `grafana_admin_password` - пароль администратора Grafana, **обязателен** (значения по умолчанию нет):
+  `export TF_VAR_grafana_admin_password=...` или `terraform.tfvars` (не коммитить)
+- Все порты публикуются только на `127.0.0.1`; доступ с других машин — через reverse proxy с TLS или `ssh -L`
 - `prometheus_retention_hours` - время хранения данных в Prometheus
 - Портты для всех сервисов
 

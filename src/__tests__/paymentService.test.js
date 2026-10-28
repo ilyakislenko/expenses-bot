@@ -17,14 +17,14 @@ const mockBot = {
 
 global.fetch = jest.fn();
 
-function mockFetchResult(body) {
-  global.fetch.mockResolvedValue({ ok: true, json: jest.fn().mockResolvedValue(body) });
+function mockInvoiceLink(link) {
+  mockBot.telegram.callApi.mockResolvedValue(link);
 }
 
-// Параметры последнего запроса createInvoiceLink к Bot API
+// Параметры последнего вызова createInvoiceLink через Telegraf
 function lastInvoiceLinkParams() {
-  const url = new URL(global.fetch.mock.calls[global.fetch.mock.calls.length - 1][0]);
-  return url.searchParams;
+  const calls = mockBot.telegram.callApi.mock.calls.filter(([method]) => method === 'createInvoiceLink');
+  return calls[calls.length - 1][1];
 }
 
 describe('PaymentService', () => {
@@ -36,7 +36,7 @@ describe('PaymentService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     localizationService = new LocalizationService();
-    donationRepository = { markDonationCompleted: jest.fn().mockResolvedValue(undefined) };
+    donationRepository = { markDonationCompleted: jest.fn().mockResolvedValue({ id: 7, status: 'completed' }) };
     funnelService = { track: jest.fn().mockResolvedValue(undefined) };
     paymentService = new PaymentService(donationRepository, localizationService, funnelService);
     paymentService.setBot(mockBot);
@@ -91,54 +91,72 @@ describe('PaymentService', () => {
   describe('createInvoiceLink', () => {
     it('returns the link and sells the monthly tariff as an auto-renewing 30-day subscription', async () => {
       const tariff = PREMIUM_TARIFFS.MONTH_1;
-      mockFetchResult({ ok: true, result: 'https://t.me/bot?invoice=test_invoice_link' });
+      mockInvoiceLink('https://t.me/bot?invoice=test_invoice_link');
 
       const result = await paymentService.createInvoiceLink(123456, tariff, 'ru');
 
       expect(result).toBe('https://t.me/bot?invoice=test_invoice_link');
-      expect(global.fetch.mock.calls[0][0]).toMatch(/^https:\/\/api\.telegram\.org\/bottest_token\/createInvoiceLink\?/);
+      // Через Telegraf, с сигналом таймаута; прямого fetch с токеном в URL нет
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(mockBot.telegram.callApi.mock.calls[0][2].signal).toBeInstanceOf(AbortSignal);
       const params = lastInvoiceLinkParams();
-      expect(params.get('currency')).toBe('XTR');
-      expect(JSON.parse(params.get('prices'))).toEqual([expect.objectContaining({ amount: tariff.stars })]);
-      expect(JSON.parse(params.get('payload'))).toEqual({
+      expect(params.currency).toBe('XTR');
+      expect(params.prices).toEqual([expect.objectContaining({ amount: tariff.stars })]);
+      expect(JSON.parse(params.payload)).toEqual({
         type: 'premium_subscription',
         tariff: 30,
         stars: tariff.stars,
         user_id: 123456
       });
-      expect(params.get('subscription_period')).toBe('2592000');
+      expect(params.subscription_period).toBe(2592000);
     });
 
     it('sells longer tariffs as one-time payments (no subscription period)', async () => {
-      mockFetchResult({ ok: true, result: 'https://t.me/bot?invoice=link_90' });
+      mockInvoiceLink('https://t.me/bot?invoice=link_90');
 
       await paymentService.createInvoiceLink(123456, PREMIUM_TARIFFS.MONTH_3, 'ru');
 
       const params = lastInvoiceLinkParams();
-      expect(params.has('subscription_period')).toBe(false);
-      expect(JSON.parse(params.get('payload')).tariff).toBe(90);
+      expect(params).not.toHaveProperty('subscription_period');
+      expect(JSON.parse(params.payload).tariff).toBe(90);
     });
 
     it('creates a fully English invoice link for an English-speaking user', async () => {
       const tariff = PREMIUM_TARIFFS.MONTH_3;
-      mockFetchResult({ ok: true, result: 'https://t.me/bot?invoice=test_invoice_link_en' });
+      mockInvoiceLink('https://t.me/bot?invoice=test_invoice_link_en');
 
       const result = await paymentService.createInvoiceLink(123456, tariff, 'en');
 
       expect(result).toBe('https://t.me/bot?invoice=test_invoice_link_en');
       const params = lastInvoiceLinkParams();
-      expect(params.get('title')).toBe(localizationService.getText('en', 'premium_product'));
-      expect(params.get('description')).toContain(localizationService.getText('en', 'tariff_button_90'));
-      expect(params.get('title')).not.toMatch(CYRILLIC);
-      expect(params.get('description')).not.toMatch(CYRILLIC);
-      expect(JSON.parse(params.get('prices'))[0].label).not.toMatch(CYRILLIC);
+      expect(params.title).toBe(localizationService.getText('en', 'premium_product'));
+      expect(params.description).toContain(localizationService.getText('en', 'tariff_button_90'));
+      expect(params.title).not.toMatch(CYRILLIC);
+      expect(params.description).not.toMatch(CYRILLIC);
+      expect(params.prices[0].label).not.toMatch(CYRILLIC);
     });
 
     it('throws when Telegram rejects the request', async () => {
-      mockFetchResult({ ok: false, description: 'PAYMENT_PROVIDER_INVALID' });
+      mockBot.telegram.callApi.mockRejectedValue(new Error('400: Bad Request: PAYMENT_PROVIDER_INVALID'));
 
       await expect(paymentService.createInvoiceLink(123456, PREMIUM_TARIFFS.MONTH_1, 'ru'))
-        .rejects.toThrow('Telegram API error: PAYMENT_PROVIDER_INVALID');
+        .rejects.toThrow('PAYMENT_PROVIDER_INVALID');
+    });
+
+    it('aborts a hanging request instead of waiting minutes', async () => {
+      jest.useFakeTimers();
+      try {
+        mockBot.telegram.callApi.mockImplementation((method, payload, { signal }) => new Promise((resolve, reject) => {
+          signal.addEventListener('abort', () => reject(new Error('aborted')));
+        }));
+        const pending = paymentService.createDonationInvoiceLink(123456, 50, 'ru', 7);
+        const assertion = expect(pending).rejects.toThrow('aborted');
+        jest.advanceTimersByTime(10000);
+        await assertion;
+      } finally {
+        jest.useRealTimers();
+        mockBot.telegram.callApi.mockReset();
+      }
     });
   });
 

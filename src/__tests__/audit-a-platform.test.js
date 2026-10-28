@@ -19,8 +19,9 @@ describe('SecurityMiddleware: payment updates and Telegram profiles', () => {
     middleware = new SecurityMiddleware(rateLimiter, new EnhancedValidator(), fakeLocalization, userService).middleware();
   });
 
+  // Ровно столько запросов, сколько разрешено: первый отказ (с сообщением о лимите) остаётся проверке
   const exhaust = (type) => {
-    while (rateLimiter.checkLimit(userId, type).allowed);
+    for (let i = 0; i < rateLimiter.limits[type].requests; i++) rateLimiter.checkLimit(userId, type);
   };
   const from = { id: userId, first_name: 'Маша <3', last_name: '>_<', username: 'abcd' };
   const messageCtx = (message) => ({ updateType: 'message', from, chat: { id: userId }, message, reply: jest.fn() });

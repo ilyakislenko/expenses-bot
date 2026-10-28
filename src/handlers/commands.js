@@ -541,7 +541,9 @@ class CommandHandlers {
       
       // Формируем CSV
       const csv = await this.formatter.formatCSV(expenses, userCurrency, userTimezone, this.localizationService, userLanguage);
-      const filename = `family_expenses_${userFamily.name}_${new Date().toISOString().split('T')[0]}.csv`;
+      // Название семьи — пользовательский текст: в имени файла только буквы, цифры, «_» и «-»
+      const familySlug = String(userFamily.name || '').replace(/[^\p{L}\p{N}_-]+/gu, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'family';
+      const filename = `family_expenses_${familySlug}_${new Date().toISOString().split('T')[0]}.csv`;
       
       const exportSuccessText = this.localizationService.getText(userLanguage, 'export_success');
       const recordsCountText = this.localizationService.getText(userLanguage, 'records_count', { count: expenses.length });

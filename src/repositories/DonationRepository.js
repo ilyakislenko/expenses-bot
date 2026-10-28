@@ -11,15 +11,23 @@ class DonationRepository extends BaseRepository {
     return result.rows[0];
   }
 
+  async getDonationById(donationId) {
+    if (!Number.isSafeInteger(Number(donationId))) return null;
+    const result = await this.query('SELECT * FROM donations WHERE id = $1', [Number(donationId)]);
+    return result.rows[0] || null;
+  }
+
+  // Оплату засчитываем один раз: уже завершённый или возвращённый донат не перезаписывается (null).
+  // Отменённый/истёкший — засчитывается: pre_checkout пропустил его ожидающим, деньги уже списаны.
   async markDonationCompleted(donationId, telegramPaymentId = null) {
     const query = `
       UPDATE donations
       SET status = 'completed', telegram_payment_id = $2, updated_at = NOW()
-      WHERE id = $1
+      WHERE id = $1 AND status NOT IN ('completed', 'refunded')
       RETURNING *
     `;
     const result = await this.query(query, [donationId, telegramPaymentId]);
-    return result.rows[0];
+    return result.rows[0] || null;
   }
 
   async markDonationFailed(donationId) {
