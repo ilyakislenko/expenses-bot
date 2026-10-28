@@ -1009,7 +1009,27 @@ class CallbackHandlers {
     }
   }
 
+  // family_leave — экран «Точно выйти?»: семейные траты станут личными, семья их больше не увидит
   async handleFamilyLeave(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const t = (key, params) => this.localizationService.getText(userLanguage, key, params);
+    const family = await this.familyService.getUserFamily(userId);
+    if (!family) return ctx.answerCbQuery(t('not_family_member'));
+    await ctx.answerCbQuery().catch(() => {});
+    await respond(ctx, t('family_leave_confirm', { name: this.formatter.escapeMarkdown(family.name) }), {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [[
+          { text: t('button_family_leave_confirm'), callback_data: 'family_leave_confirm' },
+          { text: t('family_cancel'), callback_data: 'family_menu' }
+        ]]
+      }
+    });
+  }
+
+  // family_leave_confirm — выход из семьи
+  async handleFamilyLeaveConfirm(ctx) {
     try {
       const userId = ctx.from.id;
       const userLanguage = await this.userService.getUserLanguage(userId);

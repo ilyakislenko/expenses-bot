@@ -134,10 +134,9 @@ class RecurringExpenseHandlers {
     }
     const pending = this.stateService.getPendingRecurring(userId);
     this.stateService.deleteUserState(userId);
-    if (!pending) {
+    if (!pending || pending.takenCard) {
       return ctx.reply(this.t(lang, 'callback_data_not_found'));
     }
-    this.stateService.setPendingRecurring(userId, { ...pending, dayOfMonth: day });
 
     const categories = await this.expenseService.getCategories(userId);
     const keyboard = [];
@@ -148,21 +147,27 @@ class RecurringExpenseHandlers {
       })));
     }
     keyboard.push([{ text: this.t(lang, 'button_cancel'), callback_data: 'recurring_menu' }]);
-    await ctx.reply(this.t(lang, 'recurring_select_category'), { reply_markup: { inline_keyboard: keyboard } });
+    const card = await ctx.reply(this.t(lang, 'recurring_select_category'), { reply_markup: { inline_keyboard: keyboard } });
+    // Черновик привязан к этой карточке: кнопки старой карточки его не записывают
+    this.stateService.setPendingRecurring(userId, { ...pending, dayOfMonth: day, cardMessageId: card.message_id });
   }
 
-  // Шаг 3: категория → сохранение
+  // Шаг 3: категория → сохранение. Черновик берётся один раз (двойное нажатие не создаёт две регулярные траты)
   async handleCategorySelection(ctx) {
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
-    const pending = this.stateService.getPendingRecurring(userId);
-    if (!pending || !pending.dayOfMonth) {
-      return ctx.answerCbQuery(this.t(lang, 'callback_data_not_found'));
-    }
     const categoryId = parseInt(ctx.match[1], 10);
     const categories = await this.expenseService.getCategories(userId);
     if (!categories.some(category => category.id === categoryId)) {
       return ctx.answerCbQuery(this.t(lang, 'callback_data_not_found'));
+    }
+    const pending = this.stateService.takePendingRecurring(userId, ctx.callbackQuery.message?.message_id);
+    if (pending === null) return ctx.answerCbQuery().catch(() => {}); // повторное нажатие: уже сохраняется
+    if (!pending) {
+      // Карточка старая (начата другая регулярная, отменена или черновик устарел)
+      await ctx.answerCbQuery(this.t(lang, 'recurring_draft_outdated'), { show_alert: true }).catch(() => {});
+      await ctx.editMessageReplyMarkup({ inline_keyboard: [] }).catch(() => {});
+      return;
     }
 
     let created;
@@ -170,12 +175,11 @@ class RecurringExpenseHandlers {
       created = await this.recurringExpenseService.create(userId, { ...pending, categoryId });
     } catch (error) {
       if (error.code === 'recurring_limit') {
-        this.stateService.deletePendingRecurring(userId);
         return ctx.answerCbQuery(this.t(lang, 'recurring_limit', { max: this.recurringExpenseService.getMaxPerUser() }), { show_alert: true });
       }
+      this.stateService.setPendingRecurring(userId, pending);
       throw error;
     }
-    this.stateService.deletePendingRecurring(userId);
 
     let text = this.t(lang, created.chargedNow ? 'recurring_added_charged_now' : 'recurring_added', {
       description: this.formatter.escapeMarkdown(pending.description),

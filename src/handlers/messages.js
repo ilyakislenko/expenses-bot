@@ -54,8 +54,7 @@ constructor({ expenseService, userService, premiumService, familyService, catego
       if (Object.prototype.hasOwnProperty.call(mainButtons, text)) {
         // Нижняя кнопка — уход из незавершённого ввода: иначе следующее сообщение («250 кофе») ушло бы
         // в брошенный ввод дохода или правку записи. Черновики на карточках категорий не трогаем.
-        this.stateService.deleteUserState(userId);
-        this.stateService.deleteUserEditState(userId);
+        this.stateService.clearInputs(userId);
         await mainButtons[text]();
         return;
       }
@@ -63,13 +62,19 @@ constructor({ expenseService, userService, premiumService, familyService, catego
       // Кнопка старой клавиатуры: присылаем новую и открываем ближайший раздел
       const legacyKey = LEGACY_MENU_BUTTON_KEYS.find(key => t(key) === text);
       if (legacyKey) {
+        this.stateService.clearInputs(userId);
         await this.commandHandlers.sendMainKeyboard(ctx, userLanguage);
         await this.openLegacySection(ctx, legacyKey, userLanguage);
         return;
       }
-      
 
-      
+      // Бот ждал ответ на подсказку, но срок вышел (в том числе пока бот был выключен): не превращаем ответ
+      // («25.10», «50000 зарплата») в новую трату, а говорим, что ввод устарел
+      const inputExpired = this.stateService.takeExpiredInput(userId);
+      if (inputExpired && !this.stateService.hasUserState(userId) && !this.stateService.hasUserEditState(userId)) {
+        return ctx.reply(t('input_expired'));
+      }
+
       // Обработка семейных состояний
       if (this.stateService.hasUserState(userId)) {
         const userState = this.stateService.getUserState(userId);
@@ -87,7 +92,8 @@ constructor({ expenseService, userService, premiumService, familyService, catego
         }
 
         if (userState === 'adding_personal_expense') {
-          const accepted = await this.expenseHandlers.handleExpenseInput(ctx, text, userLanguage, null);
+          const input = await this.multiEntryHandlers.singleEntryText(userId, text);
+          const accepted = await this.expenseHandlers.handleExpenseInput(ctx, input, userLanguage, null);
           if (accepted) this.stateService.deleteUserState(userId);
           return;
         }
@@ -186,51 +192,27 @@ constructor({ expenseService, userService, premiumService, familyService, catego
         }
       }
       
-      if (this.stateService.hasUserEditState(ctx.from.id)) {
-        if (ctx.message.text.trim() === '/cancel') {
-          this.stateService.deleteUserEditState(ctx.from.id);
-          const editCanceledText = this.localizationService.getText(userLanguage, 'edit_canceled');
-          return ctx.reply(editCanceledText);
-        }
-        const expenseId = this.stateService.getUserEditState(ctx.from.id);
-        const userLimits = await this.premiumService.getUserLimits(userId);
-        const parsed = this.validator.parseEditExpense(ctx.message.text, userLimits.MAX_DESCRIPTION_LENGTH);
-        if (!parsed.isValid) {
-          return ctx.reply(this.expenseHandlers.editErrorText(userLanguage, parsed.error, userLimits.MAX_DESCRIPTION_LENGTH));
-        }
-        const oldExpense = await this.expenseService.getExpenseById(ctx.from.id, expenseId);
-        if (!oldExpense) {
-          this.stateService.deleteUserEditState(ctx.from.id);
-          const expenseNotFoundText = this.localizationService.getText(userLanguage, 'expense_not_found');
-          return ctx.reply(expenseNotFoundText);
-        }
-        const newAmount = parsed.amount !== undefined ? parsed.amount : oldExpense.amount;
-        const newDescription = parsed.description !== undefined ? parsed.description : oldExpense.description;
-        const updated = await this.expenseService.updateExpenseById(ctx.from.id, expenseId, { amount: newAmount, description: newDescription });
-        this.stateService.deleteUserEditState(ctx.from.id);
-
-        if (updated) {
-          const expenseUpdatedText = this.localizationService.getText(userLanguage, 'expense_updated', { 
-            amount: this.formatter.formatAmount(newAmount, oldExpense.currency), 
-            description: newDescription || this.localizationService.getText(userLanguage, 'not_found') 
-          });
-          return ctx.reply(expenseUpdatedText);
-        } else {
-          const expenseUpdateErrorText = this.localizationService.getText(userLanguage, 'expense_update_error');
-          return ctx.reply(expenseUpdateErrorText);
-        }
+      // «✏️ Изменить» запись: новая сумма, валюта и/или описание
+      if (this.stateService.hasUserEditState(userId)) {
+        return await this.expenseHandlers.handleEditInput(ctx, text, userLanguage, this.stateService.getUserEditState(userId));
       }
-      // Вопрос боту: «? сколько я потратил на такси» или текст без суммы в начале со знаком вопроса в конце.
-      // Трата всегда начинается с суммы, поэтому «250 кофе» сюда не попадает
+
+      // Вопрос боту: «? сколько я потратил на такси», «сколько я потратил вчера», «14 сентября сколько потратил?»,
+      // текст без суммы со «?» в конце. Записи со «?» в конце («такси 400?», «кофе 250, такси 400?») — записи
       if (this.assistantHandlers && AssistantHandlers.isQuestion(text)) {
         return await this.assistantHandlers.ask(ctx, text, userLanguage);
       }
 
-      // Несколько записей одним сообщением: «кофе 250, такси 400», по строке на запись, «+50000 зарплата, обед 600»
+      // Несколько записей одним сообщением («кофе 250, такси 400», по строке на запись, «+50000 зарплата, обед 600»)
+      // и одна запись с суммой в конце («кофе 250», «хлеб, молоко 300»)
       if (await this.multiEntryHandlers.handleText(ctx, text, userLanguage)) return;
       // Доход быстрым вводом: "+50000 зарплата", "+1000 USD фриланс"
       if (/^\s*\+\s*\d/.test(text)) {
         return await this.incomeHandlers.handleIncomeInput(ctx, text, userLanguage);
+      }
+      // Текст без суммы — не запись. Возможно, вопрос без «?»: подсказка и кнопка «🤖 Спросить бота» с этим текстом
+      if (this.assistantHandlers && !/\d/.test(text) && /\p{L}{2,}/u.test(text)) {
+        return await this.offerQuestion(ctx, text, userLanguage);
       }
       await this.expenseHandlers.handleExpenseInput(ctx, text, userLanguage);
     } catch (error) {
@@ -240,6 +222,29 @@ constructor({ expenseService, userService, premiumService, familyService, catego
       const errorText = this.localizationService.getText(userLanguage, 'expense_save_error');
       await ctx.reply(errorText);
     }
+  }
+
+  // Текст без суммы: «Не понял» с подсказкой про вопрос и кнопкой, которая задаёт этот текст боту (aitx)
+  async offerQuestion(ctx, text, userLanguage) {
+    const t = (key) => this.localizationService.getText(userLanguage, key);
+    const sent = await ctx.reply(`${t('error_format')}\n\n${t('ask_bot_hint')}`, {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: [[{ text: t('button_ask_bot_this'), callback_data: 'aitx' }]] }
+    });
+    if (sent?.message_id) this.stateService.setPendingQuestion(ctx.from.id, sent.message_id, text);
+  }
+
+  // callback: aitx — «🤖 Спросить бота» под «Не понял»: текст того сообщения — вопросом
+  async askPendingQuestion(ctx) {
+    const userId = ctx.from.id;
+    const userLanguage = await this.userService.getUserLanguage(userId);
+    const question = this.stateService.takePendingQuestion(userId, ctx.callbackQuery.message?.message_id);
+    if (!question) {
+      return ctx.answerCbQuery(this.localizationService.getText(userLanguage, 'ask_bot_outdated'), { show_alert: true });
+    }
+    await ctx.answerCbQuery().catch(() => {});
+    await ctx.editMessageReplyMarkup({ inline_keyboard: [] }).catch(() => {});
+    await this.assistantHandlers.ask(ctx, question, userLanguage);
   }
 
   // Кнопка «Семейная трата»: ждём ввод траты следующим сообщением
@@ -443,7 +448,8 @@ constructor({ expenseService, userService, premiumService, familyService, catego
         return await ctx.reply(this.localizationService.getText(userLanguage, 'not_family_member'));
       }
       // Состояние снимаем только если ввод принят — при ошибке формата можно сразу попробовать ещё раз
-      const accepted = await this.expenseHandlers.handleExpenseInput(ctx, text, userLanguage, userFamily.id);
+      const input = await this.multiEntryHandlers.singleEntryText(userId, text);
+      const accepted = await this.expenseHandlers.handleExpenseInput(ctx, input, userLanguage, userFamily.id);
       if (accepted) this.stateService.deleteUserState(userId);
     } catch (error) {
       console.error('Error handling family expense:', error);

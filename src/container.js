@@ -47,6 +47,7 @@ const ReferralRepository = require('./repositories/ReferralRepository');
 const AssistantRepository = require('./repositories/AssistantRepository');
 const EntryBatchRepository = require('./repositories/EntryBatchRepository');
 const RoastRepository = require('./repositories/RoastRepository');
+const UserInputStateRepository = require('./repositories/UserInputStateRepository');
 
 // Services
 const ExpenseService = require('./services/ExpenseService');
@@ -447,8 +448,12 @@ class Container {
       case 'logger':
         return logger;
 
+      case 'userInputStateRepository':
+        return new UserInputStateRepository();
+
+      // Ожидаемый ввод и черновики: память + user_input_states (переживают перезапуск, загрузка — hydrate() при старте)
       case 'stateService':
-        return new StateService();
+        return new StateService(this.get('userInputStateRepository'));
 
       case 'funnelRepository':
         return new FunnelRepository();

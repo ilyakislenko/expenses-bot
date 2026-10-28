@@ -1,16 +1,46 @@
 const respond = require('../utils/respond');
 const logger = require('../utils/logger');
 const { keepTyping } = require('./ReceiptHandlers');
+const { parseEntries } = require('../utils/multiEntry');
 
 const EXAMPLE_COUNT = 6;
 const EXAMPLES_IN_HINT = 3;
 
-// Вопрос боту: «? сколько я потратил…», или текст без суммы в начале, который заканчивается «?»
-// (трата всегда начинается с суммы — «250 кофе» вопросом не станет)
-function isQuestion(text) {
+// Слово (или пара слов) до пробела, знака препинания или конца текста; «что-то», «где-то» — не вопрос
+const word = (alternatives) => `(?<![\\p{L}\\p{N}])(?:${alternatives})(?![\\p{L}\\p{N}-])`;
+// Начало вопроса — вопрос и без «?»: «сколько я потратил вчера», «how much did i spend yesterday»
+const QUESTION_START = new RegExp(`^(?:${word([
+  'сколько', 'скольк\\p{L}*', 'скок\\p{L}?', 'скоко', 'куда', 'на\\s+что', 'что', 'какие', 'какая', 'какой', 'каких', 'какую',
+  'когда', 'где', 'покажи', 'how\\s+much', 'how\\s+many', 'what', 'where', 'which', 'when', 'show\\s+me',
+  'cu[aá]nto\\p{L}*', 'combien', 'wie\\s*viel\\p{L}*', 'quanto\\p{L}*', 'ne\\s+kadar', 'ka[çc]', 'qancha', 'қанша',
+  'რამდენ\\p{L}*', 'कितना', 'कितने', 'कितनी'
+].join('|'))}|いくら|多少|哪)`, 'iu');
+// Вопросительные слова где угодно: с «?» в конце или после даты в начале («14 сентября сколько потратил»)
+// текст — вопрос, даже если начинается с числа («3 самых дорогих покупки в августе?»)
+const QUESTION_WORDS = new RegExp(word([
+  'сколько', 'скольк\\p{L}*', 'скок\\p{L}?', 'скоко', 'какие', 'какой', 'какая', 'каких', 'самы[хйея]', 'самая', 'самое', 'топ',
+  'how\\s+much', 'how\\s+many', 'what', 'which', 'top', 'most', 'biggest',
+  'cu[aá]nto\\p{L}*', 'combien', 'wie\\s*viel\\p{L}*', 'quanto\\p{L}*', 'ne\\s+kadar', 'qancha', 'қанша', 'რამდენ\\p{L}*', 'कितना'
+].join('|')) + '|いくら|多少', 'iu');
+// Число и месяц в начале: «14 сентября …», «5 oct …»
+const DATE_START = /^\d{1,2}\s+(?:январ|феврал|март|апрел|ма[яй]|июн|июл|август|сентябр|октябр|ноябр|декабр|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/iu;
+
+// Вопрос боту, а не запись:
+// — начинается с «?»;
+// — начинается с вопросительного слова («сколько я потратил вчера» — и без «?»);
+// — есть вопросительное слово и «?» в конце или дата в начале («14 сентября сколько потратил?»);
+// — «?» в конце и в тексте нет записей с суммой (иначе «такси 400?», «кофе 250, такси 400?» — записи).
+// entries — уже разобранные записи (голос разбирает по-своему), иначе разбираются здесь
+function isQuestion(text, entries) {
   const value = String(text || '').trim();
   if (/^[?？¿]/.test(value)) return /\p{L}/u.test(value);
-  return /[?？]$/.test(value) && !/^[+-]?\s*\d/.test(value) && /\p{L}{2,}/u.test(value) && value.split(/\s+/).length >= 2;
+  if (QUESTION_START.test(value) && /\S\s+\S/.test(value)) return true;
+  const endsWithMark = /[?？]$/.test(value);
+  if (QUESTION_WORDS.test(value) && (endsWithMark || DATE_START.test(value))) return true;
+  if (!endsWithMark) return false;
+  const parsed = entries === undefined ? parseEntries(value) : entries;
+  if (parsed && parsed.length) return false;
+  return !/^[+-]?\s*\d/.test(value) && /\p{L}{2,}/u.test(value) && value.split(/\s+/).length >= 2;
 }
 
 // «🤖 Спроси бота»: экран с примерами, вопрос текстом (`?`, /ask, состояние ai_in:), ответ в фоне — сообщение

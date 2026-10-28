@@ -24,7 +24,9 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.command('history', errorHandler((ctx) => expenseHandlers.showDay(ctx, 0, 0))); // записи за сегодня
   bot.command('export', errorHandler((ctx) => exportHandlers.open(ctx))); // экспорт CSV: период и фильтр
   bot.command('import', errorHandler((ctx) => importHandlers.showIntro(ctx))); // импорт банковской выписки
-  bot.command('undo', errorHandler((ctx) => commandHandlers.undo(ctx))); // отмена последней записи
+  bot.command('undo', errorHandler((ctx) => commandHandlers.undo(ctx))); // удалить последнюю запись (с подтверждением)
+  bot.action(/^undo_ok\|([xi])\|(\d+)$/, errorHandler((ctx) => commandHandlers.confirmUndo(ctx)));
+  bot.action('undo_no', errorHandler((ctx) => commandHandlers.cancelUndo(ctx)));
   bot.command('currency', errorHandler((ctx) => commandHandlers.currency(ctx))); // основная валюта
   bot.command('timezone', errorHandler((ctx) => commandHandlers.timezone(ctx))); // часовой пояс
   bot.command('settings', errorHandler((ctx) => commandHandlers.settings(ctx))); // настройки
@@ -48,7 +50,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
     const userLanguage = await handlers.userService.getUserLanguage(userId);
     // Отменяем любой ожидаемый ввод: правку записи, черновик траты, доход, бюджет, регулярную трату и т.д.
     const hadInput = stateService.hasUserEditState(userId) || stateService.hasPendingExpense(userId)
-      || !!stateService.getPendingRecurring(userId) || stateService.hasUserState(userId);
+      || stateService.hasPendingRecurring(userId) || stateService.hasUserState(userId);
     stateService.clearUserState(userId);
     await ctx.reply(handlers.localizationService.getText(userLanguage, hadInput ? 'input_canceled' : 'no_active_state'));
   }));
@@ -185,6 +187,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('ai', errorHandler((ctx) => assistantHandlers.showExamples(ctx)));
   bot.action(/^ai\|([1-6])$/, errorHandler((ctx) => assistantHandlers.askExample(ctx)));
   bot.action('aiq', errorHandler((ctx) => assistantHandlers.startInput(ctx)));
+  bot.action('aitx', errorHandler((ctx) => messageHandlers.askPendingQuestion(ctx))); // «Не понял» → этот текст вопросом
   // «😈 Злой режим»: настройка (rst), уровень (rstl), обращение (rstg → rstgs), 18+ (rsty), «Разнос месяца» (rsm);
   // источник `o` — вопрос о злом режиме в опросе «🧭 Настроим бота под тебя»
   bot.action('rst', errorHandler((ctx) => handlers.roastHandlers.showSettings(ctx)));
@@ -340,7 +343,8 @@ module.exports = function registerBotRoutes(bot, handlers) {
   }));
   bot.action('family_delete', errorHandler((ctx) => callbackHandlers.handleFamilyDelete(ctx)));
   bot.action('family_delete_confirm', errorHandler((ctx) => callbackHandlers.handleFamilyDeleteConfirm(ctx)));
-  bot.action('family_leave', errorHandler((ctx) => callbackHandlers.handleFamilyLeave(ctx)));
+  bot.action('family_leave', errorHandler((ctx) => callbackHandlers.handleFamilyLeave(ctx))); // подтверждение выхода
+  bot.action('family_leave_confirm', errorHandler((ctx) => callbackHandlers.handleFamilyLeaveConfirm(ctx)));
   bot.action('family_cancel', errorHandler((ctx) => callbackHandlers.handleFamilyCancel(ctx)));
   bot.action('family_menu', errorHandler((ctx) => callbackHandlers.handleFamilyMenu(ctx)));
 

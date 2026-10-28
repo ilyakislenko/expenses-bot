@@ -322,12 +322,22 @@ describe('voice messages → records (fake STT)', () => {
 });
 
 describe('several records in one text message', () => {
-  it('records all at once with one summary card; a single record stays with the usual flow', async () => {
-    const { handlers, repo, ctx } = setup();
+  it('records all at once with one summary card; a single record goes to the usual flow as «250 кофе»', async () => {
+    const { handlers, repo, ctx, expenseHandlers, incomeHandlers } = setup();
     expect(await handlers.handleText(ctx, '250 кофе', 'ru')).toBe(false);
-    expect(await handlers.handleText(ctx, 'кофе 250', 'ru')).toBe(false);
     expect(await handlers.handleText(ctx, 'привет', 'ru')).toBe(false);
+    expect(expenseHandlers.handleExpenseInput).not.toHaveBeenCalled();
+    // Сумма в конце — одна запись обычным вводом, как если бы её написали «250 кофе»
+    expect(await handlers.handleText(ctx, 'кофе 250', 'ru')).toBe(true);
+    expect(expenseHandlers.handleExpenseInput).toHaveBeenLastCalledWith(ctx, '250 кофе', 'ru');
+    expect(await handlers.handleText(ctx, 'хлеб, молоко 300', 'ru')).toBe(true);
+    expect(expenseHandlers.handleExpenseInput).toHaveBeenLastCalledWith(ctx, '300 хлеб, молоко', 'ru');
+    expect(await handlers.handleText(ctx, '$20 кофе', 'ru')).toBe(true);
+    expect(expenseHandlers.handleExpenseInput).toHaveBeenLastCalledWith(ctx, '20 USD кофе', 'ru');
+    expect(await handlers.handleText(ctx, 'зарплата +50000', 'ru')).toBe(true);
+    expect(incomeHandlers.handleIncomeInput).toHaveBeenLastCalledWith(ctx, '+50000 зарплата', 'ru');
     expect(repo.batches).toHaveLength(0);
+    ctx.reply.mockClear();
 
     expect(await handlers.handleText(ctx, 'кофе 250, такси 400, обед 600', 'ru')).toBe(true);
     const [text, extra] = ctx.reply.mock.calls[0];

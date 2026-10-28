@@ -24,6 +24,11 @@ function entryText(entry, currencyToken, defaultCurrency) {
   return entry.kind === 'income' ? `+${text}` : text;
 }
 
+// Сумма в начале («250 кофе», «+50000 зарплата») — обычный ввод разбирает такой текст сам, как раньше
+function startsWithAmount(text) {
+  return /^\s*\+?\s*\d/.test(String(text || ''));
+}
+
 // Несколько записей одним сообщением («кофе 250, такси 400, +50000 зарплата») и голосовые сообщения.
 // Записи сразу пишутся партией (EntryBatchService), сводка — номера → обычные карточки (back v.<batchId>),
 // «↩️ Отменить всё». Одна запись — обычный ввод (выбор категории и т.д.).
@@ -52,12 +57,37 @@ class MultiEntryHandlers {
     return this.localizationService.getText(lang, key, params);
   }
 
-  // Текстовое сообщение: true — это несколько записей и они обработаны; false — обычный ввод
+  // Текстовое сообщение: true — обработано здесь (несколько записей; одна запись с суммой не в начале — «кофе 250»,
+  // «хлеб, молоко 300», «$20 кофе» — обычным вводом как «250 кофе»); false — обычный ввод как есть
   async handleText(ctx, text, lang) {
     const entries = parseEntries(text);
-    if (!entries || entries.length < 2) return false;
-    await this.recordEntries(ctx, entries, lang, { source: 'text' });
+    if (!entries) return false;
+    if (entries.length > 1) {
+      await this.recordEntries(ctx, entries, lang, { source: 'text' });
+      return true;
+    }
+    if (startsWithAmount(text)) return false;
+    const [entry] = entries;
+    const single = await this.entryInput(ctx.from.id, entry);
+    if (entry.kind === 'income') await this.incomeHandlers.handleIncomeInput(ctx, single, lang);
+    else await this.expenseHandlers.handleExpenseInput(ctx, single, lang);
     return true;
+  }
+
+  // Одна запись текстом для обычного ввода (сумма в начале, валюта явно, доход — «+…»)
+  async entryInput(userId, entry) {
+    const defaultCurrency = entry.kind === 'income'
+      ? await this.incomeService.getIncomeCurrency(userId)
+      : await this.userService.getUserCurrency(userId);
+    return entryText(entry, token => this.validator.resolveCurrencyToken(token), defaultCurrency);
+  }
+
+  // Ввод одной траты (личная/семейная трата по кнопке): «кофе 250» → «250 кофе»; иначе текст как есть
+  async singleEntryText(userId, text) {
+    if (startsWithAmount(text)) return text;
+    const entries = parseEntries(text);
+    if (!entries || entries.length !== 1 || entries[0].kind !== 'expense') return text;
+    return this.entryInput(userId, entries[0]);
   }
 
   // Проверка сумм, обрезка описаний по лимиту, запись партией и сводка: новым сообщением или правкой statusId
@@ -107,9 +137,10 @@ class MultiEntryHandlers {
     return this.achievementService.track(userId, event, { lang, categoryNames, broken });
   }
 
-  // Расшифровка голосового — вопрос боту («сколько я потратил на такси?»), если «🤖 Спроси бота» подключён
+  // Расшифровка голосового — вопрос боту («сколько я потратил на такси?»), если «🤖 Спроси бота» подключён.
+  // «Кофе 250 и такси 400?» (whisper ставит «?» при восходящей интонации) — записи, а не вопрос
   isSpokenQuestion(text) {
-    return Boolean(this.assistantHandlers) && isQuestion(text);
+    return Boolean(this.assistantHandlers) && isQuestion(text, parseSpoken(text));
   }
 
   amounts(items) {

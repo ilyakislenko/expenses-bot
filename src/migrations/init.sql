@@ -704,3 +704,30 @@ COMMENT ON TABLE receipt_drafts IS 'Черновики чеков до подт�
 COMMENT ON COLUMN receipt_drafts.frame IS '{ fileId, mimeType, turn, small, lowResolution, lang, currency } — фото в Telegram и поворот относительно подготовленного';
 COMMENT ON COLUMN receipt_drafts.taken_at IS 'Черновик сейчас записывается (повторное нажатие ждёт); старше 5 минут — считается сбоем и снова доступен';
 CREATE INDEX IF NOT EXISTS idx_receipt_drafts_expires ON receipt_drafts(expires_at);
+
+-- ==== FIX C ====
+-- Ожидаемый ввод и черновики (StateService) переживают перезапуск бота: каждое изменение пишется сюда, при старте
+-- загружается в память. kind: state (ожидаемый текст), edit («✏️ Изменить» запись), expense (черновик траты по
+-- сообщению с выбором категории, slot — message_id), recurring (черновик регулярной), export (фильтр экспорта),
+-- question (текст для кнопки «🤖 Спросить бота»). Истёкший ожидаемый ввод даёт ответ «ввод устарел».
+CREATE TABLE IF NOT EXISTS user_input_states (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind VARCHAR(16) NOT NULL,
+    slot VARCHAR(32) NOT NULL DEFAULT '',
+    value JSONB NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, kind, slot)
+);
+COMMENT ON TABLE user_input_states IS 'Ожидаемый ввод и черновики StateService: переживают перезапуск бота, живут до expires_at';
+COMMENT ON COLUMN user_input_states.value IS 'Значение как в памяти (строка состояния, id записи, черновик; null — черновик уже записан)';
+CREATE INDEX IF NOT EXISTS idx_user_input_states_expires ON user_input_states(expires_at);
+
+-- /undo удаляет последнюю введённую запись: момент записи отдельно от даты траты/дохода («📅 Дата» меняет created_at_utc).
+-- У старых записей NULL — для них берётся created_at_utc
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS recorded_at TIMESTAMPTZ NULL;
+ALTER TABLE expenses ALTER COLUMN recorded_at SET DEFAULT NOW();
+ALTER TABLE incomes ADD COLUMN IF NOT EXISTS recorded_at TIMESTAMPTZ NULL;
+ALTER TABLE incomes ALTER COLUMN recorded_at SET DEFAULT NOW();
+COMMENT ON COLUMN expenses.recorded_at IS 'Когда запись внесена в бота (NULL — до 28.10.2026, тогда created_at_utc)';
+COMMENT ON COLUMN incomes.recorded_at IS 'Когда запись внесена в бота (NULL — до 28.10.2026, тогда created_at_utc)';

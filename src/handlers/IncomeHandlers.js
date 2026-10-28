@@ -324,12 +324,13 @@ class IncomeHandlers {
     await this.showMenu(ctx);
   }
 
-  // callback: income_undo|<id> — отмена только что записанного дохода
+  // callback: income_undo|<id> — отмена только что записанного дохода; повторное нажатие сообщение не меняет
   async undoIncome(ctx) {
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
     const deleted = await this.incomeService.deleteIncome(userId, parseInt(ctx.match[1], 10));
-    const text = this.t(lang, deleted ? 'income_deleted' : 'income_not_found');
+    if (!deleted) return ctx.answerCbQuery(this.t(lang, 'income_not_found')).catch(() => {});
+    const text = this.t(lang, 'income_deleted');
     await ctx.answerCbQuery(text);
     await respond(ctx, text, { reply_markup: { inline_keyboard: [] } });
   }

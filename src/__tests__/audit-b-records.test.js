@@ -491,7 +491,7 @@ describe('recurring expense charged on creation checks the budget (REC-10)', () 
     expect(budgetService.checkAfterExpense).toHaveBeenCalledWith(7, 'Жильё');
 
     const stateService = new StateService();
-    stateService.setPendingRecurring(7, { amount: 5000, currency: null, description: 'аренда', dayOfMonth: today });
+    stateService.setPendingRecurring(7, { amount: 5000, currency: null, description: 'аренда', dayOfMonth: today, cardMessageId: 4 });
     const handlers = new RecurringExpenseHandlers({
       recurringExpenseService: { create: async () => created, getMaxPerUser: () => 20 },
       expenseService: { getCategories: async () => [{ id: 3, name: 'Жильё', icon: '🏠' }] },
