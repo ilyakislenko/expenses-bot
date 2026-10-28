@@ -769,3 +769,10 @@ CREATE TABLE IF NOT EXISTS pending_jobs (
 );
 COMMENT ON TABLE pending_jobs IS 'Незаконченные фоновые распознавания (kind: receipt | voice) с сообщением-статусом; instance — запуск бота';
 COMMENT ON COLUMN receipt_drafts.taken_at IS 'Черновик сейчас записывается или поворачивается (кнопка «Повернуть»); старше 5 минут — считается сбоем и снова доступен';
+
+-- ==== FIX2 B ====
+-- Попытка распознавания — одна на фото: ключ — сообщение со статусом. Повороты того же фото обновляют строку,
+-- запись чека из этого сообщения её удаляет (чек считается сам). Старые строки без message_id считаются как раньше.
+ALTER TABLE receipt_attempts ADD COLUMN IF NOT EXISTS message_id BIGINT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_receipt_attempts_user_message ON receipt_attempts(user_id, message_id) WHERE message_id IS NOT NULL;
+COMMENT ON COLUMN receipt_attempts.message_id IS 'Сообщение фото («Распознаю чек…»): одна попытка на фото, повороты её обновляют';

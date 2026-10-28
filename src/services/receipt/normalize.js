@@ -48,26 +48,39 @@ function toQuantity(value) {
   return number > 0 && number <= MAX_QUANTITY ? number : null;
 }
 
-// Текст на фото, похожий на команду модели, а не на товар: «инструкция для ИИ», «верни total», JSON, ссылки.
-// Такой чек не записывается сам — только черновиком
-const INSTRUCTION_TEXT = /(инструкц|instruction|ignore|игнорир|верни|добавь|prompt|промпт|нейросет|\bии\b|\bai\b|\bjson\b|\breturn\b|[{}<>]|https?:|:\/\/|www\.)/iu;
+// Текст на фото, похожий на команду модели, а не на товар: целые фразы-обращения («инструкция для ИИ», «ignore previous»,
+// «верни total», «добавь позицию»), фигурные скобки JSON и ссылки со схемой. Отдельные слова и бренды («ВЕРНИСАЖ»,
+// «Galaxy AI», «<FELIX>», «www.ozon.ru») — не команды. Такой чек не записывается сам — только черновиком
+const NOT_LETTER = '(?<!\\p{L})';
+const INSTRUCTION_TEXT = new RegExp([
+  `${NOT_LETTER}инструкц\\p{L}*\\s+(для|к|по)\\s+(ии|ai|нейросет\\p{L}*|модел\\p{L}*|бота)(?!\\p{L})`,
+  `${NOT_LETTER}(instructions?|note|message)\\s+(for|to)\\s+(the\\s+)?(ai|model|assistant|llm|bot)(?!\\p{L})`,
+  `${NOT_LETTER}(ignore|disregard|forget)\\s+(all\\s+|the\\s+|any\\s+)?(previous|prior|above|earlier|instructions?|rules?)(?!\\p{L})`,
+  `${NOT_LETTER}(игнорируй|игнорируйте|забудь|забудьте)(?!\\p{L})`,
+  `${NOT_LETTER}(верни|верните|выведи|ответь|return|output|respond)\\s+(total|итог\\p{L}*|json|сумм\\p{L}*|only)(?!\\p{L})`,
+  `${NOT_LETTER}(добавь|добавьте|add|insert)\\s+(в\\s+чек\\s+)?(позици\\p{L}*|строк\\p{L}*|товар\\p{L}*|items?|lines?|an?\\s+item)(?!\\p{L})`,
+  `${NOT_LETTER}(system|assistant)\\s*(prompt|message|:)`,
+  `${NOT_LETTER}(prompt|промпт\\p{L}*)(?!\\p{L})`,
+  '[{}]',
+  'https?:\\/\\/'
+].join('|'), 'iu');
 
 function looksLikeInstruction(value) {
   return typeof value === 'string' && INSTRUCTION_TEXT.test(value);
 }
 
-// «0012345 Молоко 2,5% 930г 4600000000000» → «Молоко 2,5% 930г»; «БАНАНЫ ВЕС 1.236 *» → «БАНАНЫ ВЕС»; ссылки вырезаются
+// «0012345 Молоко 2,5% 930г 4600000000000» → «Молоко 2,5% 930г»; «БАНАНЫ ВЕС 1.236 *» и «… 1.236 * 129.99» → «БАНАНЫ ВЕС»
+// (только хвост «количество * цена» строки чека; фасовка «0,5 х 4» остаётся); ссылки со схемой вырезаются
 function cleanName(value) {
   return String(value || '')
     .replace(/\s+/g, ' ')
-    .replace(/(?:https?:\/\/|www\.)\S*/gi, '')
-    .replace(/\s*:\/\/\S*/g, '')
+    .replace(/https?:\/\/\S*/gi, '')
     .trim()
     .replace(/^\d{1,3}[.)]\s+/, '')
     .replace(/^\[[^\]]{1,3}\]\s*/, '') // «[М]» — маркировка «Честного знака»
     .replace(/^[#№*]?\d{4,}\s*[-.:]?\s+/, '')
     .replace(/\s+\d{6,}$/, '')
-    .replace(/\s+\d+[.,]\d+\s*[*xх×](\s*\d+(?:[.,]\d+)?)?$/u, '') // «1.236 *» или «1.236 * 129.99» весового товара в конце названия
+    .replace(/\s+\d+[.,]\d+\s*\*(\s*\d+(?:[.,]\d+)?)?$/u, '') // «1.236 *» или «1.236 * 129.99» весового товара в конце названия
     .replace(/^["'«]+|["'»]+$/g, '')
     .trim()
     .slice(0, NAME_MAX);
@@ -218,12 +231,17 @@ function normalizeReceipt(raw, { categories = [], fallbackCategoryId, defaultCur
     .slice(0, MERCHANT_MAX);
   const merchant = cleaned && !GENERIC_MERCHANT.test(cleaned) ? cleaned : null;
   const sparse = !merchant && items.length <= SPARSE_ITEMS;
-  // Одна-две строки без продавца, которые не дают и половины итога, — выдумка на нечитаемом фото (белый лист, пейзаж:
-  // «Магазин / Молоко 100 ₽ / итог 1000»), а не чек: «не получилось распознать»
-  if (sparse && sumDeviation !== null && sumDeviation > INVENTED_DEVIATION) throw new ReceiptError('unreadable', 'invented sparse answer');
-  const lowConfidence = (sumDeviation !== null && sumDeviation > LOW_CONFIDENCE_SUM) || badLines / items.length > LOW_CONFIDENCE_LINES
-    || total === null || sparse || truncated || suspicious;
-  const checks = { sumDeviation, badLines, lines: items.length, corrected: reconciled.fixed.length };
+  // Одна-две строки, которые не дают и половины итога, — выдумка на нечитаемом фото (белый лист, пейзаж: «Магазин /
+  // Молоко 100 ₽ / итог 1000»; перевёрнутый кадр: «ПОМАРКА / КРЕМ 1234 ₽ / итог 99 999»), а не чек: «не получилось распознать»
+  if (items.length <= SPARSE_ITEMS && sumDeviation !== null && sumDeviation > INVENTED_DEVIATION) {
+    throw new ReceiptError('unreadable', 'invented sparse answer');
+  }
+  // Цифры сходятся (итог есть, строки дают его в пределах 3%, суммы строк = количество × цена) — тогда черновик из-за
+  // одного лишь подозрительного текста не пишет «не сходятся с итогом» и не даёт советов по съёмке
+  const numbersOk = sumDeviation !== null && sumDeviation <= LOW_CONFIDENCE_SUM && badLines / items.length <= LOW_CONFIDENCE_LINES
+    && !sparse && !truncated;
+  const lowConfidence = !numbersOk || suspicious;
+  const checks = { sumDeviation, badLines, lines: items.length, corrected: reconciled.fixed.length, numbersOk };
   if (total === null) checks.noTotal = true;
   if (sparse) checks.sparse = true;
   if (truncated) checks.truncated = true;

@@ -67,8 +67,9 @@ class ReceiptService {
     return USER_LIMITS.premium.MAX_RECEIPTS_PER_MONTH;
   }
 
-  // Месячный лимит распознаваний (локальный календарный месяц): записанные чеки и попытки без записи — показанные
-  // черновики и «не получилось распознать» (addAttempt). Сбои сервиса, «не чек» и «валюта не поддерживается» не считаются
+  // Месячный лимит распознаваний (локальный календарный месяц): записанные чеки и фото без записи — показанный
+  // черновик или «не получилось распознать» (addAttempt, одна попытка на фото, повороты её не добавляют). Сбои
+  // сервиса, «не чек» и «валюта не поддерживается» не считаются
   async checkLimit(userId, timezone) {
     const isPremium = await this.premiumService.isPremiumUser(userId);
     const limit = (isPremium ? USER_LIMITS.premium : USER_LIMITS.regular).MAX_RECEIPTS_PER_MONTH;
@@ -76,9 +77,15 @@ class ReceiptService {
     return { isPremium, limit, used, remaining: Math.max(0, limit - used) };
   }
 
-  // Попытка распознавания, показанная без записи ('draft' | 'unreadable'): засчитывается в лимит, id — в черновик
-  async addAttempt(userId, outcome) {
-    return this.receiptRepository.addAttempt(userId, outcome);
+  // Фото сообщения messageId показано без записи ('draft' | 'unreadable'): засчитывается в лимит один раз (повторный
+  // вызов для того же сообщения — та же попытка), id — в черновик
+  async addAttempt(userId, messageId, outcome) {
+    return this.receiptRepository.addAttempt(userId, messageId, outcome);
+  }
+
+  // Фото этого сообщения уже засчитано — его поворот лимит не тратит
+  async hasAttempt(userId, messageId) {
+    return this.receiptRepository.hasAttempt(userId, messageId);
   }
 
   // Категории пользователя для подсказки модели и обратного сопоставления (по названию на его языке и в БД)
@@ -102,10 +109,13 @@ class ReceiptService {
   // Распознаёт фото. Ошибки — ReceiptError (receipt/errors.js). onStatus({ position, local }) — очередь и начало работы слота
   async recognize(userId, { image, mimeType, lang, currency, timezone, onStatus }) {
     const { labels, fallbackLabel, fallbackCategoryId, choices } = await this.categoryChoices(userId, lang);
-    const prompt = buildPrompt({ categories: labels, fallbackCategory: fallbackLabel, defaultCurrency: currency, today: localNow(timezone).date });
+    const today = localNow(timezone).date;
+    const prompt = buildPrompt({ categories: labels, fallbackCategory: fallbackLabel, defaultCurrency: currency, today });
     const started = Date.now();
     const raw = await this.provider.recognize({ image, mimeType, prompt, onStatus, owner: userId });
-    const receipt = normalizeReceipt(raw, { categories: choices, fallbackCategoryId, defaultCurrency: currency, supportedCurrencies: SUPPORTED_CURRENCIES });
+    let receipt = normalizeReceipt(raw, { categories: choices, fallbackCategoryId, defaultCurrency: currency, supportedCurrencies: SUPPORTED_CURRENCIES });
+    // «1 января этого года» — то, что модель пишет вместо непрочитанной даты (знает из запроса только год): дата не прочитана
+    if (receipt.date === `${today.slice(0, 4)}-01-01`) receipt = { ...receipt, date: null, time: null, checks: { ...receipt.checks, guessedDate: true } };
     logger.info('Receipt recognized', {
       userId, items: receipt.items.length, mismatch: receipt.mismatch, lowConfidence: receipt.lowConfidence, checks: receipt.checks, ms: Date.now() - started
     });
@@ -211,9 +221,9 @@ class ReceiptService {
 
   // Записывает позиции тратами (описание — название позиции в пределах лимита описания пользователя).
   // Дата трат — дата чека, если она не в будущем и не старше 60 дней (выбранная в черновике вручную — года), иначе
-  // сегодня (receiptDate); её же получает чек (заголовок показывает день, где лежат траты). Черновик заменяет в лимите
-  // свою попытку (receipt.attemptId). Возвращает id чека.
-  async record(userId, receipt, { timezone, familyId = null }) {
+  // сегодня (receiptDate); её же получает чек (заголовок показывает день, где лежат траты). Чек заменяет в лимите
+  // попытку своего фото (receipt.attemptId черновика или messageId сообщения фото). Возвращает id чека.
+  async record(userId, receipt, { timezone, familyId = null, messageId = null }) {
     const limits = await this.premiumService.getUserLimits(userId);
     const items = receipt.items.map(item => ({
       amount: item.amount,
@@ -234,7 +244,8 @@ class ReceiptService {
       timezone,
       familyId,
       items,
-      attemptId: receipt.attemptId || null
+      attemptId: receipt.attemptId || null,
+      messageId
     });
     await this.funnelService.track(userId, 'first_expense');
     // Позиции чека — тоже траты: награда за приглашение в фоне (сервис сам ловит ошибки)
