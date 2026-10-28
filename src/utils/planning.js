@@ -176,10 +176,12 @@ function shortHash(text) {
 const CADENCES = {
   weekly: { min: 5, max: 9, minCount: 4, activeDays: 12, windowDays: 130, perMonth: 52 / 12 },
   monthly: { min: 26, max: 35, minCount: 3, activeDays: 45, windowDays: 130, perMonth: 1 },
-  yearly: { min: 350, max: 380, minCount: 2, activeDays: 380, windowDays: 400, perMonth: 1 / 12 }
+  // Годовая: два списания подряд (до 380 дней между ними), последнее — не старше 380 дней. Окно — два года, иначе
+  // подписка видна только сразу после второго списания, а к следующему (через год) уже пропадает
+  yearly: { min: 350, max: 380, minCount: 2, activeDays: 380, windowDays: 770, perMonth: 1 / 12 }
 };
 const AMOUNT_TOLERANCE = 0.1; // ±10% от медианы
-const SCAN_DAYS = 400; // годовые подписки видны только на длинной истории
+const SCAN_DAYS = 770; // годовые подписки видны только на длинной истории
 // Недельная серия у неизвестного продавца: ≥ 6 недель подряд с суммой ±1% и не еда/кафе/транспорт —
 // иначе это привычка (кофе, обеды, такси), а не подписка
 const WEEKLY_UNKNOWN_MIN = 6;
@@ -224,10 +226,26 @@ function isHabitCategory(name) {
   return !!name && HABIT_CATEGORY.test(String(name));
 }
 
-function nextByCadence(date, cadence) {
+// Типичное число месяца списаний: самое частое число среди дат не в последний день месяца (при равенстве — более
+// позднее списание); если все списания — в последний день (31.01, 28.02, 31.03), то 31 — в коротких месяцах это снова
+// последний день. dates — по возрастанию
+function typicalDay(dates) {
+  const counts = new Map();
+  let best = null;
+  for (const date of dates) {
+    const { y, m, d } = parseYmd(date);
+    if (d === clampDay(y, m, 31)) continue;
+    counts.set(d, (counts.get(d) || 0) + 1);
+    if (best === null || counts.get(d) >= counts.get(best)) best = d;
+  }
+  return best === null ? 31 : best;
+}
+
+// Следующее списание после date: неделя; месяц или год — на число day (по умолчанию — число date; 31 и 29.02 в
+// коротком месяце и невисокосном году — последний день)
+function nextByCadence(date, cadence, day = parseYmd(date).d) {
   if (cadence === 'weekly') return addDays(date, 7);
-  if (cadence === 'yearly') return shiftMonths(date, 12);
-  return shiftMonths(date, 1);
+  return shiftMonths(date, cadence === 'yearly' ? 12 : 1, day);
 }
 
 // Группы трат с похожей суммой: соседние по сумме отличаются ≤ 10%, и все — в пределах ±10% от медианы группы
@@ -291,6 +309,8 @@ function detectSubscriptions(rows, { today, excludeKeys = new Set() } = {}) {
       if (!detected) continue;
       const last = detected.series[detected.series.length - 1];
       const cfg = CADENCES[detected.cadence];
+      // Число списания — типичное по серии (31.01, 28.02 → 31; 29.02.2024, 28.02.2025 → последний день февраля)
+      const day = detected.cadence === 'weekly' ? null : typicalDay(detected.series.map(r => r.date));
       found.push({
         key: group.key,
         id: shortHash(`${group.key}|${group.currency}|${detected.cadence}`),
@@ -301,7 +321,8 @@ function detectSubscriptions(rows, { today, excludeKeys = new Set() } = {}) {
         count: detected.series.length,
         firstDate: detected.series[0].date,
         lastDate: last.date,
-        nextDate: nextByCadence(last.date, detected.cadence),
+        day,
+        nextDate: nextByCadence(last.date, detected.cadence, day || undefined),
         monthlyCost: Math.round(last.amount * cfg.perMonth * 100) / 100,
         categoryId: last.category_id || null,
         known: group.known
@@ -433,7 +454,7 @@ function subscriptionDates(sub, today, until) {
   for (let i = 0; i < 60 && date < until; i++) {
     const shown = date < today ? today : date;
     if (!dates.includes(shown)) dates.push(shown);
-    date = nextByCadence(date, sub.cadence);
+    date = sub.day ? nextByCadence(date, sub.cadence, sub.day) : nextByCadence(date, sub.cadence);
   }
   return dates;
 }
@@ -583,5 +604,7 @@ module.exports = {
   debtDates,
   subscriptionDates,
   buildCalendar,
-  computeInflation
+  computeInflation,
+  typicalDay,
+  nextByCadence
 };

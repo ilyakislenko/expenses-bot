@@ -53,7 +53,7 @@ async function sendReminders({ userService, expenseService, notificationService,
   return sent;
 }
 
-function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, recurringExpenseService, premiumLifecycleService, reportService, dailySummaryService, weeklyInsightService, planningService, achievementService, supportedCurrencies = currencyConfig.SUPPORTED_CURRENCIES) {
+function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, recurringExpenseService, premiumLifecycleService, reportService, dailySummaryService, weeklyInsightService, planningService, achievementService, subscriptionAlertService, supportedCurrencies = currencyConfig.SUPPORTED_CURRENCIES) {
   // Проверяем, нужно ли обновлять курсы при запуске
   (async () => {
     try {
@@ -168,6 +168,19 @@ function setupBotCron(cron, currencyUtils, donationRepository, userService, expe
       }
     } catch (err) {
       console.error('Ошибка при отправке напоминаний о платежах:', err);
+    }
+  });
+
+  // Подписки: предупреждение за N дней до списания и пробные периоды (за день и в день окончания) — днём по местному
+  // времени, один разбор в локальный день, по разу на списание. В :15 — не в одну минуту с рассылками в :00 и :05
+  cron.schedule('15 * * * *', async () => {
+    try {
+      const sent = await subscriptionAlertService.processDue();
+      if (sent > 0) {
+        console.log(`Предупреждения о списании подписок: отправлено ${sent}`);
+      }
+    } catch (err) {
+      console.error('Ошибка при отправке предупреждений о списании подписок:', err);
     }
   });
 

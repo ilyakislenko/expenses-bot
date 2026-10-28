@@ -961,3 +961,42 @@ COMMENT ON COLUMN receipt_drafts.taken_at IS 'Черновик сейчас за
 ALTER TABLE receipt_attempts ADD COLUMN IF NOT EXISTS message_id BIGINT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_receipt_attempts_user_message ON receipt_attempts(user_id, message_id) WHERE message_id IS NOT NULL;
 COMMENT ON COLUMN receipt_attempts.message_id IS 'Сообщение фото («Распознаю чек…»): одна попытка на фото, повороты её обновляют';
+
+-- ==== SUBSCRIPTION WARNINGS ====
+-- Предупреждение о списании подписки за N дней (днём по местному времени, по разу на списание — user_notifications
+-- 'sub_warn'), пробные периоды с напоминанием за день и в день окончания, отметки «🔕 не напоминать» / «🚫 отменяю».
+ALTER TABLE users ADD COLUMN IF NOT EXISTS sub_warn_enabled BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS sub_warn_days SMALLINT NOT NULL DEFAULT 2;
+COMMENT ON COLUMN users.sub_warn_enabled IS '«🔔 Предупреждать о списании» подписок (пробные периоды напоминают всегда)';
+COMMENT ON COLUMN users.sub_warn_days IS 'За сколько дней до списания подписки предупреждать: 1, 2, 3 или 7';
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'users_sub_warn_days_check') THEN
+    ALTER TABLE users ADD CONSTRAINT users_sub_warn_days_check CHECK (sub_warn_days IN (1, 2, 3, 7));
+  END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS subscription_alerts (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    merchant_key VARCHAR(60) NOT NULL,
+    state VARCHAR(12) NOT NULL CHECK (state IN ('muted', 'cancelling')),
+    since DATE NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, merchant_key)
+);
+COMMENT ON TABLE subscription_alerts IS 'Предупреждения о списании по подписке (merchant_key — как в subscription_marks): muted — «🔕 не напоминать», cancelling — «🚫 отменю» с локальной даты since';
+
+CREATE TABLE IF NOT EXISTS subscription_trials (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    end_date DATE NULL,
+    amount DECIMAL(12,2) NULL,
+    currency VARCHAR(3) NULL,
+    state VARCHAR(12) NOT NULL DEFAULT 'active' CHECK (state IN ('active', 'kept', 'cancelling', 'muted')),
+    created_on DATE NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+COMMENT ON TABLE subscription_trials IS 'Пробные периоды: напоминание за день и в день окончания; end_date NULL — черновик (ждём дату), state — ответ на напоминание';
+COMMENT ON COLUMN subscription_trials.created_on IS 'Локальная дата добавления: в этот день не напоминаем';
+CREATE INDEX IF NOT EXISTS idx_subscription_trials_user ON subscription_trials(user_id, end_date);

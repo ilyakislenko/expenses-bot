@@ -700,7 +700,7 @@ describe('fix D: periods, filters and limits of «Спроси бота»', () =
   });
 
   test('subscriptions and debts are answered from planning and savings', async () => {
-    const planningService = { getSubscriptions: jest.fn(async () => ({ all: [1, 2, 3, 4], visible: [{ label: 'Netflix', monthlyMain: 800 }, { label: 'Spotify', monthlyMain: 300 }, { label: 'Gym', monthlyMain: 2500 }], hiddenCount: 1, hiddenMonthly: 399, totalMonthly: 3999 })) };
+    const planningService = { getSubscriptions: jest.fn(async () => ({ all: [1, 2, 3, 4], shown: [{ label: 'Netflix', monthlyMain: 800 }, { label: 'Spotify', monthlyMain: 300 }, { label: 'Gym', monthlyMain: 2500 }], hiddenCount: 1, hiddenMonthly: 399, totalMonthly: 3999 })) };
     const debts = [{ name: 'Кредитка', balanceMain: 80000, monthly_payment: 10000, currency: 'RUB' }, { name: 'Ипотека', balanceMain: 3000000, monthly_payment: null, currency: 'RUB' }];
     const { service } = makeService({ planningService, debts });
     const subs = await service.answer(1, 'сколько я трачу на подписки', { lang: 'ru' });

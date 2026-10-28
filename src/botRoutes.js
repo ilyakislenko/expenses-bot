@@ -1,5 +1,5 @@
 module.exports = function registerBotRoutes(bot, handlers) {
-  const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, importHandlers, receiptHandlers, multiEntryHandlers, savingsHandlers, planningHandlers, achievementHandlers, assistantHandlers, stateService } = handlers;
+  const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, importHandlers, receiptHandlers, multiEntryHandlers, savingsHandlers, planningHandlers, subscriptionHandlers, achievementHandlers, assistantHandlers, stateService } = handlers;
   const ReceiptHandlers = require('./handlers/ReceiptHandlers');
   const { BACK_VIEW_PATTERN } = require('./handlers/ExpenseHandlers');
 
@@ -166,6 +166,23 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^plsy\|([0-9a-f]{10})$/, errorHandler((ctx) => planningHandlers.confirmSubscription(ctx)));
   bot.action(/^plsn\|([0-9a-f]{10})$/, errorHandler((ctx) => planningHandlers.dismissSubscription(ctx)));
   bot.action('plsr', errorHandler((ctx) => planningHandlers.restoreSubscriptions(ctx)));
+  // Подписки: карточка, ответы на предупреждение о списании (ref — 10 hex подписки или t<id> пробного периода;
+  // дата списания в кнопке — для понятности, ответ относится к подписке), «Как отменить», настройка, пробные периоды
+  const REF = '([0-9a-f]{10}|t\\d+)';
+  bot.action(/^plsc\|([0-9a-f]{10})$/, errorHandler((ctx) => subscriptionHandlers.showCard(ctx)));
+  bot.action(new RegExp(`^plwk\\|${REF}(?:\\|\\d{8})?$`), errorHandler((ctx) => subscriptionHandlers.keep(ctx)));
+  bot.action(new RegExp(`^plwx\\|${REF}(?:\\|\\d{8})?$`), errorHandler((ctx) => subscriptionHandlers.cancel(ctx)));
+  bot.action(new RegExp(`^plwm\\|${REF}(?:\\|([0-9a-f]{10}))?$`), errorHandler((ctx) => subscriptionHandlers.mute(ctx)));
+  bot.action(new RegExp(`^plwu\\|${REF}\\|([0-9a-f]{10})$`), errorHandler((ctx) => subscriptionHandlers.unmute(ctx)));
+  bot.action(new RegExp(`^plwh\\|${REF}(?:\\|([0-9a-f]{10}))?$`), errorHandler((ctx) => subscriptionHandlers.showGuide(ctx)));
+  bot.action('plwo', errorHandler((ctx) => subscriptionHandlers.showSettings(ctx)));
+  bot.action(/^plwt\|([os])$/, errorHandler((ctx) => subscriptionHandlers.toggleWarn(ctx, (c) => callbackHandlers.handleConfigureReminderHours(c))));
+  bot.action(/^plwd\|(\d)$/, errorHandler((ctx) => subscriptionHandlers.setDays(ctx)));
+  bot.action(/^plwr\|(\d+)$/, errorHandler((ctx) => subscriptionHandlers.toggleRecurring(ctx)));
+  bot.action('pltn', errorHandler((ctx) => subscriptionHandlers.startTrial(ctx)));
+  bot.action(/^pltd\|(\d+)\|(\d{8})$/, errorHandler((ctx) => subscriptionHandlers.pickTrialDate(ctx)));
+  bot.action(/^plt\|(\d+)$/, errorHandler((ctx) => subscriptionHandlers.showTrial(ctx)));
+  bot.action(/^pltx\|(\d+)$/, errorHandler((ctx) => subscriptionHandlers.deleteTrial(ctx)));
   bot.action('pli', errorHandler((ctx) => planningHandlers.showInflation(ctx)));
   // Устаревшие или неизвестные кнопки раздела — хаб
   bot.action(/^pl/, errorHandler((ctx) => planningHandlers.showHub(ctx)));

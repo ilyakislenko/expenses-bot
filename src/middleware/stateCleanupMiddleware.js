@@ -20,8 +20,8 @@ const AUTO_RESET_STATES = [
   'onb_budget'
 ];
 // Состояния с параметром после двоеточия (например, setting_budget:<цель>); rd_in: — строка/дата черновика чека,
-// dt_in: — «✏️ Другая дата» записи, дохода или чека
-const AUTO_RESET_PREFIXES = ['setting_budget:', 'renaming_custom_category:', 'admin_refund_search:', 'editing_income:', 'sv_in:', 'pl_in:', 'ai_in:', 'rd_in:', 'dt_in:'];
+// dt_in: — «✏️ Другая дата» записи, дохода или чека, sub_in: — пробный период (кнопки дат несут id черновика)
+const AUTO_RESET_PREFIXES = ['setting_budget:', 'renaming_custom_category:', 'admin_refund_search:', 'editing_income:', 'sv_in:', 'pl_in:', 'sub_in:', 'ai_in:', 'rd_in:', 'dt_in:'];
 
 // Команда в начале сообщения: имя без «/» и «@бот» (null — не команда)
 function commandName(message) {

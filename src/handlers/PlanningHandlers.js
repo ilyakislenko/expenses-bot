@@ -5,10 +5,12 @@ const CALENDAR_MAX_LINES = 45; // строк платежей в календа�
 const DUE_BUTTONS = 4; // кнопок «📅 Дата: долг»
 
 // «☰ Ещё» → «🧭 Планирование»: хаб (pl), можно потратить сегодня (pla), платежи на 30 дней (plc),
-// найденные подписки (pls), личная инфляция (pli). Ввод числа платежа по долгу — состояние pl_in:due:<id>.
+// подписки (pls; карточка, предупреждения о списании и пробные периоды — SubscriptionHandlers), личная инфляция (pli).
+// Ввод числа платежа по долгу — состояние pl_in:due:<id>.
 class PlanningHandlers {
-  constructor({ planningService, userService, localizationService, formatter, stateService }) {
+  constructor({ planningService, subscriptionAlertService, userService, localizationService, formatter, stateService }) {
     this.planningService = planningService;
+    this.subscriptionAlertService = subscriptionAlertService;
     this.userService = userService;
     this.localizationService = localizationService;
     this.formatter = formatter;
@@ -284,11 +286,25 @@ class PlanningHandlers {
     return this.t(lang, `pl_cadence_${cadence}`);
   }
 
+  // Значок предупреждения о списании в строке подписки: 🔔 — предупрежу, 🔕 — не напоминаю, 🚫 — отменяешь
+  warnMark(sub, settings) {
+    const state = sub.alert ? sub.alert.state : null;
+    if (state === 'cancelling') return ' 🚫';
+    if (state === 'muted') return ' 🔕';
+    return settings.enabled && (sub.confirmed || sub.known) ? ' 🔔' : '';
+  }
+
+  // pls: подписки (найденные и регулярные-подписки) с датой следующего списания, пробные периоды, настройка
+  // предупреждений. Строка подписки — кнопка карточки (plsc), у неотмеченной найденной — «✅ N»
   async showSubscriptions(ctx, notice = '') {
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
     await this.answer(ctx);
     const subs = await this.planningService.getSubscriptions(userId);
+    const [settings, trials] = await Promise.all([
+      this.subscriptionAlertService.getSettings(userId),
+      this.subscriptionAlertService.getTrials(userId, subs.today)
+    ]);
     const lines = [];
     if (notice) lines.push(notice, '');
     lines.push(`🔁 *${this.t(lang, 'pl_subs_title')}*`, '');
@@ -303,26 +319,42 @@ class PlanningHandlers {
         year: this.money(subs.totalMonthly * 12, subs.currency),
         count: subs.all.length
       }), '');
-      subs.visible.forEach((sub, index) => {
+      subs.shown.forEach((sub, index) => {
         const n = index + 1;
+        const date = this.planningService.shortDate(sub.nextDate);
         lines.push(this.t(lang, 'pl_subs_item', {
-          n: `${n}.${sub.confirmed ? ' ✅' : ''}`,
+          n: `${n}.${sub.confirmed ? ' ✅' : ''}${sub.kind === 'recurring' ? ' 🔁' : ''}`,
           label: this.label(sub.label, 30),
           amount: this.exact(sub.amount, sub.currency),
           cadence: this.cadenceText(lang, sub.cadence),
-          date: this.planningService.shortDate(sub.nextDate)
-        }));
-        const short = this.formatter.shorten(sub.label, 22);
-        keyboard.push(sub.confirmed
-          ? [{ text: `🙈 ${n}. ${short}`, callback_data: `plsn|${sub.id}` }]
-          : [{ text: `✅ ${n}. ${short}`, callback_data: `plsy|${sub.id}` }, { text: `🙈 ${n}`, callback_data: `plsn|${sub.id}` }]);
+          date: sub.nextDate < subs.today ? `${date} ⏳` : date
+        }) + this.warnMark(sub, settings));
+        const row = [{ text: `${n}. ${this.formatter.shorten(sub.label, 24)}`, callback_data: `plsc|${sub.id}` }];
+        if (sub.kind === 'detected' && !sub.confirmed) row.push({ text: `✅ ${n}`, callback_data: `plsy|${sub.id}` });
+        keyboard.push(row);
       });
       if (subs.hiddenCount) {
         lines.push('', this.t(lang, 'pl_subs_more_locked', { count: subs.hiddenCount, amount: this.money(subs.hiddenMonthly, subs.currency) }));
         keyboard.push([{ text: this.t(lang, 'button_premium'), callback_data: 'premium_subscription' }]);
       }
-      lines.push('', `_${this.t(lang, 'pl_subs_hint')}_`);
     }
+    if (trials.length) {
+      lines.push('', `*${this.t(lang, 'sub_trials_title')}*`);
+      for (const trial of trials) {
+        const price = trial.amount ? this.t(lang, 'sub_trial_price', { amount: this.exact(trial.amount, trial.currency) }) : '';
+        const mark = trial.state === 'cancelling' ? ' 🚫' : trial.state === 'active' ? ' 🔔' : trial.state === 'muted' ? ' 🔕' : ' ✅';
+        lines.push(`🧪 ${this.label(trial.name, 30)} — ${this.t(lang, 'sub_trial_until_short', { date: this.planningService.shortDate(trial.end_date) })}${price}${mark}`);
+        keyboard.push([{ text: `🧪 ${this.formatter.shorten(trial.name, 24)}`, callback_data: `plt|${trial.id}` }]);
+      }
+    }
+    if (subs.all.length || trials.length) lines.push('', `_${this.t(lang, 'sub_subs_hint')}_`);
+    keyboard.push([{ text: this.t(lang, 'sub_button_trial_add'), callback_data: 'pltn' }]);
+    keyboard.push([{
+      text: settings.enabled
+        ? this.t(lang, 'sub_button_warn_on', { days: this.subscriptionAlertService.daysPhrase(lang, settings.days) })
+        : this.t(lang, 'sub_button_warn_off'),
+      callback_data: 'plwo'
+    }]);
     if (subs.dismissed) {
       keyboard.push([{ text: this.t(lang, 'pl_button_subs_restore', { count: subs.dismissed }), callback_data: 'plsr' }]);
     }

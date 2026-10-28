@@ -73,6 +73,7 @@ const WeeklyInsightService = require('./services/WeeklyInsightService');
 const ImportService = require('./services/ImportService');
 const ReceiptService = require('./services/ReceiptService');
 const PlanningService = require('./services/PlanningService');
+const SubscriptionAlertService = require('./services/SubscriptionAlertService');
 const AchievementService = require('./services/AchievementService');
 const ReferralService = require('./services/ReferralService');
 const { createProviderFromEnv: createReceiptProvider } = require('./services/receipt/chain');
@@ -97,6 +98,7 @@ const ExportHandlers = require('./handlers/ExportHandlers');
 const ImportHandlers = require('./handlers/ImportHandlers');
 const ReceiptHandlers = require('./handlers/ReceiptHandlers');
 const PlanningHandlers = require('./handlers/PlanningHandlers');
+const SubscriptionHandlers = require('./handlers/SubscriptionHandlers');
 const AchievementHandlers = require('./handlers/AchievementHandlers');
 const ReferralHandlers = require('./handlers/ReferralHandlers');
 const AssistantHandlers = require('./handlers/AssistantHandlers');
@@ -298,9 +300,35 @@ class Container {
           currencyUtils: this.get('currencyUtils')
         });
 
+      // Предупреждения о списании подписок, пробные периоды, «Как отменить»
+      case 'subscriptionAlertService':
+        return new SubscriptionAlertService({
+          planningService: this.get('planningService'),
+          planningRepository: this.get('planningRepository'),
+          expenseService: this.get('expenseService'),
+          userNotificationRepository: this.get('userNotificationRepository'),
+          notificationService: this.get('notificationService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter')
+        });
+
+      case 'subscriptionHandlers':
+        return new SubscriptionHandlers({
+          subscriptionAlertService: this.get('subscriptionAlertService'),
+          planningService: this.get('planningService'),
+          planningHandlers: this.get('planningHandlers'),
+          recurringExpenseHandlers: this.get('recurringExpenseHandlers'),
+          userService: this.get('userService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter'),
+          stateService: this.get('stateService'),
+          referralService: this.get('referralService')
+        });
+
       case 'planningHandlers':
         return new PlanningHandlers({
           planningService: this.get('planningService'),
+          subscriptionAlertService: this.get('subscriptionAlertService'),
           userService: this.get('userService'),
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
@@ -535,7 +563,8 @@ class Container {
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
           planningService: this.get('planningService'),
-          roastService: this.get('roastService')
+          roastService: this.get('roastService'),
+          subscriptionAlertService: this.get('subscriptionAlertService')
         });
 
       case 'expenseService':
@@ -682,6 +711,7 @@ class Container {
           exportHandlers: this.get('exportHandlers'),
           savingsHandlers: this.get('savingsHandlers'),
           planningHandlers: this.get('planningHandlers'),
+          subscriptionHandlers: this.get('subscriptionHandlers'),
           assistantHandlers: this.get('assistantHandlers'),
           multiEntryHandlers: this.get('multiEntryHandlers'),
           onboardingHandlers: this.get('onboardingHandlers'),
@@ -706,7 +736,8 @@ class Container {
           weeklyInsightService: this.get('weeklyInsightService'),
           planningService: this.get('planningService'),
           achievementService: this.get('achievementService'),
-          onboardingHandlers: this.get('onboardingHandlers')
+          onboardingHandlers: this.get('onboardingHandlers'),
+          subscriptionAlertService: this.get('subscriptionAlertService')
         });
 
       case 'adminHandlers':
@@ -799,7 +830,8 @@ class Container {
           formatter: this.get('formatter'),
           stateService: this.get('stateService'),
           validator: this.get('enhancedValidator'),
-          budgetService: this.get('budgetService')
+          budgetService: this.get('budgetService'),
+          subscriptionAlertService: this.get('subscriptionAlertService')
         });
 
       case 'bot':
@@ -869,6 +901,8 @@ class Container {
       savingsHandlers: this.get('savingsHandlers'),
       planningHandlers: this.get('planningHandlers'),
       planningService: this.get('planningService'),
+      subscriptionHandlers: this.get('subscriptionHandlers'),
+      subscriptionAlertService: this.get('subscriptionAlertService'),
       reportService: this.get('reportService'),
       dailySummaryService: this.get('dailySummaryService'),
       weeklyInsightService: this.get('weeklyInsightService'),

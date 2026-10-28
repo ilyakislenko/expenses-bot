@@ -78,7 +78,8 @@ async function startApplication() {
       handlers.dailySummaryService,
       handlers.weeklyInsightService,
       handlers.planningService,
-      handlers.achievementService
+      handlers.achievementService,
+      handlers.subscriptionAlertService
     );
     logger.startup('Cron jobs configured');
 
