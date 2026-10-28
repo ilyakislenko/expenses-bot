@@ -16,6 +16,8 @@ const { AnswerComposer } = require('./assistant/compose');
 const MODEL_DEADLINE_MS = 30000;
 const MAX_QUESTION_LENGTH = 300;
 const MAX_TERMS = 3;
+const WRONG_REFUNDS_PER_DAY = 1;
+const PER_DAYS = { day: 1, week: 7, month: 30.44 };
 // Кнопки-примеры (ai|<n>, тексты ai_example_<n>) — готовые намерения: ответ сразу и на любом языке, без нейросети
 const EXAMPLE_INTENTS = {
   1: { type: 'spend_total', period: { kind: 'month', offset: 0 } },
@@ -134,7 +136,10 @@ class AssistantService {
       if (error.code === 'busy') return { error: 'model_busy', position: null };
       if (error.message !== 'assistant model deadline' && position !== null && position <= 0) usage.modelCalls++;
       logger.warn('Assistant model failed', { userId: context.userId, error: error.message, code: error.code, ms: Date.now() - started });
-      return { error: 'model_down' };
+      // Модель приняла запрос, но не ответила вовремя — она занята (чек из другого процесса, большая очередь в самой
+      // Ollama), а не выключена: честнее «занята, спроси через минуту». Не подключились / отказ — «не отвечает»
+      const slow = error.message === 'assistant model deadline' || (error.code === 'network' && /(?:^|: )timeout$/.test(error.message));
+      return { error: slow ? 'model_busy' : 'model_down', position: null };
     } finally {
       clearTimeout(timer);
     }
@@ -166,9 +171,10 @@ class AssistantService {
     return { status: 'answered', text: answerText, keyboard, intent, source, questionId };
   }
 
-  // «🙅 Не то»: ответ не засчитывается в дневной лимит. true — отметили (false — уже отмечен или чужой)
+  // «🙅 Не то»: ответ не засчитывается в дневной лимит — не больше WRONG_REFUNDS_PER_DAY раз в день (иначе кнопка
+  // снимала бы лимит совсем); вызовы модели остаются в потолке. 'marked' | 'done' | 'used' | 'missing'
   async markWrong(userId, questionId) {
-    return this.assistantRepository.markWrong(userId, questionId);
+    return this.assistantRepository.markWrong(userId, questionId, { refundsPerDay: WRONG_REFUNDS_PER_DAY });
   }
 
   // Вопрос → проверенное намерение и посчитанный результат: { status: 'ok', intent, result, source, usage } или
@@ -228,6 +234,7 @@ class AssistantService {
     if (fastIntent.compare_to) merged.compare_to = fastIntent.compare_to;
     if (fastIntent.currency) merged.currency = fastIntent.currency;
     if (fastIntent.limit) merged.limit = fastIntent.limit;
+    if (fastIntent.per) merged.per = fastIntent.per;
     return merged;
   }
 
@@ -355,7 +362,8 @@ class AssistantService {
         // За всё время — от первой записи, иначе от начала периода до сегодня
         const effective = intent.period.kind === 'all' && rows.length ? { ...period, start: rows[0].local_date } : period;
         const days = elapsedDays(effective, context.today);
-        return { ...base, period, total, count, days, average: total / days };
+        // в неделю — ×7, в месяц — ×30,44 (средний месяц) от средней в день за прошедшие дни периода
+        return { ...base, period, total, count, days, average: total / days * (PER_DAYS[intent.per] || 1) };
       }
       default:
         throw new Error(`Unsupported assistant intent: ${intent.type}`);

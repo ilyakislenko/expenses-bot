@@ -11,7 +11,7 @@ JSON keys:
   top_expenses — a list of the biggest expenses,
   largest_purchase — the single biggest expense,
   compare_periods — compare spending of two periods,
-  average_daily — average spending per day,
+  average_daily — average spending per day, per week or per month (see "per"),
   income_total — income, salary, earnings,
   balance — income minus expenses, what is left, am I in plus,
   savings_status — savings, goals, net worth,
@@ -34,6 +34,7 @@ JSON keys:
 "text_filter": a thing to search in expense descriptions (shop, product, service: "такси", "coffee") when it is not a category, copied from the question in its base form and in the language of the question (never translate it), else null.
 "limit": how many items for top_expenses, else null.
 "currency": a 3-letter currency code only if the user asks to show amounts in it, else null.
+"per": for average_daily — "week" for "в неделю" / "per week", "month" for "в месяц" / "per month", else "day".
 Rules: "за неделю" / "for a week" means the last 7 days, "this week" means the calendar week. "в день" / "per day" is part of average_daily, not the period. "last month" / "в прошлом месяце" is offset -1, "last year" / "в прошлом году" is offset -1. Seasons, weekends, weekdays and "since <day>" are custom dates: summer is June 1 – August 31, "since Monday" is from this week's Monday to today. If the question names a period you cannot express, use null.
 Reply with the JSON object only.`;
 

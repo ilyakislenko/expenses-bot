@@ -34,6 +34,8 @@ const MAX_TERM_LENGTH = 40;
 const MAX_TERMS = 3;
 const MIN_OFFSET = { day: -3650, week: -520, month: -120, year: -30 };
 const MAX_DAYS = 3650;
+const PER_VALUES = ['day', 'week', 'month'];
+const PER_DEFAULT_DAYS = 90;
 
 // Слова, которые модель иногда кладёт в фильтр, хотя это не фильтр
 const GENERIC_TERMS = new Set([
@@ -146,6 +148,10 @@ function normalizePeriod(raw, today) {
 function cleanTerm(value) {
   const term = plainWords(value).slice(0, MAX_TERM_LENGTH).trim();
   if (!term || !/\p{L}/u.test(term) || GENERIC_TERMS.has(term)) return null;
+  // «с 20 числа», «за 5-е» — дата, а не слово из описания: с цифрами нужно хоть одно содержательное слово
+  if (/\d/.test(term) && !term.split(' ').some(w => /^\p{L}{3,}$/u.test(w) && !/^(?:числ|чис)/u.test(w))) return null;
+  // «лunch» — модель смешала алфавиты в одном слове: такого в описаниях не бывает
+  if (term.split(' ').some(w => /[а-я]/.test(w) && /[a-z]/.test(w))) return null;
   return term;
 }
 
@@ -166,6 +172,10 @@ function normalizeIntent(raw, { categories = [], today, question = null }) {
     if (parsed && parsed.error === 'future') return { ok: false, reason: 'future' };
     defaultedPeriod = !(parsed && parsed.spec);
     period = defaultedPeriod ? { kind: 'month', offset: 0 } : parsed.spec;
+    // средняя в неделю/месяц без периода — за последние PER_DEFAULT_DAYS дней (средняя за один неполный месяц мало значит)
+    if (defaultedPeriod && type === 'average_daily' && PER_VALUES.includes(raw.per) && raw.per !== 'day') {
+      period = { kind: 'last_n_days', n: PER_DEFAULT_DAYS };
+    }
     if (type === 'compare_periods') {
       const second = normalizePeriod(raw.compare_to, today);
       compareTo = second && second.spec ? second.spec : null;
@@ -213,7 +223,9 @@ function normalizeIntent(raw, { categories = [], today, question = null }) {
       categories: matched,
       terms,
       limit,
-      currency: SUPPORTED_CURRENCIES.includes(currency) ? currency : null
+      currency: SUPPORTED_CURRENCIES.includes(currency) ? currency : null,
+      // средняя: в день / в неделю / в месяц (только у average_daily)
+      per: type === 'average_daily' && PER_VALUES.includes(raw.per) ? raw.per : null
     }
   };
 }

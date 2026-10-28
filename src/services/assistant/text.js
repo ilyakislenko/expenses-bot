@@ -56,7 +56,7 @@ const systemAliases = (name) => (Object.hasOwn(SYSTEM_CATEGORY_ALIASES, name) ? 
 // Одно и то же в описаниях пишут по-разному: бренды латиницей и кириллицей («нетфликс» — «Netflix»), частые слова
 // на двух языках (англоязычный вопрос, а модель положила в поиск «такси»). Поиск по любому слову группы находит все.
 const TERM_SYNONYMS = [
-  ['нетфликс', 'netflix'], ['спотифай', 'spotify'], ['озон', 'ozon'], ['вайлдберриз', 'wildberries'], ['яндекс', 'yandex'],
+  ['нетфликс', 'netflix'], ['спотифай', 'spotify'], ['озон', 'ozon'], ['вайлдберриз', 'вб', 'wb', 'wildberries'], ['яндекс', 'yandex'],
   ['убер', 'uber'], ['старбакс', 'starbucks'], ['макдональдс', 'mcdonalds'], ['кфс', 'kfc'], ['ютуб', 'youtube'],
   ['эпл', 'эппл', 'apple'], ['стим', 'steam'], ['чатгпт', 'chatgpt'], ['амазон', 'amazon'], ['айфон', 'iphone'],
   ['икеа', 'ikea'],
@@ -64,16 +64,22 @@ const TERM_SYNONYMS = [
   ['ужин', 'dinner'], ['завтрак', 'breakfast'], ['аптека', 'pharmacy'], ['лекарства', 'medicine'], ['кино', 'movies'],
   ['аренда', 'rent'], ['подарок', 'gift'], ['отель', 'hotel'], ['спортзал', 'gym'], ['интернет', 'internet'],
   ['бензин', 'fuel'], ['парикмахерская', 'стрижка', 'haircut']
-].map(group => group.map(searchStem));
+// основа «wildberry» не находит «wildberries» — тогда в группе и полное слово
+].map(group => [...new Set(group.flatMap((variant) => {
+  const base = searchStem(variant);
+  const plain = plainWords(variant);
+  return plain.includes(base) ? [base] : [base, plain];
+}))]);
 
-// Слова поиска (основы, см. searchStem) вместе с синонимами — без повторов
+// Слова поиска (основы, см. searchStem) вместе с синонимами — без повторов. Короткие сокращения («вб», «wb») ищутся,
+// только если их написал сам пользователь: подстрока из двух букв найдёт лишнее
 function expandTerms(stems) {
   const out = [];
   const add = (value) => { if (value && !out.includes(value)) out.push(value); };
   for (const value of stems) {
     add(value);
     const group = TERM_SYNONYMS.find(variants => variants.includes(value));
-    if (group) group.forEach(add);
+    if (group) group.filter(variant => variant.length >= 3).forEach(add);
   }
   return out;
 }

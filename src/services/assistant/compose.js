@@ -135,11 +135,13 @@ class AnswerComposer {
     return lines;
   }
 
+  // Средняя в день, в неделю или в месяц (intent.per)
   compose_average_daily(result) {
     const { intent, currency } = result;
-    const lines = [this.header('ai_title_average', result), this.filterLine(intent)];
+    const suffix = intent.per === 'week' || intent.per === 'month' ? `_${intent.per}` : '';
+    const lines = [this.header(`ai_title_average${suffix}`, result), this.filterLine(intent)];
     if (!result.count) return [...lines, this.nothing(intent)];
-    lines.push(this.t('ai_average', {
+    lines.push(this.t(`ai_average${suffix}`, {
       amount: this.money(result.average, currency), total: this.money(result.total, currency), days: result.days
     }));
     return lines;

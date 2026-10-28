@@ -1,6 +1,8 @@
 const BaseRepository = require('./BaseRepository');
 
 const MAX_ROWS = 50000;
+// intent_type вопросов без ответа (AssistantService.answer пишет статус вместо типа)
+const NO_ANSWER_STATUSES = ['not_understood', 'model_down', 'model_busy', 'model_limit', 'period_unclear', 'future'];
 
 // Поиск по описанию: подстрока без учёта регистра; % и _ из текста пользователя — буквально
 function likePattern(term) {
@@ -58,13 +60,26 @@ class AssistantRepository extends BaseRepository {
     return result.rows[0].id;
   }
 
-  // «🙅 Не то»: ответ не засчитывается в дневной лимит (вызовы модели остаются). true — отметили сейчас
-  async markWrong(userId, questionId) {
-    const result = await this.query(
-      'UPDATE assistant_questions SET answered = FALSE WHERE id = $1 AND user_id = $2 AND answered RETURNING id',
+  // «🙅 Не то»: ответ не засчитывается в дневной лимит (вызовы модели остаются), но не больше refundsPerDay ответов
+  // в локальный день. Возвращённый ответ — строка с типом ответа и answered = FALSE (у вопросов без ответа в
+  // intent_type — статус). 'marked' | 'done' (уже отмечен) | 'used' (сегодня уже возвращали) | 'missing' (нет такого
+  // ответа у пользователя)
+  async markWrong(userId, questionId, { refundsPerDay = 1 } = {}) {
+    const found = await this.query(
+      'SELECT answered, local_date::text AS local_date FROM assistant_questions WHERE id = $1 AND user_id = $2',
       [questionId, userId]
     );
-    return result.rowCount > 0;
+    if (!found.rows.length) return 'missing';
+    if (!found.rows[0].answered) return 'done';
+    const result = await this.query(
+      `UPDATE assistant_questions SET answered = FALSE
+       WHERE id = $1 AND user_id = $2 AND answered
+         AND (SELECT COUNT(*) FROM assistant_questions
+              WHERE user_id = $2 AND local_date = $3::date AND NOT answered AND intent_type <> ALL($4::text[])) < $5
+       RETURNING id`,
+      [questionId, userId, found.rows[0].local_date, NO_ANSWER_STATUSES, refundsPerDay]
+    );
+    return result.rowCount > 0 ? 'marked' : 'used';
   }
 }
 
