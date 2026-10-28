@@ -92,14 +92,16 @@ class ImportHandlers {
     if (keyboard.length) this.importService.saveSession(userId, message.message_id, session);
   }
 
-  // Выписка этого сообщения: undefined — устарела (alert), null — уже записывается (тихо)
+  // Выписка этого сообщения: undefined — устарела (alert, кнопки превью убираются), null — уже записывается (тихо)
   async sessionFor(ctx, lang, take = false) {
     const messageId = ctx.callbackQuery.message?.message_id;
     const session = take
       ? this.importService.takeSession(ctx.from.id, messageId)
       : this.importService.getSession(ctx.from.id, messageId);
-    if (session === undefined) await ctx.answerCbQuery(this.t(lang, 'import_outdated'), { show_alert: true }).catch(() => {});
-    else if (session === null) await ctx.answerCbQuery().catch(() => {});
+    if (session === undefined) {
+      await ctx.answerCbQuery(this.t(lang, 'import_outdated'), { show_alert: true }).catch(() => {});
+      await Promise.resolve().then(() => ctx.editMessageReplyMarkup({ inline_keyboard: [] })).catch(() => {});
+    } else if (session === null) await ctx.answerCbQuery().catch(() => {});
     return session;
   }
 
@@ -208,6 +210,8 @@ class ImportHandlers {
         : `${this.formatter.formatLocalDate(from)} – ${this.formatter.formatLocalDate(to)}`;
       lines.push(`📅 ${period}`);
     }
+    // Даты вида 10/05 без дней больше 12: порядок угадан — сказать, как прочитан
+    if (session.dateOrder && session.dateOrder.guessed) lines.push(this.t(lang, `import_date_order_${session.dateOrder.order}`));
     const counts = [];
     if (summary.expenses.count) {
       counts.push(this.t(lang, 'import_preview_expenses', { count: summary.expenses.count, total: this.money(summary.expenses.byCurrency, userCurrency) }));

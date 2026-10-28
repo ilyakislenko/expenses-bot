@@ -17,18 +17,20 @@ class ImportRepository extends BaseRepository {
     return new Set(result.rows.map(row => row.import_hash));
   }
 
-  // Записи, сделанные не импортом, за локальные дни [startDay, endDay]: kind, день, сумма, валюта
+  // Записи за локальные дни [startDay, endDay]: kind, день, сумма, валюта и import_hash (NULL — записано не импортом).
+  // Импортированные тоже: выписка, уже импортированная из другого файла (например, свой же экспорт CSV, где время без
+  // секунд и описание с «'»), даёт другой отпечаток, но ту же операцию
   async getRecordedAmounts(userId, timezone, startDay, endDay) {
     const query = `
-      SELECT 'expense' AS kind, to_char(created_at_utc AT TIME ZONE $2, 'YYYY-MM-DD') AS day, amount::text AS amount, currency
+      SELECT 'expense' AS kind, to_char(created_at_utc AT TIME ZONE $2, 'YYYY-MM-DD') AS day, amount::text AS amount, currency, import_hash
       FROM expenses
-      WHERE user_id = $1 AND import_hash IS NULL
+      WHERE user_id = $1
         AND created_at_utc >= ($3::date::timestamp AT TIME ZONE $2)
         AND created_at_utc < (($4::date + 1)::timestamp AT TIME ZONE $2)
       UNION ALL
-      SELECT 'income' AS kind, to_char(created_at_utc AT TIME ZONE $2, 'YYYY-MM-DD') AS day, amount::text AS amount, currency
+      SELECT 'income' AS kind, to_char(created_at_utc AT TIME ZONE $2, 'YYYY-MM-DD') AS day, amount::text AS amount, currency, import_hash
       FROM incomes
-      WHERE user_id = $1 AND import_hash IS NULL
+      WHERE user_id = $1
         AND created_at_utc >= ($3::date::timestamp AT TIME ZONE $2)
         AND created_at_utc < (($4::date + 1)::timestamp AT TIME ZONE $2)
     `;

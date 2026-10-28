@@ -71,7 +71,7 @@ module.exports = {
     bug_report_suspicious: '⚠️ 消息包含不允许的字符或可疑内容',
     
     // 安全消息
-    security_rate_limit: '⚠️ *请求过多*\n\n请在 {resetTime} 秒后重试\n限制：每分钟 {limit} 次请求',
+    security_rate_limit: "⚠️ *请求过多*\n\n请在 {resetTime} 后重试\n限制：每 {window} {limit} 次",
     security_error: '❌ *安全错误*\n\n请稍后重试或联系管理员。',
     
     // 管理面板
@@ -1189,6 +1189,20 @@ module.exports = {
   receipt_line_limit: "小票已有 {max} 行 — 无法再添加。",
   receipt_rotate_edited: "✏️ 你已手动修改过这份草稿 — 旋转会清除修改。请记录它，或取消后重新发送照片。",
   help_edit: "✏️ 记错了？在 📅 今天、概览或小票里点记录的编号 — 可以修改金额、类别和 📅 日期。小票草稿在记录前也能修改。",
+  job_interrupted_receipt: "⚠️ 机器人重启，小票识别被中断。请重新发送照片。",
+  job_interrupted_voice: "⚠️ 机器人重启，语音识别被中断。请重新发送语音。",
+  receipt_rotate_kept: "🔄 旋转后没有更好 — 保留了之前的结果。",
+  receipt_rotate_unavailable: "⚠️ 识别服务暂时不可用 — 保留了之前的结果，稍后可以再旋转。",
+  receipt_rotate_interrupted: "⚠️ 机器人重启，旋转被中断。之前的结果已恢复。",
+  receipt_draft_changed: "🔄 草稿已变化 — 请重新选择这一行。",
+  receipt_date_unknown_draft: "📅 未识别出小票日期 — 将按今天记录。其他日期请点「📅 日期」。",
+  receipt_date_unknown_recorded: "📅 未识别出小票日期 — 已按今天记录。其他日期请点「📅 小票日期」。",
+  receipt_suspicious: "⚠️ 小票上有像指令或链接的文字 — 请逐行检查。",
+  receipt_limit_short: "🧾 本月小票识别次数已用完：{used} / {limit}。",
+  rate_wait_seconds: "{n} 秒",
+  rate_wait_minutes: "{n} 分钟",
+  import_date_order_dmy: "📅 日期按 日/月 读取（10/05 = 5月10日）。如果你的银行顺序相反，请检查上面的期间。",
+  import_date_order_mdy: "📅 日期按 月/日 读取（10/05 = 10月5日）。如果你的银行顺序相反，请检查上面的期间。",
     command_setup: "按你的需求设置机器人",
     help_setup: "🧭 /setup — 回答几个问题，机器人就会根据你的目标进行调整（或 ⚙️ 设置 → 🧭 个性化设置）",
     button_onboarding_setup: "🧭 个性化设置",
@@ -1454,7 +1468,7 @@ module.exports = {
     import_receipt_hint: '🧾 也可以直接拍下购物小票发到这里——我会记录每一项。',
     receipt_busy: '⏳ 请稍等，我还在识别你上一张小票。',
     receipt_queued: '🔍 正在识别小票… 你在队列中的位置：{position}。',
-    receipt_recognizing_slow: '🔍 正在识别小票… 可能需要 1–2 分钟。',
+    receipt_recognizing_slow: "🔍 正在识别小票… 通常需要 1–2 分钟，有时长达 5 分钟。",
     receipt_low_confidence: '⚠️ 数字不太确定：各项与合计（{total}）或单价对不上。请检查列表后按原样记录，或发送更清晰的照片。',
     button_receipt_record_draft: '✅ 按原样记录',
     receipt_draft_canceled: '小票未记录。',

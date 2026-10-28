@@ -1,10 +1,11 @@
 const respond = require('../utils/respond');
 const logger = require('../utils/logger');
 const { runImageTask } = require('../services/receipt/imageWorker');
-const { localNow } = require('../services/receipt/normalize');
-const { sumCheck, editLine, setLineCategory, removeLine, addLine, setDraftDate, MAX_ITEMS } = require('../services/receipt/draftEdit');
+const { localNow, receiptDate } = require('../services/receipt/normalize');
+const { sumCheck, editLine, setLineCategory, removeLine, addLine, setDraftDate, lineIndex, withLineIds, MAX_ITEMS } = require('../services/receipt/draftEdit');
+const { pickBetter } = require('../services/ReceiptService');
 const { localToday } = require('../utils/period');
-const { packDate, unpackDate, checkRecordDate, parseRecordDate, localDateOf, datePickerKeyboard, DATE_ERROR_KEYS } = require('../utils/recordDate');
+const { packDate, unpackDate, checkRecordDate, parseRecordDate, localDateOf, datePickerKeyboard, DATE_ERROR_KEYS, MAX_RECORD_AGE_DAYS } = require('../utils/recordDate');
 
 const PAGE_SIZE = 20; // строк на странице списка чека и черновика
 // JPEG (фото и файлы) готовит imagePrep — поворот, поиск чека, уменьшение, поэтому годится всё, что отдаёт Telegram;
@@ -32,6 +33,8 @@ const ERROR_KEYS = {
   not_receipt: 'receipt_not_receipt',
   currency: 'receipt_currency_unsupported'
 };
+// Ошибки, после которых поворот стоит повторить позже (сервис недоступен), а не «лучше не стало»
+const SERVICE_ERRORS = new Set(['unavailable', 'quota', 'busy', 'not_configured']);
 
 // Картинка, присланная файлом (jpg/png/webp/heic)
 function isImageDocument(document = {}) {
@@ -53,7 +56,7 @@ function pickPhotoSize(sizes) {
 // Фото чека → каждая позиция записывается отдельной тратой сразу, затем список чека для правки
 // (номер → обычная карточка записи с возвратом к чеку, «Всё верно», «Отменить чек»).
 class ReceiptHandlers {
-  constructor({ receiptService, expenseHandlers, expenseService, budgetService, userService, premiumService, localizationService, formatter, stateService, validator, achievementService = null, referralService = null }) {
+  constructor({ receiptService, expenseHandlers, expenseService, budgetService, userService, premiumService, localizationService, formatter, stateService, validator, achievementService = null, referralService = null, pendingJobService = null }) {
     this.receiptService = receiptService;
     this.expenseHandlers = expenseHandlers;
     this.expenseService = expenseService; // категории и запомненная категория для строк черновика
@@ -66,6 +69,7 @@ class ReceiptHandlers {
     this.validator = validator;
     this.achievementService = achievementService;
     this.referralService = referralService;
+    this.pendingJobService = pendingJobService; // «Распознаю чек…» в БД: после перезапуска — «прервалось» или прежний черновик
     this.tasks = new Set(); // фоновые распознавания
     this.busyUsers = new Set(); // у кого сейчас распознаётся чек (по одному на пользователя)
     // `${userId}:${messageId}` → подготовленный кадр для «повернуть на 90°». Только ускорение: черновик и сведения
@@ -168,14 +172,23 @@ class ReceiptHandlers {
       }
 
       const status = await ctx.reply(this.t(lang, 'receipt_recognizing'));
-      // Распознавание может идти минуту-две (локальная модель на сервере): обработчик апдейта его не ждёт,
+      // Распознавание может идти минуты (локальная модель на сервере): обработчик апдейта его не ждёт,
       // иначе polling задержит остальных пользователей, а Telegraf оборвёт обработчик по таймауту (90 с).
-      // При перезапуске бота незаконченное распознавание просто теряется.
+      // Задача отмечена в БД: после перезапуска бота сообщение станет «прервалось — пришли ещё раз»
+      await this.startJob(ctx, userId, status.message_id);
       this.track(userId, this.recognizeAndRecord(ctx, { image, mimeType, userId, lang, timezone, currency, statusId: status.message_id, fileId, sourceMime: mimeType }));
       started = true;
     } finally {
       if (!started) this.busyUsers.delete(userId);
     }
+  }
+
+  async startJob(ctx, userId, messageId) {
+    if (this.pendingJobService) await this.pendingJobService.start('receipt', { userId, chatId: ctx.chat.id, messageId });
+  }
+
+  async finishJob(ctx, messageId) {
+    if (this.pendingJobService) await this.pendingJobService.finish(ctx.chat.id, messageId);
   }
 
   track(userId, promise) {
@@ -194,12 +207,15 @@ class ReceiptHandlers {
   // Фоновая часть: подготовить кадр, распознать (при неудаче — ещё раз повёрнутым на 180°), записать или показать
   // черновик/ошибку с кнопкой «повернуть на 90°». Ошибки не выходят наружу — превращаются в текст.
   // prepared — image уже подготовлен (кнопка «повернуть»), retry — разрешена вторая попытка; fileId/sourceMime — фото
-  // в Telegram, turn — на сколько градусов image повёрнут относительно подготовленного фото (для «повернуть» после рестарта)
-  async recognizeAndRecord(ctx, { image, mimeType, userId, lang, timezone, currency, statusId, fileId = null, sourceMime = mimeType, turn = 0, prepared = false, retry = true, small = false, lowResolution = false }) {
+  // в Telegram, turn — на сколько градусов image повёрнут относительно подготовленного фото (для «повернуть» после рестарта).
+  // previous — { receipt, timezone, frame } сообщения до поворота: если новый ответ не лучше (pickBetter), не
+  // разобран или сервис недоступен, возвращается прежний черновик (или «не получилось» с кнопкой поворота).
+  // Показанный черновик и «не получилось распознать» засчитываются в месячный лимит (addAttempt)
+  async recognizeAndRecord(ctx, { image, mimeType, userId, lang, timezone, currency, statusId, fileId = null, sourceMime = mimeType, turn = 0, prepared = false, retry = true, small = false, lowResolution = false, previous = null }) {
     const stopTyping = keepTyping(ctx);
     let statusText = prepared ? this.t(lang, 'receipt_retrying') : this.t(lang, 'receipt_recognizing');
     let statusEdits = Promise.resolve();
-    // Очередь занятого локального слота, «может занять 1–2 минуты» у локальной модели, «поворачиваю». Правки идут
+    // Очередь занятого локального слота, «может занять несколько минут» у локальной модели, «поворачиваю». Правки идут
     // по очереди, итоговое сообщение — после них, чтобы запоздавшая правка его не затёрла
     const setStatus = (text) => {
       if (text === statusText) return;
@@ -211,6 +227,7 @@ class ReceiptHandlers {
       else if (statusText !== this.t(lang, 'receipt_retrying')) setStatus(this.t(lang, local ? 'receipt_recognizing_slow' : 'receipt_recognizing'));
     };
     const onRetry = () => setStatus(this.t(lang, 'receipt_retrying'));
+    let recorded = false;
     try {
       const result = await this.receiptService.recognizePhoto(userId, { image, mimeType, lang, currency, timezone, onStatus, onRetry, prepared, retry, small, lowResolution });
       // Кадр для «повернуть»: фото в Telegram и поворот — в БД, сам подготовленный кадр — в памяти на 30 минут
@@ -221,11 +238,23 @@ class ReceiptHandlers {
       await statusEdits;
       stopTyping();
       if (result.error) {
+        logger.warn('Receipt not recognized', { userId, code: result.error.code, error: result.error.message, attempts: result.attempts });
+      }
+      const kept = previous ? this.keepPrevious(previous, result) : null;
+      if (kept) {
+        // Поворот не дал лучшего: прежний черновик с кнопками (кадр — уже повёрнутый, если сервис ответил)
+        const keptFrame = kept.newFrame ? frame : previous.frame;
+        await this.keepFrame(userId, statusId, keptFrame, kept.newFrame ? result.image : previous.image, previous.receipt ? previous : null);
+        const restored = await this.previousView(userId, lang, { ...previous, frame: keptFrame }, kept.note);
+        await this.editStatus(ctx, statusId, restored.text, restored.extra);
+        return;
+      }
+      if (result.error) {
         const code = result.error.code;
-        logger.warn('Receipt not recognized', { userId, code, error: result.error.message, attempts: result.attempts });
         if (code === 'unreadable') {
           // Не разобрали даже повёрнутым: советы и кнопка «повернуть на 90°» (только для JPEG)
           const canRotate = result.mimeType === 'image/jpeg' && !!frame;
+          await this.receiptService.addAttempt(userId, 'unreadable');
           if (canRotate) await this.keepFrame(userId, statusId, frame, result.image, null);
           await this.editStatus(ctx, statusId, `${this.t(lang, 'receipt_unreadable')}\n\n${this.photoTips(lang, result.lowResolution)}`, {
             parse_mode: 'Markdown',
@@ -236,26 +265,79 @@ class ReceiptHandlers {
         await this.editStatus(ctx, statusId, this.t(lang, ERROR_KEYS[code] || 'receipt_error_unavailable', result.error.params), { parse_mode: 'Markdown' });
         return;
       }
-      const { receipt } = result;
-      if (receipt.lowConfidence) {
-        // Цифры не сходятся — не записываем сами: черновик, советы и кнопка «повернуть на 90°»
+      if (result.receipt.lowConfidence) {
+        // Цифрам нельзя верить — не записываем сами: черновик, советы и кнопка «повернуть на 90°»
+        const receipt = { ...result.receipt, attemptId: await this.receiptService.addAttempt(userId, 'draft') };
         const canRotate = result.mimeType === 'image/jpeg' && !!frame;
         await this.keepFrame(userId, statusId, canRotate ? frame : null, canRotate ? result.image : null, { receipt, timezone });
-        const view = await this.buildDraftView(userId, lang, receipt, { canRotate, lowResolution: result.lowResolution });
+        const view = await this.buildDraftView(userId, lang, receipt, { canRotate, lowResolution: result.lowResolution, timezone });
         await this.editStatus(ctx, statusId, view.text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: view.keyboard } });
         return;
       }
+      const { receipt } = result;
       const receiptId = await this.recordReceipt(userId, receipt, timezone);
-      const view = await this.buildReceiptView(userId, lang, receiptId, 0);
-      const text = await this.withNotes(ctx, userId, lang, receiptId, view.text);
-      await this.editStatus(ctx, statusId, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: view.keyboard } });
+      recorded = true;
+      if (previous) {
+        await this.receiptService.deleteDraft(userId, statusId);
+        this.frames.delete(`${userId}:${statusId}`);
+      }
+      const text = await this.recordedText(ctx, userId, lang, receiptId, receipt, timezone);
+      await this.editStatus(ctx, statusId, text.text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: text.keyboard } });
       await this.sendBudgetWarnings(ctx, userId, lang, receiptId);
     } catch (error) {
       logger.error('Receipt processing failed', { userId, error: error.message, stack: error.stack });
-      await this.editStatus(ctx, statusId, this.t(lang, 'receipt_error_unavailable')).catch(() => {});
+      let restored = null;
+      if (previous && !recorded) {
+        restored = await this.keepFrame(userId, statusId, previous.frame, previous.image, previous.receipt ? previous : null)
+          .then(() => this.previousView(userId, lang, previous, 'receipt_rotate_unavailable'))
+          .catch(() => null);
+      }
+      await this.editStatus(ctx, statusId, restored ? restored.text : this.t(lang, 'receipt_error_unavailable'), restored ? restored.extra : {}).catch(() => {});
     } finally {
       stopTyping();
+      await this.finishJob(ctx, statusId);
     }
+  }
+
+  // Поворот против прежнего результата: null — показать новый, иначе { note, newFrame } — вернуть прежний (newFrame —
+  // запомнить уже повёрнутый кадр, чтобы следующий поворот шёл дальше). Сбой сервиса — прежний с прежним кадром;
+  // «не разобрано» — прежний черновик (без черновика — обычное «не получилось», оно и есть прежнее)
+  keepPrevious(previous, result) {
+    if (result.error) {
+      if (SERVICE_ERRORS.has(result.error.code)) return { note: 'receipt_rotate_unavailable', newFrame: false };
+      if (result.error.code !== 'unreadable' || previous.receipt) return { note: 'receipt_rotate_kept', newFrame: result.error.code === 'unreadable' };
+      return null;
+    }
+    if (!previous.receipt) return null;
+    return pickBetter({ receipt: previous.receipt }, result) === result ? null : { note: 'receipt_rotate_kept', newFrame: true };
+  }
+
+  // Прежнее содержимое сообщения после неудачного или прерванного поворота: строка note и черновик с кнопками,
+  // без черновика — «не получилось распознать» с кнопкой поворота (если кадр есть). { text, extra }
+  async previousView(userId, lang, previous, note) {
+    if (previous.receipt) {
+      const view = await this.draftView(userId, lang, previous, 0);
+      return { text: `${this.t(lang, note)}\n\n${view.text}`, extra: { parse_mode: 'Markdown', reply_markup: { inline_keyboard: view.keyboard } } };
+    }
+    const frame = previous.frame;
+    return {
+      text: `${this.t(lang, note)}\n\n${this.t(lang, 'receipt_unreadable')}\n\n${this.photoTips(lang, !!(frame && frame.lowResolution))}`,
+      extra: {
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard: frame ? [[{ text: this.t(lang, 'button_receipt_rotate'), callback_data: 'rvr' }]] : [] }
+      }
+    };
+  }
+
+  // Задача прошлого запуска бота (pendingJobService.recoverInterrupted): если у сообщения был черновик или кадр
+  // (прервался поворот) — он снова доступен и показывается с кнопками. false — показывать нечего (новое фото)
+  async restoreInterrupted(telegram, job) {
+    const row = await this.receiptService.releaseFrame(job.user_id, job.message_id);
+    if (!row || (!row.receipt && !row.frame)) return false;
+    const lang = (row.frame && row.frame.lang) || await this.userService.getUserLanguage(job.user_id);
+    const restored = await this.previousView(job.user_id, lang, { receipt: row.receipt, timezone: row.timezone, frame: row.frame }, 'receipt_rotate_interrupted');
+    await telegram.editMessageText(job.chat_id, job.message_id, undefined, restored.text, restored.extra);
+    return true;
   }
 
   // ---------- Кнопка «повернуть на 90° и попробовать» ----------
@@ -285,8 +367,18 @@ class ReceiptHandlers {
     await Promise.resolve().then(() => ctx.editMessageReplyMarkup({ inline_keyboard: [] })).catch(() => {});
   }
 
+  // Лимит распознаваний на месяц исчерпан: alert (кнопки остаются), true. Для поворота и записи старого черновика
+  async limitReached(ctx, lang, userId, timezone) {
+    const limit = await this.receiptService.checkLimit(userId, timezone || await this.userService.getUserTimezone(userId));
+    if (limit.remaining) return false;
+    await ctx.answerCbQuery(this.t(lang, 'receipt_limit_short', { used: limit.used, limit: limit.limit }), { show_alert: true }).catch(() => {});
+    return true;
+  }
+
   // rvr — тот же подготовленный кадр, повёрнутый ещё на 90° по часовой; одна попытка, очередь и «один чек за раз»
-  // как у нового фото, в месячный лимит засчитывается только записанный чек
+  // как у нового фото. Это новое распознавание: нужен остаток месячного лимита, показанный результат засчитывается.
+  // Прежний черновик остаётся в БД («поворачивается»), пока новое распознавание не закончится: не лучше, сбой или
+  // перезапуск — возвращается прежний с кнопками
   async rotateAndRetry(ctx) {
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
@@ -299,11 +391,16 @@ class ReceiptHandlers {
     this.busyUsers.add(userId);
     let started = false;
     try {
-      const frame = await this.receiptService.takeFrame(userId, messageId);
-      if (!frame) {
-        this.frames.delete(key);
+      if (await this.limitReached(ctx, lang, userId)) return;
+      const taken = await this.receiptService.takeFrame(userId, messageId);
+      if (!taken) {
         // Исправленный вручную черновик не поворачивается (новое распознавание стёрло бы правки): кнопки остаются
         const draft = await this.receiptService.getDraft(userId, messageId);
+        if (draft.status === 'busy') {
+          await ctx.answerCbQuery(this.t(lang, 'receipt_draft_busy'), { show_alert: true }).catch(() => {});
+          return;
+        }
+        this.frames.delete(key);
         if (draft.status === 'ok' && draft.receipt.edited) {
           await ctx.answerCbQuery(this.t(lang, 'receipt_rotate_edited'), { show_alert: true }).catch(() => {});
           await this.renderDraft(ctx, userId, lang, draft, 0);
@@ -312,20 +409,33 @@ class ReceiptHandlers {
         await this.expireButtons(ctx, lang, 'receipt_rotate_outdated');
         return;
       }
+      const { frame } = taken;
+      const previous = { receipt: taken.receipt, timezone: taken.timezone, frame };
       await ctx.answerCbQuery().catch(() => {});
       await respond(ctx, this.t(lang, 'receipt_retrying'), { reply_markup: { inline_keyboard: [] } });
+      await this.startJob(ctx, userId, messageId);
       let image;
       try {
-        image = (await runImageTask('rotate', await this.frameImage(ctx, key, frame), { degrees: 90 })).image;
+        previous.image = await this.frameImage(ctx, key, frame);
+        image = (await runImageTask('rotate', previous.image, { degrees: 90 })).image;
       } catch (error) {
+        // Фото в Telegram недоступно: прежний черновик без кнопки поворота (или «фото недоступно»)
         logger.warn('Receipt frame restore failed', { userId, error: error.message });
-        await respond(ctx, this.t(lang, 'receipt_draft_outdated'), { reply_markup: { inline_keyboard: [] } });
+        if (previous.receipt) {
+          await this.receiptService.saveDraft(userId, messageId, { receipt: previous.receipt, timezone: previous.timezone, frame: null });
+          const restored = await this.previousView(userId, lang, { ...previous, frame: null }, 'receipt_rotate_outdated');
+          await respond(ctx, restored.text, restored.extra);
+        } else {
+          await this.receiptService.deleteDraft(userId, messageId);
+          await respond(ctx, this.t(lang, 'receipt_rotate_outdated'), { reply_markup: { inline_keyboard: [] } });
+        }
+        await this.finishJob(ctx, messageId);
         return;
       }
       this.track(userId, this.recognizeAndRecord(ctx, {
         image, mimeType: 'image/jpeg', userId, lang: frame.lang, timezone: frame.timezone, currency: frame.currency,
         statusId: messageId, fileId: frame.fileId, sourceMime: frame.mimeType, turn: (frame.turn + 90) % 360,
-        prepared: true, retry: false, small: frame.small, lowResolution: frame.lowResolution
+        prepared: true, retry: false, small: frame.small, lowResolution: frame.lowResolution, previous
       }));
       started = true;
     } finally {
@@ -338,6 +448,14 @@ class ReceiptHandlers {
     return this.receiptService.record(userId, receipt, { timezone, familyId });
   }
 
+  // Список записанного чека + «дата не распознана — записал на сегодня» (если так) + достижения и подколка
+  async recordedText(ctx, userId, lang, receiptId, receipt, timezone) {
+    const view = await this.buildReceiptView(userId, lang, receiptId, 0);
+    let text = view.text;
+    if (receiptDate(receipt, timezone, new Date(), MAX_RECORD_AGE_DAYS).unknown) text += `\n\n${this.t(lang, 'receipt_date_unknown_recorded')}`;
+    return { text: await this.withNotes(ctx, userId, lang, receiptId, text), keyboard: view.keyboard };
+  }
+
   // ---------- Черновик неуверенно распознанного чека ----------
 
   // Советы по съёмке; у сжатого Telegram-фото с мелким чеком — ещё «пришли файлом»
@@ -346,25 +464,29 @@ class ReceiptHandlers {
     return lowResolution ? `${tips}\n${this.t(lang, 'receipt_small_photo_tip')}` : tips;
   }
 
-  // Черновик: сверка суммы строк с итогом чека, строки страницами по 20 (номер → экран строки), «➕ Добавить строку»,
-  // «📅 Дата», «✅ Записать как есть» (после правок — «✅ Записать»; без строк кнопки нет), «🔄 Повернуть» (только пока
-  // черновик не правили: новое распознавание стёрло бы правки), «❌ Отмена»
-  async buildDraftView(userId, lang, receipt, { canRotate = false, lowResolution = false, page = 0 } = {}) {
+  // Черновик: сверка суммы строк с итогом чека, строки страницами по 20 (номер → экран строки по id строки),
+  // «➕ Добавить строку», «📅 Дата», «✅ Записать как есть» (после правок — «✅ Записать»; без строк кнопки нет),
+  // «🔄 Повернуть» (только пока черновик не правили: новое распознавание стёрло бы правки), «❌ Отмена».
+  // В заголовке — день, на который запишутся траты; нет даты или она отброшена — «дата не распознана, запишу на сегодня»
+  async buildDraftView(userId, lang, draftReceipt, { canRotate = false, lowResolution = false, page = 0, timezone = null } = {}) {
+    const receipt = withLineIds(draftReceipt);
     const categories = await this.receiptService.categoriesById(userId);
     const check = sumCheck(receipt);
+    const when = receiptDate(receipt, timezone, new Date(), MAX_RECORD_AGE_DAYS);
     const title = receipt.merchant ? this.formatter.escapeMarkdown(receipt.merchant) : this.t(lang, 'receipt_title_default');
     const parts = [`🧾 ${title}`];
-    if (receipt.date) parts.push(this.formatter.formatLocalDate(receipt.date) + (receipt.time ? ` ${receipt.time}` : ''));
+    if (!when.unknown) parts.push(this.formatter.formatLocalDate(when.date) + (when.time ? ` ${when.time}` : ''));
     parts.push(this.t(lang, 'receipt_items_count', { count: receipt.items.length }), `*${this.formatter.formatAmount(check.itemsTotal, receipt.currency)}*`);
     const lines = [parts.join(' · ')];
+    if (when.unknown) lines.push(this.t(lang, 'receipt_date_unknown_draft'));
     if (!receipt.edited) {
+      if (receipt.checks && receipt.checks.suspicious) lines.push(this.t(lang, 'receipt_suspicious'));
       lines.push(this.t(lang, 'receipt_low_confidence', {
         total: receipt.total !== null ? this.formatter.formatAmount(receipt.total, receipt.currency) : '—'
       }), this.photoTips(lang, lowResolution));
     }
     if (receipt.items.length) lines.push(this.draftSumLine(lang, receipt, check));
     lines.push('');
-
     const keyboard = [];
     if (!receipt.items.length) {
       lines.push(this.t(lang, 'receipt_draft_empty'));
@@ -381,7 +503,7 @@ class ReceiptHandlers {
       });
       lines.push('', this.t(lang, 'receipt_draft_tap_line'));
       for (let i = 0; i < slice.length; i += 5) {
-        keyboard.push(slice.slice(i, i + 5).map((item, j) => ({ text: String(start + i + j + 1), callback_data: `rdl|${start + i + j}` })));
+        keyboard.push(slice.slice(i, i + 5).map((item, j) => ({ text: String(start + i + j + 1), callback_data: `rdl|i${item.id}` })));
       }
       if (pages > 1) {
         keyboard.push([
@@ -433,6 +555,12 @@ class ReceiptHandlers {
       await ctx.answerCbQuery(this.t(lang, 'receipt_draft_empty'), { show_alert: true }).catch(() => {});
       return;
     }
+    // Черновик уже засчитан в лимит (attemptId — запись его заменит); черновик без попытки (сохранён до этого) —
+    // новый чек в лимите: сверх лимита не записывается
+    if (record && !taken.receipt.attemptId && await this.limitReached(ctx, lang, userId, taken.timezone)) {
+      await this.receiptService.releaseDraft(userId, messageId);
+      return;
+    }
     await ctx.answerCbQuery().catch(() => {});
     if (!record) {
       await this.receiptService.deleteDraft(userId, messageId);
@@ -449,9 +577,8 @@ class ReceiptHandlers {
     }
     await this.receiptService.deleteDraft(userId, messageId);
     this.frames.delete(key);
-    const view = await this.buildReceiptView(userId, lang, receiptId, 0);
-    const text = await this.withNotes(ctx, userId, lang, receiptId, view.text);
-    await respond(ctx, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: view.keyboard } });
+    const view = await this.recordedText(ctx, userId, lang, receiptId, taken.receipt, taken.timezone);
+    await respond(ctx, view.text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: view.keyboard } });
     await this.sendBudgetWarnings(ctx, userId, lang, receiptId);
   }
 
@@ -479,7 +606,7 @@ class ReceiptHandlers {
 
   draftView(userId, lang, draft, page) {
     return this.buildDraftView(userId, lang, draft.receipt, {
-      canRotate: !!draft.frame, lowResolution: !!(draft.frame && draft.frame.lowResolution), page
+      canRotate: !!draft.frame, lowResolution: !!(draft.frame && draft.frame.lowResolution), page, timezone: draft.timezone
     });
   }
 
@@ -504,16 +631,36 @@ class ReceiptHandlers {
     await this.renderDraft(ctx, userId, lang, draft, page);
   }
 
-  // rdl|<строка> — экран строки: название, сумма, количество × цена (если известны), категория
-  async showDraftLine(ctx, index) {
+  // Кнопка строки в старом формате (номер строки, без id — до перехода на id): черновик мог измениться, номер не
+  // доверяем — alert и черновик заново с новыми кнопками
+  async staleLineButton(ctx) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    const draft = await this.loadDraft(ctx, lang);
+    if (!draft) return;
+    await ctx.answerCbQuery(this.t(lang, 'receipt_draft_changed'), { show_alert: true }).catch(() => {});
+    await this.renderDraft(ctx, userId, lang, draft, 0);
+  }
+
+  // Номер строки (0…) по id; строки нет (убрана, старая кнопка) — черновик заново и -1
+  async draftLine(ctx, userId, lang, draft, lineId) {
+    const index = lineIndex(draft.receipt, lineId);
+    if (index < 0) await this.renderDraft(ctx, userId, lang, draft, 0);
+    return index;
+  }
+
+  // rdl|i<id строки> — экран строки: название, сумма, количество × цена (если известны), категория
+  async showDraftLine(ctx, lineId) {
+    if (lineId === null) return this.staleLineButton(ctx);
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
     const draft = await this.loadDraft(ctx, lang);
     if (!draft) return;
     await ctx.answerCbQuery().catch(() => {});
     const { receipt } = draft;
+    const index = await this.draftLine(ctx, userId, lang, draft, lineId);
+    if (index < 0) return;
     const item = receipt.items[index];
-    if (!item) return this.renderDraft(ctx, userId, lang, draft, 0);
     const { label, categoryName, icon } = this.lineLabel(item, await this.receiptService.categoriesById(userId), lang);
     let amountLine = `💰 *${this.formatter.formatAmount(item.amount, receipt.currency)}*`;
     if (item.price !== null && item.price !== undefined && Number(item.quantity) > 0) {
@@ -530,31 +677,33 @@ class ReceiptHandlers {
       reply_markup: {
         inline_keyboard: [
           [
-            { text: this.t(lang, 'button_edit_record'), callback_data: `rde|${index}` },
-            { text: this.t(lang, 'button_change_category'), callback_data: `rdc|${index}` }
+            { text: this.t(lang, 'button_edit_record'), callback_data: `rde|i${lineId}` },
+            { text: this.t(lang, 'button_change_category'), callback_data: `rdc|i${lineId}` }
           ],
-          [{ text: this.t(lang, 'button_receipt_remove_line'), callback_data: `rdx|${index}` }],
+          [{ text: this.t(lang, 'button_receipt_remove_line'), callback_data: `rdx|i${lineId}` }],
           [{ text: this.t(lang, 'button_receipt_back_to_draft'), callback_data: `rdp|${Math.floor(index / PAGE_SIZE)}` }]
         ]
       }
     });
   }
 
-  // rde|<строка> — новая сумма и/или название следующим сообщением (разбор и лимиты — как у ✏️ записи)
-  async startDraftLineEdit(ctx, index) {
+  // rde|i<id строки> — новая сумма и/или название следующим сообщением (разбор и лимиты — как у ✏️ записи)
+  async startDraftLineEdit(ctx, lineId) {
+    if (lineId === null) return this.staleLineButton(ctx);
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
     const draft = await this.loadDraft(ctx, lang);
     if (!draft) return;
     await ctx.answerCbQuery().catch(() => {});
+    const index = await this.draftLine(ctx, userId, lang, draft, lineId);
+    if (index < 0) return;
     const item = draft.receipt.items[index];
-    if (!item) return this.renderDraft(ctx, userId, lang, draft, 0);
     const { label } = this.lineLabel(item, await this.receiptService.categoriesById(userId), lang);
-    this.stateService.setUserState(userId, `rd_in:${ctx.callbackQuery.message.message_id}:e:${index}`);
+    this.stateService.setUserState(userId, `rd_in:${ctx.callbackQuery.message.message_id}:e:${lineId}`);
     const current = `${this.formatter.escapeMarkdown(this.formatter.shorten(label, NAME_IN_LIST))} — ${this.formatter.formatAmount(item.amount, draft.receipt.currency)}`;
     await respond(ctx, this.t(lang, 'receipt_line_edit_prompt', { n: index + 1, current }), {
       parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: [[{ text: this.t(lang, 'button_back'), callback_data: `rdl|${index}` }]] }
+      reply_markup: { inline_keyboard: [[{ text: this.t(lang, 'button_back'), callback_data: `rdl|i${lineId}` }]] }
     });
   }
 
@@ -577,28 +726,41 @@ class ReceiptHandlers {
     });
   }
 
-  // rdc|<строка> — категории пользователя для строки
-  async chooseDraftLineCategory(ctx, index) {
+  // rdc|i<id строки> — категории пользователя для строки
+  async chooseDraftLineCategory(ctx, lineId) {
+    if (lineId === null) return this.staleLineButton(ctx);
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
     const draft = await this.loadDraft(ctx, lang);
     if (!draft) return;
     await ctx.answerCbQuery().catch(() => {});
-    if (!draft.receipt.items[index]) return this.renderDraft(ctx, userId, lang, draft, 0);
+    const index = await this.draftLine(ctx, userId, lang, draft, lineId);
+    if (index < 0) return;
     const categories = await this.expenseService.getCategories(userId);
     const keyboard = [];
     for (let i = 0; i < categories.length; i += 2) {
       keyboard.push(categories.slice(i, i + 2).map(category => ({
         text: `${category.icon} ${this.formatter.translateCategoryName(category.name, this.localizationService, lang)}`,
-        callback_data: `rds|${index}|${category.id}`
+        callback_data: `rds|i${lineId}|${category.id}`
       })));
     }
-    keyboard.push([{ text: this.t(lang, 'button_back'), callback_data: `rdl|${index}` }]);
+    keyboard.push([{ text: this.t(lang, 'button_back'), callback_data: `rdl|i${lineId}` }]);
     await respond(ctx, this.t(lang, 'receipt_line_category', { n: index + 1 }), { reply_markup: { inline_keyboard: keyboard } });
   }
 
-  // rds|<строка>|<categoryId>
-  async setDraftLineCategory(ctx, index, categoryId) {
+  // Правка строки по id: change(receipt) из draftEdit; страница — та, где строка была до правки
+  async changeDraftLine(ctx, lineId, change) {
+    let index = -1;
+    const draft = await this.receiptService.updateDraft(ctx.from.id, ctx.callbackQuery.message?.message_id, (receipt) => {
+      index = lineIndex(receipt, lineId);
+      return change(receipt);
+    });
+    return { draft, page: index < 0 ? 0 : Math.floor(index / PAGE_SIZE) };
+  }
+
+  // rds|i<id строки>|<categoryId>
+  async setDraftLineCategory(ctx, lineId, categoryId) {
+    if (lineId === null) return this.staleLineButton(ctx);
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
     const category = (await this.expenseService.getCategories(userId)).find(c => c.id === categoryId);
@@ -606,26 +768,26 @@ class ReceiptHandlers {
       await ctx.answerCbQuery(this.t(lang, 'callback_data_not_found')).catch(() => {});
       return;
     }
-    const draft = await this.usableDraft(ctx, lang, await this.receiptService.updateDraft(
-      userId, ctx.callbackQuery.message?.message_id, (receipt) => setLineCategory(receipt, index, categoryId)
-    ));
+    const changed = await this.changeDraftLine(ctx, lineId, (receipt) => setLineCategory(receipt, lineId, categoryId));
+    const draft = await this.usableDraft(ctx, lang, changed.draft);
     if (!draft) return;
     await ctx.answerCbQuery(draft.status === 'ok' ? this.t(lang, 'expense_category_changed', {
       category: this.formatter.translateCategoryName(category.name, this.localizationService, lang)
     }) : undefined).catch(() => {});
-    await this.renderDraft(ctx, userId, lang, draft, Math.floor(index / PAGE_SIZE));
+    await this.renderDraft(ctx, userId, lang, draft, changed.page);
   }
 
-  // rdx|<строка> — убрать строку (последнюю тоже: пустой черновик просто нельзя записать)
-  async removeDraftLine(ctx, index) {
+  // rdx|i<id строки> — убрать строку (последнюю тоже: пустой черновик просто нельзя записать). Повторное нажатие
+  // (строки уже нет) ничего не убирает
+  async removeDraftLine(ctx, lineId) {
+    if (lineId === null) return this.staleLineButton(ctx);
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
-    const draft = await this.usableDraft(ctx, lang, await this.receiptService.updateDraft(
-      userId, ctx.callbackQuery.message?.message_id, (receipt) => removeLine(receipt, index)
-    ));
+    const changed = await this.changeDraftLine(ctx, lineId, (receipt) => removeLine(receipt, lineId));
+    const draft = await this.usableDraft(ctx, lang, changed.draft);
     if (!draft) return;
     await ctx.answerCbQuery(draft.status === 'ok' ? this.t(lang, 'receipt_line_removed') : undefined).catch(() => {});
-    await this.renderDraft(ctx, userId, lang, draft, Math.floor(index / PAGE_SIZE));
+    await this.renderDraft(ctx, userId, lang, draft, changed.page);
   }
 
   // rdt — дата покупки: тот же выбор дня, что у записи
@@ -684,7 +846,7 @@ class ReceiptHandlers {
     const userId = ctx.from.id;
     const [, messagePart, op, indexPart] = state.split(':');
     const messageId = Number(messagePart);
-    const index = Number(indexPart);
+    const lineId = Number(indexPart); // id строки (rd_in:<сообщение>:e:<id>)
     let change;
     if (op === 'd') {
       const timezone = await this.userService.getUserTimezone(userId);
@@ -696,7 +858,7 @@ class ReceiptHandlers {
       const parsed = this.validator.parseEditExpense(text, limits.MAX_DESCRIPTION_LENGTH);
       if (!parsed.isValid) return ctx.reply(this.expenseHandlers.editErrorText(lang, parsed.error, limits.MAX_DESCRIPTION_LENGTH));
       if (op === 'e') {
-        change = (receipt) => editLine(receipt, index, { amount: parsed.amount, name: parsed.description });
+        change = (receipt) => editLine(receipt, lineId, { amount: parsed.amount, name: parsed.description });
       } else {
         if (parsed.amount === undefined) return ctx.reply(this.t(lang, 'receipt_line_need_amount'), { parse_mode: 'Markdown' });
         const categories = await this.expenseService.getCategories(userId);
@@ -711,7 +873,8 @@ class ReceiptHandlers {
     if (draft.status === 'busy') return ctx.reply(this.t(lang, 'receipt_draft_busy'));
     if (draft.status === 'unchanged' && op === 'a') await ctx.reply(this.t(lang, 'receipt_line_limit', { max: MAX_ITEMS }));
     const items = draft.receipt.items.length;
-    const page = op === 'e' ? Math.floor(index / PAGE_SIZE) : op === 'a' ? Math.max(0, Math.ceil(items / PAGE_SIZE) - 1) : 0;
+    const lineAt = lineIndex(draft.receipt, lineId);
+    const page = op === 'e' ? Math.max(0, Math.floor(lineAt / PAGE_SIZE)) : op === 'a' ? Math.max(0, Math.ceil(items / PAGE_SIZE) - 1) : 0;
     await this.resendDraft(ctx, userId, lang, messageId, draft, page);
   }
 

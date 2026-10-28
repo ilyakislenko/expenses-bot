@@ -50,7 +50,8 @@ function finalize(result, defaultCurrency) {
   return {
     source: result.source,
     operations,
-    skipped: { failed: result.skipped.failed, invalid: result.skipped.invalid, currency: unsupportedCurrency }
+    skipped: { failed: result.skipped.failed, invalid: result.skipped.invalid, currency: unsupportedCurrency },
+    dateOrder: result.dateOrder || null
   };
 }
 

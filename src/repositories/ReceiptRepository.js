@@ -1,21 +1,34 @@
 const BaseRepository = require('./BaseRepository');
 const { moveToDate } = require('../utils/recordDate');
 
+const MAX_QUANTITY = 100000; // expenses.quantity DECIMAL(12,3); больше — не количество
+const MAX_UNIT_PRICE = 99999999.99; // expenses.unit_price DECIMAL(12,2) с запасом, как предел суммы
+
 // Распознанные чеки: партия трат (expenses.receipt_id) для списка, правки и отмены, и счётчик месячного лимита.
 class ReceiptRepository extends BaseRepository {
-  // Чеки, распознанные с начала локального месяца (monthStart 'YYYY-MM-01'), включая отменённые
+  // Распознавания с начала локального месяца (monthStart 'YYYY-MM-01'): чеки (включая отменённые) и попытки без записи
+  // (показанный черновик, «не получилось распознать» — receipt_attempts)
   async countSince(userId, monthStart, timezone) {
-    const result = await this.query(
-      'SELECT COUNT(*)::int AS count FROM receipts WHERE user_id = $1 AND created_at >= ($2::date::timestamp AT TIME ZONE $3)',
-      [userId, monthStart, timezone]
-    );
-    return result.rows[0].count;
+    const result = await this.query(`
+      SELECT
+        (SELECT COUNT(*) FROM receipts WHERE user_id = $1 AND created_at >= ($2::date::timestamp AT TIME ZONE $3))
+        + (SELECT COUNT(*) FROM receipt_attempts WHERE user_id = $1 AND created_at >= ($2::date::timestamp AT TIME ZONE $3))
+        AS count`, [userId, monthStart, timezone]);
+    return Number(result.rows[0].count);
+  }
+
+  // Попытка распознавания без записи (outcome: 'draft' | 'unreadable'). Возвращает id (черновик хранит его, чтобы
+  // при записи заменить попытку чеком)
+  async addAttempt(userId, outcome) {
+    const result = await this.query('INSERT INTO receipt_attempts (user_id, outcome) VALUES ($1, $2) RETURNING id', [userId, outcome]);
+    return result.rows[0].id;
   }
 
   // Одна транзакция: чек и по трате на каждую позицию. localAt — локальное время траты ('YYYY-MM-DD HH:MM:SS')
   // или null (сейчас). items: [{ amount, description, categoryId, quantity, unitPrice }] — количество и цена
-  // за единицу как в чеке (NULL — не распознаны), по ним считается личная инфляция
-  async create(userId, { merchant, date, time, currency, total, itemsTotal, localAt, timezone, familyId, items }) {
+  // за единицу как в чеке (NULL — не распознаны или вне пределов колонок), по ним считается личная инфляция.
+  // attemptId — попытка черновика, которую заменяет этот чек (в лимите считается один раз)
+  async create(userId, { merchant, date, time, currency, total, itemsTotal, localAt, timezone, familyId, items, attemptId = null }) {
     return this.transaction(async (client) => {
       const created = await client.query(`
         INSERT INTO receipts (user_id, merchant, purchased_date, purchased_time, currency, printed_total, items_total, item_count)
@@ -32,8 +45,9 @@ class ReceiptRepository extends BaseRepository {
         ORDER BY t.position
       `, [userId, receiptId, currency, familyId, localAt, timezone,
         items.map(item => item.amount), items.map(item => item.description || null), items.map(item => item.categoryId),
-        items.map(item => (Number(item.quantity) > 0 ? item.quantity : null)),
-        items.map(item => (Number(item.unitPrice) > 0 ? item.unitPrice : null))]);
+        items.map(item => (Number(item.quantity) > 0 && Number(item.quantity) <= MAX_QUANTITY ? Math.round(Number(item.quantity) * 1000) / 1000 : null)),
+        items.map(item => (Number(item.unitPrice) > 0 && Number(item.unitPrice) <= MAX_UNIT_PRICE ? item.unitPrice : null))]);
+      if (attemptId) await client.query('DELETE FROM receipt_attempts WHERE id = $1 AND user_id = $2', [attemptId, userId]);
       return receiptId;
     });
   }
@@ -194,15 +208,26 @@ class ReceiptRepository extends BaseRepository {
     await this.query('DELETE FROM receipt_drafts WHERE user_id = $1 AND message_id = $2', [userId, messageId]);
   }
 
-  // Кнопка «повернуть»: забирает кадр (черновик сообщения тоже уходит — его заменит новое распознавание). null — нет.
-  // Исправленный вручную черновик не поворачивается: правки пропали бы
-  async takeFrame(userId, messageId) {
+  // Кнопка «повернуть»: черновик отмечается «поворачивается» (taken_at) и остаётся в БД, пока новое распознавание не
+  // закончится — если оно не лучше, возвращается прежний. { frame, receipt, timezone } или null — кадра нет, он устарел,
+  // уже поворачивается/записывается. Исправленный вручную черновик не поворачивается: правки пропали бы
+  async takeFrame(userId, messageId, staleSeconds) {
     const result = await this.query(`
-      DELETE FROM receipt_drafts
-      WHERE user_id = $1 AND message_id = $2 AND frame IS NOT NULL AND expires_at > NOW() AND taken_at IS NULL
+      UPDATE receipt_drafts SET taken_at = NOW()
+      WHERE user_id = $1 AND message_id = $2 AND frame IS NOT NULL AND expires_at > NOW()
+        AND (taken_at IS NULL OR taken_at < NOW() - make_interval(secs => $3))
         AND (receipt IS NULL OR NOT COALESCE((receipt->>'edited')::boolean, false))
-      RETURNING frame`, [userId, messageId]);
-    return result.rows[0] ? result.rows[0].frame : null;
+      RETURNING frame, receipt, timezone`, [userId, messageId, staleSeconds]);
+    return result.rows[0] || null;
+  }
+
+  // После перезапуска (поворот прервался): черновик и кадр сообщения снова доступны. null — строки нет
+  async releaseFrame(userId, messageId) {
+    const result = await this.query(`
+      UPDATE receipt_drafts SET taken_at = NULL
+      WHERE user_id = $1 AND message_id = $2 AND expires_at > NOW()
+      RETURNING frame, receipt, timezone`, [userId, messageId]);
+    return result.rows[0] || null;
   }
 }
 

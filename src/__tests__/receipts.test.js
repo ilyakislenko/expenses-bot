@@ -9,6 +9,7 @@ const ReceiptService = require('../services/ReceiptService');
 const ReceiptHandlers = require('../handlers/ReceiptHandlers');
 const LocalizationService = require('../services/LocalizationService');
 const { SUPPORTED_CURRENCIES } = require('../config/currencies');
+const { withLineIds } = require('../services/receipt/draftEdit');
 
 const categories = [
   { id: 1, names: ['Еда'] },
@@ -272,7 +273,9 @@ describe('providers', () => {
   it('the prompt lists categories, currency and today', () => {
     const prompt = buildPrompt({ categories: ['Еда', 'Другое'], fallbackCategory: 'Другое', defaultCurrency: 'RUB', today: '2026-10-27' });
     expect(prompt).toContain('"Еда", "Другое"');
-    expect(prompt).toContain('Today is 2026-10-27');
+    expect(prompt).toContain('The current year is 2026');
+    // Сегодняшняя дата модели не даётся — иначе она подставляет её вместо непрочитанной
+    expect(prompt).not.toContain('2026-10-27;');
   });
 });
 
@@ -597,14 +600,18 @@ describe('confidence gate and prompt', () => {
   });
 
   it('is low when items differ from the total by more than 3% or many lines don\'t multiply out', () => {
-    expect(check({ is_receipt: true, total: 100, items: [{ name: 'a', amount: 96 }] }).lowConfidence).toBe(true);
-    expect(check({ is_receipt: true, total: 100, items: [{ name: 'a', amount: 98 }] }).lowConfidence).toBe(false);
-    const garbled = check({ is_receipt: true, total: 300, items: [
+    expect(check({ is_receipt: true, merchant: 'Ярче', total: 100, items: [{ name: 'a', amount: 96 }] }).lowConfidence).toBe(true);
+    expect(check({ is_receipt: true, merchant: 'Ярче', total: 100, items: [{ name: 'a', amount: 98 }] }).lowConfidence).toBe(false);
+    const garbled = check({ is_receipt: true, merchant: 'Ярче', total: 300, items: [
       { name: 'a', quantity: 1, price: 50, amount: 100 }, { name: 'b', quantity: 2, price: 10, amount: 100 },
       { name: 'c', quantity: 1, price: 100, amount: 100 }
     ] });
     expect(garbled).toMatchObject({ lowConfidence: true, checks: { badLines: 2, lines: 3 } });
-    expect(check({ is_receipt: true, items: [{ name: 'a', quantity: 0.5, price: 10, amount: 5.4 }] }).lowConfidence).toBe(false);
+    expect(check({ is_receipt: true, merchant: 'Ярче', total: 5.4, items: [{ name: 'a', quantity: 0.5, price: 10, amount: 5.4 }] }).lowConfidence).toBe(false);
+    // Итог не прочитан или одна-две строки без продавца — не записываем сами
+    expect(check({ is_receipt: true, merchant: 'Ярче', items: [{ name: 'a', amount: 5 }, { name: 'b', amount: 6 }, { name: 'c', amount: 7 }] }))
+      .toMatchObject({ lowConfidence: true, checks: { noTotal: true } });
+    expect(check({ is_receipt: true, total: 98, items: [{ name: 'a', amount: 98 }] })).toMatchObject({ lowConfidence: true, checks: { sparse: true } });
   });
 
   it('the exported prompt template is filled completely and explains the Russian line format', () => {
@@ -621,10 +628,12 @@ describe('confidence gate and prompt', () => {
 // Хранилище черновиков как в receipt_drafts: живёт отдельно от обработчика (переживает «перезапуск» — новый ReceiptHandlers)
 function memoryDraftStore() {
   const rows = new Map();
+  const attempts = []; // receipt_attempts: показанные черновики и «не разобрать»
   const key = (userId, messageId) => `${userId}:${messageId}`;
   const copy = (value) => (value == null ? null : JSON.parse(JSON.stringify(value)));
   return {
     rows,
+    attempts,
     saveDraft: jest.fn(async (userId, messageId, { receipt = null, timezone = null, frame = null }) => {
       rows.set(key(userId, messageId), { receipt: copy(receipt), timezone, frame: copy(frame), taken: false });
     }),
@@ -644,15 +653,15 @@ function memoryDraftStore() {
       const row = rows.get(key(userId, messageId));
       if (!row || !row.receipt) return { status: 'missing' };
       if (row.taken) return { status: 'busy' };
-      return { status: 'ok', receipt: copy(row.receipt), frame: copy(row.frame), timezone: row.timezone };
+      return { status: 'ok', receipt: withLineIds(copy(row.receipt)), frame: copy(row.frame), timezone: row.timezone };
     }),
-    // Как ReceiptRepository.updateDraft: записывающийся черновик не правится, mutate → новый черновик или null
+    // Как ReceiptService.updateDraft: записывающийся черновик не правится, mutate → новый черновик или null; у строк есть id
     updateDraft: jest.fn(async (userId, messageId, mutate) => {
       const row = rows.get(key(userId, messageId));
       if (!row || !row.receipt) return { status: 'missing' };
       if (row.taken) return { status: 'busy' };
-      const next = mutate(copy(row.receipt));
-      if (!next) return { status: 'unchanged', receipt: copy(row.receipt), frame: copy(row.frame), timezone: row.timezone };
+      const next = mutate(withLineIds(copy(row.receipt)));
+      if (!next) return { status: 'unchanged', receipt: withLineIds(copy(row.receipt)), frame: copy(row.frame), timezone: row.timezone };
       row.receipt = copy(next);
       return { status: 'ok', receipt: copy(next), frame: copy(row.frame), timezone: row.timezone };
     }),
@@ -663,11 +672,22 @@ function memoryDraftStore() {
       rows.set(key(userId, to), row);
       return true;
     }),
+    // Как ReceiptRepository.takeFrame: черновик остаётся, отмечен «поворачивается»
     takeFrame: jest.fn(async (userId, messageId) => {
       const row = rows.get(key(userId, messageId));
       if (!row || !row.frame || row.taken || (row.receipt && row.receipt.edited)) return null;
-      rows.delete(key(userId, messageId));
-      return copy(row.frame);
+      row.taken = true;
+      return { frame: copy(row.frame), receipt: copy(row.receipt), timezone: row.timezone };
+    }),
+    releaseFrame: jest.fn(async (userId, messageId) => {
+      const row = rows.get(key(userId, messageId));
+      if (!row) return null;
+      row.taken = false;
+      return { frame: copy(row.frame), receipt: copy(row.receipt), timezone: row.timezone };
+    }),
+    addAttempt: jest.fn(async (userId, outcome) => {
+      attempts.push({ userId, outcome });
+      return attempts.length;
     })
   };
 }
@@ -783,7 +803,10 @@ describe('ReceiptHandlers background recognition', () => {
     const [, , , text, extra] = ctx.telegram.editMessageText.mock.calls.pop();
     expect(text).toContain(t('receipt_low_confidence', { total: '100 ₽'.replace(' ', '\u00a0') }));
     expect(text).toContain(t('receipt_photo_tips'));
-    expect(extra.reply_markup.inline_keyboard.flat().map(b => b.callback_data)).toEqual(['rdl|0', 'rda', 'rdt', 'rvd|1', 'rvr', 'rvd|0']);
+    expect(extra.reply_markup.inline_keyboard.flat().map(b => b.callback_data)).toEqual(['rdl|i1', 'rda', 'rdt', 'rvd|1', 'rvr', 'rvd|0']);
+    // Показанный черновик засчитан в месячный лимит; при записи он заменит свою попытку (attemptId)
+    expect(receiptService.attempts).toEqual([{ userId: 7, outcome: 'draft' }]);
+    expect(receiptService.rows.get('7:101').receipt.attemptId).toBe(1);
 
     const callbackCtx = { ...ctx, callbackQuery: { message: { message_id: 101 } }, answerCbQuery: jest.fn(async () => true), editMessageText: jest.fn(async () => true) };
     await handlers.resolveDraft(callbackCtx, true);
@@ -892,15 +915,21 @@ describe('ReceiptHandlers background recognition', () => {
 
     // Экран строки: название, сумма, количество × цена, категория
     const line = buttonCtx(ctx, 101);
-    await handlers.showDraftLine(line, 1);
+    await handlers.showDraftLine(line, 2);
     const [lineText, lineExtra] = line.editMessageText.mock.calls[0];
     expect(lineText).toContain('Молоко');
     expect(lineText).toContain(t('receipt_line_quantity', { quantity: '2', price: '45\u00a0₽' }));
-    expect(callbacks(lineExtra.reply_markup.inline_keyboard)).toEqual(['rde|1', 'rdc|1', 'rdx|1', 'rdp|0']);
+    expect(callbacks(lineExtra.reply_markup.inline_keyboard)).toEqual(['rde|i2', 'rdc|i2', 'rdx|i2', 'rdp|0']);
+
+    // Кнопка старого формата (номер строки без id) ничего не правит: «черновик обновился» и черновик заново
+    const legacy = buttonCtx(ctx, 101);
+    await handlers.removeDraftLine(legacy, null);
+    expect(legacy.answerCbQuery).toHaveBeenCalledWith(t('receipt_draft_changed'), { show_alert: true });
+    expect(row()[1].receipt.items).toHaveLength(3);
 
     // ✏️ Изменить → ввод текстом → черновик заново под вводом, у старого сообщения кнопки убраны
-    await handlers.startDraftLineEdit(buttonCtx(ctx, 101), 1);
-    expect(stateService.getUserState(7)).toBe('rd_in:101:e:1');
+    await handlers.startDraftLineEdit(buttonCtx(ctx, 101), 2);
+    expect(stateService.getUserState(7)).toBe('rd_in:101:e:2');
     await handlers.handleDraftInput(ctx, '100 молоко 2,5%', 'ru', stateService.getUserState(7));
     expect(stateService.getUserState(7)).toBeUndefined();
     expect(row()[0]).toBe('7:102');
@@ -913,10 +942,12 @@ describe('ReceiptHandlers background recognition', () => {
     expect(resentExtra.reply_markup.inline_keyboard.flat().find(b => b.callback_data === 'rvd|1').text).toBe(t('button_receipt_record_edited'));
 
     // 🏷 Категория и 🗑 Убрать строку — в том же сообщении, черновик перерисован со сверкой итога
-    await handlers.setDraftLineCategory(buttonCtx(ctx, 102), 1, 2);
+    await handlers.setDraftLineCategory(buttonCtx(ctx, 102), 2, 2);
     expect(row()[1].receipt.items[1].categoryId).toBe(2);
     const remove = buttonCtx(ctx, 102);
-    await handlers.removeDraftLine(remove, 2);
+    await handlers.removeDraftLine(remove, 3);
+    // Двойное нажатие той же кнопки (тот же id строки) больше ничего не убирает
+    await handlers.removeDraftLine(buttonCtx(ctx, 102), 3);
     expect(row()[1].receipt.items.map(item => item.name)).toEqual(['Хлеб', 'молоко 2,5%']);
     expect(row()[1].receipt.itemsTotal).toBe(145);
     expect(remove.editMessageText.mock.calls[0][0]).toContain(t('receipt_draft_sum_diff', { items: '145\u00a0₽', total: '200\u00a0₽', diff: '55\u00a0₽' }));
@@ -980,17 +1011,17 @@ describe('ReceiptHandlers background recognition', () => {
     // Записывается: правка кнопкой — alert, ввод текстом — объяснение, черновик не тронут
     receiptService.rows.get('7:201').taken = true;
     const busy = buttonCtx(ctx, 201);
-    await handlers.removeDraftLine(busy, 0);
+    await handlers.removeDraftLine(busy, 1);
     expect(busy.answerCbQuery).toHaveBeenCalledWith(t('receipt_draft_busy'), { show_alert: true });
     expect(receiptService.rows.get('7:201').receipt.items).toHaveLength(1);
-    await handlers.handleDraftInput(ctx, '50', 'ru', 'rd_in:201:e:0');
+    await handlers.handleDraftInput(ctx, '50', 'ru', 'rd_in:201:e:1');
     expect(ctx.reply).toHaveBeenLastCalledWith(t('receipt_draft_busy'));
     expect(receiptService.rows.get('7:201').receipt.items[0].amount).toBe(45);
     receiptService.rows.get('7:201').taken = false;
 
     // Убрали последнюю строку: подсказка, кнопки «Записать» нет, старая кнопка — alert, черновик остаётся
     const empty = buttonCtx(ctx, 201);
-    await handlers.removeDraftLine(empty, 0);
+    await handlers.removeDraftLine(empty, 1);
     const [emptyText, emptyExtra] = empty.editMessageText.mock.calls[0];
     expect(emptyText).toContain(t('receipt_draft_empty'));
     expect(callbacks(emptyExtra.reply_markup.inline_keyboard)).toEqual(['rda', 'rdt', 'rvd|0']);
@@ -1010,7 +1041,7 @@ describe('ReceiptHandlers background recognition', () => {
 
     // Черновик отменён: любая кнопка правки объясняет и убирает кнопки; ввод текстом — «устарел»
     await handlers.resolveDraft(buttonCtx(ctx, 201), false);
-    for (const press of [(c) => handlers.showDraftLine(c, 0), (c) => handlers.showDraft(c, 0), (c) => handlers.setDraftLineCategory(c, 0, 1), (c) => handlers.startDraftLineAdd(c), (c) => handlers.showDraftDatePicker(c)]) {
+    for (const press of [(c) => handlers.showDraftLine(c, 1), (c) => handlers.showDraft(c, 0), (c) => handlers.setDraftLineCategory(c, 1, 1), (c) => handlers.startDraftLineAdd(c), (c) => handlers.showDraftDatePicker(c)]) {
       const stale = buttonCtx(ctx, 201);
       await press(stale);
       expect(stale.answerCbQuery).toHaveBeenCalledWith(t('receipt_draft_outdated'), { show_alert: true });
@@ -1028,7 +1059,7 @@ describe('ReceiptHandlers background recognition', () => {
     const { packDate } = require('../utils/recordDate');
     const items = Array.from({ length: 45 }, (_, i) => ({ name: `Позиция ${i + 1}`, amount: 10, quantity: 1, price: 10, categoryId: 1 }));
     const view = await handlers.buildDraftView(7, 'ru', receipt({ lowConfidence: true, total: 450, items }), { canRotate: true, page: 2 });
-    expect(callbacks(view.keyboard)).toEqual(expect.arrayContaining(['rdl|40', 'rdl|44', 'rdp|1', 'noop']));
+    expect(callbacks(view.keyboard)).toEqual(expect.arrayContaining(['rdl|i41', 'rdl|i45', 'rdp|1', 'noop']));
     expect(view.text).toContain('41. Позиция 41');
     expect(view.text).not.toContain('40. Позиция 40');
 
@@ -1213,7 +1244,7 @@ describe('reconciling items with the printed total', () => {
     const receipt = check({ is_receipt: true, total: 300, items: [line('A', 1, 100, 100), line('B', 1, 150, 150)] });
     expect(receipt.items.map(item => item.amount)).toEqual([100, 150]);
     expect(receipt).toMatchObject({ mismatch: true, lowConfidence: true, checks: { corrected: 0 } });
-    const close = check({ is_receipt: true, total: 251, items: [line('A', 1, 100, 100), line('B', 1, 150, 150)] });
+    const close = check({ is_receipt: true, merchant: 'Ярче', total: 251, items: [line('A', 1, 100, 100), line('B', 1, 150, 150)] });
     expect(close).toMatchObject({ mismatch: true, lowConfidence: false });
     expect(close.items.map(item => item.amount)).toEqual([100, 150]);
   });
@@ -1300,7 +1331,7 @@ describe('small receipt with one or two lines', () => {
   const categoriesList = [{ id: 1, names: ['Еда'] }, { id: 6, names: ['Другое'] }];
   const check = (raw) => normalizeReceipt(raw, { categories: categoriesList, fallbackCategoryId: 6, defaultCurrency: 'RUB', supportedCurrencies: SUPPORTED_CURRENCIES });
   // Ответ qwen2.5vl:3b на далёкое фото чека «Ярче» (13 позиций): одна выдуманная строка на весь итог
-  const invented = { is_receipt: true, merchant: 'Магазин', date: '2026-10-27', time: '18:30', currency: 'RUB', total: 1160.55, items: [{ name: 'Кофейная чашка', quantity: 1, price: 1160.55, amount: 1160.55, category: 'Еда' }] };
+  const invented = { is_receipt: true, merchant: 'Ярче', date: '2026-10-27', time: '18:30', currency: 'RUB', total: 1160.55, items: [{ name: 'Кофейная чашка', quantity: 1, price: 1160.55, amount: 1160.55, category: 'Еда' }] };
 
   it('the invented single line passes every arithmetic check on its own', () => {
     expect(check(invented)).toMatchObject({ lowConfidence: false, mismatch: false });

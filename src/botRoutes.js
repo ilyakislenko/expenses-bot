@@ -237,13 +237,15 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^rvxc\|(\d+)$/, errorHandler((ctx) => receiptHandlers.undo(ctx, parseInt(ctx.match[1], 10))));
   bot.action(/^rvd\|([01])$/, errorHandler((ctx) => receiptHandlers.resolveDraft(ctx, ctx.match[1] === '1'))); // черновик: записать / отмена
   bot.action('rvr', errorHandler((ctx) => receiptHandlers.rotateAndRetry(ctx))); // повернуть кадр на 90° и распознать снова
-  // Правка черновика до записи: страница (rdp), строка (rdl) → ✏️ (rde), 🏷 (rdc → rds), 🗑 (rdx); ➕ строка (rda), 📅 дата (rdt → rdt|день, rdto)
+  // Правка черновика до записи: страница (rdp), строка (rdl) → ✏️ (rde), 🏷 (rdc → rds), 🗑 (rdx); ➕ строка (rda), 📅 дата (rdt → rdt|день, rdto).
+  // Строка — по id (`i<id>`); старые кнопки с номером строки (без `i`) получают lineId = null — «черновик изменился»
+  const lineId = (ctx) => (ctx.match[1] ? parseInt(ctx.match[2], 10) : null);
   bot.action(/^rdp\|(\d+)$/, errorHandler((ctx) => receiptHandlers.showDraft(ctx, parseInt(ctx.match[1], 10))));
-  bot.action(/^rdl\|(\d+)$/, errorHandler((ctx) => receiptHandlers.showDraftLine(ctx, parseInt(ctx.match[1], 10))));
-  bot.action(/^rde\|(\d+)$/, errorHandler((ctx) => receiptHandlers.startDraftLineEdit(ctx, parseInt(ctx.match[1], 10))));
-  bot.action(/^rdc\|(\d+)$/, errorHandler((ctx) => receiptHandlers.chooseDraftLineCategory(ctx, parseInt(ctx.match[1], 10))));
-  bot.action(/^rds\|(\d+)\|(\d+)$/, errorHandler((ctx) => receiptHandlers.setDraftLineCategory(ctx, parseInt(ctx.match[1], 10), parseInt(ctx.match[2], 10))));
-  bot.action(/^rdx\|(\d+)$/, errorHandler((ctx) => receiptHandlers.removeDraftLine(ctx, parseInt(ctx.match[1], 10))));
+  bot.action(/^rdl\|(i?)(\d+)$/, errorHandler((ctx) => receiptHandlers.showDraftLine(ctx, lineId(ctx))));
+  bot.action(/^rde\|(i?)(\d+)$/, errorHandler((ctx) => receiptHandlers.startDraftLineEdit(ctx, lineId(ctx))));
+  bot.action(/^rdc\|(i?)(\d+)$/, errorHandler((ctx) => receiptHandlers.chooseDraftLineCategory(ctx, lineId(ctx))));
+  bot.action(/^rds\|(i?)(\d+)\|(\d+)$/, errorHandler((ctx) => receiptHandlers.setDraftLineCategory(ctx, lineId(ctx), parseInt(ctx.match[3], 10))));
+  bot.action(/^rdx\|(i?)(\d+)$/, errorHandler((ctx) => receiptHandlers.removeDraftLine(ctx, lineId(ctx))));
   bot.action('rda', errorHandler((ctx) => receiptHandlers.startDraftLineAdd(ctx)));
   bot.action('rdt', errorHandler((ctx) => receiptHandlers.showDraftDatePicker(ctx)));
   bot.action(/^rdt\|(\d{8})$/, errorHandler((ctx) => receiptHandlers.setDraftDateFromButton(ctx, ctx.match[1])));

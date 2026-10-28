@@ -889,3 +889,30 @@ COMMENT ON TABLE receipt_drafts IS 'Черновики чеков до подт�
 COMMENT ON COLUMN receipt_drafts.frame IS '{ fileId, mimeType, turn, small, lowResolution, lang, currency } — фото в Telegram и поворот относительно подготовленного';
 COMMENT ON COLUMN receipt_drafts.taken_at IS 'Черновик сейчас записывается (повторное нажатие ждёт); старше 5 минут — считается сбоем и снова доступен';
 CREATE INDEX IF NOT EXISTS idx_receipt_drafts_expires ON receipt_drafts(expires_at);
+
+-- ==== FIX B ====
+-- Попытки распознавания чеков, которые не записали чек сами: показанный черновик и «не получилось распознать».
+-- Месячный лимит чеков = записанные чеки (receipts) + такие попытки; при записи черновика его попытка удаляется
+-- (её заменяет строка receipts), поэтому черновики и «🔄 Повернуть» лимит не обходят.
+CREATE TABLE IF NOT EXISTS receipt_attempts (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    outcome VARCHAR(16) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+COMMENT ON TABLE receipt_attempts IS 'Распознавания чеков без записи (draft — черновик, unreadable — не разобрано); считаются в месячный лимит вместе с receipts';
+CREATE INDEX IF NOT EXISTS idx_receipt_attempts_user_created ON receipt_attempts(user_id, created_at);
+
+-- Фоновые задачи с сообщением-статусом («🔍 Распознаю чек…», «🎙 Распознаю голос…»): после перезапуска бота
+-- оставшиеся строки прошлого запуска (instance другой) превращаются в «прервалось — пришли ещё раз» или в прежний черновик.
+CREATE TABLE IF NOT EXISTS pending_jobs (
+    chat_id BIGINT NOT NULL,
+    message_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind VARCHAR(16) NOT NULL,
+    instance VARCHAR(64) NOT NULL,
+    started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (chat_id, message_id)
+);
+COMMENT ON TABLE pending_jobs IS 'Незаконченные фоновые распознавания (kind: receipt | voice) с сообщением-статусом; instance — запуск бота';
+COMMENT ON COLUMN receipt_drafts.taken_at IS 'Черновик сейчас записывается или поворачивается (кнопка «Повернуть»); старше 5 минут — считается сбоем и снова доступен';

@@ -28,14 +28,16 @@ function assignHashes(operations) {
   return operations;
 }
 
-// Операции, совпавшие с записями не из импорта (та же сумма и валюта в тот же локальный день), помечаются 'manual'.
-// Каждая запись закрывает одну операцию. recorded: [{ kind, day, amount, currency }]
+// Операции, совпавшие с уже записанными (та же сумма и валюта в тот же локальный день), пропускаются: запись не из
+// импорта — 'manual' («уже записаны вручную»), из другого импорта — 'duplicate' («уже импортированы»; например, свой
+// же экспорт CSV, присланный обратно). Каждая запись закрывает одну операцию. recorded: [{ kind, day, amount, currency, import_hash }]
 function markRecorded(operations, recorded) {
   const pool = new Map();
   const keyOf = (kind, day, amount, currency) => `${kind}|${day}|${Number(amount).toFixed(2)}|${currency}`;
   for (const row of recorded) {
     const key = keyOf(row.kind, row.day, row.amount, row.currency);
-    pool.set(key, (pool.get(key) || 0) + 1);
+    if (!pool.has(key)) pool.set(key, []);
+    pool.get(key).push(row.import_hash ? 'duplicate' : 'manual');
   }
   for (const op of operations) {
     if (op.status !== 'new') continue;
@@ -43,15 +45,19 @@ function markRecorded(operations, recorded) {
     const candidates = [[op.amount, op.currency]];
     if (op.altAmount && op.altCurrency) candidates.push([op.altAmount, op.altCurrency]);
     for (const [amount, currency] of candidates) {
-      const key = keyOf(op.kind, day, amount, currency);
-      if (pool.get(key) > 0) {
-        pool.set(key, pool.get(key) - 1);
-        op.status = 'manual';
+      const matches = pool.get(keyOf(op.kind, day, amount, currency));
+      if (matches && matches.length) {
+        op.status = matches.shift();
         break;
       }
     }
   }
   return operations;
+}
+
+// Экспорт бота ставит «'» перед описанием, начинающимся с = + - @ или табуляции (защита от формул) — при импорте снимаем
+function stripFormulaGuard(text) {
+  return typeof text === 'string' ? text.replace(/^'(?=[=+\-@\t])/, '') : text;
 }
 
 function totalsByCurrency(operations) {
@@ -115,11 +121,11 @@ class ImportService {
 
   // ---------- Подготовка превью ----------
 
-  // parsed — результат parseStatement. Помечает дубликаты прошлых импортов и записи, сделанные вручную,
+  // parsed — результат parseStatement. Помечает дубликаты прошлых импортов и уже записанные операции,
   // подбирает категории тратам. Ничего не записывает.
   async prepare(userId, parsed) {
     const timezone = await this.userService.getUserTimezone(userId);
-    const operations = assignHashes(parsed.operations.map(op => ({ ...op })));
+    const operations = assignHashes(parsed.operations.map(op => ({ ...op, description: stripFormulaGuard(op.description) })));
     const existing = await this.importRepository.findExistingHashes(userId, operations.map(op => op.hash));
     for (const op of operations) op.status = existing.has(op.hash) ? 'duplicate' : 'new';
 
@@ -127,10 +133,11 @@ class ImportService {
     if (fresh.length) {
       const days = fresh.map(op => op.date.slice(0, 10)).sort();
       const recorded = await this.importRepository.getRecordedAmounts(userId, timezone, days[0], days[days.length - 1]);
-      markRecorded(fresh, recorded);
+      // Записи, которые уже закрыли операции этого файла по отпечатку, другие операции не закрывают
+      markRecorded(fresh, recorded.filter(row => !row.import_hash || !existing.has(row.import_hash)));
     }
     await this.assignCategories(userId, operations.filter(op => op.kind === 'expense' && op.status === 'new'));
-    return { source: parsed.source, operations, skipped: parsed.skipped, timezone, includeTransfers: null };
+    return { source: parsed.source, operations, skipped: parsed.skipped, timezone, includeTransfers: null, dateOrder: parsed.dateOrder || null };
   }
 
   // Категория траты: (1) последняя категория трат с таким описанием, если доступна пользователю,

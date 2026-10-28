@@ -71,7 +71,7 @@ module.exports = {
     bug_report_suspicious: '⚠️ 許可されていない文字または不審な内容が含まれています',
     
     // セキュリティメッセージ
-    security_rate_limit: '⚠️ *リクエストが多すぎます*\n\n{resetTime}秒後に再試行してください\n制限：1分間に{limit}回',
+    security_rate_limit: "⚠️ *リクエストが多すぎます*\n\n{resetTime}後に再試行してください\n制限：{window}あたり{limit}回",
     security_error: '❌ *セキュリティエラー*\n\n後でもう一度お試しください、または管理者に連絡してください。',
     
     // 管理パネル
@@ -1188,6 +1188,20 @@ module.exports = {
   receipt_line_limit: "レシートにはもう{max}行あるので、これ以上追加できないよ。",
   receipt_rotate_edited: "✏️ この下書きはもう手で直してあるよ — 回転すると修正が消えちゃう。記録するか、取り消して写真を送り直してね。",
   help_edit: "✏️ 間違えた？ 📅 今日、概要、レシートで記録の番号をタップ — 金額、カテゴリ、📅 日付を変えられるよ。レシートの下書きも記録前に直せるよ。",
+  job_interrupted_receipt: "⚠️ ボットの再起動でレシートの読み取りが中断されました。写真をもう一度送ってください。",
+  job_interrupted_voice: "⚠️ ボットの再起動で音声認識が中断されました。ボイスメッセージをもう一度送ってください。",
+  receipt_rotate_kept: "🔄 回転しても良くならなかったので、前の結果を残しました。",
+  receipt_rotate_unavailable: "⚠️ 認識サービスが今使えません — 前の結果を残しました。回転は後で試せます。",
+  receipt_rotate_interrupted: "⚠️ ボットの再起動で回転が中断されました。前の結果に戻しました。",
+  receipt_draft_changed: "🔄 下書きが変わりました — 行をもう一度選んでください。",
+  receipt_date_unknown_draft: "📅 レシートの日付を読み取れませんでした — 今日の日付で記録します。別の日は「📅 日付」ボタンで。",
+  receipt_date_unknown_recorded: "📅 レシートの日付を読み取れませんでした — 今日の日付で記録しました。別の日は「📅 レシートの日付」ボタンで。",
+  receipt_suspicious: "⚠️ レシートにコマンドやリンクのような文字があります — すべての行を確認してください。",
+  receipt_limit_short: "🧾 今月のレシート認識の上限に達しました: {used} / {limit}。",
+  rate_wait_seconds: "{n}秒",
+  rate_wait_minutes: "{n}分",
+  import_date_order_dmy: "📅 日付を日/月として読みました（10/05 = 5月10日）。銀行の表記が逆なら、上の期間を確認してください。",
+  import_date_order_mdy: "📅 日付を月/日として読みました（10/05 = 10月5日）。銀行の表記が逆なら、上の期間を確認してください。",
     command_setup: "ボットを自分向けに設定",
     help_setup: "🧭 /setup — いくつかの質問に答えると、ボットが目標に合わせて調整されます（または ⚙️ 設定 → 🧭 自分向けに設定）",
     button_onboarding_setup: "🧭 自分向けに設定",
@@ -1453,7 +1467,7 @@ module.exports = {
     import_receipt_hint: '🧾 お店のレシートは写真を撮ってここに送るだけでもOKです。各品目を記録します。',
     receipt_busy: '⏳ 前のレシートをまだ読み取っています。少々お待ちください。',
     receipt_queued: '🔍 レシートを読み取っています… 待ち順: {position}。',
-    receipt_recognizing_slow: '🔍 レシートを読み取っています… 1〜2分かかることがあります。',
+    receipt_recognizing_slow: "🔍 レシートを読み取っています… 通常1〜2分、長いと5分ほどかかります。",
     receipt_low_confidence: '⚠️ 数字に自信がありません: 品目が合計（{total}）や単価と合いません。一覧を確認してそのまま記録するか、より鮮明な写真を送ってください。',
     button_receipt_record_draft: '✅ このまま記録',
     receipt_draft_canceled: 'レシートは記録されませんでした。',

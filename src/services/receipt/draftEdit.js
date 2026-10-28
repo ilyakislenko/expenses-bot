@@ -1,9 +1,25 @@
 // Правка черновика неуверенно распознанного чека до записи: чистые функции над нормализованным чеком
-// ({ merchant, date, time, currency, total, itemsTotal, mismatch, lowConfidence, items, checks }). Каждая возвращает
-// новый черновик (сумма строк пересчитана, edited = true) или null — менять нечего (строки нет, предел строк).
-const { MAX_ITEMS, LOW_CONFIDENCE_SUM, SUM_TOLERANCE } = require('./normalize');
+// ({ merchant, date, time, currency, total, itemsTotal, mismatch, lowConfidence, items, checks, nextLineId }). Строки
+// адресуются постоянным id (item.id), а не номером: двойное нажатие «🗑 Убрать строку» убирает одну строку, а кнопка со
+// старого экрана не попадает в строку, сдвинувшуюся на её место. Каждая функция возвращает новый черновик (сумма
+// строк пересчитана, edited = true) или null — менять нечего (строки нет, предел строк).
+const { MAX_ITEMS, MAX_QUANTITY, LOW_CONFIDENCE_SUM, SUM_TOLERANCE } = require('./normalize');
+const { MAX_AMOUNT } = require('../../utils/statement/common');
 
 const round2 = (value) => Math.round(value * 100) / 100;
+
+// Черновик с id у всех строк (черновики, сохранённые до появления id, получают 1…N по порядку)
+function withLineIds(receipt) {
+  if (receipt.items.every(item => Number.isInteger(item.id)) && Number.isInteger(receipt.nextLineId)) return receipt;
+  let nextLineId = Math.max(0, ...receipt.items.map(item => (Number.isInteger(item.id) ? item.id : 0))) + 1;
+  const items = receipt.items.map(item => (Number.isInteger(item.id) ? item : { ...item, id: nextLineId++ }));
+  return { ...receipt, items, nextLineId: Math.max(nextLineId, Number(receipt.nextLineId) || 0) };
+}
+
+// Номер строки (0…) по id или -1
+function lineIndex(receipt, lineId) {
+  return Number.isInteger(lineId) ? receipt.items.findIndex(item => item.id === lineId) : -1;
+}
 
 // Сумма строк и сверка с напечатанным итогом: matches — в пределах тех же 3%, что у проверки уверенности,
 // exact — до копейки; diff — строки минус итог. Итог не распознан — total, diff и matches = null
@@ -21,42 +37,42 @@ function changed(receipt, patch) {
   return { ...next, itemsTotal: check.itemsTotal, mismatch: check.exact === false };
 }
 
-function hasLine(receipt, index) {
-  return Number.isInteger(index) && index >= 0 && index < receipt.items.length;
-}
-
 // Новая сумма и/или название строки (undefined — без изменений). Цена за единицу пересчитывается из суммы:
-// количество из чека остаётся, «Моя инфляция» видит исправленную цену
-function editLine(receipt, index, { amount, name }) {
-  if (!hasLine(receipt, index)) return null;
+// количество из чека остаётся (если оно в разумных пределах), «Моя инфляция» видит исправленную цену
+function editLine(receipt, lineId, { amount, name }) {
+  const index = lineIndex(receipt, lineId);
+  if (index < 0) return null;
   const items = receipt.items.map((item, i) => {
     if (i !== index) return item;
     const next = { ...item };
     if (name !== undefined) next.name = name;
     if (amount !== undefined) {
-      const quantity = Number(item.quantity) > 0 ? Number(item.quantity) : 1;
-      Object.assign(next, { amount: round2(amount), quantity, price: round2(amount / quantity), lineMismatch: false });
+      const quantity = Number(item.quantity) > 0 && Number(item.quantity) <= MAX_QUANTITY ? Number(item.quantity) : 1;
+      const price = round2(amount / quantity);
+      Object.assign(next, { amount: round2(amount), quantity, price: price <= MAX_AMOUNT ? price : null, lineMismatch: false });
     }
     return next;
   });
   return changed(receipt, { items });
 }
 
-function setLineCategory(receipt, index, categoryId) {
-  if (!hasLine(receipt, index)) return null;
-  return changed(receipt, { items: receipt.items.map((item, i) => (i === index ? { ...item, categoryId } : item)) });
+function setLineCategory(receipt, lineId, categoryId) {
+  if (lineIndex(receipt, lineId) < 0) return null;
+  return changed(receipt, { items: receipt.items.map(item => (item.id === lineId ? { ...item, categoryId } : item)) });
 }
 
 // Последнюю строку тоже можно убрать: пустой черновик не записывается (кнопка «Записать» пропадает)
-function removeLine(receipt, index) {
-  if (!hasLine(receipt, index)) return null;
-  return changed(receipt, { items: receipt.items.filter((item, i) => i !== index) });
+function removeLine(receipt, lineId) {
+  if (lineIndex(receipt, lineId) < 0) return null;
+  return changed(receipt, { items: receipt.items.filter(item => item.id !== lineId) });
 }
 
+// Новая строка получает следующий id (id убранных строк не переиспользуются)
 function addLine(receipt, { amount, name, categoryId }) {
   if (receipt.items.length >= MAX_ITEMS) return null;
-  const line = { name: name || '', quantity: 1, price: round2(amount), amount: round2(amount), categoryId, lineMismatch: false };
-  return changed(receipt, { items: [...receipt.items, line] });
+  const base = withLineIds(receipt);
+  const line = { id: base.nextLineId, name: name || '', quantity: 1, price: round2(amount), amount: round2(amount), categoryId, lineMismatch: false };
+  return changed(base, { items: [...base.items, line], nextLineId: base.nextLineId + 1 });
 }
 
 // Дата покупки, выбранная пользователем (записывается, даже если старше 60 дней — до года, см. ReceiptService.record).
@@ -66,4 +82,4 @@ function setDraftDate(receipt, date, now) {
   return changed(receipt, { date, time, dateManual: true });
 }
 
-module.exports = { sumCheck, editLine, setLineCategory, removeLine, addLine, setDraftDate, MAX_ITEMS };
+module.exports = { sumCheck, editLine, setLineCategory, removeLine, addLine, setDraftDate, withLineIds, lineIndex, MAX_ITEMS };
