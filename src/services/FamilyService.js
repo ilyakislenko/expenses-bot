@@ -374,10 +374,11 @@ class FamilyService {
         throw new Error('User is not a member of this family');
       }
 
-      // Траты участника в этой семье становятся его личными
-      await this.familyRepository.removeMemberFromFamily(userFamily.id, memberId);
+      // Траты участника в этой семье становятся его личными. Повторное «Подтвердить» (двойное нажатие) уже никого
+      // не исключает — второго уведомления нет
+      const removed = await this.familyRepository.removeMemberFromFamily(userFamily.id, memberId);
 
-      if (this.notificationService) {
+      if (removed && this.notificationService) {
         await this.notificationService.sendFamilyMemberRemoved(memberId, userFamily.name);
       }
 

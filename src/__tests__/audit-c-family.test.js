@@ -43,8 +43,11 @@ function makeWorld({ users: extraUsers = [] } = {}) {
       if (members.has(userId)) throw uniqueViolation();
       members.set(userId, familyId);
     }),
+    // Как репозиторий: удалённая строка family_user или undefined, если участника уже нет
     removeMemberFromFamily: jest.fn(async (familyId, userId) => {
-      if (members.get(userId) === familyId) members.delete(userId);
+      if (members.get(userId) !== familyId) return undefined;
+      members.delete(userId);
+      return { family_id: familyId, user_id: userId };
     })
   };
 

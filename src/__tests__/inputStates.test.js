@@ -62,6 +62,7 @@ function messagesWith(stateService, extra = {}) {
   return new MessageHandlers({
     userService: { getUserLanguage: jest.fn(async () => 'ru') },
     localizationService,
+    formatter: new Formatter(identityRates),
     stateService,
     familyService: { getUserFamily: jest.fn(async () => ({ id: 31, name: 'Дом' })) },
     expenseHandlers: {
@@ -206,14 +207,16 @@ describe('after a restart the next text is handled as the input the user was in'
     expect(messages.expenseHandlers.handleExpenseInput).not.toHaveBeenCalled();
   });
 
-  test('expired input: «ввод устарел» instead of a wrong record, then normal input again', async () => {
+  test('expired input: no wrong record, the text waits behind «✅ Записать …», other texts after it are normal', async () => {
     const stateService = new StateService();
     stateService.setUserState(USER, 'dt_in:x:705:400:n');
     stateService.expiresAt.set(stateService.key('state', USER), Date.now() - 1);
     const messages = messagesWith(stateService);
     const ctx = messageCtx('25.10');
     await messages.handleExpense(ctx);
-    expect(ctx.reply).toHaveBeenCalledWith(t('input_expired'));
+    const [text, extra] = ctx.reply.mock.calls[0];
+    expect(text).toBe(t('input_expired_record', { text: '25.10' }));
+    expect(extra.reply_markup.inline_keyboard[0][0]).toEqual({ text: t('button_record_text', { text: '25.10' }), callback_data: 'ixr' });
     expect(messages.expenseHandlers.handleDateInput).not.toHaveBeenCalled();
     expect(messages.expenseHandlers.handleExpenseInput).not.toHaveBeenCalled();
 
@@ -649,5 +652,126 @@ describe('leaving a family asks first', () => {
     await handlers.handleFamilyLeaveConfirm(confirm);
     expect(familyService.leaveFamily).toHaveBeenCalledWith(USER);
     expect(confirm.editMessageText.mock.calls[0][0]).toBe(t('family_left', { name: 'Дом\\_1' }));
+  });
+});
+
+describe('after an expired input prompt the next record is never lost', () => {
+  const expired = (state = 'adding_income') => {
+    const stateService = new StateService();
+    stateService.setUserState(USER, state);
+    stateService.expiresAt.set(stateService.key('state', USER), Date.now() - 1);
+    return stateService;
+  };
+  const command = (text) => ({
+    from: { id: USER },
+    updateType: 'message',
+    message: { text, entities: [{ type: 'bot_command', offset: 0, length: text.length }] }
+  });
+
+  test.each([
+    ['a command', command('/history')],
+    ['an inline button', { from: { id: USER }, updateType: 'callback_query', callbackQuery: { data: 'dy|0|0' } }],
+    ['a voice message', { from: { id: USER }, updateType: 'message', message: { voice: { file_id: 'v', duration: 2 } } }]
+  ])('after %s «260 чай» is a normal expense', async (_, update) => {
+    const stateService = expired();
+    await stateCleanupMiddleware({ stateService })(update, async () => {});
+    const messages = messagesWith(stateService);
+    const ctx = messageCtx('260 чай');
+    await messages.handleExpense(ctx);
+    expect(messages.expenseHandlers.handleExpenseInput).toHaveBeenCalledWith(expect.anything(), '260 чай', 'ru');
+    expect(ctx.reply).not.toHaveBeenCalled();
+  });
+
+  test('no actions: «260 чай» waits behind one button, the button records it once', async () => {
+    const stateService = expired();
+    const messages = messagesWith(stateService);
+    const ctx = messageCtx('260 чай');
+    await messages.handleExpense(ctx);
+    expect(ctx.reply.mock.calls[0][1].reply_markup.inline_keyboard[0][0].text).toBe(t('button_record_text', { text: '260 чай' }));
+    expect(messages.expenseHandlers.handleExpenseInput).not.toHaveBeenCalled();
+    expect(messages.incomeHandlers.handleIncomeInput).not.toHaveBeenCalled();
+
+    const button = () => ({
+      from: { id: USER },
+      callbackQuery: { data: 'ixr', message: { message_id: 900 } },
+      answerCbQuery: jest.fn(async () => true),
+      editMessageReplyMarkup: jest.fn(async () => true),
+      reply: jest.fn(async () => ({ message_id: 901 }))
+    });
+    const first = button();
+    await messages.recordPendingText(first);
+    expect(messages.multiEntryHandlers.handleText).toHaveBeenCalledWith(first, '260 чай', 'ru');
+    expect(messages.expenseHandlers.handleExpenseInput).toHaveBeenCalledWith(first, '260 чай', 'ru');
+    const second = button();
+    await messages.recordPendingText(second);
+    expect(second.answerCbQuery).toHaveBeenCalledWith(t('record_button_outdated'), { show_alert: true });
+    expect(messages.expenseHandlers.handleExpenseInput).toHaveBeenCalledTimes(1);
+  });
+
+  test('the button survives a restart; a question goes to the bot; text without numbers gets «ввод устарел»', async () => {
+    const repository = memoryRepository();
+    const before = new StateService(repository);
+    before.setUserState(USER, 'adding_income');
+    before.expiresAt.set(before.key('state', USER), Date.now() - 1);
+    await messagesWith(before).handleExpense(messageCtx('+5000 премия'));
+    await before.flush();
+    const after = await restart(repository);
+    const messages = messagesWith(after);
+    await messages.recordPendingText({ from: { id: USER }, callbackQuery: { message: { message_id: 900 } }, answerCbQuery: jest.fn(async () => true), editMessageReplyMarkup: jest.fn(async () => true) });
+    expect(messages.incomeHandlers.handleIncomeInput).toHaveBeenCalledWith(expect.anything(), '+5000 премия', 'ru');
+
+    const asked = messagesWith(expired());
+    await asked.handleExpense(messageCtx('сколько я потратил вчера'));
+    expect(asked.assistantHandlers.ask).toHaveBeenCalled();
+
+    const named = messagesWith(expired('creating_family'));
+    const ctx = messageCtx('Семья Ивановых');
+    await named.handleExpense(ctx);
+    expect(ctx.reply).toHaveBeenCalledWith(t('input_expired'));
+  });
+
+  test('a voice message drops an open income prompt (the budget question of the questionnaire keeps waiting)', async () => {
+    const stateService = new StateService();
+    const middleware = stateCleanupMiddleware({ stateService });
+    const voice = { from: { id: USER }, updateType: 'message', message: { voice: { file_id: 'v', duration: 2 } } };
+    stateService.setUserState(USER, 'adding_income');
+    await middleware(voice, async () => {});
+    expect(stateService.hasUserState(USER)).toBe(false);
+    stateService.setUserState(USER, 'onb_budget');
+    await middleware(voice, async () => {});
+    expect(stateService.getUserState(USER)).toBe('onb_budget');
+  });
+});
+
+describe('small fixes', () => {
+  test('«250 руб кофе», «20 долларов такси»: the currency word is the currency, not the description', () => {
+    const validator = new EnhancedValidator();
+    const options = { maxAmount: validator.limits.maxAmount, maxDescriptionLength: 60, requireDescription: false };
+    expect(validator.parseMoneyInput('250 руб кофе', options)).toMatchObject({ isValid: true, amount: 250, currency: 'RUB', description: 'кофе' });
+    expect(validator.parseMoneyInput('250 р кофе', options)).toMatchObject({ currency: 'RUB', description: 'кофе' });
+    expect(validator.parseMoneyInput('20 долларов такси', options)).toMatchObject({ currency: 'USD', description: 'такси' });
+    expect(validator.parseMoneyInput('250 кофе', options)).toMatchObject({ currency: null, description: 'кофе' });
+  });
+
+  test('a double «Подтвердить» on removing a member notifies them once', async () => {
+    const FamilyService = require('../services/FamilyService');
+    const OWNER = USER;
+    const MEMBER = USER + 1;
+    const members = new Map([[OWNER, 8], [MEMBER, 8]]);
+    const family = { id: 8, name: 'Дом', owner_id: OWNER };
+    const familyRepository = {
+      getUserFamily: jest.fn(async (userId) => (members.has(userId) ? family : null)),
+      isUserInFamily: jest.fn(async (userId, familyId) => members.get(userId) === familyId),
+      removeMemberFromFamily: jest.fn(async (familyId, userId) => {
+        await new Promise(resolve => setTimeout(resolve, 5));
+        if (!members.has(userId)) return undefined;
+        members.delete(userId);
+        return { family_id: familyId, user_id: userId };
+      })
+    };
+    const notificationService = { sendFamilyMemberRemoved: jest.fn(async () => {}) };
+    const service = new FamilyService(familyRepository, {}, {}, {}, notificationService, {});
+    await Promise.all([service.removeMemberFromFamily(OWNER, MEMBER), service.removeMemberFromFamily(OWNER, MEMBER)]);
+    expect(notificationService.sendFamilyMemberRemoved).toHaveBeenCalledTimes(1);
   });
 });
