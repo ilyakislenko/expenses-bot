@@ -157,13 +157,19 @@ class SavingsService {
   }
 
   // Поздравляем один раз: achieved_at ставится при достижении и сбрасывается, если сумма снова ниже цели.
-  // Возвращает только что достигнутые цели.
-  async checkAchievements(userId) {
+  // Возвращает только что достигнутые цели. createdGoalId — только что созданная цель: если она уже выполнена
+  // (накоплений и так больше), это не достижение — achieved_at = created_at, без поздравления; «🏆 Мечта сбылась»
+  // считает только цели с achieved_at позже создания (AchievementRepository.getStats)
+  async checkAchievements(userId, { createdGoalId = null } = {}) {
     const state = await this.getState(userId);
     const achieved = [];
     for (const goal of state.goals) {
       const status = await this.goalStatus(goal, state);
       if (status.achieved && !goal.achieved_at) {
+        if (goal.id === createdGoalId) {
+          await this.savingsRepository.updateGoal(userId, goal.id, { achieved_at: goal.created_at || new Date() });
+          continue;
+        }
         await this.savingsRepository.updateGoal(userId, goal.id, { achieved_at: new Date() });
         achieved.push(goal);
       } else if (!status.achieved && goal.achieved_at) {
@@ -205,7 +211,7 @@ class SavingsService {
     if (count >= limits.MAX_SAVINGS_GOALS) return { error: 'limit', limit: limits.MAX_SAVINGS_GOALS };
     const goal = await this.savingsRepository.createGoal(userId, { name, targetAmount, currency });
     logger.info('Savings goal created', { userId, goalId: goal.id });
-    await this.checkAchievements(userId);
+    await this.checkAchievements(userId, { createdGoalId: goal.id });
     return { goal };
   }
 

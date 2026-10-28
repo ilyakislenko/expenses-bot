@@ -13,6 +13,7 @@ const USER_LIMITS = {
     STREAK_FREEZES_PER_WEEK: 1, // заморозок серии в неделю (закрывают пропущенный день автоматически)
     MAX_ACTIVE_CHALLENGES: 1, // челленджей одновременно
     MAX_ASSISTANT_QUESTIONS_PER_DAY: 5, // отвеченных вопросов «🤖 Спроси бота» в локальный день
+    MAX_ASSISTANT_MODEL_CALLS_PER_DAY: 15, // запросов к нейросети от «Спроси бота» в локальный день — с ответом или без (быстрый разбор не считается)
     MAX_VOICE_PER_DAY: 20, // распознанных голосовых в локальный день (запись текстом — без лимита)
     ROAST_SAVAGE: true, // «😈 Злой режим» без цензуры (18+); false — только с премиумом (ехидный остаётся всем)
   },
@@ -27,6 +28,7 @@ const USER_LIMITS = {
     STREAK_FREEZES_PER_WEEK: 2,
     MAX_ACTIVE_CHALLENGES: Infinity,
     MAX_ASSISTANT_QUESTIONS_PER_DAY: 100,
+    MAX_ASSISTANT_MODEL_CALLS_PER_DAY: 60,
     MAX_VOICE_PER_DAY: 300,
     ROAST_SAVAGE: true,
   }

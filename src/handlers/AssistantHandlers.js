@@ -174,9 +174,16 @@ class AssistantHandlers {
         await this.editStatus(ctx, statusId, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: result.keyboard } });
         return;
       }
-      logger.info('Assistant did not answer', { userId, status: result.status, source: result.source });
-      const key = { future: 'ai_future', model_down: 'ai_model_down' }[result.status] || 'ai_not_understood';
-      await this.editStatus(ctx, statusId, this.t(lang, key, { examples: this.examplesHint(lang) }), {
+      logger.info('Assistant did not answer', { userId, status: result.status, source: result.source, position: result.position });
+      const key = {
+        future: 'ai_future',
+        model_down: 'ai_model_down',
+        model_busy: result.position ? 'ai_model_busy' : 'ai_model_busy_now',
+        model_limit: 'ai_model_limit',
+        period_unclear: 'ai_period_unclear'
+      }[result.status] || 'ai_not_understood';
+      const params = { examples: this.examplesHint(lang), position: result.position, limit: result.limit };
+      await this.editStatus(ctx, statusId, this.t(lang, key, params), {
         parse_mode: 'Markdown',
         reply_markup: { inline_keyboard: moreButton }
       });
@@ -187,6 +194,23 @@ class AssistantHandlers {
     } finally {
       stopTyping();
     }
+  }
+
+  // aiw|<id> — «🙅 Не то» под ответом: ответ не засчитывается в дневной лимит, следующее сообщение — уточнённый вопрос
+  async markWrong(ctx) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    const marked = await this.assistantService.markWrong(userId, parseInt(ctx.match[1], 10));
+    if (!marked) {
+      await ctx.answerCbQuery(this.t(lang, 'ai_wrong_done')).catch(() => {});
+      return;
+    }
+    await ctx.answerCbQuery().catch(() => {});
+    this.stateService.setUserState(userId, 'ai_in:q');
+    await ctx.reply(this.t(lang, 'ai_wrong_ack'), {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: [[{ text: this.t(lang, 'button_back'), callback_data: 'ai' }]] }
+    });
   }
 }
 

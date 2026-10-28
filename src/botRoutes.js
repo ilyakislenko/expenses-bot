@@ -185,6 +185,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('ai', errorHandler((ctx) => assistantHandlers.showExamples(ctx)));
   bot.action(/^ai\|([1-6])$/, errorHandler((ctx) => assistantHandlers.askExample(ctx)));
   bot.action('aiq', errorHandler((ctx) => assistantHandlers.startInput(ctx)));
+  bot.action(/^aiw\|(\d{1,12})$/, errorHandler((ctx) => assistantHandlers.markWrong(ctx))); // «🙅 Не то» под ответом
   // «😈 Злой режим»: настройка (rst), уровень (rstl), обращение (rstg → rstgs), 18+ (rsty), «Разнос месяца» (rsm);
   // источник `o` — вопрос о злом режиме в опросе «🧭 Настроим бота под тебя»
   bot.action('rst', errorHandler((ctx) => handlers.roastHandlers.showSettings(ctx)));

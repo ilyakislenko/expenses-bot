@@ -310,6 +310,7 @@ class Container {
           incomeService: this.get('incomeService'),
           savingsService: this.get('savingsService'),
           budgetService: this.get('budgetService'),
+          planningService: this.get('planningService'),
           premiumService: this.get('premiumService'),
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),

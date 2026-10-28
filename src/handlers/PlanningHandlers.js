@@ -131,15 +131,22 @@ class PlanningHandlers {
       lines.push(this.t(lang, 'pl_allow_budget', { amount: money(a.budget) }));
     }
     lines.push(this.t(lang, 'pl_allow_spent', { amount: money(a.spentBefore) }));
-    if (a.bills > 0) lines.push(this.t(lang, 'pl_allow_bills', { amount: money(a.bills), count: a.billsList.length }));
+    if (a.bills > 0) {
+      lines.push(a.reserveUntil > a.period.end
+        ? this.t(lang, 'pl_allow_bills_until', { amount: money(a.bills), count: a.billsList.length, date: this.planningService.shortDate(a.reserveUntil) })
+        : this.t(lang, 'pl_allow_bills', { amount: money(a.bills), count: a.billsList.length }));
+    }
     if (a.debtsTotal > 0) {
       lines.push(this.t(lang, 'pl_allow_debts', { amount: money(a.debtsTotal) }));
       if (a.debtsProrated) lines.push(`   ${this.t(lang, 'pl_allow_debts_note')}`);
     }
     if (a.savings > 0) lines.push(this.t(lang, 'pl_allow_savings', { amount: money(a.savings) }));
+    // Доход позволяет больше, чем осталось от общего бюджета, — считаю от бюджета
+    if (a.limitedBy === 'budget') lines.push(this.t(lang, 'pl_allow_budget_limit', { budget: money(a.budget), amount: money(a.budgetFree) }));
     lines.push(a.free > 0
-      ? this.t(lang, 'pl_allow_free', { amount: money(a.free), days: a.daysLeft, daily: money(a.daily) })
+      ? this.t(lang, 'pl_allow_free', { amount: money(a.free), days: a.daysLeft, daily: money(a.rawDaily) })
       : this.t(lang, 'pl_allow_free_none', { amount: money(a.free) }));
+    if (a.capped) lines.push(this.t(lang, 'pl_allow_capped', { amount: money(a.daily) }));
     lines.push('', `_${this.t(lang, 'pl_allow_note')}_`);
     if (a.mode === 'budget') lines.push('', this.t(lang, 'pl_allow_budget_hint'));
 

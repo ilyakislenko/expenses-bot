@@ -85,23 +85,26 @@ function previousPeriod(spec, period, context) {
 }
 
 // Сравнение: текущий незаконченный период сравниваем с тем же числом первых дней предыдущего («к этому же дню»),
-// иначе прошлый период выглядел бы всегда больше. compareTo — явно названный второй период (оба берутся целиком;
-// «больше/меньше» — у более позднего относительно более раннего, в каком порядке их ни назвали).
+// иначе прошлый период выглядел бы всегда больше. compareTo — явно названный второй период («больше/меньше» — у более
+// позднего относительно более раннего, в каком порядке их ни назвали); если более поздний ещё идёт, оба тоже
+// обрезаются до одинакового числа дней («сравни октябрь и сентябрь» 28 октября — 28 дней с 28 днями).
 function comparisonPeriods(spec, compareTo, context) {
   const period = resolvePeriod(spec, context);
+  let current = period;
+  let previous;
   if (compareTo) {
     const second = resolvePeriod(compareTo, context);
-    const [current, previous] = second.start > period.start ? [second, period] : [period, second];
-    return { current, previous, toDate: false };
+    [current, previous] = second.start > period.start ? [second, period] : [period, second];
+  } else {
+    previous = previousPeriod(spec, period, context);
+    if (!previous) return null;
   }
-  const previous = previousPeriod(spec, period, context);
-  if (!previous) return null;
-  if (period.last <= context.today) return { current: period, previous, toDate: false };
-  const elapsed = daysBetween(period.start, addDays(context.today, 1));
-  const current = { start: period.start, end: addDays(context.today, 1), last: context.today };
+  if (current.last <= context.today) return { current, previous, toDate: false };
+  const elapsed = daysBetween(current.start, addDays(context.today, 1));
+  const currentToDate = { start: current.start, end: addDays(context.today, 1), last: context.today };
   const cut = addDays(previous.start, elapsed);
   const previousToDate = cut < previous.end ? { start: previous.start, end: cut, last: addDays(cut, -1) } : previous;
-  return { current, previous: previousToDate, toDate: true, days: elapsed };
+  return { current: currentToDate, previous: previousToDate, toDate: true, days: elapsed };
 }
 
 // Дней для средней траты: от начала периода до последнего дня, но не дальше сегодня

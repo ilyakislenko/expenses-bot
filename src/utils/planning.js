@@ -61,37 +61,70 @@ function paceOf(spentToday, daily) {
   return spentToday <= daily ? 'warn' : 'over';
 }
 
+const ALLOWANCE_CAP = 2; // лимит дня — не больше 2× среднего дня периода
+
 // Дневной лимит до конца периода (все суммы — в основной валюте):
-//   свободно = доход (или общий бюджет) − уже потрачено до сегодня − регулярные и платежи по долгам до конца периода
-//              − взнос в накопления (только от дохода)
+//   свободно = доход − уже потрачено до сегодня − регулярные, подписки и платежи по долгам до следующего дохода
+//              (bills, debts) − взнос в накопления
 //   на сегодня = свободно / оставшиеся дни (включая сегодня); сегодняшние траты лимит дня не меняют.
+// Общий бюджет (если задан) ограничивает лимит и при доходе: от бюджета свободно = бюджет − потрачено − платежи
+// до конца периода (budgetBills, budgetDebts: бюджет — на период); берём меньшее (limitedBy: 'budget').
+// Рост к концу периода ограничен: не больше ALLOWANCE_CAP × средний день периода (основа / дней в периоде),
+// остальное остаётся в запасе (capped, rawDaily — без ограничения). periodDays не задан — без ограничения.
 // mode: 'income' | 'budget' | 'none' (нет ни дохода, ни бюджета)
-function computeAllowance({ daysLeft, income = null, budget = null, spentBefore = 0, spentToday = 0, bills = 0, debts = 0, savings = 0 }) {
+function computeAllowance({
+  daysLeft, periodDays = null, income = null, budget = null, spentBefore = 0, spentToday = 0,
+  bills = 0, debts = 0, savings = 0, budgetBills = bills, budgetDebts = debts
+}) {
   const days = Math.max(1, Math.floor(daysLeft || 1));
+  const hasBudget = budget !== null && budget !== undefined;
+  const budgetFree = hasBudget ? budget - spentBefore - budgetBills - budgetDebts : null;
   let mode;
   let pool;
+  let free;
+  let limitedBy = null;
   if (income !== null && income !== undefined) {
     mode = 'income';
     pool = income - (savings || 0);
-  } else if (budget !== null && budget !== undefined) {
+    free = pool - spentBefore - bills - debts;
+    if (hasBudget && budgetFree < free) {
+      free = budgetFree;
+      limitedBy = 'budget';
+    }
+  } else if (hasBudget) {
     mode = 'budget';
     pool = budget;
+    free = budgetFree;
   } else {
     return { mode: 'none' };
   }
-  const free = pool - spentBefore - bills - debts;
-  const daily = free > 0 ? Math.floor(free / days) : 0;
+  const rawDaily = free > 0 ? Math.floor(free / days) : 0;
+  const base = limitedBy === 'budget' ? budget : pool;
+  const cap = periodDays > 0 && base > 0 ? Math.floor(ALLOWANCE_CAP * base / periodDays) : null;
+  const capped = cap !== null && rawDaily > cap;
+  const daily = capped ? cap : rawDaily;
   return {
     mode,
     days,
     pool,
     free,
+    budgetFree,
+    limitedBy,
+    rawDaily,
     daily,
+    cap,
+    capped,
     spentToday,
     leftToday: daily - spentToday,
     deficit: free < 0 ? -free : 0,
     pace: paceOf(spentToday, daily)
   };
+}
+
+// Дата следующего ожидаемого дохода (по регулярным выплатам streams) не раньше today, до until; null — неизвестна
+function nextIncomeDate(streams, today, until) {
+  const dates = paydayDates(streams, today, until).map(item => item.date).sort();
+  return dates.length ? dates[0] : null;
 }
 
 // ========================================
@@ -533,7 +566,9 @@ module.exports = {
   nextMonthlyDate,
   monthlyDates,
   expectedIncome,
+  ALLOWANCE_CAP,
   computeAllowance,
+  nextIncomeDate,
   paceOf,
   normalizeMerchant,
   normalizeItemName,

@@ -371,7 +371,9 @@ describe('PlanningService', () => {
     expect(a.daily).toBe(Math.floor(11900 / 11));
     expect(a.pace).toBe('good');
     expect(deps.currencyUtils.convert).toHaveBeenCalledTimes(1); // один курс на валюту
-    expect(deps.budgetService.getStatus).not.toHaveBeenCalled();
+    // Общий бюджет проверяется и при доходе (его нет — лимит от дохода)
+    expect(deps.budgetService.getStatus).toHaveBeenCalled();
+    expect(a.limitedBy).toBeNull();
     const line = service.formatLine('ru', a);
     expect(line).toContain('*1');
     expect(line).toContain('🟢');

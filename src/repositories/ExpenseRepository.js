@@ -44,11 +44,13 @@ class ExpenseRepository extends BaseRepository {
     };
   }
 
-  // Категории объединяются по имени (системная и пользовательская с одним именем — одна строка)
+  // Категории объединяются по имени (системная и пользовательская с одним именем — одна строка).
+  // regular — из них авто-записи регулярных трат (аренда и т.п.)
   async getCategoryTotalsBetween(userId, userTimezone, start, end) {
     const query = `
       SELECT MIN(c.id) AS category_id, c.name, MIN(c.icon) AS icon, e.currency,
-             SUM(e.amount)::float AS total, COUNT(*)::int AS count
+             SUM(e.amount)::float AS total, COUNT(*)::int AS count,
+             COALESCE(SUM(e.amount) FILTER (WHERE e.recurring_expense_id IS NOT NULL), 0)::float AS regular
       FROM expenses e
       JOIN categories c ON e.category_id = c.id
       WHERE e.user_id = $1

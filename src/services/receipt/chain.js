@@ -12,7 +12,8 @@ const MAX_SLOTS = 9;
 const DEFAULT_TIMEOUT_MS = 60000;
 const DEFAULT_CONNECT_TIMEOUT_MS = 2000;
 const FIELDS = ['PROVIDER', 'BASE_URL', 'MODEL', 'API_KEY', 'LOCAL_ADDRESS', 'TIMEOUT_MS', 'CONNECT_TIMEOUT_MS', 'CONCURRENCY'];
-const FALL_THROUGH = new Set(['network', 'unavailable', 'quota', 'auth', 'not_configured']);
+// busy — у этого пользователя уже есть такая задача в очереди слота: другой слот (облако) может её взять
+const FALL_THROUGH = new Set(['network', 'unavailable', 'quota', 'auth', 'not_configured', 'busy']);
 
 function positiveInt(value, fallback) {
   const number = parseInt(value, 10);
@@ -63,39 +64,102 @@ function parseSlots(env = process.env, prefix = 'RECEIPT_AI') {
   return slots;
 }
 
-// Не больше max задач одновременно (0 — без ограничения), остальные — в очереди по порядку.
-// onQueued(position): позиция в очереди при постановке и при каждом сдвиге, 0 — задача началась
+// Задачи вида kind: вопросы боту (assistant) короткие — встают в очереди перед долгими чеками (receipt), внутри вида —
+// по порядку. У одного пользователя (owner) не больше perOwner задач каждого вида в очереди и в работе: лишняя сразу
+// получает ReceiptError('busy'), а не занимает общую модель.
+const PRIORITY = { assistant: 1, receipt: 0 };
+const PER_OWNER = 1;
+
+// Не больше max задач одновременно (0 — без ограничения), остальные — в очереди (см. PRIORITY).
+// onQueued(position): позиция в очереди при постановке и при каждом сдвиге. isCancelled() — задача больше не нужна:
+// она убирается из очереди, не начинаясь (и не держит место пользователя).
 class Limiter {
-  constructor(max) {
+  constructor(max, { perOwner = PER_OWNER } = {}) {
     this.max = max;
+    this.perOwner = perOwner;
     this.active = 0;
     this.queue = [];
+    this.owners = new Map();
   }
 
-  run(task, onQueued = () => {}) {
-    if (!this.max || this.active < this.max) return this.start(task);
+  run(task, onQueued = () => {}, { kind = 'receipt', owner = null, isCancelled = () => false } = {}) {
+    this.prune();
+    const key = owner === null || owner === undefined || !this.perOwner ? null : `${kind}|${owner}`;
+    if (key && (this.owners.get(key) || 0) >= this.perOwner) {
+      return Promise.reject(new ReceiptError('busy', 'previous request of this user is still in the queue'));
+    }
+    this.hold(key, 1);
     return new Promise((resolve, reject) => {
-      this.queue.push({ task, resolve, reject, onQueued });
-      onQueued(this.queue.length);
+      const entry = {
+        task,
+        onQueued,
+        isCancelled,
+        priority: PRIORITY[kind] || 0,
+        resolve: (value) => { this.hold(key, -1); resolve(value); },
+        reject: (error) => { this.hold(key, -1); reject(error); }
+      };
+      if (!this.max || this.active < this.max) {
+        this.launch(entry);
+        return;
+      }
+      let index = this.queue.length;
+      while (index > 0 && this.queue[index - 1].priority < entry.priority) index--;
+      this.queue.splice(index, 0, entry);
+      this.notify();
     });
   }
 
-  async start(task) {
+  hold(key, delta) {
+    if (!key) return;
+    const count = (this.owners.get(key) || 0) + delta;
+    if (count > 0) this.owners.set(key, count);
+    else this.owners.delete(key);
+  }
+
+  launch(entry) {
     this.active++;
+    let running;
     try {
-      return await task();
-    } finally {
-      this.active--;
-      this.next();
+      running = Promise.resolve(entry.task());
+    } catch (error) {
+      running = Promise.reject(error);
     }
+    running.then(
+      (value) => { this.active--; entry.resolve(value); this.next(); },
+      (error) => { this.active--; entry.reject(error); this.next(); }
+    );
+  }
+
+  // Отменённые задачи уходят из очереди сразу
+  prune() {
+    const before = this.queue.length;
+    this.queue = this.queue.filter((entry) => {
+      if (!entry.isCancelled()) return true;
+      entry.reject(new ReceiptError('network', 'cancelled'));
+      return false;
+    });
+    if (this.queue.length !== before) this.notify();
+  }
+
+  // Позиции сообщаются только при изменении
+  notify() {
+    this.queue.forEach((waiting, index) => {
+      if (waiting.position === index + 1) return;
+      waiting.position = index + 1;
+      waiting.onQueued(index + 1);
+    });
   }
 
   next() {
-    if (!this.queue.length || (this.max && this.active >= this.max)) return;
-    const entry = this.queue.shift();
-    entry.onQueued(0);
-    this.queue.forEach((waiting, index) => waiting.onQueued(index + 1));
-    this.start(entry.task).then(entry.resolve, entry.reject);
+    this.prune();
+    let started = false;
+    while (this.queue.length && (!this.max || this.active < this.max)) {
+      const entry = this.queue.shift();
+      entry.onQueued(0);
+      this.launch(entry);
+      started = true;
+    }
+    if (started) this.notify();
   }
 }
 
@@ -146,19 +210,20 @@ class ChainProvider {
     return this.configured && this.providers.every(provider => provider.acceptsHeic);
   }
 
-  // input: { image, mimeType, prompt, onStatus({ position, local }) } — onStatus сообщает место в очереди занятого слота
-  // (position > 0) и начало распознавания на слоте (position 0); local — слот в локальной сети (медленнее облака)
+  // input: { image, mimeType, prompt, onStatus({ position, local }), owner } — onStatus сообщает место в очереди занятого
+  // слота (position > 0) и начало распознавания на слоте (position 0); local — слот в локальной сети (медленнее облака);
+  // owner — id пользователя (одна его задача каждого вида в очереди, см. Limiter)
   async recognize(input) {
-    return this.run(input, provider => provider.recognize(input));
+    return this.run(input, provider => provider.recognize(input), 'receipt');
   }
 
-  // Текстовый запрос с ответом JSON: input { messages, onStatus, isCancelled }. isCancelled() — запрос больше не нужен
-  // (вопрос дождался своего срока в очереди): слот освобождается, не спрашивая модель
+  // Текстовый запрос с ответом JSON: input { messages, onStatus, isCancelled, owner }. isCancelled() — запрос больше не
+  // нужен (вопрос дождался своего срока в очереди): место в очереди освобождается, не спрашивая модель
   async complete(input) {
-    return this.run(input, provider => provider.complete(input));
+    return this.run(input, provider => provider.complete(input), 'assistant');
   }
 
-  async run(input, call) {
+  async run(input, call, kind) {
     if (!this.configured) throw new ReceiptError('not_configured');
     const onStatus = input.onStatus || (() => {});
     const isCancelled = input.isCancelled || (() => false);
@@ -173,7 +238,7 @@ class ChainProvider {
           if (isCancelled()) return Promise.reject(new ReceiptError('network', 'cancelled'));
           onStatus({ position: 0, local });
           return call(provider);
-        }, position => position && onStatus({ position, local }));
+        }, position => position && onStatus({ position, local }), { kind, owner: input.owner, isCancelled });
         logger.info(`${this.label} slot served`, { slot: provider.slot, provider: provider.name, model: provider.model, ms: Date.now() - started });
         return raw;
       } catch (error) {

@@ -704,3 +704,14 @@ COMMENT ON TABLE receipt_drafts IS 'Черновики чеков до подт�
 COMMENT ON COLUMN receipt_drafts.frame IS '{ fileId, mimeType, turn, small, lowResolution, lang, currency } — фото в Telegram и поворот относительно подготовленного';
 COMMENT ON COLUMN receipt_drafts.taken_at IS 'Черновик сейчас записывается (повторное нажатие ждёт); старше 5 минут — считается сбоем и снова доступен';
 CREATE INDEX IF NOT EXISTS idx_receipt_drafts_expires ON receipt_drafts(expires_at);
+
+-- ==== FIX D ====
+-- «Спроси бота»: в лимиты идут попытки, а не только ответы. answered = FALSE — ответа не было (нейросеть не поняла,
+-- не ответила, период неясен) или пользователь нажал «🙅 Не то»; model_calls — сколько раз для вопроса спросили нейросеть
+-- (быстрый разбор — 0). Дневной лимит вопросов считает answered, потолок вызовов модели — SUM(model_calls).
+ALTER TABLE assistant_questions ADD COLUMN IF NOT EXISTS answered BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE assistant_questions ADD COLUMN IF NOT EXISTS model_calls SMALLINT NOT NULL DEFAULT 0;
+COMMENT ON TABLE assistant_questions IS 'Вопросы боту (без текста вопроса): отвеченные и попытки с нейросетью — дневные лимиты и статистика';
+COMMENT ON COLUMN assistant_questions.answered IS 'Ответ засчитан в дневной лимит; FALSE — ответа не было или пользователь нажал «🙅 Не то»';
+COMMENT ON COLUMN assistant_questions.model_calls IS 'Сколько раз для этого вопроса спросили нейросеть (дневной потолок вызовов модели)';
+COMMENT ON COLUMN assistant_questions.intent_type IS 'Тип ответа или статус без ответа (not_understood, model_down, model_busy, period_unclear, future)';
