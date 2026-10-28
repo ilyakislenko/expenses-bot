@@ -289,9 +289,10 @@ class CallbackHandlers {
   async handleClearReminderHours(ctx) {
     const userId = ctx.from.id;
     const settings = await this.userService.getReminderSettings(userId);
-    // Если уже null (дефолты) — просто ответим
+    // Уже дефолтные часы — объясняем, а не молчим
     if (!('reminder_hours' in settings) || settings.reminder_hours === null) {
-      await ctx.answerCbQuery();
+      const userLanguage = await this.userService.getUserLanguage(userId);
+      await ctx.answerCbQuery(this.localizationService.getText(userLanguage, 'reminder_hours_default_already', { hours: '10:00, 14:00, 18:00' }), { show_alert: true }).catch(() => {});
       return;
     }
     // Сбрасываем к дефолтной логике (NULL в БД => показываются 10,14,18)
@@ -337,14 +338,16 @@ class CallbackHandlers {
     }
   }
 
-  // time|<час>|<минуты>[|ob]: время пользователя на момент показа клавиатуры; `|ob` — вопрос опроса нового пользователя
+  // time|<час>|<минуты>[|h][|ob]: время пользователя на момент показа клавиатуры; `|h` — кнопка с минутами, сдвинутыми
+  // на полчаса (пояса UTC+5:30 и т.п.), `|ob` — вопрос опроса нового пользователя
   async handleTimezoneSelection(ctx) {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
-    const [, hourText, minuteText, onboardingFlag] = ctx.callbackQuery.data.split('|');
+    const [, hourText, minuteText, ...flags] = ctx.callbackQuery.data.split('|');
     const hour = Number(hourText);
     const minute = Number(minuteText);
-    const onboarding = onboardingFlag === 'ob';
+    const onboarding = flags.includes('ob');
+    const half = flags.includes('h');
     try {
       const { calculateTimezoneFromUserTime, getTimezoneDisplayName } = require('../utils/timezoneCalculator');
       // Минуты на кнопках — момент показа клавиатуры, поэтому и опорное время — дата сообщения, а не нажатия
@@ -352,7 +355,7 @@ class CallbackHandlers {
       const shownAt = message && (message.edit_date || message.date);
       const referenceTime = shownAt ? new Date(shownAt * 1000) : new Date();
       // Бросает RangeError на нечисловых и выходящих за 0–23 / 0–59 значениях: подменённая кнопка ничего не сохраняет
-      const timezone = calculateTimezoneFromUserTime(hour, minute, referenceTime, { language: userLanguage });
+      const timezone = calculateTimezoneFromUserTime(hour, minute, referenceTime, { language: userLanguage, half });
       await this.userService.setUserTimezone(userId, timezone);
 
       const displayName = getTimezoneDisplayName(timezone);

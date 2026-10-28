@@ -1,6 +1,7 @@
 const respond = require('../utils/respond');
 const logger = require('../utils/logger');
 const rules = require('../utils/onboarding');
+const { SAVAGE_LANGUAGES } = require('../utils/roast');
 const { generateCurrencyKeyboard, generateTimeKeyboard } = require('../utils/constants');
 const { getTimezoneDisplayName } = require('../utils/timezoneCalculator');
 const BudgetHandlers = require('./BudgetHandlers');
@@ -85,8 +86,10 @@ class OnboardingHandlers {
     if (draft) {
       draft = await this.onboardingService.changeLanguage(userId, draft, language);
     } else if (state.completedAt) {
-      // Кнопка языка из старого онбординга у того, кто уже настроил бота: язык сохранён, опрос не начинаем
-      return respond(ctx, this.t(language, 'language_set'));
+      // Кнопка языка из старого онбординга у того, кто уже настроил бота: язык сохранён, опрос не начинаем.
+      // Клавиатура внизу — на новом языке (старые подписи кнопок уже не распознаются)
+      await ctx.editMessageReplyMarkup({ inline_keyboard: [] }).catch(() => {});
+      return ctx.reply(this.t(language, 'language_set'), { reply_markup: await this.commandHandlers.mainKeyboardMarkup(userId, language) });
     } else {
       draft = await this.onboardingService.begin(userId, 'new', { language });
     }
@@ -128,7 +131,17 @@ class OnboardingHandlers {
       return;
     }
     const updated = await this.onboardingService.answerTimezone(userId, draft, timezone);
+    // Вопрос о времени после «Пропустить всё» — последний
+    if (updated.lastCall) return this.finish(ctx, updated, 'skipped');
     return this.showStep(ctx, updated, rules.nextStep(updated, 'z'));
+  }
+
+  // tzh|<0|1>|ob — те же кнопки времени с минутами, сдвинутыми на полчаса (Индия, Иран…), и обратно
+  async showTimezone(ctx, half) {
+    const draft = await this.onboardingService.getActive(ctx.from.id);
+    if (!draft || draft.step !== 'z') return this.stale(ctx, await this.lang(ctx));
+    await ctx.answerCbQuery().catch(() => {});
+    return this.show(ctx, draft, 'z', { half });
   }
 
   // ob_currency — «Назад» с клавиатуры часового пояса
@@ -151,6 +164,11 @@ class OnboardingHandlers {
 
     if (step === 'x') {
       await ctx.answerCbQuery().catch(() => {});
+      // Новый пользователь без своего времени: один вопрос напоследок — иначе «сегодня» и напоминания не по его часам
+      if (draft.mode === 'new' && !draft.answers.timezone && !draft.lastCall) {
+        const updated = await this.onboardingService.askTimezoneLast(userId, draft);
+        return this.show(ctx, updated, 'z');
+      }
       return this.finish(ctx, draft, 'skipped');
     }
     if (step === 'o') {
@@ -164,6 +182,10 @@ class OnboardingHandlers {
       return this.show(ctx, draft, draft.step);
     }
     if (action === 's') {
+      if (draft.lastCall) {
+        await ctx.answerCbQuery().catch(() => {});
+        return this.finish(ctx, draft, 'skipped');
+      }
       await ctx.answerCbQuery().catch(() => {});
       const { draft: updated, next } = await this.onboardingService.skip(userId, draft, step);
       return this.showStep(ctx, updated, next);
@@ -239,8 +261,16 @@ class OnboardingHandlers {
       await this.showStep(ctx, updated, rules.nextStep(updated, 'b'));
       return true;
     }
-    if (/\p{L}/u.test(text)) return false;
-    await ctx.reply(this.t(lang, 'onb_budget_invalid'), { parse_mode: 'Markdown' });
+    const hasDigits = /\d/.test(text);
+    // Трата вроде «250 кофе» и вопрос боту «? …» обрабатываются как обычно, вопрос о бюджете ждёт дальше
+    if (text.trim().startsWith('?')) return false;
+    if (hasDigits && /\p{L}/u.test(text) && !/^\s*[\d\s.,]+\s*[A-Za-z]{3}\s*$/.test(text)) return false;
+    const currency = await this.userService.getUserCurrency(userId);
+    const tooBig = hasDigits && Number(text.replace(/[^\d.,]/g, '').replace(',', '.')) > BudgetHandlers.MAX_BUDGET_AMOUNT;
+    let reply = this.t(lang, 'onb_budget_invalid');
+    if (tooBig) reply = this.t(lang, 'onb_budget_too_big', { max: this.formatter.formatAmount(BudgetHandlers.MAX_BUDGET_AMOUNT, currency) });
+    else if (!hasDigits) reply = this.t(lang, 'onb_budget_need_number', { example: `30000 ${currency}` });
+    await ctx.reply(reply, { parse_mode: 'Markdown' });
     return true;
   }
 
@@ -252,10 +282,10 @@ class OnboardingHandlers {
     return this.show(ctx, draft, step);
   }
 
-  async show(ctx, draft, step, { fresh = false } = {}) {
+  async show(ctx, draft, step, { fresh = false, half } = {}) {
     const userId = ctx.from.id;
     const lang = await this.lang(ctx);
-    const screen = await this.screen(ctx, draft, step, lang);
+    const screen = await this.screen(ctx, draft, step, lang, { half });
     if (step === 'b') this.stateService.setUserState(userId, BUDGET_STATE);
     else if (this.stateService.getUserState(userId) === BUDGET_STATE) this.stateService.deleteUserState(userId);
     await this.send(ctx, draft, screen.text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: screen.keyboard } }, { fresh });
@@ -302,7 +332,7 @@ class OnboardingHandlers {
     ];
   }
 
-  async screen(ctx, draft, step, lang) {
+  async screen(ctx, draft, step, lang, { half } = {}) {
     const userId = ctx.from.id;
     const head = this.header(lang, draft, step);
     const t = (key, params) => this.t(lang, key, params);
@@ -323,8 +353,14 @@ class OnboardingHandlers {
         return { ...body(t('onb_q_currency')), keyboard: [...marked, ...controls] };
       }
       case 'z': {
-        const keyboard = generateTimeKeyboard(this.localizationService, lang, { onboarding: true });
+        const keyboard = generateTimeKeyboard(this.localizationService, lang, { onboarding: true, half });
         keyboard.pop(); // «Назад» (ob_currency) — в controls
+        if (draft.lastCall) {
+          // После «Пропустить всё»: без счётчика и «Назад», «Пропустить» — закончить
+          const current = await this.userService.getUserTimezone(userId);
+          const text = t('onb_q_timezone_last', { timezone: this.formatter.escapeMarkdown(getTimezoneDisplayName(current || 'UTC')) });
+          return { text, keyboard: [...keyboard, [{ text: t('onb_button_skip'), callback_data: 'onb|z|s' }]] };
+        }
         return { ...body(t('onb_q_timezone')), keyboard: [...keyboard, ...controls] };
       }
       case 'p': {
@@ -342,7 +378,7 @@ class OnboardingHandlers {
       }
       case 'b': {
         const currency = await this.userService.getUserCurrency(userId);
-        let text = `${head}\n\n${t('onb_q_budget', { example: `30000 ${currency}` })}`;
+        let text = `${head}\n\n${t('onb_q_budget', { example: `30000 ${currency}`, other: currency === 'USD' ? 'EUR' : 'USD' })}`;
         const trialUntil = await this.trialUntil(userId);
         if (trialUntil) text += `\n\n${t('onb_budget_trial', { date: trialUntil })}`;
         return { text, keyboard: controls };
@@ -365,8 +401,12 @@ class OnboardingHandlers {
       }
       case 'm': {
         const current = this.roastService ? (await this.roastService.getSettings(userId)).level : 'off';
-        const rows = rules.ROAST_LEVELS.map((level) => [{ text: pick(current === level, t(`onb_roast_${level}`)), callback_data: `rstl|${level}|o` }]);
-        return { ...body(t('onb_q_roast')), keyboard: [...rows, ...controls] };
+        // «Без цензуры» — только на ru и en; на других языках вопрос только про ехидный
+        const savage = SAVAGE_LANGUAGES.includes(lang);
+        const levels = rules.ROAST_LEVELS.filter((level) => savage || level !== 'savage');
+        const marked = !savage && current === 'savage' ? 'spicy' : current;
+        const rows = levels.map((level) => [{ text: pick(marked === level, t(`onb_roast_${level}`)), callback_data: `rstl|${level}|o` }]);
+        return { ...body(t(savage ? 'onb_q_roast' : 'onb_q_roast_spicy_only')), keyboard: [...rows, ...controls] };
       }
       default:
         throw new Error(`Unknown onboarding step: ${step}`);
@@ -413,10 +453,11 @@ class OnboardingHandlers {
     const userId = ctx.from.id;
     const lang = await this.lang(ctx);
     if (this.stateService.getUserState(userId) === BUDGET_STATE) this.stateService.deleteUserState(userId);
-    const finished = await this.onboardingService.finish(userId, draft, status);
+    const finished = await this.onboardingService.finish(userId, draft, status, { language: lang });
     // Уже записывал траты (повторный проход или трата посреди опроса) — без «первой траты»
     const recorded = await this.onboardingService.hasRecorded(userId);
-    const { text, keyboard } = this.doneScreen(lang, finished, { recorded });
+    const roastSample = await this.roastSample(userId, lang, finished);
+    const { text, keyboard } = this.doneScreen(lang, finished, { recorded, roastSample });
     await this.send(ctx, finished, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
 
     // Главная клавиатура — отдельным сообщением (у сообщения одна клавиатура: inline или reply)
@@ -424,30 +465,55 @@ class OnboardingHandlers {
     if (finished.mode === 'new' && this.referralService && await this.referralService.getPendingInviter(userId).catch(() => null)) {
       note += `\n\n${this.t(lang, 'referral_welcome_note', {
         expenses: this.referralService.config.ACTIVATION_EXPENSES,
+        activeDays: this.referralService.config.ACTIVATION_DAYS,
         days: this.referralService.rewardDays
       })}`;
     }
     await ctx.reply(note, { parse_mode: 'Markdown', reply_markup: await this.commandHandlers.mainKeyboardMarkup(userId, lang) });
   }
 
-  // Только то, что опрос действительно поменял, первый шаг и кнопки к разделам по целям
-  doneScreen(lang, draft, { recorded = false } = {}) {
+  // Злой режим включён в опросе — пример подколки, чтобы было понятно, чего ждать (молчит он до первого повода)
+  async roastSample(userId, lang, draft) {
+    const level = draft.answers && draft.answers.roast;
+    if (!this.roastService || !level || level === 'off') return null;
+    try {
+      const [settings, currency] = await Promise.all([this.roastService.getSettings(userId), this.userService.getUserCurrency(userId)]);
+      return this.roastService.sampleLine(lang, level, settings.gender, currency);
+    } catch (error) {
+      logger.warn('Roast sample failed', { userId, error: error.message });
+      return null;
+    }
+  }
+
+  // Только то, что опрос действительно поменял (у нового пользователя — всегда пояс и напоминания: они стоят и без
+  // ответа), первый шаг и кнопки к разделам по целям
+  doneScreen(lang, draft, { recorded = false, roastSample = null } = {}) {
     const t = (key, params) => this.t(lang, key, params);
     const a = draft.answers || {};
+    const isNew = draft.mode === 'new';
+    const zone = (timezone) => this.formatter.escapeMarkdown(getTimezoneDisplayName(timezone));
     const configured = [];
     if (a.currency) configured.push(t('onb_done_currency', { currency: a.currency }));
-    if (a.timezone) configured.push(t('onb_done_timezone', { timezone: this.formatter.escapeMarkdown(getTimezoneDisplayName(a.timezone)) }));
+    if (a.timezone) configured.push(t('onb_done_timezone', { timezone: zone(a.timezone) }));
+    else if (isNew) configured.push(a.timezoneAuto ? t('onb_done_timezone_guess', { timezone: zone(a.timezoneAuto) }) : t('onb_done_timezone_unknown'));
     if (a.periodDay) configured.push(t('onb_done_period', { day: a.periodDay }));
     if (a.budget) configured.push(t('onb_done_budget', { amount: this.formatter.formatAmount(a.budget.amount, a.budget.currency) }));
     if (a.reminders) {
       const plan = rules.reminderPlan(a.reminders);
       configured.push(plan && plan.enabled ? t('onb_done_reminders', { hours: plan.hours.map(hourLabel).join(', ') }) : t('onb_done_reminders_off'));
+    } else if (isNew) {
+      // Без ответа (onboardingService.defaultSchedule): одно вечером, если пояс известен, иначе выключены
+      const plan = rules.reminderPlan(rules.DEFAULT_REMINDERS);
+      configured.push(a.timezone || a.timezoneAuto
+        ? t('onb_done_reminders', { hours: plan.hours.map(hourLabel).join(', ') })
+        : t('onb_done_reminders_auto_off'));
     }
     if (a.notify) {
       const on = rules.NOTIFY.filter((code) => a.notify[code]);
       configured.push(on.length ? t('onb_done_notify', { list: on.map((code) => plain(t(`onb_notify_${code}`))).join(', ') }) : t('onb_done_notify_none'));
     }
     if (a.roast) configured.push(t('onb_done_roast', { level: t(`roast_level_${a.roast}`) }));
+    if (roastSample) configured.push(t('roast_enabled_sample', { sample: roastSample }), t('roast_enabled_when'));
 
     const lines = [t('onb_done_title'), ''];
     if (configured.length) lines.push(t('onb_done_configured'), ...configured);

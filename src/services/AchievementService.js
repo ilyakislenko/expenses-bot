@@ -313,7 +313,7 @@ class AchievementService {
     const ctx = { today: snap.today, expenseDays: snap.expenseDays, markDays: snap.markDays };
     if (challenge.kind === 'no_category') {
       ctx.categoryDays = new Set(await this.achievementRepository.getCategorySpendDays(
-        userId, snap.timezone, challenge.category_name, challenge.start_date, challenge.end_date
+        userId, snap.timezone, challenge.category_name, challenge.start_date, challenge.end_date, challenge.created_at || null
       ));
     }
     if (challenge.kind === 'budget_month') ctx.budget = await this.budgetFor(userId, snap, challenge);

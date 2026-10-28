@@ -260,6 +260,6 @@ describe('Telegram language codes (PLT-15)', () => {
 
     await commandHandlers.start(ctx);
 
-    expect(ctx.reply.mock.calls[0][0]).toBe(ls.getText('jp', 'language_select'));
+    expect(ctx.reply.mock.calls[0][0]).toBe(`${ls.getText('jp', 'onb_welcome')}\n\n${ls.getText('jp', 'language_select')}`);
   });
 });

@@ -171,14 +171,23 @@ class LocalizationService {
   }
 
   /**
-   * Клавиатура выбора языка на указанном языке.
-   * onboarding: кнопки несут признак шага онбординга (`|ob`), «Назад» в Настройки нет — это первый шаг.
+   * Клавиатура выбора языка на указанном языке: по два языка в строке, текущий отмечен ✅.
+   * onboarding: кнопки несут признак шага онбординга (`|ob`), «Назад» в Настройки нет — это первый шаг;
+   * первой строкой — «✅ Продолжить на <языке экрана>» (язык Telegram пользователя), остальные — ниже.
    */
   getLanguageKeyboardLocalized(language, { onboarding = false } = {}) {
-    const keyboard = this.getSupportedLanguages().map(lang => [{
-      text: `${lang.flag} ${lang.name}`,
-      callback_data: `set_language|${lang.code}${onboarding ? '|ob' : ''}`
-    }]);
+    const suffix = onboarding ? '|ob' : '';
+    const keyboard = [];
+    if (onboarding && this.isLanguageSupported(language)) {
+      keyboard.push([{ text: this.getText(language, 'language_continue'), callback_data: `set_language|${language}${suffix}` }]);
+    }
+    const others = this.getSupportedLanguages()
+      .filter(lang => !(onboarding && lang.code === language))
+      .map(lang => ({
+        text: `${!onboarding && lang.code === language ? '✅ ' : ''}${lang.flag} ${lang.name}`,
+        callback_data: `set_language|${lang.code}${suffix}`
+      }));
+    for (let i = 0; i < others.length; i += 2) keyboard.push(others.slice(i, i + 2));
     if (!onboarding) {
       keyboard.push([{ text: this.getText(language, 'button_back'), callback_data: 'settings' }]);
     }

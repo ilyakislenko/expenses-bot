@@ -56,13 +56,15 @@ const ROAST = {
   SUBTYPE_CHANCE: 0.7
 };
 
-// Реферальная программа: оба получают REWARD_DAYS премиума, когда приглашённый запишет ACTIVATION_EXPENSES трат
-// (ручных или из чека — не регулярных и не из импорта). Пригласившему — не больше MAX_REWARDED_INVITES наград
+// Реферальная программа: оба получают REWARD_DAYS премиума, когда у приглашённого ACTIVATION_EXPENSES трат хотя бы
+// в ACTIVATION_DAYS разных днях (ручных или из чека — не регулярных и не из импорта; удалённые не считаются).
+// Пригласившему — не больше MAX_REWARDED_INVITES наград
 // и MAX_BONUS_DAYS дней всего; приглашённый получает награду всегда. Одинаково для всех: это путь к премиуму.
 // Подсказка «пригласи друга» к сообщениям о лимитах — не чаще раза в UPSELL_INTERVAL_DAYS.
 const REFERRAL = {
   REWARD_DAYS: 7,
   ACTIVATION_EXPENSES: 3,
+  ACTIVATION_DAYS: 2,
   MAX_REWARDED_INVITES: 10,
   MAX_BONUS_DAYS: 90,
   UPSELL_INTERVAL_DAYS: 7
@@ -182,7 +184,7 @@ function generateCurrencyKeyboard(localizationService, userLanguage, callbackPre
       button('₾ GEL', 'GEL')
     ],
     [
-      button('сум UZS', 'UZS'),
+      button(userLanguage === 'ru' || userLanguage === 'kz' ? 'сум UZS' : 'soʻm UZS', 'UZS'),
       button('฿ THB', 'THB')
     ],
     [
@@ -207,10 +209,15 @@ function generateSettingsKeyboard(localizationService, userLanguage) {
 // Клавиатура выбора времени: часы 0–23 с текущими минутами UTC.
 // Пояс считается от даты сообщения с клавиатурой (handleTimezoneSelection), поэтому позднее нажатие не сдвигает его.
 // onboarding: кнопки несут признак шага онбординга (`|ob`), «Назад» ведёт на предыдущий шаг (валюта), а не в Настройки.
-function generateTimeKeyboard(localizationService, userLanguage, { onboarding = false } = {}) {
+// half: минуты сдвинуты на 30 — для поясов с половиной часа (Индия UTC+5:30, Иран…), кнопки `time|<ч>|<м>|h[|ob]`;
+// переключатель `tzh|<0|1>[|ob]`. По умолчанию сдвиг — у hi (в Индии UTC+5:30)
+function generateTimeKeyboard(localizationService, userLanguage, { onboarding = false, half = userLanguage === 'hi', now = new Date() } = {}) {
   const keyboard = [];
-  const currentUtcMinutes = new Date().getUTCMinutes();
+  const utcMinutes = now.getUTCMinutes();
+  const shown = (utcMinutes + (half ? 30 : 0)) % 60;
+  const other = (utcMinutes + (half ? 0 : 30)) % 60;
   const suffix = onboarding ? '|ob' : '';
+  const pad = (value) => String(value).padStart(2, '0');
 
   // 6 рядов по 4 кнопки (0-23 часа)
   for (let row = 0; row < 6; row++) {
@@ -218,12 +225,17 @@ function generateTimeKeyboard(localizationService, userLanguage, { onboarding = 
     for (let col = 0; col < 4; col++) {
       const hour = row * 4 + col;
       rowButtons.push({
-        text: `${hour.toString().padStart(2, '0')}:${currentUtcMinutes.toString().padStart(2, '0')}`,
-        callback_data: `time|${hour}|${currentUtcMinutes}${suffix}`
+        text: `${pad(hour)}:${pad(shown)}`,
+        callback_data: `time|${hour}|${shown}${half ? '|h' : ''}${suffix}`
       });
     }
     keyboard.push(rowButtons);
   }
+
+  keyboard.push([{
+    text: localizationService.getText(userLanguage, 'button_tz_other_minutes', { minutes: pad(other) }),
+    callback_data: `tzh|${half ? 0 : 1}${suffix}`
+  }]);
 
   keyboard.push([{
     text: localizationService.getText(userLanguage, 'button_back'),

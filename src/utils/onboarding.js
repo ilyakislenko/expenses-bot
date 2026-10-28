@@ -22,6 +22,17 @@ const LANGUAGE_CURRENCY = {
   zh: 'CNY', jp: 'JPY', hi: 'INR', tr: 'TRY', ka: 'GEL', uz: 'UZS'
 };
 
+// Часовой пояс по языку — пока новый пользователь не указал своё время. Только где язык почти однозначно даёт пояс
+// (как LANGUAGE_CURRENCY: es/pt/fr/de — Европа); у en угадать нельзя — остаётся UTC
+const LANGUAGE_TIMEZONE = {
+  ru: 'Europe/Moscow', de: 'Europe/Berlin', es: 'Europe/Madrid', fr: 'Europe/Paris', pt: 'Europe/Lisbon',
+  kz: 'Asia/Almaty', zh: 'Asia/Shanghai', jp: 'Asia/Tokyo', hi: 'Asia/Kolkata', tr: 'Europe/Istanbul',
+  ka: 'Asia/Tbilisi', uz: 'Asia/Tashkent'
+};
+// Напоминания нового пользователя, пока он не ответил на вопрос о них: одно вечером — если пояс известен (выбран или
+// угадан по языку), иначе выключены, чтобы не писать ночью
+const DEFAULT_REMINDERS = 'e';
+
 // Кнопки итогового экрана по целям (и выписке как способу записи), не больше MAX_FINAL_ACTIONS
 const MAX_FINAL_ACTIONS = 4;
 const GOAL_ACTIONS = {
@@ -139,6 +150,8 @@ module.exports = {
   REMINDERS,
   STEP_CODES,
   LANGUAGE_CURRENCY,
+  LANGUAGE_TIMEZONE,
+  DEFAULT_REMINDERS,
   MAX_FINAL_ACTIONS,
   newDraft,
   steps,

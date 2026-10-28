@@ -35,13 +35,19 @@ class ReferralRepository extends BaseRepository {
     return result.rows[0] ? Number(result.rows[0].inviter_id) : null;
   }
 
-  // Траты, которые засчитываются для награды: ручные и из чека (не регулярные и не из импорта выписки)
+  // Траты, которые засчитываются для награды: ручные и из чека (не регулярные и не из импорта выписки), только ещё
+  // существующие (удалённые не считаются) и записанные после регистрации (перенос даты в прошлое не добавляет дней).
+  // → { count, days } — сколько трат и в скольких разных днях (по поясу пользователя)
   async countQualifyingExpenses(userId) {
     const result = await this.query(
-      'SELECT COUNT(*)::int AS count FROM expenses WHERE user_id = $1 AND recurring_expense_id IS NULL AND import_hash IS NULL',
+      `SELECT COUNT(*)::int AS count,
+              COUNT(DISTINCT (e.created_at_utc AT TIME ZONE COALESCE(NULLIF(u.timezone, ''), 'UTC'))::date)::int AS days
+       FROM expenses e JOIN users u ON u.id = e.user_id
+       WHERE e.user_id = $1 AND e.recurring_expense_id IS NULL AND e.import_hash IS NULL
+         AND (u.created_at IS NULL OR e.created_at_utc >= u.created_at)`,
       [userId]
     );
-    return result.rows[0].count;
+    return result.rows[0];
   }
 
   // Награда за приглашённого — ровно один раз. Строка пригласившего в referral_codes блокируется, чтобы два

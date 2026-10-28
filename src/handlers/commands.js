@@ -96,8 +96,12 @@ class CommandHandlers {
       await this.onboardingLanguage(ctx, initialLanguage);
       return;
     }
-    // Дубль первого /start из той же пачки: экран выбора языка уже показан
-    if (registered && registered.justCreated) return;
+    // Дубль первого /start из той же пачки: экран выбора языка уже показан. Если язык уже выбран (пошёл опрос) —
+    // это осознанный повторный /start, отвечаем как обычно
+    if (registered && registered.justCreated) {
+      const onboarding = await this.userService.getOnboarding(user.id).catch(() => null);
+      if (!onboarding || !onboarding.answers) return;
+    }
 
     const userLanguage = await this.userService.getUserLanguage(user.id);
     await ctx.reply(this.localizationService.getText(userLanguage, 'start_returning'), {
@@ -194,11 +198,12 @@ class CommandHandlers {
   }
 
 
-  // Новый пользователь: выбор языка (дальше — опрос); повторный показ — по «Назад» с первого вопроса
+  // Новый пользователь: приветствие и выбор языка (дальше — опрос); повторный показ — по «Назад» с первого вопроса
   async onboardingLanguage(ctx, language) {
     const userLanguage = language || await this.userService.getUserLanguage(ctx.from.id);
     if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
-    await respond(ctx, this.localizationService.getText(userLanguage, 'language_select'), {
+    const t = (key) => this.localizationService.getText(userLanguage, key);
+    await respond(ctx, `${t('onb_welcome')}\n\n${t('language_select')}`, {
       reply_markup: { inline_keyboard: this.localizationService.getLanguageKeyboardLocalized(userLanguage, { onboarding: true }) }
     });
   }
@@ -306,7 +311,8 @@ class CommandHandlers {
     });
   }
 
-  async timezone(ctx) {
+  // half — кнопки с минутами, сдвинутыми на полчаса (Индия, Иран…): переключатель tzh|<0|1>
+  async timezone(ctx, { half } = {}) {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
     const { generateTimeKeyboard } = require('../utils/constants');
@@ -315,7 +321,7 @@ class CommandHandlers {
     await respond(ctx, message, {
       parse_mode: 'Markdown',
       reply_markup: {
-        inline_keyboard: generateTimeKeyboard(this.localizationService, userLanguage)
+        inline_keyboard: generateTimeKeyboard(this.localizationService, userLanguage, { half })
       }
     });
   }

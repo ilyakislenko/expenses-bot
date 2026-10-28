@@ -2,7 +2,7 @@ const logger = require('../utils/logger');
 const { USER_LIMITS, ROAST } = require('../utils/constants');
 const { addDays } = require('../utils/period');
 const { daysBetween } = require('../utils/planning');
-const { LEVELS, GENDERS, TRIGGER_PRIORITY, junkKind, median, renderTemplate, pickVariant, timeContexts, isPayday } = require('../utils/roast');
+const { LEVELS, GENDERS, SAVAGE_LANGUAGES, TRIGGER_PRIORITY, junkKind, median, renderTemplate, pickVariant, timeContexts, isPayday } = require('../utils/roast');
 const roastTemplates = require('../locales/roast');
 
 const PREFIX = '😈 ';
@@ -51,10 +51,21 @@ class RoastService {
     return USER_LIMITS.premium.ROAST_SAVAGE !== false && await this.premiumService.isPremiumUser(userId);
   }
 
-  // Уровень, которым реально подкалывать: savage без права на него — ехидный
-  async effectiveLevel(userId, level) {
-    if (level === 'savage' && !(await this.savageAllowed(userId))) return 'spicy';
+  // Уровень, которым реально подкалывать: savage без права на него или не на ru/en (там «без цензуры» нет) — ехидный
+  async effectiveLevel(userId, level, lang = null) {
+    if (level !== 'savage') return level;
+    if (lang && !SAVAGE_LANGUAGES.includes(lang)) return 'spicy';
+    if (!(await this.savageAllowed(userId))) return 'spicy';
     return level;
+  }
+
+  // Пример подколки для экрана включения: первая вредная трата («бургер») на 500 в валюте пользователя
+  sampleLine(lang, level, gender, currency) {
+    const effective = level === 'savage' && !SAVAGE_LANGUAGES.includes(lang) ? 'spicy' : level;
+    if (!LEVELS.includes(effective) || effective === 'off') return null;
+    const desc = this.formatter.escapeMarkdown(this.t(lang, 'roast_sample_item'));
+    const picked = this.pick(lang, effective, 'junk', { amount: this.money(500, currency), desc, count: null, sum: null }, gender, []);
+    return picked ? PREFIX + picked.text : null;
   }
 
   async setLevel(userId, level) {
@@ -153,7 +164,7 @@ class RoastService {
       if (!own.length) return '';
       const settings = await this.roastRepository.getSettings(userId);
       if (settings.level === 'off') return '';
-      const level = await this.effectiveLevel(userId, settings.level);
+      const level = await this.effectiveLevel(userId, settings.level, lang);
 
       const data = await this.actionData(userId, own, { broken, source, lang });
       const state = await this.roastRepository.getState(userId);
@@ -411,7 +422,8 @@ class RoastService {
       sum = junk.value;
     }
     const { median: typical } = await this.history(data);
-    const notable = (typical > 0 && junk.value >= typical) || count >= ROAST.JUNK_HABIT_COUNT;
+    // Истории мало (новичок) — сравнить не с чем: заметна любая вредная трата, иначе режим молчит первые недели
+    const notable = typical === null || (typical > 0 && junk.value >= typical) || count >= ROAST.JUNK_HABIT_COUNT;
     if (!notable) return null;
     return {
       kind: 'junk',
@@ -438,7 +450,7 @@ class RoastService {
       if (!summary || !summary.enoughHistory) return '';
       const settings = await this.roastRepository.getSettings(userId);
       if (settings.level === 'off') return '';
-      const level = await this.effectiveLevel(userId, settings.level);
+      const level = await this.effectiveLevel(userId, settings.level, lang);
       const family = summary.percent >= WEEK_SAME_PERCENT ? 'week_more' : summary.percent <= -WEEK_SAME_PERCENT ? 'week_less' : 'week_same';
       const state = await this.roastRepository.getState(userId);
       const picked = this.pick(lang, level, family, {
