@@ -58,7 +58,7 @@ const transports = [
     filename: path.join(logDir, 'error-%DATE%.log'),
     datePattern: 'YYYY-MM-DD',
     maxSize: '20m',
-    maxFiles: '30d',
+    maxFiles: '14d', // как и все логи — не дольше 14 дней (docs/privacy.md)
     level: 'error'
   })
 ];

@@ -25,7 +25,7 @@
 Вопрос боту, который бот не разобрал сам, разбирает нейросеть — только текст вопроса, сегодняшняя дата и названия твоих категорий, без имени, ID и сумм. Суммы и ответ считает сам бот по твоим записям. Нейросеть та же, что для чеков (обычно на компьютерах разработчика, облачный сервис — только если локальные недоступны и он настроен).
 
 ## Хранение
-На сервере разработчика в России. Резервные копии базы хранятся 30 дней. Технические логи (в том числе начало текста запросов к боту, до 100 символов) — 14 дней, логи ошибок — 30 дней.
+На сервере разработчика в России. Резервные копии базы хранятся 30 дней. Технические логи, в том числе логи ошибок (в них может быть начало текста запросов к боту, до 100 символов), — 14 дней, потом удаляются автоматически.
 
 ## Удаление
 Напиши на ikis.dev01@gmail.com или в /paysupport — удалим аккаунт и все записи в течение 30 дней (из резервных копий — по истечении их срока).
@@ -58,7 +58,7 @@ Data is not sold or shared for advertising. Messages are delivered by Telegram. 
 A question the bot can't parse by itself is parsed by an AI model — only the question text, today's date and your category names, without your name, ID or amounts. The bot computes the amounts and the answer from your records itself. It's the same model as for receipts (usually on the developer's own computers; a cloud service only if those are unavailable and one is configured).
 
 ## Storage
-On the developer's server in Russia. Database backups are kept for 30 days. Technical logs (including the first 100 characters of requests to the bot) — 14 days, error logs — 30 days.
+On the developer's server in Russia. Database backups are kept for 30 days. Technical logs, including error logs (they may contain the first 100 characters of requests to the bot), are kept for 14 days and then deleted automatically.
 
 ## Deletion
 Write to ikis.dev01@gmail.com or /paysupport — we will delete your account and all records within 30 days (from backups — when they expire).
