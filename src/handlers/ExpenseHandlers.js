@@ -31,7 +31,7 @@ function groupByCurrency(expenses) {
 }
 
 class ExpenseHandlers {
-  constructor({ expenseService, incomeService, recurringExpenseService, familyService, premiumService, userService, localizationService, formatter, stateService, validator, budgetService, reportService, planningService = null, achievementService = null }) {
+  constructor({ expenseService, incomeService, recurringExpenseService, familyService, premiumService, userService, localizationService, formatter, stateService, validator, budgetService, reportService, planningService = null, achievementService = null, roastService = null }) {
     this.expenseService = expenseService;
     this.incomeService = incomeService;
     this.recurringExpenseService = recurringExpenseService;
@@ -46,6 +46,7 @@ class ExpenseHandlers {
     this.reportService = reportService;
     this.planningService = planningService; // строка «💸 Можно сегодня» в «Сегодня» и обзоре текущего периода
     this.achievementService = achievementService;
+    this.roastService = roastService; // «😈 Злой режим»: строка к подтверждению записи
     this.backViews = {}; // экраны других разделов: kind → (ctx, args) => …, см. registerBackView
   }
 
@@ -89,7 +90,7 @@ class ExpenseHandlers {
     if (remembered || !categories.length) {
       const category = remembered || await this.expenseService.getDefaultCategory();
       const expense = await this.expenseService.addExpense(userId, { ...draft, categoryId: category.id });
-      const note = await this.achievementNote(userId, lang, category.name);
+      const note = await this.expenseNote(ctx, userId, lang, { ...expense, category_name: category.name });
       await this.showCard(ctx, expense.id, 'n', { added: true, remembered: !!remembered, note });
       await this.sendBudgetWarnings(ctx, userId, lang, category.name);
       return true;
@@ -165,7 +166,7 @@ class ExpenseHandlers {
     await ctx.answerCbQuery(this.t(lang, 'callback_expense_added', {
       category: this.formatter.translateCategoryName(category.name, this.localizationService, lang)
     }));
-    const note = await this.achievementNote(userId, lang, category.name);
+    const note = await this.expenseNote(ctx, userId, lang, { ...expense, category_name: category.name });
     await this.showCard(ctx, expense.id, 'n', { added: true, note });
     await this.sendBudgetWarnings(ctx, userId, lang, category.name);
   }
@@ -195,10 +196,26 @@ class ExpenseHandlers {
   // КАРТОЧКА ЗАПИСИ
   // ========================================
 
-  // Строка достижений к подтверждению записи ('' — нечего сказать; track сам не бросает исключений)
-  async achievementNote(userId, lang, categoryName) {
+  // Строка достижений к подтверждению записи ('' — нечего сказать; track сам не бросает исключений).
+  // broken — сюда кладутся сорванные челленджи (повод для злого режима)
+  async achievementNote(userId, lang, categoryName, broken = null) {
     if (!this.achievementService) return '';
-    return this.achievementService.track(userId, 'expense_added', { lang, categoryName });
+    return this.achievementService.track(userId, 'expense_added', { lang, categoryName, broken });
+  }
+
+  // Подколка злого режима к подтверждению записи ('' — молчим; roastService сам не бросает исключений).
+  // expenses — записанные этим действием траты (с category_name), source — 'text' | 'batch' | 'receipt'
+  async roastNote(ctx, userId, lang, expenses, { broken = [], source = 'text' } = {}) {
+    if (!this.roastService) return '';
+    return this.roastService.afterExpenses(ctx, { userId, lang, expenses, broken, source });
+  }
+
+  // Достижения и злой режим к карточке только что записанной траты
+  async expenseNote(ctx, userId, lang, expense) {
+    const broken = [];
+    const achievements = await this.achievementNote(userId, lang, expense.category_name, broken);
+    const roast = await this.roastNote(ctx, userId, lang, [expense], { broken });
+    return [achievements, roast].filter(Boolean).join('\n\n');
   }
 
   async showCard(ctx, expenseId, back, { added = false, remembered = false, note = '' } = {}) {

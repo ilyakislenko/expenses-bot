@@ -235,7 +235,7 @@ class ReceiptHandlers {
       }
       const receiptId = await this.recordReceipt(userId, receipt, timezone);
       const view = await this.buildReceiptView(userId, lang, receiptId, 0);
-      const text = await this.withAchievementNote(userId, lang, view.text);
+      const text = await this.withNotes(ctx, userId, lang, receiptId, view.text);
       await this.editStatus(ctx, statusId, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: view.keyboard } });
       await this.sendBudgetWarnings(ctx, userId, lang, receiptId);
     } catch (error) {
@@ -382,15 +382,17 @@ class ReceiptHandlers {
     this.drafts.delete(`${userId}:${messageId}`);
     this.rotations.delete(`${userId}:${messageId}`);
     const view = await this.buildReceiptView(userId, lang, receiptId, 0);
-    const text = await this.withAchievementNote(userId, lang, view.text);
+    const text = await this.withNotes(ctx, userId, lang, receiptId, view.text);
     await respond(ctx, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: view.keyboard } });
     await this.sendBudgetWarnings(ctx, userId, lang, receiptId);
   }
 
-  // Записанный чек: строка достижений (первый чек, серия…) под списком
-  async withAchievementNote(userId, lang, text) {
-    if (!this.achievementService) return text;
-    const note = await this.achievementService.track(userId, 'receipt_recorded', { lang });
+  // Записанный чек: строка достижений (первый чек, серия…) и подколка злого режима под списком
+  async withNotes(ctx, userId, lang, receiptId, text) {
+    const achievements = this.achievementService ? await this.achievementService.track(userId, 'receipt_recorded', { lang }) : '';
+    const expenses = await this.receiptService.getExpenses(userId, receiptId);
+    const roast = await this.expenseHandlers.roastNote(ctx, userId, lang, expenses, { source: 'receipt' });
+    const note = [achievements, roast].filter(Boolean).join('\n\n');
     return note ? `${text}\n\n${note}` : text;
   }
 

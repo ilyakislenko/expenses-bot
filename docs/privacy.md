@@ -15,6 +15,7 @@
 - Сообщения в поддержку и баг-репорты.
 - Код рекламной ссылки, по которой ты пришёл, и шаги первого запуска — для обезличенной статистики.
 - Приглашения друзей: кто кого пригласил по личной ссылке и выданные за это дни премиума. Пригласивший видит в боте число приглашённых и получает сообщение с именем друга из Telegram, когда тот пришёл по ссылке и когда начал вести учёт; траты друга ему не видны.
+- «😈 Злой режим» (по желанию): уровень, обращение (мужской / женский / «не скажу» — только чтобы правильно согласовать фразы) и счётчик подколок за день. Сами подколки не сохраняются.
 
 ## Зачем
 Чтобы вести учёт, считать итоги и бюджеты, присылать напоминания, сводки и уведомления, выдавать премиум, отвечать в поддержке и улучшать бот.
@@ -47,6 +48,7 @@ Version of 27.10.2026. Data controller: IE KISLENKO (Republic of Kazakhstan), II
 - Support messages and bug reports.
 - The code of the ad link you came from and first-run steps — for anonymous statistics.
 - Friend invites: who invited whom via a personal link and the premium days granted for it. The inviter sees the number of invited friends in the bot and gets a message with the friend's Telegram name when the friend joins via the link and when they start tracking; the friend's expenses are never shown to them.
+- Roast mode (opt-in): the level, the form of address (male / female / «rather not say» — only to get the grammar right) and a per-day counter of roasts. The roast texts are not stored.
 
 ## Why
 To keep your records, calculate summaries and budgets, send reminders, summaries and notifications, grant premium, answer support requests and improve the bot.

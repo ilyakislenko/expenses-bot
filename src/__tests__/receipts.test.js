@@ -639,7 +639,7 @@ describe('ReceiptHandlers background recognition', () => {
     };
     const handlers = new ReceiptHandlers({
       receiptService,
-      expenseHandlers: { registerBackView: jest.fn(), familyModeTarget: jest.fn(async () => null) },
+      expenseHandlers: { registerBackView: jest.fn(), familyModeTarget: jest.fn(async () => null), roastNote: jest.fn(async () => '') },
       budgetService: { checkAfterExpense: jest.fn(async () => []) },
       userService: { getUserLanguage: async () => 'ru', getUserTimezone: async () => 'Europe/Moscow', getUserCurrency: async () => 'RUB' },
       localizationService: new LocalizationService(),
@@ -1031,7 +1031,7 @@ describe('small receipt with one or two lines', () => {
     };
     const handlers = new ReceiptHandlers({
       receiptService,
-      expenseHandlers: { registerBackView: jest.fn(), familyModeTarget: jest.fn(async () => null) },
+      expenseHandlers: { registerBackView: jest.fn(), familyModeTarget: jest.fn(async () => null), roastNote: jest.fn(async () => '') },
       budgetService: { checkAfterExpense: jest.fn(async () => []) },
       userService: { getUserLanguage: async () => 'ru', getUserTimezone: async () => 'Europe/Moscow', getUserCurrency: async () => 'RUB' },
       localizationService: new LocalizationService(),

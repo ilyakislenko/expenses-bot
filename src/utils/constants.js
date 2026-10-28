@@ -14,6 +14,7 @@ const USER_LIMITS = {
     MAX_ACTIVE_CHALLENGES: 1, // челленджей одновременно
     MAX_ASSISTANT_QUESTIONS_PER_DAY: 5, // отвеченных вопросов «🤖 Спроси бота» в локальный день
     MAX_VOICE_PER_DAY: 20, // распознанных голосовых в локальный день (запись текстом — без лимита)
+    ROAST_SAVAGE: true, // «😈 Злой режим» без цензуры (18+); false — только с премиумом (ехидный остаётся всем)
   },
   premium: {
     MAX_DESCRIPTION_LENGTH: 160,
@@ -27,6 +28,7 @@ const USER_LIMITS = {
     MAX_ACTIVE_CHALLENGES: Infinity,
     MAX_ASSISTANT_QUESTIONS_PER_DAY: 100,
     MAX_VOICE_PER_DAY: 300,
+    ROAST_SAVAGE: true,
   }
 };
 
@@ -34,6 +36,20 @@ const USER_LIMITS = {
 const TRIAL_PERIOD = {
   DAYS: 14, // 14 дней пробного периода для новых пользователей
   TYPE: 'trial'
+};
+
+// «😈 Злой режим»: не больше одной подколки на действие, MAX_PER_DAY за локальный день и не чаще раза в
+// MIN_GAP_MINUTES — кроме превышения бюджета (по разу на бюджет за период). Импульсная покупка — трата не меньше
+// IMPULSE_FACTOR медиан своих трат за HISTORY_DAYS дней (нужно хотя бы IMPULSE_MIN_HISTORY трат); вредная трата
+// заслуживает подколки, если она не меньше медианы или это уже JUNK_HABIT_COUNT-я такая трата за период
+const ROAST = {
+  MAX_PER_DAY: 3,
+  MIN_GAP_MINUTES: 120,
+  IMPULSE_FACTOR: 3,
+  IMPULSE_MIN_HISTORY: 10,
+  HISTORY_DAYS: 60,
+  JUNK_HABIT_COUNT: 3,
+  RECENT_VARIANTS: 8 // столько последних показанных вариантов не повторяются
 };
 
 // Реферальная программа: оба получают REWARD_DAYS премиума, когда приглашённый запишет ACTIVATION_EXPENSES трат
@@ -178,6 +194,7 @@ function generateSettingsKeyboard(localizationService, userLanguage) {
     [{ text: t('button_currencies'), callback_data: 'settings_currencies' }, { text: t('button_change_timezone'), callback_data: 'change_timezone' }],
     [{ text: t('button_change_language'), callback_data: 'change_language' }, { text: t('button_change_period_start'), callback_data: 'change_period_start' }],
     [{ text: t('button_reminders'), callback_data: 'configure_reminder_hours' }, { text: t('button_custom_categories'), callback_data: 'custom_categories' }],
+    [{ text: t('button_roast_settings'), callback_data: 'rst' }],
     [{ text: t('button_back'), callback_data: 'back_to_menu' }]
   ];
 }
@@ -260,6 +277,7 @@ module.exports = {
   tariffDiscount,
   TRIAL_PERIOD,
   REFERRAL,
+  ROAST,
   generateMainMenuKeyboard,
   generateMoreMenu,
   LEGACY_MENU_BUTTON_KEYS,

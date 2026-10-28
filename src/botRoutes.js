@@ -40,6 +40,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.command('achievements', errorHandler((ctx) => achievementHandlers.show(ctx))); // уровень, серия, достижения, челленджи
   bot.command('invite', errorHandler((ctx) => handlers.referralHandlers.showInvite(ctx))); // пригласить друга
   bot.command('ask', errorHandler((ctx) => assistantHandlers.handleCommand(ctx))); // вопрос боту о своих тратах
+  bot.command('roast', errorHandler((ctx) => handlers.roastHandlers.showMonth(ctx))); // «😈 Разнос месяца»
   bot.command('cancel', errorHandler(async (ctx) => {
     const userId = ctx.from.id;
     const userLanguage = await handlers.userService.getUserLanguage(userId);
@@ -176,6 +177,13 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('ai', errorHandler((ctx) => assistantHandlers.showExamples(ctx)));
   bot.action(/^ai\|([1-6])$/, errorHandler((ctx) => assistantHandlers.askExample(ctx)));
   bot.action('aiq', errorHandler((ctx) => assistantHandlers.startInput(ctx)));
+  // «😈 Злой режим»: настройка (rst), уровень (rstl), обращение (rstg → rstgs), 18+ (rsty), «Разнос месяца» (rsm)
+  bot.action('rst', errorHandler((ctx) => handlers.roastHandlers.showSettings(ctx)));
+  bot.action(/^rstl\|(off|spicy|savage)\|(s|m)$/, errorHandler((ctx) => handlers.roastHandlers.chooseLevel(ctx)));
+  bot.action(/^rstg\|(s|m)$/, errorHandler((ctx) => handlers.roastHandlers.showGender(ctx, { origin: ctx.match[1] })));
+  bot.action(/^rstgs\|(m|f|x)\|(off|spicy|savage|-)\|(s|m)$/, errorHandler((ctx) => handlers.roastHandlers.setGender(ctx)));
+  bot.action(/^rsty\|(s|m)$/, errorHandler((ctx) => handlers.roastHandlers.confirmAdult(ctx)));
+  bot.action('rsm', errorHandler((ctx) => handlers.roastHandlers.showMonth(ctx)));
 
   // Текстовые сообщения
   bot.on('text', errorHandler((ctx) => messageHandlers.handleExpense(ctx))); // ввод трат, доходов и кнопки клавиатуры

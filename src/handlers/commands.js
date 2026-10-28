@@ -8,7 +8,7 @@ const { localToday, lastDaysPeriod } = require('../utils/period');
 const { PREMIUM_TARIFFS, tariffDiscount, USER_LIMITS } = require('../utils/constants');
 
 class CommandHandlers {
-  constructor({ expenseService, userService, premiumService, familyService, localizationService, formatter, stateService, keyboardGenerators, paymentService, incomeService, funnelService, receiptService, referralService = null, voiceService = null }) {
+  constructor({ expenseService, userService, premiumService, familyService, localizationService, formatter, stateService, keyboardGenerators, paymentService, incomeService, funnelService, receiptService, referralService = null, voiceService = null, roastService = null }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -23,6 +23,7 @@ class CommandHandlers {
     this.receiptService = receiptService;
     this.referralService = referralService;
     this.voiceService = voiceService;
+    this.roastService = roastService; // строка «😈 Злой режим» в настройках
   }
 
   async paysupport(ctx) {
@@ -166,6 +167,7 @@ class CommandHandlers {
     if (this.receiptService && this.receiptService.configured) hints.push(t('help_receipt'));
     if (this.voiceService && this.voiceService.configured) hints.push(t('help_voice'));
     hints.push(t('help_assistant'));
+    hints.push(t('help_roast'));
     const text = hints.join('\n\n');
     await respond(ctx, text, {
       parse_mode: 'Markdown',
@@ -256,6 +258,10 @@ class CommandHandlers {
         : t('settings_daily_summary_off_line'),
       t(reminders.weekly_insight_enabled ? 'settings_weekly_insight_on_line' : 'settings_weekly_insight_off_line')
     ];
+    if (this.roastService) {
+      const roast = await this.roastService.getSettings(userId);
+      lines.push(t('settings_roast_line', { level: t(`roast_level_${roast.level}`) }));
+    }
 
     if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
     await respond(ctx, lines.join('\n'), {

@@ -91,16 +91,20 @@ class MultiEntryHandlers {
     const categoryNames = [...new Set(expenses.map(expense => expense.category_name).filter(Boolean))];
     const view = await this.buildBatchView(userId, lang, batchId, { header, defaulted });
     const event = source === 'voice' ? 'voice_used' : (expenses.length ? 'expense_added' : 'income_added');
-    const note = await this.achievementNote(userId, event, lang, categoryNames);
+    const broken = [];
+    const achievements = await this.achievementNote(userId, event, lang, categoryNames, broken);
+    const roast = expenses.length ? await this.expenseHandlers.roastNote(ctx, userId, lang, expenses, { broken, source: 'batch' }) : '';
+    const note = [achievements, roast].filter(Boolean).join('\n\n');
     await send(note ? `${view.text}\n\n${note}` : view.text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: view.keyboard } });
 
     if (categoryNames.length) await this.expenseHandlers.sendBudgetWarnings(ctx, userId, lang, categoryNames);
   }
 
-  // Строка достижений к сводке или голосовому ('' — нечего сказать; track сам не бросает исключений)
-  async achievementNote(userId, event, lang, categoryNames = []) {
+  // Строка достижений к сводке или голосовому ('' — нечего сказать; track сам не бросает исключений);
+  // broken — сюда кладутся сорванные челленджи (повод для злого режима)
+  async achievementNote(userId, event, lang, categoryNames = [], broken = null) {
     if (!this.achievementService) return '';
-    return this.achievementService.track(userId, event, { lang, categoryNames });
+    return this.achievementService.track(userId, event, { lang, categoryNames, broken });
   }
 
   // Расшифровка голосового — вопрос боту («сколько я потратил на такси?»), если «🤖 Спроси бота» подключён

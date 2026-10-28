@@ -653,3 +653,27 @@ CREATE TABLE IF NOT EXISTS voice_usage (
     count INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (user_id, day)
 );
+
+-- ==== ROAST MODE ====
+-- «😈 Злой режим»: уровень (off — по умолчанию, spicy — ехидный без мата, savage — без цензуры, 18+), пол для
+-- согласования фраз («купил/купила»; x — «не скажу», только фразы без рода) и подтверждение 18+ (один раз).
+ALTER TABLE users ADD COLUMN IF NOT EXISTS roast_level VARCHAR(10) NOT NULL DEFAULT 'off';
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_roast_level_check;
+ALTER TABLE users ADD CONSTRAINT users_roast_level_check CHECK (roast_level IN ('off', 'spicy', 'savage'));
+ALTER TABLE users ADD COLUMN IF NOT EXISTS gender CHAR(1) NULL;
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_gender_check;
+ALTER TABLE users ADD CONSTRAINT users_gender_check CHECK (gender IS NULL OR gender IN ('m', 'f', 'x'));
+ALTER TABLE users ADD COLUMN IF NOT EXISTS roast_adult_confirmed_at TIMESTAMPTZ NULL;
+COMMENT ON COLUMN users.roast_level IS 'Злой режим: off | spicy (ехидный) | savage (без цензуры, 18+)';
+COMMENT ON COLUMN users.gender IS 'Как обращаться в злом режиме: m | f | x (не скажу); NULL — не спрашивали';
+COMMENT ON COLUMN users.roast_adult_confirmed_at IS 'Когда пользователь подтвердил 18+ для уровня savage';
+
+-- Счётчик подколок: сколько было за локальный день, когда последняя, последние варианты (чтобы не повторяться)
+CREATE TABLE IF NOT EXISTS roast_state (
+    user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    day DATE NULL,
+    day_count INTEGER NOT NULL DEFAULT 0,
+    last_at TIMESTAMPTZ NULL,
+    recent TEXT[] NOT NULL DEFAULT '{}'
+);
+COMMENT ON TABLE roast_state IS 'Злой режим: подколок за локальный день (day, day_count), время последней и последние варианты шаблонов';

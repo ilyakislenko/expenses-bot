@@ -174,15 +174,16 @@ class AchievementService {
   // Событие действия пользователя (см. EVENTS в utils/achievements.js). Возвращает Markdown-строку для добавления
   // к ответу на это действие ('' — нечего сказать): не больше одного значка, повышение уровня, заморозка серии,
   // «🔥 N дней подряд» (раз в день). Никогда не бросает исключение — основное действие важнее.
-  // categoryNames — категории записанных трат (партия из нескольких записей или голос), иначе categoryName траты
-  async track(userId, event, { lang = null, categoryName = null, categoryNames = null } = {}) {
+  // categoryNames — категории записанных трат (партия из нескольких записей или голос), иначе categoryName траты.
+  // broken — массив, куда кладутся сорванные этим действием челленджи (для «😈 Злого режима»)
+  async track(userId, event, { lang = null, categoryName = null, categoryNames = null, broken = null } = {}) {
     try {
       const language = lang || await this.userService.getUserLanguage(userId);
       const snap = await this.snapshot(userId);
       const lines = [];
       const spentIn = categoryNames || (event === 'expense_added' && categoryName ? [categoryName] : []);
       for (const name of spentIn) {
-        lines.push(...await this.breakCategoryChallenges(userId, snap, name, language));
+        lines.push(...await this.breakCategoryChallenges(userId, snap, name, language, broken));
       }
       const result = await this.grant(userId, snap, event);
       lines.push(...this.grantLines(language, result));
@@ -336,13 +337,16 @@ class AchievementService {
   }
 
   // Трата в категории недели «без …» — челлендж сорван сразу, строка к карточке траты
-  async breakCategoryChallenges(userId, snap, categoryName, lang) {
+  async breakCategoryChallenges(userId, snap, categoryName, lang, broken = null) {
     const lines = [];
     for (const challenge of await this.achievementRepository.getActiveChallenges(userId)) {
       if (challenge.kind !== 'no_category' || challenge.category_name !== categoryName) continue;
       if (snap.today < challenge.start_date || snap.today >= challenge.end_date) continue;
       const closed = await this.achievementRepository.finishChallenge(challenge.id, 'lost');
-      if (closed) lines.push(this.t(lang, 'ach_ch_broken', { name: this.challengeName(lang, closed) }));
+      if (closed) {
+        lines.push(this.t(lang, 'ach_ch_broken', { name: this.challengeName(lang, closed) }));
+        if (broken) broken.push({ ...closed, today: snap.today });
+      }
     }
     return lines;
   }

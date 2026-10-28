@@ -159,6 +159,7 @@ function setup({ transcripts = ['Кофе 250 и такси 400.'], configured =
     familyModeTarget: jest.fn(async () => null),
     handleExpenseInput: jest.fn(async () => true),
     sendBudgetWarnings: jest.fn(async () => {}),
+    roastNote: jest.fn(async () => ''),
     inputErrorText: async (userId, lang, error) => (error === 'amount' ? t('error_amount', { max: '99 999 999' }) : t('error_format'))
   };
   const incomeHandlers = { handleIncomeInput: jest.fn(async () => {}) };

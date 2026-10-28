@@ -121,7 +121,7 @@ function projectPace({ spent, period, today }) {
 }
 
 class WeeklyInsightService {
-  constructor({ expenseService, incomeService, reportService, budgetService, userNotificationRepository, notificationService, localizationService, formatter, planningService = null }) {
+  constructor({ expenseService, incomeService, reportService, budgetService, userNotificationRepository, notificationService, localizationService, formatter, planningService = null, roastService = null }) {
     this.expenseService = expenseService;
     this.incomeService = incomeService;
     this.reportService = reportService;
@@ -131,6 +131,7 @@ class WeeklyInsightService {
     this.localizationService = localizationService;
     this.formatter = formatter;
     this.planningService = planningService; // новые найденные подписки — строкой в конце сводки, один раз
+    this.roastService = roastService; // «😈 Злой режим» включён — одна строка о неделе
   }
 
   t(lang, key, params) {
@@ -193,6 +194,8 @@ class WeeklyInsightService {
     }
 
     lines.push(...await this.periodLines(userId, lang, { timezone, currency, startDay, today, money }));
+    const roast = this.roastService ? await this.roastService.weeklyLine(userId, lang, summary, currency) : '';
+    if (roast) lines.push('', roast);
     const nudge = this.planningService ? await this.planningService.subscriptionNudge(userId, lang) : '';
     if (nudge) lines.push('', nudge);
     return { text: lines.join('\n'), weekKey: thisMonday, subscriptions: !!nudge };

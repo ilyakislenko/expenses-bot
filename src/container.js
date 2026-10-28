@@ -46,6 +46,7 @@ const AchievementRepository = require('./repositories/AchievementRepository');
 const ReferralRepository = require('./repositories/ReferralRepository');
 const AssistantRepository = require('./repositories/AssistantRepository');
 const EntryBatchRepository = require('./repositories/EntryBatchRepository');
+const RoastRepository = require('./repositories/RoastRepository');
 
 // Services
 const ExpenseService = require('./services/ExpenseService');
@@ -76,6 +77,7 @@ const AssistantService = require('./services/AssistantService');
 const { createAssistantProvider } = require('./services/assistant/model');
 const EntryBatchService = require('./services/EntryBatchService');
 const VoiceService = require('./services/VoiceService');
+const RoastService = require('./services/RoastService');
 const { createSttFromEnv } = require('./services/voice/whisper');
 
 // Handlers
@@ -96,6 +98,7 @@ const AchievementHandlers = require('./handlers/AchievementHandlers');
 const ReferralHandlers = require('./handlers/ReferralHandlers');
 const AssistantHandlers = require('./handlers/AssistantHandlers');
 const MultiEntryHandlers = require('./handlers/MultiEntryHandlers');
+const RoastHandlers = require('./handlers/RoastHandlers');
 
 // State management
 const StateService = require('./services/StateService');
@@ -315,6 +318,31 @@ class Container {
           localizationService: this.get('localizationService')
         });
 
+      case 'roastRepository':
+        return new RoastRepository();
+
+      // «😈 Злой режим»: подколки после записи, строка к сводке недели, «Разнос месяца»
+      case 'roastService':
+        return new RoastService({
+          roastRepository: this.get('roastRepository'),
+          expenseService: this.get('expenseService'),
+          budgetService: this.get('budgetService'),
+          planningService: this.get('planningService'),
+          premiumService: this.get('premiumService'),
+          reportService: this.get('reportService'),
+          userNotificationRepository: this.get('userNotificationRepository'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter'),
+          currencyUtils: this.get('currencyUtils')
+        });
+
+      case 'roastHandlers':
+        return new RoastHandlers({
+          roastService: this.get('roastService'),
+          userService: this.get('userService'),
+          localizationService: this.get('localizationService')
+        });
+
       case 'entryBatchRepository':
         return new EntryBatchRepository();
 
@@ -455,7 +483,8 @@ class Container {
           notificationService: this.get('notificationService'),
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
-          planningService: this.get('planningService')
+          planningService: this.get('planningService'),
+          roastService: this.get('roastService')
         });
 
       case 'expenseService':
@@ -575,7 +604,8 @@ class Container {
           funnelService: this.get('funnelService'),
           receiptService: this.get('receiptService'),
           referralService: this.get('referralService'),
-          voiceService: this.get('voiceService')
+          voiceService: this.get('voiceService'),
+          roastService: this.get('roastService')
         });
 
       case 'messageHandlers':
@@ -652,7 +682,8 @@ class Container {
           budgetService: this.get('budgetService'),
           reportService: this.get('reportService'),
           planningService: this.get('planningService'),
-          achievementService: this.get('achievementService')
+          achievementService: this.get('achievementService'),
+          roastService: this.get('roastService')
         });
 
       case 'budgetHandlers':
@@ -778,6 +809,7 @@ class Container {
       referralService: this.get('referralService'),
       assistantHandlers: this.get('assistantHandlers'),
       multiEntryHandlers: this.get('multiEntryHandlers'),
+      roastHandlers: this.get('roastHandlers'),
       savingsHandlers: this.get('savingsHandlers'),
       planningHandlers: this.get('planningHandlers'),
       planningService: this.get('planningService'),
