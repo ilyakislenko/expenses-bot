@@ -40,7 +40,8 @@ function makeReferralRepository() {
       const row = referrals.get(inviteeId);
       return row && !row.rewarded ? row.inviterId : null;
     },
-    countQualifyingExpenses: async (userId) => expenses.get(userId) || 0,
+    // В моке каждая трата — в свой день: { count, days }
+    countQualifyingExpenses: async (userId) => ({ count: expenses.get(userId) || 0, days: expenses.get(userId) || 0 }),
     claimReward: async (inviteeId, inviteeDays, decide) => {
       const row = referrals.get(inviteeId);
       if (!row || row.rewarded) return null;

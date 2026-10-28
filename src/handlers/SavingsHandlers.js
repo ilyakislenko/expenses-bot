@@ -271,9 +271,10 @@ class SavingsHandlers {
     return this.t(lang, 'savings_rate_own', { value: this.percent(pot.yield_rate) });
   }
 
-  // «💵 *Наличные* — 3 000 $ (≈ 285 000 ₽)»; icon — значок вместо значка счёта (⚙️ на экранах настроек)
+  // «💵 Наличные — *3 000 $* (≈ 285 000 ₽)»; icon — значок вместо значка счёта (⚙️ на экранах настроек).
+  // Название — пользовательский текст: экранируем и не кладём внутрь *жирного* (там экранирование не работает)
   cardTitle(pot, state, lang, icon = potIcon(pot)) {
-    let title = `${icon} *${this.potName(pot, lang)}* — ${this.exact(pot.balance, pot.currency)}`;
+    let title = `${icon} ${this.potName(pot, lang)} — *${this.exact(pot.balance, pot.currency)}*`;
     if (pot.currency !== state.currency && pot.balance > 0) title += ` (≈ ${this.money(pot.balanceMain, state.currency)})`;
     return title;
   }
@@ -349,7 +350,7 @@ class SavingsHandlers {
     const own = goal.goal_mode === 'own';
     const lines = [];
     if (notice) lines.push(notice, '');
-    lines.push(`🎯 *${this.potName(goal, lang)}*`);
+    lines.push(`🎯 ${this.potName(goal, lang)}`);
     lines.push(this.t(lang, 'savings_goal_progress', { current: this.money(status.current, currency), target: this.money(status.target, currency) }));
     const percent = Math.min(100, Math.floor(status.ratio * 100));
     lines.push(`${this.formatter.progressBar(status.ratio)} ${percent}%${status.achieved ? '' : ` · ${this.t(lang, 'savings_goal_left', { amount: this.money(status.left, currency) })}`}`);
@@ -412,7 +413,7 @@ class SavingsHandlers {
     await this.answer(ctx);
     const goal = await this.savingsService.getPot(ctx.from.id, parseInt(ctx.match[1], 10));
     if (!goal || goal.kind !== 'goal') return this.showMenu(ctx, this.t(lang, 'savings_not_found'));
-    const text = `⚙️ *${this.potName(goal, lang)}*\n${this.t(lang, goal.goal_mode === 'own' ? 'savings_mode_own_line' : 'savings_mode_total_line')}\n\n${this.t(lang, 'savings_mode_hint')}`;
+    const text = `⚙️ ${this.potName(goal, lang)}\n${this.t(lang, goal.goal_mode === 'own' ? 'savings_mode_own_line' : 'savings_mode_total_line')}\n\n${this.t(lang, 'savings_mode_hint')}`;
     await respond(ctx, text, {
       parse_mode: 'Markdown',
       reply_markup: {

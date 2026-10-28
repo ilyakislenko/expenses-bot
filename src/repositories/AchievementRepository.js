@@ -239,14 +239,16 @@ class AchievementRepository extends BaseRepository {
     return result.rows;
   }
 
-  // Дни с тратами в категории (по имени) в локальном окне [start, end)
-  async getCategorySpendDays(userId, timezone, categoryName, start, end) {
+  // Дни с тратами в категории (по имени) в локальном окне [start, end). since — момент старта челленджа: трата,
+  // записанная в тот же день до старта, его не срывает
+  async getCategorySpendDays(userId, timezone, categoryName, start, end, since = null) {
     const result = await this.query(
       `SELECT DISTINCT ${DAY('(e.created_at_utc AT TIME ZONE $2)::date')} AS d
        FROM expenses e JOIN categories c ON c.id = e.category_id
        WHERE e.user_id = $1 AND c.name = $3 AND e.recurring_expense_id IS NULL
-         AND (e.created_at_utc AT TIME ZONE $2) >= $4::date AND (e.created_at_utc AT TIME ZONE $2) < $5::date`,
-      [userId, timezone, categoryName, start, end]
+         AND (e.created_at_utc AT TIME ZONE $2) >= $4::date AND (e.created_at_utc AT TIME ZONE $2) < $5::date
+         AND ($6::timestamptz IS NULL OR e.created_at_utc >= $6::timestamptz)`,
+      [userId, timezone, categoryName, start, end, since]
     );
     return result.rows.map(row => row.d);
   }

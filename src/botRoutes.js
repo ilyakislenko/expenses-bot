@@ -305,8 +305,12 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('weekly_insight_now', errorHandler((ctx) => callbackHandlers.handleWeeklyInsightNow(ctx)));
   bot.action('weekly_insight_off', errorHandler((ctx) => callbackHandlers.handleWeeklyInsightOff(ctx)));
   bot.action('bug_report', errorHandler((ctx) => callbackHandlers.handleBugReport(ctx)));
-  // time|<час>|<минуты>[|ob] и set_language|<код>[|ob]: `|ob` — шаг онбординга
-  bot.action(/^time\|(\d{1,2})\|(\d{1,2})(\|ob)?$/, errorHandler((ctx) => callbackHandlers.handleTimezoneSelection(ctx)));
+  // time|<час>|<минуты>[|h][|ob] и set_language|<код>[|ob]: `|ob` — шаг онбординга, `|h` — минуты со сдвигом на полчаса
+  bot.action(/^time\|(\d{1,2})\|(\d{1,2})(\|h)?(\|ob)?$/, errorHandler((ctx) => callbackHandlers.handleTimezoneSelection(ctx)));
+  // tzh|<0|1>[|ob] — кнопки времени с минутами, сдвинутыми на полчаса (пояса UTC+5:30 и т.п.), и обратно
+  bot.action(/^tzh\|([01])(\|ob)?$/, errorHandler((ctx) => (ctx.match[2]
+    ? handlers.onboardingHandlers.showTimezone(ctx, ctx.match[1] === '1')
+    : commandHandlers.timezone(ctx, { half: ctx.match[1] === '1' }))));
   bot.action(/^set_language\|([a-z]{2})(\|ob)?$/, errorHandler((ctx) => callbackHandlers.handleLanguageSelection(ctx)));
 
   // Отмена ввода новой суммы/описания

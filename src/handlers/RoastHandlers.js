@@ -1,5 +1,6 @@
 const respond = require('../utils/respond');
 const ReferralService = require('../services/ReferralService');
+const { SAVAGE_LANGUAGES } = require('../utils/roast');
 
 const ORIGINS = { s: 'settings', m: 'month' };
 const BACK = { s: 'rst', m: 'rsm' };
@@ -40,32 +41,45 @@ class RoastHandlers {
     if (ctx.callbackQuery) await ctx.answerCbQuery(text).catch(() => {});
   }
 
-  // callback: rst — уровень (текущий отмечен ✅), обращение, «Разнос месяца», «Назад» в настройки
-  async showSettings(ctx, { notice = null } = {}) {
+  // callback: rst — уровень (текущий отмечен ✅), обращение, «Разнос месяца», «Назад» в настройки.
+  // «Без цензуры» — только на ru/en: на других языках кнопки нет, а сохранённый savage показан и работает как ехидный.
+  // enabled — режим только что включили: пример подколки и когда она приходит (до первого повода режим молчит)
+  async showSettings(ctx, { notice = null, enabled = false } = {}) {
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
     await this.answer(ctx, notice);
     const settings = await this.roastService.getSettings(userId);
-    const text = [
+    const savageLanguage = SAVAGE_LANGUAGES.includes(lang);
+    const level = !savageLanguage && settings.level === 'savage' ? 'spicy' : settings.level;
+    const levels = savageLanguage
+      ? this.t(lang, 'roast_settings_levels')
+      : `${this.t(lang, 'roast_settings_levels').split('\n')[0]}\n${this.t(lang, 'roast_savage_unavailable')}`;
+    const lines = [
       `😈 *${this.t(lang, 'roast_settings_title')}*`,
       '',
       this.t(lang, 'roast_settings_intro'),
       '',
-      this.t(lang, 'roast_settings_levels'),
+      levels,
       '',
-      this.t(lang, 'roast_settings_current', { level: this.levelLabel(lang, settings.level) }),
+      this.t(lang, 'roast_settings_current', { level: this.levelLabel(lang, level) }),
       this.t(lang, 'roast_settings_gender', { gender: this.genderLabel(lang, settings.gender) })
-    ].join('\n');
-    const levelButton = (level) => ({
-      text: `${settings.level === level ? '✅ ' : ''}${this.levelLabel(lang, level)}`,
-      callback_data: `rstl|${level}|s`
+    ];
+    if (enabled && level !== 'off') {
+      const sample = this.roastService.sampleLine(lang, level, settings.gender, await this.userService.getUserCurrency(userId));
+      if (sample) lines.push('', this.t(lang, 'roast_enabled_sample', { sample }));
+      lines.push('', this.t(lang, 'roast_enabled_when'));
+    }
+    const levelButton = (code) => ({
+      text: `${level === code ? '✅ ' : ''}${this.levelLabel(lang, code)}`,
+      callback_data: `rstl|${code}|s`
     });
-    await respond(ctx, text, {
+    const levelRows = [[levelButton('off'), levelButton('spicy')]];
+    if (savageLanguage) levelRows.push([levelButton('savage')]);
+    await respond(ctx, lines.join('\n'), {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
-          [levelButton('off'), levelButton('spicy')],
-          [levelButton('savage')],
+          ...levelRows,
           [{ text: this.t(lang, 'button_roast_gender', { gender: this.genderLabel(lang, settings.gender) }), callback_data: 'rstg|s' }],
           [{ text: this.t(lang, 'button_roast_month'), callback_data: 'rsm' }],
           [{ text: this.t(lang, 'button_back'), callback_data: 'back_to_settings' }]
@@ -75,13 +89,13 @@ class RoastHandlers {
   }
 
   // Куда вернуться после выбора
-  async showOrigin(ctx, origin, notice = null) {
+  async showOrigin(ctx, origin, notice = null, { enabled = false } = {}) {
     if (this.extraOrigins[origin]) return this.extraOrigins[origin].show(ctx, notice);
     if (ORIGINS[origin] === 'month') {
       await this.answer(ctx, notice);
       return this.showMonth(ctx);
     }
-    return this.showSettings(ctx, { notice });
+    return this.showSettings(ctx, { notice, enabled });
   }
 
   // callback: rstl|<off|spicy|savage>|<s|m|o>. Не off: сначала пол (если не указан), для savage — право на него
@@ -94,8 +108,10 @@ class RoastHandlers {
   async applyLevel(ctx, level, origin) {
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
+    // Старая кнопка «без цензуры» на языке, где его нет, — ехидный
+    if (level === 'savage' && !SAVAGE_LANGUAGES.includes(lang)) level = 'spicy';
+    const settings = await this.roastService.getSettings(userId);
     if (level !== 'off') {
-      const settings = await this.roastService.getSettings(userId);
       if (!settings.gender) return this.showGender(ctx, { level, origin });
       if (level === 'savage') {
         if (!(await this.roastService.savageAllowed(userId))) return this.showSavageLocked(ctx, lang, origin);
@@ -103,7 +119,8 @@ class RoastHandlers {
       }
     }
     await this.roastService.setLevel(userId, level);
-    return this.showOrigin(ctx, origin, this.t(lang, 'roast_saved', { level: this.levelLabel(lang, level) }));
+    const enabled = level !== 'off' && level !== settings.level;
+    return this.showOrigin(ctx, origin, this.t(lang, 'roast_saved', { level: this.levelLabel(lang, level) }), { enabled });
   }
 
   // callback: rstg|<s|m|o> — сменить обращение; при включении режима без пола — то же с уровнем, к которому идём
@@ -175,17 +192,16 @@ class RoastHandlers {
     if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
     const settings = await this.roastService.getSettings(userId);
     const enabled = settings.level !== 'off';
-    const level = enabled ? await this.roastService.effectiveLevel(userId, settings.level) : 'spicy';
+    const level = enabled ? await this.roastService.effectiveLevel(userId, settings.level, lang) : 'spicy';
     const roast = await this.roastService.monthRoast(userId, lang, { level, gender: settings.gender || 'x' });
 
     let text = roast.text;
     if (!enabled) text += `\n\n${this.t(lang, 'roast_month_preview_note')}`;
     const keyboard = [];
     if (!enabled) {
-      keyboard.push([
-        { text: this.t(lang, 'button_roast_enable_spicy'), callback_data: 'rstl|spicy|m' },
-        { text: this.t(lang, 'button_roast_enable_savage'), callback_data: 'rstl|savage|m' }
-      ]);
+      const row = [{ text: this.t(lang, 'button_roast_enable_spicy'), callback_data: 'rstl|spicy|m' }];
+      if (SAVAGE_LANGUAGES.includes(lang)) row.push({ text: this.t(lang, 'button_roast_enable_savage'), callback_data: 'rstl|savage|m' });
+      keyboard.push(row);
     }
     if (roast.hasData && ctx.botInfo && ctx.botInfo.username) {
       const link = `https://t.me/${ctx.botInfo.username}?start=roast`;

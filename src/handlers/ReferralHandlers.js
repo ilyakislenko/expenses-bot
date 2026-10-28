@@ -34,7 +34,7 @@ class ReferralHandlers {
     const lines = [
       this.t(lang, 'referral_title'),
       '',
-      this.t(lang, 'referral_intro', { days, expenses }),
+      this.t(lang, 'referral_intro', { days, expenses, activeDays: this.referralService.config.ACTIVATION_DAYS }),
       '',
       this.t(lang, 'referral_link_label'),
       `\`${link}\``,

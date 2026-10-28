@@ -96,6 +96,7 @@ class ReferralService {
       await this.notificationService.sendMessage(inviterId, this.t(lang, 'referral_joined_notification', {
         name: this.displayName(invitee, lang),
         expenses: this.config.ACTIVATION_EXPENSES,
+        activeDays: this.config.ACTIVATION_DAYS,
         days: this.config.REWARD_DAYS
       }), { parse_mode: 'Markdown' });
     } catch (error) {
@@ -112,13 +113,14 @@ class ReferralService {
     return this.referralRepository.getPendingInviter(inviteeId);
   }
 
-  // После каждой записанной траты: на ACTIVATION_EXPENSES-й засчитываемой трате приглашённого — награда обоим.
+  // После каждой записанной траты: когда у приглашённого ACTIVATION_EXPENSES засчитываемых трат хотя бы в
+  // ACTIVATION_DAYS разных днях — награда обоим (три траты одним сообщением и сразу /undo не дают бонус).
   // Вызывается без await из записи траты, поэтому никогда не бросает. Возвращает выданную награду или null.
   async onExpenseRecorded(userId) {
     try {
       if (!(await this.referralRepository.getPendingInviter(userId))) return null;
-      const count = await this.referralRepository.countQualifyingExpenses(userId);
-      if (count < this.config.ACTIVATION_EXPENSES) return null;
+      const { count, days } = await this.referralRepository.countQualifyingExpenses(userId);
+      if (count < this.config.ACTIVATION_EXPENSES || days < this.config.ACTIVATION_DAYS) return null;
       const claim = await this.referralRepository.claimReward(userId, this.config.REWARD_DAYS,
         (stats) => inviterBonusDays(stats, this.config));
       if (!claim) return null;

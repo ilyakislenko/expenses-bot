@@ -506,7 +506,8 @@ describe('RoastService.afterExpenses', () => {
   test('budget crossing is detected only when this action crossed the threshold', async () => {
     // До траты уже было 105% — не «перешёл», а был за лимитом
     const statuses = [{ id: 3, category_name: 'Еда', amount: 10000, limit: 10000, spent: 11500, ratio: 1.15 }];
-    const { service, repo } = makeService({ statuses, history: history(5) });
+    // История с крупными тратами: ни импульса, ни заметной вредной траты — проверяем только бюджет
+    const { service, repo } = makeService({ statuses, history: history(20, 5000) });
     expect(await run(service)).toBe('');
     expect(repo.claim).not.toHaveBeenCalled();
     // 75% → 85%: подколка про 80%
@@ -519,7 +520,7 @@ describe('RoastService.afterExpenses', () => {
 
   test('budgets are premium-only', async () => {
     const statuses = [{ id: 3, category_name: 'Еда', amount: 10000, limit: 10000, spent: 10500, ratio: 1.05 }];
-    const { service, repo } = makeService({ statuses, isPremium: false, history: history(5) });
+    const { service, repo } = makeService({ statuses, isPremium: false, history: history(20, 5000) });
     expect(await run(service)).toBe('');
     expect(repo.claim).not.toHaveBeenCalled();
   });

@@ -80,7 +80,7 @@ describe('CommandHandlers flows', () => {
       expect(stateService.setUserState).not.toHaveBeenCalled();
 
       const [text, extra] = ctx.reply.mock.calls[0];
-      expect(text).toBe(t('ru', 'language_select'));
+      expect(text).toBe(`${t('ru', 'onb_welcome')}\n\n${t('ru', 'language_select')}`);
       const data = buttons(extra.reply_markup.inline_keyboard).map((b) => b.callback_data);
       expect(data).toEqual(expect.arrayContaining(['set_language|ru|ob', 'set_language|en|ob']));
       expect(data.every((d) => d.startsWith('set_language|') && d.endsWith('|ob'))).toBe(true);
@@ -92,7 +92,7 @@ describe('CommandHandlers flows', () => {
 
       await handlers.start(ctx);
 
-      expect(ctx.reply.mock.calls[0][0]).toBe(t('en', 'language_select'));
+      expect(ctx.reply.mock.calls[0][0]).toBe(`${t('en', 'onb_welcome')}\n\n${t('en', 'language_select')}`);
     });
 
     test('returning user: greeted in own language with main menu, no onboarding', async () => {

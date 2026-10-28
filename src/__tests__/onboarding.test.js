@@ -34,6 +34,8 @@ function build({ store = createStore(), voice = false, receipt = false } = {}) {
     getUserLanguage: jest.fn(async () => store.language),
     getUserCurrency: jest.fn(async () => store.currency),
     setUserCurrency: jest.fn(async (id, c) => { store.currency = c; }),
+    getUserTimezone: jest.fn(async () => store.timezone),
+    setUserTimezone: jest.fn(async (id, tz) => { store.timezone = tz; }),
     setUserPeriodStartDay: jest.fn(async (id, d) => { store.periodStartDay = d; }),
     getReminderSettings: jest.fn(async () => ({ ...store })),
     setReminderHours: jest.fn(async (id, h) => { store.reminder_hours = h; }),
@@ -61,7 +63,7 @@ function build({ store = createStore(), voice = false, receipt = false } = {}) {
   const referralService = {
     getPremiumSource: jest.fn(async () => store.premiumSource),
     getPendingInviter: jest.fn(async () => null),
-    config: { ACTIVATION_EXPENSES: 3 },
+    config: { ACTIVATION_EXPENSES: 3, ACTIVATION_DAYS: 2 },
     rewardDays: 7
   };
   const roastService = {
@@ -69,7 +71,8 @@ function build({ store = createStore(), voice = false, receipt = false } = {}) {
     setLevel: jest.fn(async (id, level) => { store.roast.level = level; }),
     setGender: jest.fn(async (id, gender) => { store.roast.gender = gender; }),
     confirmAdult: jest.fn(async () => { store.roast.adultConfirmed = true; }),
-    savageAllowed: jest.fn(async () => true)
+    savageAllowed: jest.fn(async () => true),
+    sampleLine: jest.fn((lang, level) => `😈 sample ${level}`)
   };
   const commandHandlers = {
     start: jest.fn(async () => {}),
@@ -252,11 +255,15 @@ describe('skip and skip all', () => {
     expect(env.store.onboarding.goals).toEqual([]);
     expect(env.store.onboarding.skipped).toEqual(['g']);
     expect(screen.text).toContain('2/8');
-    const done = await press(env, 'onb|x');
+    // «Пропустить всё» без своего времени — сначала один вопрос о времени, его «Пропустить» заканчивает опрос
+    await press(env, 'onb|x');
+    expect(env.store.onboarding.status).toBe('active');
+    const done = await press(env, 'onb|z|s');
     expect(env.funnelService.track).toHaveBeenCalledWith(1, 'onboarding_skipped');
     expect(env.store.onboarding.status).toBe('skipped');
     expect(env.userService.setUserPeriodStartDay).not.toHaveBeenCalled();
-    expect(env.userService.setReminderEnabled).not.toHaveBeenCalled();
+    // Без пояса (en не угадать) напоминания выключены, а не 3 раза в день по UTC
+    expect(env.store.reminder_enabled).toBe(false);
     const finalText = done.editMessageText.mock.calls[0][0];
     expect(finalText).toContain(t('en', 'onb_done_currency', { currency: 'USD' })); // валюта по языку — уже стоит
     expect(finalText).toContain(t('en', 'onb_done_first_step'));
@@ -577,5 +584,105 @@ describe('routing', () => {
     expect(handlers.roastHandlers.setGender).toHaveBeenCalledTimes(1);
     expect(handlers.roastHandlers.confirmAdult).toHaveBeenCalledTimes(1);
     expect(handlers.roastHandlers.showGender).toHaveBeenCalledWith(expect.anything(), { origin: 'o' });
+  });
+});
+
+// Fix E: «Пропустить всё» не оставляет пояс UTC и 3 напоминания в день по UTC
+describe('skip all: timezone and reminders are not left at UTC', () => {
+  test('ru: timezone guessed from language, one evening reminder, one last question about time, summary says it', async () => {
+    const env = build({ store: createStore({ premium: false }) });
+    const { store } = env;
+    await env.onboardingHandlers.beginNew(callbackCtx('set_language|ru|ob'), 'ru');
+    expect(store.timezone).toBe('Europe/Moscow');
+    expect(store.reminder_hours).toEqual([21]);
+    expect(store.reminder_enabled).toBe(true);
+
+    // «Пропустить всё» — остаётся один вопрос: время
+    let ctx = await press(env, 'onb|x');
+    let screen = lastScreen(ctx);
+    expect(screen.text).toBe(t('ru', 'onb_q_timezone_last', { timezone: 'Europe/Moscow (UTC+3)' }));
+    expect(screen.data).toContain('onb|z|s');
+    expect(screen.data).not.toContain('onb|x');
+    expect(store.completedAt).toBeNull();
+
+    // «Пропустить» на нём — опрос закончен, итог называет пояс и напоминание
+    ctx = await press(env, 'onb|z|s');
+    expect(store.completedAt).not.toBeNull();
+    screen = lastScreen(ctx);
+    expect(screen.text).toContain(t('ru', 'onb_done_timezone_guess', { timezone: 'Europe/Moscow (UTC+3)' }));
+    expect(screen.text).toContain(t('ru', 'onb_done_reminders', { hours: '21:00' }));
+  });
+
+  test('en: no guess possible — reminders off until the time is known; answering the time turns the evening one on', async () => {
+    const env = build({ store: createStore({ language: 'en', premium: false }) });
+    const { store } = env;
+    await env.onboardingHandlers.beginNew(callbackCtx('set_language|en|ob'), 'en');
+    expect(store.timezone).toBe('UTC');
+    expect(store.reminder_enabled).toBe(false);
+
+    await press(env, 'onb|x');
+    const draft = await env.onboardingService.getActive(1);
+    expect(draft.lastCall).toBe(true);
+    // Ответ на вопрос о времени заканчивает опрос и включает вечернее напоминание
+    store.timezone = 'Etc/GMT+5';
+    const ctx = callbackCtx('time|9|0|ob');
+    await env.onboardingHandlers.afterTimezone(ctx, 'Etc/GMT+5');
+    expect(store.completedAt).not.toBeNull();
+    expect(store.reminder_enabled).toBe(true);
+    expect(store.reminder_hours).toEqual([21]);
+    expect(lastScreen(ctx).text).toContain(t('en', 'onb_done_reminders', { hours: '21:00' }));
+  });
+
+  test('en skipped twice: summary says timezone is UTC and reminders are off', async () => {
+    const env = build({ store: createStore({ language: 'en', premium: false }) });
+    await env.onboardingHandlers.beginNew(callbackCtx('set_language|en|ob'), 'en');
+    await press(env, 'onb|x');
+    const ctx = await press(env, 'onb|z|s');
+    const { text } = lastScreen(ctx);
+    expect(text).toContain(t('en', 'onb_done_timezone_unknown'));
+    expect(text).toContain(t('en', 'onb_done_reminders_auto_off'));
+    expect(env.store.reminder_enabled).toBe(false);
+  });
+
+  test('an explicit reminders answer is kept; changing the language moves the guessed timezone', async () => {
+    const env = build({ store: createStore({ premium: false }) });
+    const { store } = env;
+    await env.onboardingHandlers.beginNew(callbackCtx('set_language|ru|ob'), 'ru');
+    await env.onboardingHandlers.beginNew(callbackCtx('set_language|jp|ob'), 'jp');
+    expect(store.timezone).toBe('Asia/Tokyo');
+    await env.onboardingHandlers.beginNew(callbackCtx('set_language|en|ob'), 'en');
+    expect(store.timezone).toBe('UTC');
+    expect(store.reminder_enabled).toBe(false);
+    await env.onboardingHandlers.beginNew(callbackCtx('set_language|ru|ob'), 'ru');
+    const draft = await env.onboardingService.getActive(1);
+    await env.onboardingService.answerReminders(1, draft, 'no');
+    await env.onboardingService.finish(1, draft, 'skipped', { language: 'ru' });
+    expect(store.reminder_enabled).toBe(false);
+  });
+
+  test('budget question: text without digits and a huge amount get their own hints', async () => {
+    const env = build({ store: createStore({ currency: 'USD' }) });
+    env.store.onboarding = { ...rules.newDraft('new', { budgetAllowed: true }), goals: ['budget'], step: 'b' };
+    const words = textCtx('abc');
+    expect(await env.onboardingHandlers.handleBudgetInput(words, 'abc', 'ru')).toBe(true);
+    expect(words.reply.mock.calls[0][0]).toBe(t('ru', 'onb_budget_need_number', { example: '30000 USD' }));
+    const huge = textCtx('999999999999');
+    expect(await env.onboardingHandlers.handleBudgetInput(huge, '999999999999', 'ru')).toBe(true);
+    expect(huge.reply.mock.calls[0][0]).toMatch(/^❌/);
+    expect(huge.reply.mock.calls[0][0]).not.toBe(t('ru', 'onb_budget_invalid'));
+    // Трата «250 кофе» — как обычно
+    expect(await env.onboardingHandlers.handleBudgetInput(textCtx('250 кофе'), '250 кофе', 'ru')).toBe(false);
+  });
+
+  test('roast question: no «uncensored» outside ru/en; enabling in the questionnaire shows a sample', async () => {
+    const env = build({ store: createStore({ language: 'de', premium: false }) });
+    env.store.onboarding = { ...rules.newDraft('setup'), step: 'm' };
+    const ctx = await press(env, 'onb|o|m');
+    const screen = lastScreen(ctx);
+    expect(screen.data).not.toContain('rstl|savage|o');
+    expect(screen.text).toContain(t('de', 'onb_q_roast_spicy_only').split('\n')[1]);
+    env.store.roast.gender = 'm';
+    const done = await press(env, 'rstl|spicy|o');
+    expect(lastScreen(done).text).toContain(t('de', 'roast_enabled_sample', { sample: '😈 sample spicy' }));
   });
 });

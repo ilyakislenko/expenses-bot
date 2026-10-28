@@ -49,9 +49,33 @@ class OnboardingService {
       await this.userService.setUserCurrency(userId, currency);
     }
     const draft = rules.newDraft(mode, { previous, budgetAllowed, currency, now: this.now() });
+    if (mode === 'new') await this.defaultSchedule(userId, draft, language);
     await this.save(userId, draft);
     if (mode === 'new') await this.funnelService.track(userId, 'onboarding_started');
     return draft;
+  }
+
+  // Новый пользователь, пока не ответил сам: пояс по языку (вместо UTC) и одно напоминание вечером — или напоминания
+  // выключены, если пояс угадать нельзя (по умолчанию в БД — 3 напоминания в день по UTC, у многих это ночь).
+  // Повторяется при смене языка, ответе о поясе и в конце опроса; выбранное пользователем не трогает
+  async defaultSchedule(userId, draft, language) {
+    if (draft.mode !== 'new') return;
+    const answers = draft.answers;
+    if (!answers.timezone) {
+      const guess = rules.LANGUAGE_TIMEZONE[language] || null;
+      const current = await this.userService.getUserTimezone(userId);
+      // Пояс ещё наш (UTC по умолчанию или прошлая догадка) — меняем на догадку по языку
+      if (!current || current === 'UTC' || current === answers.timezoneAuto) {
+        if (guess !== (current === 'UTC' ? null : current)) await this.userService.setUserTimezone(userId, guess || 'UTC');
+        if (guess) answers.timezoneAuto = guess;
+        else delete answers.timezoneAuto;
+      }
+    }
+    if (!answers.reminders) {
+      const plan = rules.reminderPlan(rules.DEFAULT_REMINDERS);
+      await this.userService.setReminderHours(userId, plan.hours);
+      await this.userService.setReminderEnabled(userId, !!(answers.timezone || answers.timezoneAuto));
+    }
   }
 
   // Ответ на шаг: шаг больше не пропущен, дальше — следующий вопрос
@@ -97,14 +121,25 @@ class OnboardingService {
       await this.userService.setUserCurrency(userId, currency);
       draft.answers.currency = currency;
     }
+    await this.defaultSchedule(userId, draft, language);
     draft.step = 'g';
     return this.save(userId, draft);
   }
 
-  // Пояс уже сохранён обработчиком time|…|ob
+  // Пояс уже сохранён обработчиком time|…|ob; напоминание по умолчанию теперь можно включить
   async answerTimezone(userId, draft, timezone) {
     draft.answers.timezone = timezone;
+    delete draft.answers.timezoneAuto;
+    await this.defaultSchedule(userId, draft, null);
     return this.save(userId, this.advance(draft, 'z'));
+  }
+
+  // «Пропустить всё» у нового пользователя без своего времени: остаётся один вопрос — о времени (lastCall).
+  // Ответ или «Пропустить» на нём заканчивают опрос
+  async askTimezoneLast(userId, draft) {
+    draft.lastCall = true;
+    draft.step = 'z';
+    return this.save(userId, draft);
   }
 
   async answerPayday(userId, draft, payday) {
@@ -184,8 +219,10 @@ class OnboardingService {
     return { draft: await this.save(userId, draft), next };
   }
 
-  // status: 'completed' — дошёл до конца, 'skipped' — «Пропустить всё»
-  async finish(userId, draft, status) {
+  // status: 'completed' — дошёл до конца, 'skipped' — «Пропустить всё». language — для пояса по умолчанию у опроса,
+  // начатого до этой логики
+  async finish(userId, draft, status, { language = null } = {}) {
+    if (language) await this.defaultSchedule(userId, draft, language);
     draft.status = status;
     draft.finishedAt = this.now().toISOString();
     await this.save(userId, draft, { finished: true });

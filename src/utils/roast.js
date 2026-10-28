@@ -6,6 +6,8 @@ const { addDays } = require('./period');
 
 const LEVELS = ['off', 'spicy', 'savage'];
 const GENDERS = ['m', 'f', 'x'];
+// «Без цензуры» — только на этих языках (решение владельца); на остальных уровень savage работает как spicy
+const SAVAGE_LANGUAGES = ['ru', 'en'];
 
 // Поводы по силе: первый найденный — единственный за действие
 const TRIGGER_PRIORITY = ['budget_over', 'challenge', 'allowance', 'budget_80', 'impulse', 'junk'];
@@ -208,6 +210,7 @@ function pickVariant(family, variants, { params = {}, gender = 'x', recent = [],
 module.exports = {
   LEVELS,
   GENDERS,
+  SAVAGE_LANGUAGES,
   TRIGGER_PRIORITY,
   JUNK_KINDS,
   CONTEXTS,
