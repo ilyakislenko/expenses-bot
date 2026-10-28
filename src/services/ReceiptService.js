@@ -5,6 +5,7 @@ const { buildPrompt, SYSTEM_CATEGORY_HINTS } = require('./receipt/prompt');
 const { normalizeReceipt, resolveReceiptTime, localMonthStart, localNow } = require('./receipt/normalize');
 const { runImageTask } = require('./receipt/imageWorker');
 const { ReceiptError } = require('./receipt/errors');
+const { MAX_RECORD_AGE_DAYS } = require('../utils/recordDate');
 
 const DRAFT_TTL_DAYS = 7; // черновик чека и кадр для «повернуть» (receipt_drafts)
 const DRAFT_TAKE_STALE_SECONDS = 300; // захват черновика под запись, после которого его можно взять снова (сбой записи)
@@ -164,6 +165,22 @@ class ReceiptService {
     await this.receiptRepository.deleteDraft(userId, messageId);
   }
 
+  // Черновик для показа: { status: 'ok', receipt, frame, timezone } | { status: 'busy' } | { status: 'missing' }
+  async getDraft(userId, messageId) {
+    return this.receiptRepository.getDraft(userId, messageId, DRAFT_TAKE_STALE_SECONDS);
+  }
+
+  // Правка черновика: change(receipt) — функция из receipt/draftEdit.js (новый черновик или null — менять нечего).
+  // Записывающийся черновик не правится. { status: 'ok' | 'unchanged', receipt, frame, timezone } | busy | missing
+  async updateDraft(userId, messageId, change) {
+    return this.receiptRepository.updateDraft(userId, messageId, DRAFT_TAKE_STALE_SECONDS, change);
+  }
+
+  // Черновик переехал на новое сообщение (прислан заново после ввода текстом). false — уже не переедет
+  async moveDraft(userId, fromMessageId, toMessageId) {
+    return this.receiptRepository.moveDraft(userId, fromMessageId, toMessageId);
+  }
+
   // Кадр для «повернуть» (черновик этого сообщения уходит вместе с ним). null — нет или устарел
   async takeFrame(userId, messageId) {
     return this.receiptRepository.takeFrame(userId, messageId);
@@ -176,7 +193,8 @@ class ReceiptService {
   }
 
   // Записывает позиции тратами (описание — название позиции в пределах лимита описания пользователя).
-  // Дата трат — дата чека, если она не в будущем и не старше 60 дней, иначе сейчас. Возвращает id чека.
+  // Дата трат — дата чека, если она не в будущем и не старше 60 дней (выбранная в черновике вручную — года), иначе
+  // сейчас. Возвращает id чека.
   async record(userId, receipt, { timezone, familyId = null }) {
     const limits = await this.premiumService.getUserLimits(userId);
     const items = receipt.items.map(item => ({
@@ -193,7 +211,7 @@ class ReceiptService {
       currency: receipt.currency,
       total: receipt.total,
       itemsTotal: receipt.itemsTotal,
-      localAt: resolveReceiptTime(receipt.date, receipt.time, timezone),
+      localAt: resolveReceiptTime(receipt.date, receipt.time, timezone, new Date(), receipt.dateManual ? MAX_RECORD_AGE_DAYS : undefined),
       timezone,
       familyId,
       items
@@ -206,6 +224,14 @@ class ReceiptService {
 
   async getReceipt(userId, receiptId) {
     return this.receiptRepository.getById(userId, receiptId);
+  }
+
+  // Другой день чека: purchased_date и все его оставшиеся траты одной транзакцией (время каждой остаётся).
+  // null — чек не найден или отменён, иначе { expenses: перенесено трат }
+  async setDate(userId, receiptId, date, timezone) {
+    const result = await this.receiptRepository.setDate(userId, receiptId, date, timezone);
+    if (result) logger.info('Receipt date changed', { userId, receiptId, date, ...result });
+    return result;
   }
 
   async getExpenses(userId, receiptId) {

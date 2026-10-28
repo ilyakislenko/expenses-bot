@@ -2,7 +2,7 @@ const { LEGACY_MENU_BUTTON_KEYS } = require('../utils/constants');
 const AssistantHandlers = require('./AssistantHandlers');
 
 class MessageHandlers {
-constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, donationRepository, bugReportRepository, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, savingsHandlers, planningHandlers, assistantHandlers, multiEntryHandlers, onboardingHandlers = null }) {
+constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, donationRepository, bugReportRepository, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, savingsHandlers, planningHandlers, assistantHandlers, multiEntryHandlers, onboardingHandlers = null, receiptHandlers = null }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -27,6 +27,7 @@ constructor({ expenseService, userService, premiumService, familyService, catego
     this.assistantHandlers = assistantHandlers;
     this.multiEntryHandlers = multiEntryHandlers;
     this.onboardingHandlers = onboardingHandlers;
+    this.receiptHandlers = receiptHandlers; // ввод строки/даты черновика чека и даты записанного чека
   }
 
   async handleExpense(ctx) {
@@ -136,6 +137,19 @@ constructor({ expenseService, userService, premiumService, familyService, catego
           return await this.incomeHandlers.handleEditInput(ctx, text, userLanguage, parseInt(userState.split(':')[1], 10));
         }
 
+        // Строка, новая строка или дата черновика чека до записи
+        if (typeof userState === 'string' && userState.startsWith('rd_in:') && this.receiptHandlers) {
+          return await this.receiptHandlers.handleDraftInput(ctx, text, userLanguage, userState);
+        }
+
+        // «✏️ Другая дата» записи (x), дохода (i) или чека (r)
+        if (typeof userState === 'string' && userState.startsWith('dt_in:')) {
+          const kind = userState.split(':')[1];
+          if (kind === 'x') return await this.expenseHandlers.handleDateInput(ctx, text, userLanguage, userState);
+          if (kind === 'i') return await this.incomeHandlers.handleDateInput(ctx, text, userLanguage, userState);
+          if (kind === 'r' && this.receiptHandlers) return await this.receiptHandlers.handleReceiptDateInput(ctx, text, userLanguage, userState);
+        }
+
         if (typeof userState === 'string' && userState.startsWith('sv_in:')) {
           return await this.savingsHandlers.handleInput(ctx, text, userLanguage, userState);
         }
@@ -182,20 +196,7 @@ constructor({ expenseService, userService, premiumService, familyService, catego
         const userLimits = await this.premiumService.getUserLimits(userId);
         const parsed = this.validator.parseEditExpense(ctx.message.text, userLimits.MAX_DESCRIPTION_LENGTH);
         if (!parsed.isValid) {
-          if (parsed.error === 'empty') {
-            const editEmptyText = this.localizationService.getText(userLanguage, 'edit_empty');
-            return ctx.reply(editEmptyText);
-          }
-          if (parsed.error === 'amount') {
-            const editAmountErrorText = this.localizationService.getText(userLanguage, 'edit_amount_error');
-            return ctx.reply(editAmountErrorText);
-          }
-          if (parsed.error === 'too_long') {
-            const editTooLongText = this.localizationService.getText(userLanguage, 'edit_too_long', { max: userLimits.MAX_DESCRIPTION_LENGTH });
-            return ctx.reply(editTooLongText);
-          }
-          const editFormatErrorText = this.localizationService.getText(userLanguage, 'edit_format_error');
-          return ctx.reply(editFormatErrorText);
+          return ctx.reply(this.expenseHandlers.editErrorText(userLanguage, parsed.error, userLimits.MAX_DESCRIPTION_LENGTH));
         }
         const oldExpense = await this.expenseService.getExpenseById(ctx.from.id, expenseId);
         if (!oldExpense) {

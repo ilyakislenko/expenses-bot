@@ -256,10 +256,14 @@ class Container {
         return new ReceiptHandlers({
           receiptService: this.get('receiptService'),
           expenseHandlers: this.get('expenseHandlers'),
+          expenseService: this.get('expenseService'),
           budgetService: this.get('budgetService'),
           userService: this.get('userService'),
+          premiumService: this.get('premiumService'),
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
+          stateService: this.get('stateService'),
+          validator: this.get('enhancedValidator'),
           achievementService: this.get('achievementService'),
           referralService: this.get('referralService')
         });
@@ -662,7 +666,8 @@ class Container {
           planningHandlers: this.get('planningHandlers'),
           assistantHandlers: this.get('assistantHandlers'),
           multiEntryHandlers: this.get('multiEntryHandlers'),
-          onboardingHandlers: this.get('onboardingHandlers')
+          onboardingHandlers: this.get('onboardingHandlers'),
+          receiptHandlers: this.get('receiptHandlers')
         });
 
       case 'callbackHandlers':

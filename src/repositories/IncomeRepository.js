@@ -57,6 +57,15 @@ class IncomeRepository extends BaseRepository {
     return result.rows[0];
   }
 
+  // Другой день дохода: createdAt — новый момент, посчитанный в IncomeService.setIncomeDate
+  async setIncomeCreatedAt(userId, incomeId, createdAt) {
+    const result = await this.query(
+      'UPDATE incomes SET created_at_utc = $3 WHERE id = $1 AND user_id = $2 RETURNING *',
+      [incomeId, userId, createdAt]
+    );
+    return result.rows[0];
+  }
+
   async deleteIncomeById(userId, incomeId) {
     const query = `
       DELETE FROM incomes

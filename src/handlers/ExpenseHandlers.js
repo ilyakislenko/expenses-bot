@@ -1,4 +1,6 @@
 const respond = require('../utils/respond');
+const { localToday } = require('../utils/period');
+const { packDate, unpackDate, checkRecordDate, parseRecordDate, localDateOf, datePickerKeyboard, DATE_ERROR_KEYS } = require('../utils/recordDate');
 
 const PAGE_SIZE = 10;
 const INCOME_HINT_DAYS = 14; // подсказку про доходы видят только новые пользователи
@@ -123,6 +125,14 @@ class ExpenseHandlers {
     if (!(await this.premiumService.isPremiumUser(userId))) return null;
     const family = await this.familyService.getUserFamily(userId);
     return family ? family.id : null;
+  }
+
+  // Ошибка разбора правки «сумма и/или описание» (validator.parseEditExpense): ✏️ записи и строки черновика чека
+  editErrorText(lang, error, maxDescriptionLength) {
+    if (error === 'empty') return this.t(lang, 'edit_empty');
+    if (error === 'amount') return this.t(lang, 'edit_amount_error');
+    if (error === 'too_long') return this.t(lang, 'edit_too_long', { max: maxDescriptionLength });
+    return this.t(lang, 'edit_format_error');
   }
 
   async inputErrorText(userId, lang, error) {
@@ -253,15 +263,16 @@ class ExpenseHandlers {
         { text: this.t(lang, added ? 'button_undo' : 'button_delete_record'), callback_data: `xd|${expense.id}|${back}` },
         { text: this.t(lang, 'button_change_category'), callback_data: `xc|${expense.id}|${back}` }
       ]);
-      const extraRow = [];
-      extraRow.push({ text: this.t(lang, 'button_edit_record'), callback_data: `xe|${expense.id}` });
+      keyboard.push([
+        { text: this.t(lang, 'button_edit_record'), callback_data: `xe|${expense.id}` },
+        { text: this.t(lang, 'button_record_date'), callback_data: `xt|${expense.id}|${back}` }
+      ]);
       if (isPremium && family && !expense.family_id) {
-        extraRow.push({ text: this.t(lang, 'button_mark_as_family'), callback_data: `xf|${expense.id}|${back}` });
+        keyboard.push([{ text: this.t(lang, 'button_mark_as_family'), callback_data: `xf|${expense.id}|${back}` }]);
       }
       if (isPremium && expense.family_id) {
-        extraRow.push({ text: this.t(lang, 'button_remove_from_family'), callback_data: `xu|${expense.id}|${back}` });
+        keyboard.push([{ text: this.t(lang, 'button_remove_from_family'), callback_data: `xu|${expense.id}|${back}` }]);
       }
-      if (extraRow.length) keyboard.push(extraRow);
     }
     if (backCb) keyboard.push([{ text: this.t(lang, 'button_back'), callback_data: backCb }]);
 
@@ -347,6 +358,91 @@ class ExpenseHandlers {
     await ctx.reply(this.t(lang, 'edit_instructions'), {
       reply_markup: { inline_keyboard: [[{ text: this.t(lang, 'button_cancel'), callback_data: 'cancel_edit' }]] }
     });
+  }
+
+  // ========================================
+  // ДАТА ЗАПИСИ
+  // ========================================
+  // Только своя запись (в том числе позиция чека, семейная своя и списанная регулярная — расписание регулярной не
+  // меняется). Меняется день, локальное время суток остаётся; не в будущем и не старше года (utils/recordDate)
+
+  // Своя запись или alert «не найдена»
+  async ownExpense(ctx, lang, expenseId) {
+    const expense = await this.expenseService.getExpenseById(ctx.from.id, expenseId);
+    if (expense && Number(expense.user_id) === ctx.from.id) return expense;
+    await ctx.answerCbQuery(this.t(lang, 'expense_not_found'), { show_alert: true }).catch(() => {});
+    return null;
+  }
+
+  // callback: xt|<id>|<back> — выбор дня
+  async handleDatePicker(ctx) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    const expenseId = parseInt(ctx.match[1], 10);
+    const back = ctx.match[2];
+    const expense = await this.ownExpense(ctx, lang, expenseId);
+    if (!expense) return;
+    await ctx.answerCbQuery().catch(() => {});
+    const timezone = await this.userService.getUserTimezone(userId);
+    const keyboard = datePickerKeyboard((key) => this.t(lang, key), {
+      today: localToday(timezone), current: localDateOf(expense.created_at_utc, timezone),
+      pick: (date) => `xtd|${expenseId}|${packDate(date)}|${back}`, other: `xto|${expenseId}|${back}`, back: `ex|${expenseId}|${back}`
+    });
+    await respond(ctx, this.t(lang, 'date_picker_title', { current: this.formatter.formatDate(expense.created_at_utc, timezone) }), {
+      parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard }
+    });
+  }
+
+  // callback: xtd|<id>|<YYYYMMDD>|<back>
+  async handleSetDate(ctx) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    const expenseId = parseInt(ctx.match[1], 10);
+    const back = ctx.match[3];
+    const timezone = await this.userService.getUserTimezone(userId);
+    const date = unpackDate(ctx.match[2]);
+    const error = date ? checkRecordDate(date, localToday(timezone)) : 'format';
+    if (error) {
+      await ctx.answerCbQuery(this.t(lang, DATE_ERROR_KEYS[error]), { show_alert: true }).catch(() => {});
+      return;
+    }
+    const updated = await this.expenseService.setExpenseDate(userId, expenseId, date, timezone);
+    if (!updated) {
+      await ctx.answerCbQuery(this.t(lang, 'expense_not_found'), { show_alert: true }).catch(() => {});
+      return;
+    }
+    await ctx.answerCbQuery(this.t(lang, 'date_changed', { date: this.formatter.formatLocalDate(date) })).catch(() => {});
+    await this.showCard(ctx, expenseId, back, { added: back === 'n' });
+  }
+
+  // callback: xto|<id>|<back> — другая дата текстом (состояние dt_in:x:<id>:<сообщение с подсказкой>:<back>)
+  async handleOtherDate(ctx) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    const expenseId = parseInt(ctx.match[1], 10);
+    const back = ctx.match[2];
+    if (!(await this.ownExpense(ctx, lang, expenseId))) return;
+    await ctx.answerCbQuery().catch(() => {});
+    this.stateService.setUserState(userId, `dt_in:x:${expenseId}:${ctx.callbackQuery.message.message_id}:${back}`);
+    await respond(ctx, this.t(lang, 'date_enter_prompt'), {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: [[{ text: this.t(lang, 'button_back'), callback_data: `xt|${expenseId}|${back}` }]] }
+    });
+  }
+
+  // Ввод при dt_in:x:… — карточка с новой датой новым сообщением, у подсказки кнопка убирается
+  async handleDateInput(ctx, text, lang, state) {
+    const userId = ctx.from.id;
+    const [, , idPart, messagePart, back] = state.split(':');
+    const expenseId = Number(idPart);
+    const timezone = await this.userService.getUserTimezone(userId);
+    const parsed = parseRecordDate(text, localToday(timezone));
+    if (parsed.error) return ctx.reply(this.t(lang, DATE_ERROR_KEYS[parsed.error]), { parse_mode: 'Markdown' });
+    const updated = await this.expenseService.setExpenseDate(userId, expenseId, parsed.date, timezone);
+    this.stateService.deleteUserState(userId);
+    if (!updated) return ctx.reply(this.t(lang, 'expense_not_found'));
+    await ctx.telegram.editMessageReplyMarkup(ctx.chat.id, Number(messagePart), undefined, { inline_keyboard: [] }).catch(() => {});
+    await this.showCard(ctx, expenseId, back, { note: this.t(lang, 'date_changed', { date: this.formatter.formatLocalDate(parsed.date) }) });
   }
 
   // callback: xf|<id>|<back> — в семейный бюджет, xu|<id>|<back> — из семейного бюджета

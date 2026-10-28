@@ -1,15 +1,18 @@
 const respond = require('../utils/respond');
 const logger = require('../utils/logger');
 const { runImageTask } = require('../services/receipt/imageWorker');
+const { localNow } = require('../services/receipt/normalize');
+const { sumCheck, editLine, setLineCategory, removeLine, addLine, setDraftDate, MAX_ITEMS } = require('../services/receipt/draftEdit');
+const { localToday } = require('../utils/period');
+const { packDate, unpackDate, checkRecordDate, parseRecordDate, localDateOf, datePickerKeyboard, DATE_ERROR_KEYS } = require('../utils/recordDate');
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 20; // строк на странице списка чека и черновика
 // JPEG (фото и файлы) готовит imagePrep — поворот, поиск чека, уменьшение, поэтому годится всё, что отдаёт Telegram;
 // остальные форматы уходят модели как есть — только небольшие
 const MAX_FILE_BYTES = 20 * 1024 * 1024; // предел скачивания файлов ботом в Telegram
 const MAX_RAW_IMAGE_BYTES = 1.5 * 1024 * 1024;
 const NAME_IN_LIST = 40;
 const FRAME_CACHE_MS = 30 * 60 * 1000; // подготовленный кадр для «повернуть» в памяти (без него — скачать и подготовить заново)
-const DRAFT_LINES = 40; // черновик без пагинации — показываем первые строки
 const TYPING_INTERVAL_MS = 4000;
 
 // «печатает…» в чате, пока идёт долгая операция (статус Telegram держится ~5 с). Возвращает stop()
@@ -50,13 +53,17 @@ function pickPhotoSize(sizes) {
 // Фото чека → каждая позиция записывается отдельной тратой сразу, затем список чека для правки
 // (номер → обычная карточка записи с возвратом к чеку, «Всё верно», «Отменить чек»).
 class ReceiptHandlers {
-  constructor({ receiptService, expenseHandlers, budgetService, userService, localizationService, formatter, achievementService = null, referralService = null }) {
+  constructor({ receiptService, expenseHandlers, expenseService, budgetService, userService, premiumService, localizationService, formatter, stateService, validator, achievementService = null, referralService = null }) {
     this.receiptService = receiptService;
     this.expenseHandlers = expenseHandlers;
+    this.expenseService = expenseService; // категории и запомненная категория для строк черновика
     this.budgetService = budgetService;
     this.userService = userService;
+    this.premiumService = premiumService; // лимит длины названия строки — как у описания записи
     this.localizationService = localizationService;
     this.formatter = formatter;
+    this.stateService = stateService; // ввод текстом: строка черновика (rd_in:…), дата чека (dt_in:r:…)
+    this.validator = validator;
     this.achievementService = achievementService;
     this.referralService = referralService;
     this.tasks = new Set(); // фоновые распознавания
@@ -295,6 +302,13 @@ class ReceiptHandlers {
       const frame = await this.receiptService.takeFrame(userId, messageId);
       if (!frame) {
         this.frames.delete(key);
+        // Исправленный вручную черновик не поворачивается (новое распознавание стёрло бы правки): кнопки остаются
+        const draft = await this.receiptService.getDraft(userId, messageId);
+        if (draft.status === 'ok' && draft.receipt.edited) {
+          await ctx.answerCbQuery(this.t(lang, 'receipt_rotate_edited'), { show_alert: true }).catch(() => {});
+          await this.renderDraft(ctx, userId, lang, draft, 0);
+          return;
+        }
         await this.expireButtons(ctx, lang, 'receipt_rotate_outdated');
         return;
       }
@@ -332,30 +346,71 @@ class ReceiptHandlers {
     return lowResolution ? `${tips}\n${this.t(lang, 'receipt_small_photo_tip')}` : tips;
   }
 
-  async buildDraftView(userId, lang, receipt, { canRotate = false, lowResolution = false } = {}) {
+  // Черновик: сверка суммы строк с итогом чека, строки страницами по 20 (номер → экран строки), «➕ Добавить строку»,
+  // «📅 Дата», «✅ Записать как есть» (после правок — «✅ Записать»; без строк кнопки нет), «🔄 Повернуть» (только пока
+  // черновик не правили: новое распознавание стёрло бы правки), «❌ Отмена»
+  async buildDraftView(userId, lang, receipt, { canRotate = false, lowResolution = false, page = 0 } = {}) {
     const categories = await this.receiptService.categoriesById(userId);
+    const check = sumCheck(receipt);
     const title = receipt.merchant ? this.formatter.escapeMarkdown(receipt.merchant) : this.t(lang, 'receipt_title_default');
     const parts = [`🧾 ${title}`];
     if (receipt.date) parts.push(this.formatter.formatLocalDate(receipt.date) + (receipt.time ? ` ${receipt.time}` : ''));
-    parts.push(this.t(lang, 'receipt_items_count', { count: receipt.items.length }), `*${this.formatter.formatAmount(receipt.itemsTotal, receipt.currency)}*`);
-    const lines = [parts.join(' · '), this.t(lang, 'receipt_low_confidence', {
-      total: receipt.total !== null ? this.formatter.formatAmount(receipt.total, receipt.currency) : '—'
-    }), this.photoTips(lang, lowResolution), ''];
-    receipt.items.slice(0, DRAFT_LINES).forEach((item, i) => {
-      const category = categories.get(item.categoryId);
-      const categoryName = this.formatter.translateCategoryName(category ? category.name : '—', this.localizationService, lang);
-      const label = item.name || categoryName;
-      lines.push(`${i + 1}. ${this.formatter.escapeMarkdown(this.formatter.shorten(label, NAME_IN_LIST))} — ${this.formatter.formatAmount(item.amount, receipt.currency)} · ${(category && category.icon) || '📦'} ${this.formatter.escapeMarkdown(categoryName)}`);
-    });
-    if (receipt.items.length > DRAFT_LINES) lines.push('…');
-    return {
-      text: lines.join('\n'),
-      keyboard: [
-        [{ text: this.t(lang, 'button_receipt_record_draft'), callback_data: 'rvd|1' }],
-        ...(canRotate ? [[{ text: this.t(lang, 'button_receipt_rotate'), callback_data: 'rvr' }]] : []),
-        [{ text: this.t(lang, 'button_cancel'), callback_data: 'rvd|0' }]
-      ]
-    };
+    parts.push(this.t(lang, 'receipt_items_count', { count: receipt.items.length }), `*${this.formatter.formatAmount(check.itemsTotal, receipt.currency)}*`);
+    const lines = [parts.join(' · ')];
+    if (!receipt.edited) {
+      lines.push(this.t(lang, 'receipt_low_confidence', {
+        total: receipt.total !== null ? this.formatter.formatAmount(receipt.total, receipt.currency) : '—'
+      }), this.photoTips(lang, lowResolution));
+    }
+    if (receipt.items.length) lines.push(this.draftSumLine(lang, receipt, check));
+    lines.push('');
+
+    const keyboard = [];
+    if (!receipt.items.length) {
+      lines.push(this.t(lang, 'receipt_draft_empty'));
+    } else {
+      const pages = Math.ceil(receipt.items.length / PAGE_SIZE);
+      const current = Math.min(Math.max(page, 0), pages - 1);
+      const start = current * PAGE_SIZE;
+      const slice = receipt.items.slice(start, start + PAGE_SIZE);
+      slice.forEach((item, i) => {
+        const category = categories.get(item.categoryId);
+        const categoryName = this.formatter.translateCategoryName(category ? category.name : '—', this.localizationService, lang);
+        const label = item.name || categoryName;
+        lines.push(`${start + i + 1}. ${this.formatter.escapeMarkdown(this.formatter.shorten(label, NAME_IN_LIST))} — ${this.formatter.formatAmount(item.amount, receipt.currency)} · ${(category && category.icon) || '📦'} ${this.formatter.escapeMarkdown(categoryName)}`);
+      });
+      lines.push('', this.t(lang, 'receipt_draft_tap_line'));
+      for (let i = 0; i < slice.length; i += 5) {
+        keyboard.push(slice.slice(i, i + 5).map((item, j) => ({ text: String(start + i + j + 1), callback_data: `rdl|${start + i + j}` })));
+      }
+      if (pages > 1) {
+        keyboard.push([
+          current > 0 ? { text: '‹', callback_data: `rdp|${current - 1}` } : { text: ' ', callback_data: 'noop' },
+          { text: `${current + 1}/${pages}`, callback_data: 'noop' },
+          current < pages - 1 ? { text: '›', callback_data: `rdp|${current + 1}` } : { text: ' ', callback_data: 'noop' }
+        ]);
+      }
+    }
+    keyboard.push([
+      { text: this.t(lang, 'button_receipt_add_line'), callback_data: 'rda' },
+      { text: this.t(lang, 'button_record_date'), callback_data: 'rdt' }
+    ]);
+    if (receipt.items.length) {
+      keyboard.push([{ text: this.t(lang, receipt.edited ? 'button_receipt_record_edited' : 'button_receipt_record_draft'), callback_data: 'rvd|1' }]);
+    }
+    if (canRotate && !receipt.edited) keyboard.push([{ text: this.t(lang, 'button_receipt_rotate'), callback_data: 'rvr' }]);
+    keyboard.push([{ text: this.t(lang, 'button_cancel'), callback_data: 'rvd|0' }]);
+    return { text: lines.join('\n'), keyboard };
+  }
+
+  // Сумма строк против напечатанного итога: до копейки — «сходится», в пределах 3% (порог уверенности) — «почти
+  // сходится» с разницей, иначе — разница
+  draftSumLine(lang, receipt, check) {
+    const amount = (value) => this.formatter.formatAmount(value, receipt.currency);
+    if (check.total === null) return this.t(lang, 'receipt_draft_no_total', { items: amount(check.itemsTotal) });
+    const params = { items: amount(check.itemsTotal), total: amount(check.total), diff: amount(Math.abs(check.diff)) };
+    if (check.exact) return this.t(lang, 'receipt_draft_sum_ok', params);
+    return this.t(lang, check.matches ? 'receipt_draft_sum_close' : 'receipt_draft_sum_diff', params);
   }
 
   // rvd|1 — записать черновик как есть, rvd|0 — отменить
@@ -371,6 +426,11 @@ class ReceiptHandlers {
     }
     if (taken.status === 'busy') {
       await ctx.answerCbQuery().catch(() => {});
+      return;
+    }
+    if (record && !taken.receipt.items.length) {
+      await this.receiptService.releaseDraft(userId, messageId);
+      await ctx.answerCbQuery(this.t(lang, 'receipt_draft_empty'), { show_alert: true }).catch(() => {});
       return;
     }
     await ctx.answerCbQuery().catch(() => {});
@@ -393,6 +453,281 @@ class ReceiptHandlers {
     const text = await this.withNotes(ctx, userId, lang, receiptId, view.text);
     await respond(ctx, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: view.keyboard } });
     await this.sendBudgetWarnings(ctx, userId, lang, receiptId);
+  }
+
+  // ---------- Правка черновика до записи (строки, категория, новая строка, дата) ----------
+  // Черновик правится в БД (receiptService.updateDraft) и переживает перезапуск; записывающийся черновик не правится.
+  // Кнопки привязаны к сообщению черновика; ввод текстом — состояние rd_in:<сообщение>:<e — строка | a — новая | d — дата>[:<строка>],
+  // после ввода черновик присылается заново под ним и переезжает на новое сообщение.
+
+  // Черновик устарел — объяснить и убрать кнопки, записывается — alert. null — показывать нечего
+  async usableDraft(ctx, lang, draft) {
+    if (draft.status === 'missing') {
+      await this.expireButtons(ctx, lang, 'receipt_draft_outdated');
+      return null;
+    }
+    if (draft.status === 'busy') {
+      await ctx.answerCbQuery(this.t(lang, 'receipt_draft_busy'), { show_alert: true }).catch(() => {});
+      return null;
+    }
+    return draft;
+  }
+
+  async loadDraft(ctx, lang) {
+    return this.usableDraft(ctx, lang, await this.receiptService.getDraft(ctx.from.id, ctx.callbackQuery.message?.message_id));
+  }
+
+  draftView(userId, lang, draft, page) {
+    return this.buildDraftView(userId, lang, draft.receipt, {
+      canRotate: !!draft.frame, lowResolution: !!(draft.frame && draft.frame.lowResolution), page
+    });
+  }
+
+  async renderDraft(ctx, userId, lang, draft, page) {
+    const view = await this.draftView(userId, lang, draft, page);
+    await respond(ctx, view.text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: view.keyboard } });
+  }
+
+  lineLabel(item, categories, lang) {
+    const category = categories.get(item.categoryId);
+    const categoryName = this.formatter.translateCategoryName(category ? category.name : '—', this.localizationService, lang);
+    return { label: item.name || categoryName, categoryName, icon: (category && category.icon) || '📦' };
+  }
+
+  // rdp|<page> — черновик (страница строк), сюда же «⬅️ К черновику»
+  async showDraft(ctx, page = 0) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    const draft = await this.loadDraft(ctx, lang);
+    if (!draft) return;
+    await ctx.answerCbQuery().catch(() => {});
+    await this.renderDraft(ctx, userId, lang, draft, page);
+  }
+
+  // rdl|<строка> — экран строки: название, сумма, количество × цена (если известны), категория
+  async showDraftLine(ctx, index) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    const draft = await this.loadDraft(ctx, lang);
+    if (!draft) return;
+    await ctx.answerCbQuery().catch(() => {});
+    const { receipt } = draft;
+    const item = receipt.items[index];
+    if (!item) return this.renderDraft(ctx, userId, lang, draft, 0);
+    const { label, categoryName, icon } = this.lineLabel(item, await this.receiptService.categoriesById(userId), lang);
+    let amountLine = `💰 *${this.formatter.formatAmount(item.amount, receipt.currency)}*`;
+    if (item.price !== null && item.price !== undefined && Number(item.quantity) > 0) {
+      amountLine += ` · ${this.t(lang, 'receipt_line_quantity', {
+        quantity: String(Number(item.quantity)).replace('.', ','), price: this.formatter.formatAmount(Number(item.price), receipt.currency)
+      })}`;
+    }
+    const text = [
+      this.t(lang, 'receipt_line_title', { n: index + 1, count: receipt.items.length }), '',
+      `📝 ${this.formatter.escapeMarkdown(label)}`, amountLine, `🏷 ${icon} ${this.formatter.escapeMarkdown(categoryName)}`
+    ].join('\n');
+    await respond(ctx, text, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: this.t(lang, 'button_edit_record'), callback_data: `rde|${index}` },
+            { text: this.t(lang, 'button_change_category'), callback_data: `rdc|${index}` }
+          ],
+          [{ text: this.t(lang, 'button_receipt_remove_line'), callback_data: `rdx|${index}` }],
+          [{ text: this.t(lang, 'button_receipt_back_to_draft'), callback_data: `rdp|${Math.floor(index / PAGE_SIZE)}` }]
+        ]
+      }
+    });
+  }
+
+  // rde|<строка> — новая сумма и/или название следующим сообщением (разбор и лимиты — как у ✏️ записи)
+  async startDraftLineEdit(ctx, index) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    const draft = await this.loadDraft(ctx, lang);
+    if (!draft) return;
+    await ctx.answerCbQuery().catch(() => {});
+    const item = draft.receipt.items[index];
+    if (!item) return this.renderDraft(ctx, userId, lang, draft, 0);
+    const { label } = this.lineLabel(item, await this.receiptService.categoriesById(userId), lang);
+    this.stateService.setUserState(userId, `rd_in:${ctx.callbackQuery.message.message_id}:e:${index}`);
+    const current = `${this.formatter.escapeMarkdown(this.formatter.shorten(label, NAME_IN_LIST))} — ${this.formatter.formatAmount(item.amount, draft.receipt.currency)}`;
+    await respond(ctx, this.t(lang, 'receipt_line_edit_prompt', { n: index + 1, current }), {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: [[{ text: this.t(lang, 'button_back'), callback_data: `rdl|${index}` }]] }
+    });
+  }
+
+  // rda — новая строка следующим сообщением («120 хлеб»; категория — запомненная по названию, иначе «Другое»)
+  async startDraftLineAdd(ctx) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    const draft = await this.loadDraft(ctx, lang);
+    if (!draft) return;
+    if (draft.receipt.items.length >= MAX_ITEMS) {
+      await ctx.answerCbQuery(this.t(lang, 'receipt_line_limit', { max: MAX_ITEMS }), { show_alert: true }).catch(() => {});
+      return;
+    }
+    await ctx.answerCbQuery().catch(() => {});
+    this.stateService.setUserState(userId, `rd_in:${ctx.callbackQuery.message.message_id}:a`);
+    const lastPage = Math.max(0, Math.ceil(draft.receipt.items.length / PAGE_SIZE) - 1);
+    await respond(ctx, this.t(lang, 'receipt_line_add_prompt'), {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: [[{ text: this.t(lang, 'button_back'), callback_data: `rdp|${lastPage}` }]] }
+    });
+  }
+
+  // rdc|<строка> — категории пользователя для строки
+  async chooseDraftLineCategory(ctx, index) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    const draft = await this.loadDraft(ctx, lang);
+    if (!draft) return;
+    await ctx.answerCbQuery().catch(() => {});
+    if (!draft.receipt.items[index]) return this.renderDraft(ctx, userId, lang, draft, 0);
+    const categories = await this.expenseService.getCategories(userId);
+    const keyboard = [];
+    for (let i = 0; i < categories.length; i += 2) {
+      keyboard.push(categories.slice(i, i + 2).map(category => ({
+        text: `${category.icon} ${this.formatter.translateCategoryName(category.name, this.localizationService, lang)}`,
+        callback_data: `rds|${index}|${category.id}`
+      })));
+    }
+    keyboard.push([{ text: this.t(lang, 'button_back'), callback_data: `rdl|${index}` }]);
+    await respond(ctx, this.t(lang, 'receipt_line_category', { n: index + 1 }), { reply_markup: { inline_keyboard: keyboard } });
+  }
+
+  // rds|<строка>|<categoryId>
+  async setDraftLineCategory(ctx, index, categoryId) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    const category = (await this.expenseService.getCategories(userId)).find(c => c.id === categoryId);
+    if (!category) {
+      await ctx.answerCbQuery(this.t(lang, 'callback_data_not_found')).catch(() => {});
+      return;
+    }
+    const draft = await this.usableDraft(ctx, lang, await this.receiptService.updateDraft(
+      userId, ctx.callbackQuery.message?.message_id, (receipt) => setLineCategory(receipt, index, categoryId)
+    ));
+    if (!draft) return;
+    await ctx.answerCbQuery(draft.status === 'ok' ? this.t(lang, 'expense_category_changed', {
+      category: this.formatter.translateCategoryName(category.name, this.localizationService, lang)
+    }) : undefined).catch(() => {});
+    await this.renderDraft(ctx, userId, lang, draft, Math.floor(index / PAGE_SIZE));
+  }
+
+  // rdx|<строка> — убрать строку (последнюю тоже: пустой черновик просто нельзя записать)
+  async removeDraftLine(ctx, index) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    const draft = await this.usableDraft(ctx, lang, await this.receiptService.updateDraft(
+      userId, ctx.callbackQuery.message?.message_id, (receipt) => removeLine(receipt, index)
+    ));
+    if (!draft) return;
+    await ctx.answerCbQuery(draft.status === 'ok' ? this.t(lang, 'receipt_line_removed') : undefined).catch(() => {});
+    await this.renderDraft(ctx, userId, lang, draft, Math.floor(index / PAGE_SIZE));
+  }
+
+  // rdt — дата покупки: тот же выбор дня, что у записи
+  async showDraftDatePicker(ctx) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    const draft = await this.loadDraft(ctx, lang);
+    if (!draft) return;
+    await ctx.answerCbQuery().catch(() => {});
+    const { receipt } = draft;
+    const timezone = await this.userService.getUserTimezone(userId);
+    const current = receipt.date
+      ? this.formatter.formatLocalDate(receipt.date) + (receipt.time ? ` ${receipt.time}` : '')
+      : this.t(lang, 'date_not_set');
+    const keyboard = datePickerKeyboard((key) => this.t(lang, key), {
+      today: localToday(timezone), current: receipt.date, pick: (date) => `rdt|${packDate(date)}`, other: 'rdto', back: 'rdp|0'
+    });
+    await respond(ctx, this.t(lang, 'date_picker_draft_title', { current }), { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
+  }
+
+  // rdt|<YYYYMMDD>
+  async setDraftDateFromButton(ctx, packed) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    const timezone = await this.userService.getUserTimezone(userId);
+    const date = unpackDate(packed);
+    const error = date ? checkRecordDate(date, localToday(timezone)) : 'format';
+    if (error) {
+      await ctx.answerCbQuery(this.t(lang, DATE_ERROR_KEYS[error]), { show_alert: true }).catch(() => {});
+      return;
+    }
+    const draft = await this.usableDraft(ctx, lang, await this.receiptService.updateDraft(
+      userId, ctx.callbackQuery.message?.message_id, (receipt) => setDraftDate(receipt, date, localNow(timezone))
+    ));
+    if (!draft) return;
+    await ctx.answerCbQuery(this.t(lang, 'date_changed', { date: this.formatter.formatLocalDate(date) })).catch(() => {});
+    await this.renderDraft(ctx, userId, lang, draft, 0);
+  }
+
+  // rdto — другая дата текстом
+  async startDraftDateInput(ctx) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    const draft = await this.loadDraft(ctx, lang);
+    if (!draft) return;
+    await ctx.answerCbQuery().catch(() => {});
+    this.stateService.setUserState(userId, `rd_in:${ctx.callbackQuery.message.message_id}:d`);
+    await respond(ctx, this.t(lang, 'date_enter_prompt'), {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: [[{ text: this.t(lang, 'button_back'), callback_data: 'rdt' }]] }
+    });
+  }
+
+  // Ввод при rd_in:<сообщение>:<op>[:<строка>]. Ошибка ввода — подсказка, ввод ждёт дальше
+  async handleDraftInput(ctx, text, lang, state) {
+    const userId = ctx.from.id;
+    const [, messagePart, op, indexPart] = state.split(':');
+    const messageId = Number(messagePart);
+    const index = Number(indexPart);
+    let change;
+    if (op === 'd') {
+      const timezone = await this.userService.getUserTimezone(userId);
+      const parsed = parseRecordDate(text, localToday(timezone));
+      if (parsed.error) return ctx.reply(this.t(lang, DATE_ERROR_KEYS[parsed.error]), { parse_mode: 'Markdown' });
+      change = (receipt) => setDraftDate(receipt, parsed.date, localNow(timezone));
+    } else {
+      const limits = await this.premiumService.getUserLimits(userId);
+      const parsed = this.validator.parseEditExpense(text, limits.MAX_DESCRIPTION_LENGTH);
+      if (!parsed.isValid) return ctx.reply(this.expenseHandlers.editErrorText(lang, parsed.error, limits.MAX_DESCRIPTION_LENGTH));
+      if (op === 'e') {
+        change = (receipt) => editLine(receipt, index, { amount: parsed.amount, name: parsed.description });
+      } else {
+        if (parsed.amount === undefined) return ctx.reply(this.t(lang, 'receipt_line_need_amount'), { parse_mode: 'Markdown' });
+        const categories = await this.expenseService.getCategories(userId);
+        const category = await this.expenseService.getRememberedCategory(userId, parsed.description, categories)
+          || await this.expenseService.getDefaultCategory();
+        change = (receipt) => addLine(receipt, { amount: parsed.amount, name: parsed.description, categoryId: category.id });
+      }
+    }
+    const draft = await this.receiptService.updateDraft(userId, messageId, change);
+    this.stateService.deleteUserState(userId);
+    if (draft.status === 'missing') return ctx.reply(this.t(lang, 'receipt_draft_outdated'));
+    if (draft.status === 'busy') return ctx.reply(this.t(lang, 'receipt_draft_busy'));
+    if (draft.status === 'unchanged' && op === 'a') await ctx.reply(this.t(lang, 'receipt_line_limit', { max: MAX_ITEMS }));
+    const items = draft.receipt.items.length;
+    const page = op === 'e' ? Math.floor(index / PAGE_SIZE) : op === 'a' ? Math.max(0, Math.ceil(items / PAGE_SIZE) - 1) : 0;
+    await this.resendDraft(ctx, userId, lang, messageId, draft, page);
+  }
+
+  // Черновик под вводом пользователя: новое сообщение, черновик переезжает на него, у старого (там была подсказка
+  // ввода) кнопки убираются
+  async resendDraft(ctx, userId, lang, messageId, draft, page) {
+    const view = await this.draftView(userId, lang, draft, page);
+    const sent = await ctx.reply(view.text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: view.keyboard } });
+    if (!(await this.receiptService.moveDraft(userId, messageId, sent.message_id))) {
+      await ctx.telegram.editMessageText(ctx.chat.id, sent.message_id, undefined, this.t(lang, 'receipt_draft_outdated')).catch(() => {});
+      return;
+    }
+    const cached = this.frames.get(`${userId}:${messageId}`);
+    this.frames.delete(`${userId}:${messageId}`);
+    if (cached) this.frames.set(`${userId}:${sent.message_id}`, cached);
+    await ctx.telegram.editMessageReplyMarkup(ctx.chat.id, messageId, undefined, { inline_keyboard: [] }).catch(() => {});
   }
 
   // Записанный чек: строка достижений (первый чек, серия…) и подколка злого режима под списком
@@ -493,6 +828,7 @@ class ReceiptHandlers {
         current < pages - 1 ? { text: '›', callback_data: `rv|${receiptId}|${current + 1}` } : { text: ' ', callback_data: 'noop' }
       ]);
     }
+    keyboard.push([{ text: this.t(lang, 'button_receipt_date'), callback_data: `rt|${receiptId}` }]);
     keyboard.push([
       { text: this.t(lang, 'button_receipt_ok'), callback_data: `rvok|${receiptId}` },
       { text: this.t(lang, 'button_receipt_undo'), callback_data: `rvx|${receiptId}` }
@@ -556,6 +892,92 @@ class ReceiptHandlers {
     }
     await ctx.answerCbQuery().catch(() => {});
     await respond(ctx, this.t(lang, 'receipt_undone', { count: result.expenses }), { reply_markup: { inline_keyboard: [] } });
+  }
+
+  // ---------- Дата записанного чека: purchased_date и день всех его трат (время каждой остаётся) ----------
+
+  // Чек можно перенести (не отменён). Иначе — alert, null
+  async activeReceipt(ctx, lang, receiptId) {
+    const receipt = await this.receiptService.getReceipt(ctx.from.id, receiptId);
+    if (receipt && receipt.status !== 'undone') return receipt;
+    await ctx.answerCbQuery(this.t(lang, receipt ? 'receipt_already_undone' : 'receipt_not_found'), { show_alert: true }).catch(() => {});
+    return null;
+  }
+
+  // rt|<id> — выбор дня
+  async showReceiptDatePicker(ctx, receiptId) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    const receipt = await this.activeReceipt(ctx, lang, receiptId);
+    if (!receipt) return;
+    await ctx.answerCbQuery().catch(() => {});
+    const timezone = await this.userService.getUserTimezone(userId);
+    const expenses = await this.receiptService.getExpenses(userId, receiptId);
+    const current = receipt.purchased_day || (expenses[0] ? localDateOf(expenses[0].created_at_utc, timezone) : null);
+    const keyboard = datePickerKeyboard((key) => this.t(lang, key), {
+      today: localToday(timezone), current,
+      pick: (date) => `rtd|${receiptId}|${packDate(date)}`, other: `rto|${receiptId}`, back: `rv|${receiptId}|0`
+    });
+    await respond(ctx, this.t(lang, 'date_picker_receipt_title', {
+      current: current ? this.formatter.formatLocalDate(current) : this.t(lang, 'date_not_set')
+    }), { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
+  }
+
+  // Проверка дня и перенос чека: { date, result } или { error } (ключ текста)
+  async moveReceipt(userId, receiptId, date) {
+    const timezone = await this.userService.getUserTimezone(userId);
+    const result = await this.receiptService.setDate(userId, receiptId, date, timezone);
+    return result ? { result } : { error: 'receipt_already_undone' };
+  }
+
+  // rtd|<id>|<YYYYMMDD>
+  async setReceiptDate(ctx, receiptId, packed) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    const timezone = await this.userService.getUserTimezone(userId);
+    const date = unpackDate(packed);
+    const error = date ? checkRecordDate(date, localToday(timezone)) : 'format';
+    if (error) {
+      await ctx.answerCbQuery(this.t(lang, DATE_ERROR_KEYS[error]), { show_alert: true }).catch(() => {});
+      return;
+    }
+    const moved = await this.moveReceipt(userId, receiptId, date);
+    if (moved.error) {
+      await ctx.answerCbQuery(this.t(lang, moved.error), { show_alert: true }).catch(() => {});
+      return;
+    }
+    await ctx.answerCbQuery(this.t(lang, 'receipt_date_changed', { date: this.formatter.formatLocalDate(date), count: moved.result.expenses })).catch(() => {});
+    const view = await this.buildReceiptView(userId, lang, receiptId, 0);
+    await respond(ctx, view.text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: view.keyboard } });
+  }
+
+  // rto|<id> — другая дата текстом (состояние dt_in:r:<чек>:<сообщение с подсказкой>)
+  async startReceiptDateInput(ctx, receiptId) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    if (!(await this.activeReceipt(ctx, lang, receiptId))) return;
+    await ctx.answerCbQuery().catch(() => {});
+    this.stateService.setUserState(userId, `dt_in:r:${receiptId}:${ctx.callbackQuery.message.message_id}`);
+    await respond(ctx, this.t(lang, 'date_enter_prompt'), {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: [[{ text: this.t(lang, 'button_back'), callback_data: `rt|${receiptId}` }]] }
+    });
+  }
+
+  async handleReceiptDateInput(ctx, text, lang, state) {
+    const userId = ctx.from.id;
+    const [, , receiptPart, messagePart] = state.split(':');
+    const receiptId = Number(receiptPart);
+    const timezone = await this.userService.getUserTimezone(userId);
+    const parsed = parseRecordDate(text, localToday(timezone));
+    if (parsed.error) return ctx.reply(this.t(lang, DATE_ERROR_KEYS[parsed.error]), { parse_mode: 'Markdown' });
+    const moved = await this.moveReceipt(userId, receiptId, parsed.date);
+    this.stateService.deleteUserState(userId);
+    if (moved.error) return ctx.reply(this.t(lang, moved.error));
+    await ctx.telegram.editMessageReplyMarkup(ctx.chat.id, Number(messagePart), undefined, { inline_keyboard: [] }).catch(() => {});
+    const view = await this.buildReceiptView(userId, lang, receiptId, 0);
+    const note = this.t(lang, 'receipt_date_changed', { date: this.formatter.formatLocalDate(parsed.date), count: moved.result.expenses });
+    await ctx.reply(`${note}\n\n${view.text}`, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: view.keyboard } });
   }
 }
 

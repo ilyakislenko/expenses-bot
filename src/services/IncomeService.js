@@ -1,4 +1,5 @@
 const logger = require('../utils/logger');
+const { moveToDate } = require('../utils/recordDate');
 
 class IncomeService {
   constructor(incomeRepository, userRepository) {
@@ -40,6 +41,16 @@ class IncomeService {
   async updateIncome(userId, incomeId, changes) {
     const income = await this.incomeRepository.updateIncome(userId, incomeId, changes);
     if (income) logger.info('Income updated', { userId, incomeId, amount: changes.amount, currency: changes.currency });
+    return income;
+  }
+
+  // Другой день дохода (date — локальная 'YYYY-MM-DD', проверена обработчиком): местное время суток остаётся,
+  // не позже текущего момента. null — дохода нет
+  async setIncomeDate(userId, incomeId, date, timezone) {
+    const current = await this.incomeRepository.getIncomeById(userId, incomeId);
+    if (!current) return null;
+    const income = await this.incomeRepository.setIncomeCreatedAt(userId, incomeId, moveToDate(current.created_at_utc, date, timezone));
+    if (income) logger.info('Income date changed', { userId, incomeId, date });
     return income;
   }
 

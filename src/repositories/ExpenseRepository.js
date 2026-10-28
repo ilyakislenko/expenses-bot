@@ -364,6 +364,15 @@ class ExpenseRepository extends BaseRepository {
     const result = await this.query(query, [expenseId, userId]);
     return result.rows[0];
   }
+
+  // Другой день записи (только своей): createdAt — новый момент, посчитанный в ExpenseService.setExpenseDate
+  async setExpenseCreatedAt(userId, expenseId, createdAt) {
+    const result = await this.query(
+      'UPDATE expenses SET created_at_utc = $3 WHERE id = $1 AND user_id = $2 RETURNING *',
+      [expenseId, userId, createdAt]
+    );
+    return result.rows[0];
+  }
 }
 
 module.exports = ExpenseRepository; 

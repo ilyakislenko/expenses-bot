@@ -188,12 +188,12 @@ function shiftDate(date, days) {
   return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
 }
 
-// Локальное время записи трат чека: дата чека, если она не в будущем и не старше 60 дней, иначе null (сейчас).
-// Без времени — полдень (сегодняшний чек без времени — сейчас)
-function resolveReceiptTime(date, time, timezone, now = new Date()) {
+// Локальное время записи трат чека: дата чека, если она не в будущем и не старше maxAgeDays (распознанная — 60 дней,
+// выбранная пользователем в черновике — год), иначе null (сейчас). Без времени — полдень (сегодняшний чек без времени — сейчас)
+function resolveReceiptTime(date, time, timezone, now = new Date(), maxAgeDays = RECEIPT_MAX_AGE_DAYS) {
   if (!date) return null;
   const local = localNow(timezone, now);
-  if (date > local.date || date < shiftDate(local.date, -RECEIPT_MAX_AGE_DAYS)) return null;
+  if (date > local.date || date < shiftDate(local.date, -maxAgeDays)) return null;
   if (!time) return date === local.date ? null : `${date} 12:00:00`;
   if (date === local.date && time > local.time) return null;
   return `${date} ${time}:00`;
@@ -204,4 +204,4 @@ function localMonthStart(timezone, now = new Date()) {
   return `${localNow(timezone, now).date.slice(0, 8)}01`;
 }
 
-module.exports = { normalizeReceipt, resolveReceiptTime, localMonthStart, localNow, cleanName, MAX_ITEMS };
+module.exports = { normalizeReceipt, resolveReceiptTime, localMonthStart, localNow, cleanName, MAX_ITEMS, LOW_CONFIDENCE_SUM, SUM_TOLERANCE };

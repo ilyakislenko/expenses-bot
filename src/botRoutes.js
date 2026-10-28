@@ -70,6 +70,9 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^income_delete\|(\d+)$/, errorHandler((ctx) => incomeHandlers.deleteIncome(ctx)));
   bot.action(/^income_undo\|(\d+)$/, errorHandler((ctx) => incomeHandlers.undoIncome(ctx)));
   bot.action(/^ie\|(\d+)$/, errorHandler((ctx) => incomeHandlers.startEdit(ctx)));
+  bot.action(/^it\|(\d+)$/, errorHandler((ctx) => incomeHandlers.showDatePicker(ctx))); // дата дохода
+  bot.action(/^itd\|(\d+)\|(\d{8})$/, errorHandler((ctx) => incomeHandlers.setDate(ctx)));
+  bot.action(/^ito\|(\d+)$/, errorHandler((ctx) => incomeHandlers.startDateInput(ctx)));
 
   // Регулярные (ежемесячные) траты
   bot.action('recurring_menu', errorHandler((ctx) => recurringExpenseHandlers.showMenu(ctx)));
@@ -90,6 +93,9 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^xe\|(\d+)$/, errorHandler((ctx) => expenseHandlers.handleEdit(ctx)));
   bot.action(new RegExp(`^xf\\|(\\d+)\\|${back}$`), errorHandler((ctx) => expenseHandlers.handleFamilyToggle(ctx, true)));
   bot.action(new RegExp(`^xu\\|(\\d+)\\|${back}$`), errorHandler((ctx) => expenseHandlers.handleFamilyToggle(ctx, false)));
+  bot.action(new RegExp(`^xt\\|(\\d+)\\|${back}$`), errorHandler((ctx) => expenseHandlers.handleDatePicker(ctx))); // дата записи
+  bot.action(new RegExp(`^xtd\\|(\\d+)\\|(\\d{8})\\|${back}$`), errorHandler((ctx) => expenseHandlers.handleSetDate(ctx)));
+  bot.action(new RegExp(`^xto\\|(\\d+)\\|${back}$`), errorHandler((ctx) => expenseHandlers.handleOtherDate(ctx)));
   bot.action('noop', (ctx) => ctx.answerCbQuery().catch(() => {})); // номер страницы и пустые ячейки пагинации
   bot.action(/^rp\|(-?\d+)$/, errorHandler((ctx) => expenseHandlers.showReport(ctx, parseInt(ctx.match[1], 10)))); // итоги периода
 
@@ -231,6 +237,21 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^rvxc\|(\d+)$/, errorHandler((ctx) => receiptHandlers.undo(ctx, parseInt(ctx.match[1], 10))));
   bot.action(/^rvd\|([01])$/, errorHandler((ctx) => receiptHandlers.resolveDraft(ctx, ctx.match[1] === '1'))); // черновик: записать / отмена
   bot.action('rvr', errorHandler((ctx) => receiptHandlers.rotateAndRetry(ctx))); // повернуть кадр на 90° и распознать снова
+  // Правка черновика до записи: страница (rdp), строка (rdl) → ✏️ (rde), 🏷 (rdc → rds), 🗑 (rdx); ➕ строка (rda), 📅 дата (rdt → rdt|день, rdto)
+  bot.action(/^rdp\|(\d+)$/, errorHandler((ctx) => receiptHandlers.showDraft(ctx, parseInt(ctx.match[1], 10))));
+  bot.action(/^rdl\|(\d+)$/, errorHandler((ctx) => receiptHandlers.showDraftLine(ctx, parseInt(ctx.match[1], 10))));
+  bot.action(/^rde\|(\d+)$/, errorHandler((ctx) => receiptHandlers.startDraftLineEdit(ctx, parseInt(ctx.match[1], 10))));
+  bot.action(/^rdc\|(\d+)$/, errorHandler((ctx) => receiptHandlers.chooseDraftLineCategory(ctx, parseInt(ctx.match[1], 10))));
+  bot.action(/^rds\|(\d+)\|(\d+)$/, errorHandler((ctx) => receiptHandlers.setDraftLineCategory(ctx, parseInt(ctx.match[1], 10), parseInt(ctx.match[2], 10))));
+  bot.action(/^rdx\|(\d+)$/, errorHandler((ctx) => receiptHandlers.removeDraftLine(ctx, parseInt(ctx.match[1], 10))));
+  bot.action('rda', errorHandler((ctx) => receiptHandlers.startDraftLineAdd(ctx)));
+  bot.action('rdt', errorHandler((ctx) => receiptHandlers.showDraftDatePicker(ctx)));
+  bot.action(/^rdt\|(\d{8})$/, errorHandler((ctx) => receiptHandlers.setDraftDateFromButton(ctx, ctx.match[1])));
+  bot.action('rdto', errorHandler((ctx) => receiptHandlers.startDraftDateInput(ctx)));
+  // Дата записанного чека: все его траты переезжают на выбранный день
+  bot.action(/^rt\|(\d+)$/, errorHandler((ctx) => receiptHandlers.showReceiptDatePicker(ctx, parseInt(ctx.match[1], 10))));
+  bot.action(/^rtd\|(\d+)\|(\d{8})$/, errorHandler((ctx) => receiptHandlers.setReceiptDate(ctx, parseInt(ctx.match[1], 10), ctx.match[2])));
+  bot.action(/^rto\|(\d+)$/, errorHandler((ctx) => receiptHandlers.startReceiptDateInput(ctx, parseInt(ctx.match[1], 10))));
   // Несколько записей одним сообщением и голосовые: сводка (vcb|<id>) → карточки (back v.<id>), «Отменить всё» (vcx|<id>)
   bot.on('voice', errorHandler((ctx) => multiEntryHandlers.handleVoice(ctx)));
   bot.action(/^vcb\|(\d+)$/, errorHandler((ctx) => multiEntryHandlers.showBatch(ctx, parseInt(ctx.match[1], 10))));

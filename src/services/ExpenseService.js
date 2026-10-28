@@ -1,6 +1,7 @@
 const logger = require('../utils/logger');
 const { expensesTotal, expensesAmountTotal } = require('../utils/metrics');
 const { localToday, customPeriod, dayPeriod } = require('../utils/period');
+const { moveToDate } = require('../utils/recordDate');
 
 class ExpenseService {
   constructor(expenseRepository, userRepository, categoryRepository, premiumService, funnelService, referralService = null) {
@@ -141,6 +142,16 @@ class ExpenseService {
 
   async updateExpenseById(userId, expenseId, data) {
     return this.expenseRepository.updateExpenseById(userId, expenseId, data);
+  }
+
+  // Другой день своей записи (date — локальная 'YYYY-MM-DD', проверена обработчиком): местное время суток в поясе
+  // пользователя остаётся, не позже текущего момента. null — записи нет или она чужая
+  async setExpenseDate(userId, expenseId, date, timezone) {
+    const current = await this.expenseRepository.getExpenseById(userId, expenseId);
+    if (!current || Number(current.user_id) !== Number(userId)) return null;
+    const expense = await this.expenseRepository.setExpenseCreatedAt(userId, expenseId, moveToDate(current.created_at_utc, date, timezone));
+    if (expense) logger.info('Expense date changed', { userId, expenseId, date });
+    return expense;
   }
 
   async deleteExpenseById(userId, expenseId) {

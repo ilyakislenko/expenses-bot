@@ -640,9 +640,32 @@ function memoryDraftStore() {
       if (row) row.taken = false;
     }),
     deleteDraft: jest.fn(async (userId, messageId) => { rows.delete(key(userId, messageId)); }),
+    getDraft: jest.fn(async (userId, messageId) => {
+      const row = rows.get(key(userId, messageId));
+      if (!row || !row.receipt) return { status: 'missing' };
+      if (row.taken) return { status: 'busy' };
+      return { status: 'ok', receipt: copy(row.receipt), frame: copy(row.frame), timezone: row.timezone };
+    }),
+    // Как ReceiptRepository.updateDraft: записывающийся черновик не правится, mutate → новый черновик или null
+    updateDraft: jest.fn(async (userId, messageId, mutate) => {
+      const row = rows.get(key(userId, messageId));
+      if (!row || !row.receipt) return { status: 'missing' };
+      if (row.taken) return { status: 'busy' };
+      const next = mutate(copy(row.receipt));
+      if (!next) return { status: 'unchanged', receipt: copy(row.receipt), frame: copy(row.frame), timezone: row.timezone };
+      row.receipt = copy(next);
+      return { status: 'ok', receipt: copy(next), frame: copy(row.frame), timezone: row.timezone };
+    }),
+    moveDraft: jest.fn(async (userId, from, to) => {
+      const row = rows.get(key(userId, from));
+      if (!row || !row.receipt || row.taken) return false;
+      rows.delete(key(userId, from));
+      rows.set(key(userId, to), row);
+      return true;
+    }),
     takeFrame: jest.fn(async (userId, messageId) => {
       const row = rows.get(key(userId, messageId));
-      if (!row || !row.frame || row.taken) return null;
+      if (!row || !row.frame || row.taken || (row.receipt && row.receipt.edited)) return null;
       rows.delete(key(userId, messageId));
       return copy(row.frame);
     })
@@ -669,14 +692,33 @@ describe('ReceiptHandlers background recognition', () => {
       categoriesById: jest.fn(async () => new Map([[1, { id: 1, name: 'Еда', icon: '🍕' }]])),
       ...memoryDraftStore()
     };
+    const localizationService = new LocalizationService();
+    const ExpenseHandlers = require('../handlers/ExpenseHandlers');
+    const EnhancedValidator = require('../utils/enhancedValidator');
+    const StateService = require('../services/StateService');
+    const stateService = new StateService();
+    const userCategories = [{ id: 1, name: 'Еда', icon: '🍕' }, { id: 2, name: 'Транспорт', icon: '🚕' }, { id: 6, name: 'Другое', icon: '📦' }];
+    const expenseService = {
+      getCategories: jest.fn(async () => userCategories),
+      getRememberedCategory: jest.fn(async (userId, description) => (description === 'такси' ? userCategories[1] : null)),
+      getDefaultCategory: jest.fn(async () => userCategories[2])
+    };
+    receiptService.categoriesById = jest.fn(async () => new Map(userCategories.map(c => [c.id, c])));
     const createHandlers = () => {
       const created = new ReceiptHandlers({
         receiptService,
-        expenseHandlers: { registerBackView: jest.fn(), familyModeTarget: jest.fn(async () => null), roastNote: jest.fn(async () => '') },
+        expenseHandlers: {
+          registerBackView: jest.fn(), familyModeTarget: jest.fn(async () => null), roastNote: jest.fn(async () => ''),
+          editErrorText: (lang, error, max) => ExpenseHandlers.prototype.editErrorText.call({ t: (l, k, p) => localizationService.getText(l, k, p) }, lang, error, max)
+        },
+        expenseService,
         budgetService: { checkAfterExpense: jest.fn(async () => []) },
         userService: { getUserLanguage: async () => 'ru', getUserTimezone: async () => 'Europe/Moscow', getUserCurrency: async () => 'RUB' },
-        localizationService: new LocalizationService(),
-        formatter: new Formatter({ convert: async (amount) => amount })
+        premiumService: { getUserLimits: async () => ({ MAX_DESCRIPTION_LENGTH: 80 }) },
+        localizationService,
+        formatter: new Formatter({ convert: async (amount) => amount }),
+        stateService,
+        validator: new EnhancedValidator()
       });
       created.download = jest.fn(async () => Buffer.from('image'));
       return created;
@@ -688,11 +730,11 @@ describe('ReceiptHandlers background recognition', () => {
       from: { id: 7 },
       reply: jest.fn(async () => ({ message_id: ++messageId })),
       sendChatAction: jest.fn(async () => true),
-      telegram: { editMessageText: jest.fn(async () => true) }
+      telegram: { editMessageText: jest.fn(async () => true), editMessageReplyMarkup: jest.fn(async () => true) }
     };
     const receipt = (overrides = {}) => ({ merchant: 'Ярче', date: '2026-10-27', time: '11:47', currency: 'RUB', total: 45, itemsTotal: 45, mismatch: false, lowConfidence: false, items: [{ name: 'Хлеб', amount: 45, categoryId: 1 }], ...overrides });
     const ok = (value, image = tinyJpeg(16, 32)) => ({ receipt: value, image, mimeType: 'image/jpeg', attempts: 1 });
-    return { handlers, createHandlers, receiptService, ctx, finish, receipt, ok };
+    return { handlers, createHandlers, receiptService, expenseService, stateService, ctx, finish, receipt, ok };
   }
   const t = (key, params) => new LocalizationService().getText('ru', key, params);
 
@@ -741,7 +783,7 @@ describe('ReceiptHandlers background recognition', () => {
     const [, , , text, extra] = ctx.telegram.editMessageText.mock.calls.pop();
     expect(text).toContain(t('receipt_low_confidence', { total: '100 ₽'.replace(' ', '\u00a0') }));
     expect(text).toContain(t('receipt_photo_tips'));
-    expect(extra.reply_markup.inline_keyboard.flat().map(b => b.callback_data)).toEqual(['rvd|1', 'rvr', 'rvd|0']);
+    expect(extra.reply_markup.inline_keyboard.flat().map(b => b.callback_data)).toEqual(['rdl|0', 'rda', 'rdt', 'rvd|1', 'rvr', 'rvd|0']);
 
     const callbackCtx = { ...ctx, callbackQuery: { message: { message_id: 101 } }, answerCbQuery: jest.fn(async () => true), editMessageText: jest.fn(async () => true) };
     await handlers.resolveDraft(callbackCtx, true);
@@ -822,6 +864,191 @@ describe('ReceiptHandlers background recognition', () => {
     expect(receiptService.record).toHaveBeenCalledTimes(1);
     expect(stale.answerCbQuery).toHaveBeenCalledWith(t('receipt_draft_outdated'), { show_alert: true });
     expect(stale.editMessageReplyMarkup).toHaveBeenCalledWith({ inline_keyboard: [] });
+  });
+
+  // Кнопка на сообщении messageId (черновик привязан к сообщению)
+  const buttonCtx = (ctx, messageId) => ({
+    ...ctx, callbackQuery: { message: { message_id: messageId } }, answerCbQuery: jest.fn(async () => true),
+    editMessageText: jest.fn(async () => true), editMessageReplyMarkup: jest.fn(async () => true)
+  });
+  const callbacks = (keyboard) => keyboard.flat().map(b => b.callback_data);
+
+  it('draft edits (line, category, remove, add, date) persist, recompute the check and survive a restart; «Записать» records the edited lines', async () => {
+    const { handlers, createHandlers, receiptService, stateService, ctx, finish, receipt, ok } = setup();
+    const { localToday, addDays } = require('../utils/period');
+    const { packDate } = require('../utils/recordDate');
+    await handlers.processImage(ctx, { fileId: 'f', fileSize: 1000, mimeType: 'image/jpeg' });
+    finish(ok(receipt({
+      lowConfidence: true, total: 200, itemsTotal: 1134,
+      items: [
+        { name: 'Хлеб', amount: 45, quantity: 1, price: 45, categoryId: 1 },
+        { name: 'Молоко', amount: 90, quantity: 2, price: 45, categoryId: 1 },
+        { name: 'Мусор', amount: 999, quantity: 1, price: null, categoryId: 1 }
+      ]
+    })));
+    await handlers.idle();
+    const row = () => [...receiptService.rows.entries()].find(([, value]) => value.receipt);
+    expect(row()[0]).toBe('7:101');
+
+    // Экран строки: название, сумма, количество × цена, категория
+    const line = buttonCtx(ctx, 101);
+    await handlers.showDraftLine(line, 1);
+    const [lineText, lineExtra] = line.editMessageText.mock.calls[0];
+    expect(lineText).toContain('Молоко');
+    expect(lineText).toContain(t('receipt_line_quantity', { quantity: '2', price: '45\u00a0₽' }));
+    expect(callbacks(lineExtra.reply_markup.inline_keyboard)).toEqual(['rde|1', 'rdc|1', 'rdx|1', 'rdp|0']);
+
+    // ✏️ Изменить → ввод текстом → черновик заново под вводом, у старого сообщения кнопки убраны
+    await handlers.startDraftLineEdit(buttonCtx(ctx, 101), 1);
+    expect(stateService.getUserState(7)).toBe('rd_in:101:e:1');
+    await handlers.handleDraftInput(ctx, '100 молоко 2,5%', 'ru', stateService.getUserState(7));
+    expect(stateService.getUserState(7)).toBeUndefined();
+    expect(row()[0]).toBe('7:102');
+    expect(row()[1].receipt.items[1]).toMatchObject({ name: 'молоко 2,5%', amount: 100, quantity: 2, price: 50 });
+    expect(row()[1].receipt.edited).toBe(true);
+    expect(ctx.telegram.editMessageReplyMarkup).toHaveBeenCalledWith(7, 101, undefined, { inline_keyboard: [] });
+    const [resent, resentExtra] = ctx.reply.mock.calls[ctx.reply.mock.calls.length - 1];
+    expect(resent).not.toContain(t('receipt_photo_tips'));
+    expect(callbacks(resentExtra.reply_markup.inline_keyboard)).not.toContain('rvr');
+    expect(resentExtra.reply_markup.inline_keyboard.flat().find(b => b.callback_data === 'rvd|1').text).toBe(t('button_receipt_record_edited'));
+
+    // 🏷 Категория и 🗑 Убрать строку — в том же сообщении, черновик перерисован со сверкой итога
+    await handlers.setDraftLineCategory(buttonCtx(ctx, 102), 1, 2);
+    expect(row()[1].receipt.items[1].categoryId).toBe(2);
+    const remove = buttonCtx(ctx, 102);
+    await handlers.removeDraftLine(remove, 2);
+    expect(row()[1].receipt.items.map(item => item.name)).toEqual(['Хлеб', 'молоко 2,5%']);
+    expect(row()[1].receipt.itemsTotal).toBe(145);
+    expect(remove.editMessageText.mock.calls[0][0]).toContain(t('receipt_draft_sum_diff', { items: '145\u00a0₽', total: '200\u00a0₽', diff: '55\u00a0₽' }));
+
+    // ➕ Добавить строку: категория по запомненному названию
+    await handlers.startDraftLineAdd(buttonCtx(ctx, 102));
+    await handlers.handleDraftInput(ctx, 'такси', 'ru', stateService.getUserState(7));
+    expect(ctx.reply).toHaveBeenLastCalledWith(t('receipt_line_need_amount'), { parse_mode: 'Markdown' });
+    await handlers.handleDraftInput(ctx, '55 такси', 'ru', stateService.getUserState(7));
+    // черновик переехал на последнее присланное сообщение (подсказка про сумму тоже была сообщением)
+    const lastSent = async () => (await ctx.reply.mock.results[ctx.reply.mock.results.length - 1].value).message_id;
+    const afterAdd = await lastSent();
+    expect(row()[0]).toBe(`7:${afterAdd}`);
+    expect(row()[1].receipt.items[2]).toMatchObject({ name: 'такси', amount: 55, categoryId: 2 });
+    expect(ctx.reply.mock.calls[ctx.reply.mock.calls.length - 1][0]).toContain(t('receipt_draft_sum_ok', { items: '200\u00a0₽' }));
+
+    // 📅 Дата: кнопкой (вчера) и текстом (ошибки не сбрасывают ввод)
+    const today = localToday('Europe/Moscow');
+    const picker = buttonCtx(ctx, afterAdd);
+    await handlers.showDraftDatePicker(picker);
+    const pickerData = callbacks(picker.editMessageText.mock.calls[0][1].reply_markup.inline_keyboard);
+    expect(pickerData.slice(0, 3)).toEqual([0, -1, -2].map(offset => `rdt|${packDate(addDays(today, offset))}`));
+    expect(pickerData.slice(-2)).toEqual(['rdto', 'rdp|0']);
+    await handlers.setDraftDateFromButton(buttonCtx(ctx, afterAdd), packDate(addDays(today, -1)));
+    expect(row()[1].receipt).toMatchObject({ date: addDays(today, -1), time: '11:47', dateManual: true });
+    await handlers.startDraftDateInput(buttonCtx(ctx, afterAdd));
+    const dateState = stateService.getUserState(7);
+    expect(dateState).toBe(`rd_in:${afterAdd}:d`);
+    await handlers.handleDraftInput(ctx, '30.02.2026', 'ru', dateState);
+    expect(ctx.reply).toHaveBeenLastCalledWith(t('date_error_format'), { parse_mode: 'Markdown' });
+    const [y, m, d] = addDays(today, 1).split('-');
+    await handlers.handleDraftInput(ctx, `${d}.${m}.${y}`, 'ru', dateState);
+    expect(ctx.reply).toHaveBeenLastCalledWith(t('date_error_future'), { parse_mode: 'Markdown' });
+    const [oy, om, od] = addDays(today, -400).split('-');
+    await handlers.handleDraftInput(ctx, `${od}.${om}.${oy}`, 'ru', dateState);
+    expect(ctx.reply).toHaveBeenLastCalledWith(t('date_error_too_old'), { parse_mode: 'Markdown' });
+    const [wy, wm, wd] = addDays(today, -20).split('-');
+    await handlers.handleDraftInput(ctx, `${wd}.${wm}.${wy.slice(2)}`, 'ru', dateState);
+    const afterDate = await lastSent();
+    expect(row()[0]).toBe(`7:${afterDate}`);
+    expect(row()[1].receipt.date).toBe(addDays(today, -20));
+
+    // Перезапуск: черновик с правками в хранилище; «Записать» записывает исправленные строки
+    const restarted = createHandlers();
+    await restarted.resolveDraft(buttonCtx(ctx, afterDate), true);
+    expect(receiptService.record).toHaveBeenCalledTimes(1);
+    const [, recorded] = receiptService.record.mock.calls[0];
+    expect(recorded.items.map(({ name, amount, categoryId }) => ({ name, amount, categoryId }))).toEqual([
+      { name: 'Хлеб', amount: 45, categoryId: 1 },
+      { name: 'молоко 2,5%', amount: 100, categoryId: 2 },
+      { name: 'такси', amount: 55, categoryId: 2 }
+    ]);
+    expect(recorded).toMatchObject({ itemsTotal: 200, mismatch: false, date: addDays(today, -20), dateManual: true, edited: true });
+    expect(row()).toBeUndefined();
+  });
+
+  it('a draft being recorded cannot be edited; an empty draft cannot be recorded; stale draft buttons are removed; rotate keeps edits', async () => {
+    const { handlers, receiptService, stateService, ctx, receipt } = setup();
+    await receiptService.saveDraft(7, 201, { receipt: receipt({ lowConfidence: true, total: 45 }), timezone: 'Europe/Moscow', frame: { fileId: 'f', mimeType: 'image/jpeg', turn: 0 } });
+
+    // Записывается: правка кнопкой — alert, ввод текстом — объяснение, черновик не тронут
+    receiptService.rows.get('7:201').taken = true;
+    const busy = buttonCtx(ctx, 201);
+    await handlers.removeDraftLine(busy, 0);
+    expect(busy.answerCbQuery).toHaveBeenCalledWith(t('receipt_draft_busy'), { show_alert: true });
+    expect(receiptService.rows.get('7:201').receipt.items).toHaveLength(1);
+    await handlers.handleDraftInput(ctx, '50', 'ru', 'rd_in:201:e:0');
+    expect(ctx.reply).toHaveBeenLastCalledWith(t('receipt_draft_busy'));
+    expect(receiptService.rows.get('7:201').receipt.items[0].amount).toBe(45);
+    receiptService.rows.get('7:201').taken = false;
+
+    // Убрали последнюю строку: подсказка, кнопки «Записать» нет, старая кнопка — alert, черновик остаётся
+    const empty = buttonCtx(ctx, 201);
+    await handlers.removeDraftLine(empty, 0);
+    const [emptyText, emptyExtra] = empty.editMessageText.mock.calls[0];
+    expect(emptyText).toContain(t('receipt_draft_empty'));
+    expect(callbacks(emptyExtra.reply_markup.inline_keyboard)).toEqual(['rda', 'rdt', 'rvd|0']);
+    const record = buttonCtx(ctx, 201);
+    await handlers.resolveDraft(record, true);
+    expect(record.answerCbQuery).toHaveBeenCalledWith(t('receipt_draft_empty'), { show_alert: true });
+    expect(receiptService.record).not.toHaveBeenCalled();
+    expect(receiptService.rows.get('7:201').taken).toBe(false);
+
+    // Исправленный черновик не поворачивается: alert, черновик и кнопки остаются
+    const rotate = buttonCtx(ctx, 201);
+    await handlers.rotateAndRetry(rotate);
+    expect(rotate.answerCbQuery).toHaveBeenCalledWith(t('receipt_rotate_edited'), { show_alert: true });
+    expect(rotate.editMessageReplyMarkup).not.toHaveBeenCalled();
+    expect(receiptService.rows.get('7:201')).toBeDefined();
+    expect(receiptService.recognizePhoto).not.toHaveBeenCalled();
+
+    // Черновик отменён: любая кнопка правки объясняет и убирает кнопки; ввод текстом — «устарел»
+    await handlers.resolveDraft(buttonCtx(ctx, 201), false);
+    for (const press of [(c) => handlers.showDraftLine(c, 0), (c) => handlers.showDraft(c, 0), (c) => handlers.setDraftLineCategory(c, 0, 1), (c) => handlers.startDraftLineAdd(c), (c) => handlers.showDraftDatePicker(c)]) {
+      const stale = buttonCtx(ctx, 201);
+      await press(stale);
+      expect(stale.answerCbQuery).toHaveBeenCalledWith(t('receipt_draft_outdated'), { show_alert: true });
+      expect(stale.editMessageReplyMarkup).toHaveBeenCalledWith({ inline_keyboard: [] });
+    }
+    stateService.setUserState(7, 'rd_in:201:a');
+    await handlers.handleDraftInput(ctx, '10 хлеб', 'ru', 'rd_in:201:a');
+    expect(ctx.reply).toHaveBeenLastCalledWith(t('receipt_draft_outdated'));
+    expect(stateService.getUserState(7)).toBeUndefined();
+  });
+
+  it('draft and receipt callback_data fit 64 bytes; a recorded receipt moves to another day with all its expenses', async () => {
+    const { handlers, receiptService, ctx, receipt } = setup();
+    const { localToday, addDays } = require('../utils/period');
+    const { packDate } = require('../utils/recordDate');
+    const items = Array.from({ length: 45 }, (_, i) => ({ name: `Позиция ${i + 1}`, amount: 10, quantity: 1, price: 10, categoryId: 1 }));
+    const view = await handlers.buildDraftView(7, 'ru', receipt({ lowConfidence: true, total: 450, items }), { canRotate: true, page: 2 });
+    expect(callbacks(view.keyboard)).toEqual(expect.arrayContaining(['rdl|40', 'rdl|44', 'rdp|1', 'noop']));
+    expect(view.text).toContain('41. Позиция 41');
+    expect(view.text).not.toContain('40. Позиция 40');
+
+    receiptService.setDate = jest.fn(async () => ({ expenses: 1 }));
+    const list = await handlers.buildReceiptView(7, 'ru', 123456789, 0);
+    expect(callbacks(list.keyboard)).toContain('rt|123456789');
+    const picker = buttonCtx(ctx, 300);
+    await handlers.showReceiptDatePicker(picker, 123456789);
+    const data = callbacks(picker.editMessageText.mock.calls[0][1].reply_markup.inline_keyboard);
+    for (const item of [...data, ...callbacks(view.keyboard)]) expect(Buffer.byteLength(item)).toBeLessThanOrEqual(64);
+    const yesterday = addDays(localToday('Europe/Moscow'), -1);
+    expect(data).toContain(`rtd|123456789|${packDate(yesterday)}`);
+    const pick = buttonCtx(ctx, 300);
+    await handlers.setReceiptDate(pick, 123456789, packDate(yesterday));
+    expect(receiptService.setDate).toHaveBeenCalledWith(7, 123456789, yesterday, 'Europe/Moscow');
+    expect(pick.answerCbQuery).toHaveBeenCalledWith(t('receipt_date_changed', { date: yesterday.split('-').reverse().join('.'), count: 1 }));
+    const future = buttonCtx(ctx, 300);
+    await handlers.setReceiptDate(future, 123456789, packDate(addDays(localToday('Europe/Moscow'), 1)));
+    expect(future.answerCbQuery).toHaveBeenCalledWith(t('date_error_future'), { show_alert: true });
+    expect(receiptService.setDate).toHaveBeenCalledTimes(1);
   });
 
   it('accepts JPEG files up to 20 MB at full resolution; HEIC, huge files and big non-JPEG get a hint', async () => {
@@ -1130,7 +1357,7 @@ describe('small receipt with one or two lines', () => {
     expect(receiptService.record).not.toHaveBeenCalled();
     const [, , , text, extra] = ctx.telegram.editMessageText.mock.calls.pop();
     expect(text).toContain(`${t('receipt_photo_tips')}\n${t('receipt_small_photo_tip')}`);
-    expect(extra.reply_markup.inline_keyboard.flat().map(b => b.callback_data)).toEqual(['rvd|1', 'rvr', 'rvd|0']);
+    expect(extra.reply_markup.inline_keyboard.flat().map(b => b.callback_data).filter(data => !data.startsWith('rdl|'))).toEqual(['rda', 'rdt', 'rvd|1', 'rvr', 'rvd|0']);
 
     const callbackCtx = { ...ctx, callbackQuery: { message: { message_id: 101 } }, answerCbQuery: jest.fn(async () => true), editMessageText: jest.fn(async () => true) };
     await handlers.rotateAndRetry(callbackCtx);

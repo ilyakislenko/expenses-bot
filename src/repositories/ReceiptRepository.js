@@ -1,4 +1,5 @@
 const BaseRepository = require('./BaseRepository');
+const { moveToDate } = require('../utils/recordDate');
 
 // Распознанные чеки: партия трат (expenses.receipt_id) для списка, правки и отмены, и счётчик месячного лимита.
 class ReceiptRepository extends BaseRepository {
@@ -79,6 +80,33 @@ class ReceiptRepository extends BaseRepository {
     });
   }
 
+  // Дата чека: purchased_date и день всех оставшихся трат чека одной транзакцией; местное время суток каждой траты
+  // в поясе timezone остаётся (moveToDate, не позже текущего момента). null — чек не найден или отменён,
+  // иначе { expenses: перенесено трат }
+  async setDate(userId, receiptId, date, timezone, now = new Date()) {
+    return this.transaction(async (client) => {
+      const receipt = await client.query(
+        "UPDATE receipts SET purchased_date = $3 WHERE id = $1 AND user_id = $2 AND status <> 'undone' RETURNING id",
+        [receiptId, userId, date]
+      );
+      if (!receipt.rowCount) return null;
+      const expenses = await client.query(
+        'SELECT id, created_at_utc FROM expenses WHERE user_id = $1 AND receipt_id = $2 ORDER BY id FOR UPDATE',
+        [userId, receiptId]
+      );
+      if (!expenses.rowCount) return { expenses: 0 };
+      const moved = await client.query(`
+        UPDATE expenses e SET created_at_utc = t.created_at
+        FROM unnest($2::int[], $3::timestamptz[]) AS t(id, created_at)
+        WHERE e.id = t.id AND e.user_id = $1`, [
+        userId,
+        expenses.rows.map(row => row.id),
+        expenses.rows.map(row => moveToDate(row.created_at_utc, date, timezone, now))
+      ]);
+      return { expenses: moved.rowCount };
+    });
+  }
+
   // ---------- Черновики неуверенно распознанных чеков и кадры для «повернуть» (receipt_drafts) ----------
   // Ключ — сообщение с кнопками (user_id, message_id). receipt — черновик чека (NULL — только кадр для поворота),
   // frame — { fileId, mimeType, turn, small, lowResolution, lang, currency } (NULL — повернуть нельзя).
@@ -111,6 +139,52 @@ class ReceiptRepository extends BaseRepository {
     return { status: busy.rowCount ? 'busy' : 'missing' };
   }
 
+  // Черновик для показа (строка, экран даты, страница). { status: 'ok', receipt, frame, timezone } | { status: 'busy' }
+  // — записывается | { status: 'missing' }
+  async getDraft(userId, messageId, staleSeconds) {
+    const result = await this.query(`
+      SELECT receipt, frame, timezone, (taken_at IS NOT NULL AND taken_at >= NOW() - make_interval(secs => $3)) AS busy
+      FROM receipt_drafts
+      WHERE user_id = $1 AND message_id = $2 AND receipt IS NOT NULL AND expires_at > NOW()`, [userId, messageId, staleSeconds]);
+    const row = result.rows[0];
+    if (!row) return { status: 'missing' };
+    if (row.busy) return { status: 'busy' };
+    return { status: 'ok', receipt: row.receipt, frame: row.frame, timezone: row.timezone };
+  }
+
+  // Правка черновика: строка блокируется (FOR UPDATE), mutate(receipt) → новый черновик или null (менять нечего).
+  // Записывающийся черновик не правится; takeDraft во время правки ждёт её конца и забирает уже исправленный.
+  // { status: 'ok' | 'unchanged', receipt, frame, timezone } | { status: 'busy' } | { status: 'missing' }
+  async updateDraft(userId, messageId, staleSeconds, mutate) {
+    return this.transaction(async (client) => {
+      const found = await client.query(`
+        SELECT receipt, frame, timezone, (taken_at IS NOT NULL AND taken_at >= NOW() - make_interval(secs => $3)) AS busy
+        FROM receipt_drafts
+        WHERE user_id = $1 AND message_id = $2 AND receipt IS NOT NULL AND expires_at > NOW()
+        FOR UPDATE`, [userId, messageId, staleSeconds]);
+      const row = found.rows[0];
+      if (!row) return { status: 'missing' };
+      if (row.busy) return { status: 'busy' };
+      const receipt = mutate(row.receipt);
+      if (!receipt) return { status: 'unchanged', receipt: row.receipt, frame: row.frame, timezone: row.timezone };
+      await client.query(
+        'UPDATE receipt_drafts SET receipt = $3, taken_at = NULL WHERE user_id = $1 AND message_id = $2',
+        [userId, messageId, JSON.stringify(receipt)]
+      );
+      return { status: 'ok', receipt, frame: row.frame, timezone: row.timezone };
+    });
+  }
+
+  // Черновик переезжает на новое сообщение (после ввода текстом черновик присылается заново, ниже ввода). false — не
+  // переехал: записывается, отменён или просрочен
+  async moveDraft(userId, fromMessageId, toMessageId) {
+    const result = await this.query(`
+      UPDATE receipt_drafts SET message_id = $3
+      WHERE user_id = $1 AND message_id = $2 AND receipt IS NOT NULL AND taken_at IS NULL AND expires_at > NOW()`,
+    [userId, fromMessageId, toMessageId]);
+    return result.rowCount > 0;
+  }
+
   // Запись не удалась — черновик снова доступен
   async releaseDraft(userId, messageId) {
     await this.query('UPDATE receipt_drafts SET taken_at = NULL WHERE user_id = $1 AND message_id = $2', [userId, messageId]);
@@ -120,11 +194,13 @@ class ReceiptRepository extends BaseRepository {
     await this.query('DELETE FROM receipt_drafts WHERE user_id = $1 AND message_id = $2', [userId, messageId]);
   }
 
-  // Кнопка «повернуть»: забирает кадр (черновик сообщения тоже уходит — его заменит новое распознавание). null — нет
+  // Кнопка «повернуть»: забирает кадр (черновик сообщения тоже уходит — его заменит новое распознавание). null — нет.
+  // Исправленный вручную черновик не поворачивается: правки пропали бы
   async takeFrame(userId, messageId) {
     const result = await this.query(`
       DELETE FROM receipt_drafts
       WHERE user_id = $1 AND message_id = $2 AND frame IS NOT NULL AND expires_at > NOW() AND taken_at IS NULL
+        AND (receipt IS NULL OR NOT COALESCE((receipt->>'edited')::boolean, false))
       RETURNING frame`, [userId, messageId]);
     return result.rows[0] ? result.rows[0].frame : null;
   }

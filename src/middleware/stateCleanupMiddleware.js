@@ -28,8 +28,9 @@ function stateCleanupMiddleware(handlers) {
         'export_date_range',
         'onb_budget'
       ];
-      // Состояния с параметром после двоеточия (например, setting_budget:<цель>)
-      const autoResetPrefixes = ['setting_budget:', 'renaming_custom_category:', 'admin_refund_search:', 'editing_income:', 'sv_in:', 'pl_in:', 'ai_in:'];
+      // Состояния с параметром после двоеточия (например, setting_budget:<цель>); rd_in: — строка/дата черновика чека,
+      // dt_in: — «✏️ Другая дата» записи, дохода или чека
+      const autoResetPrefixes = ['setting_budget:', 'renaming_custom_category:', 'admin_refund_search:', 'editing_income:', 'sv_in:', 'pl_in:', 'ai_in:', 'rd_in:', 'dt_in:'];
       // Найденная транзакция для возврата живёт только до кнопки «Вернуть» на её карточке
       const isStaleRefundConfirm = userState?.type === 'admin_refund_confirm'
         && ctx.callbackQuery?.data !== 'panel_refund_exec';
