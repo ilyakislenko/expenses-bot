@@ -386,12 +386,12 @@ class AssistantService {
     };
   }
 
-  // Подписки — те же, что на экране «🔁 Подписки» (поиск повторяющихся платежей, без премиума — первые N)
+  // Подписки — те же, что на экране «🔁 Подписки» (найденные и регулярные-подписки, без премиума — первые N)
   async subscriptions(context) {
     if (!this.planningService) return { items: [], totalMonthly: 0, hiddenCount: 0, hiddenMonthly: 0 };
     const subs = await this.planningService.getSubscriptions(context.userId);
     return {
-      items: subs.visible.map(sub => ({ label: sub.label, monthly: sub.monthlyMain })),
+      items: subs.shown.map(sub => ({ label: sub.label, monthly: sub.monthlyMain })),
       count: subs.all.length,
       totalMonthly: subs.totalMonthly,
       hiddenCount: subs.hiddenCount,

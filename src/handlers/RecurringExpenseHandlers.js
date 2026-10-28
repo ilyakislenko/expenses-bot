@@ -1,11 +1,12 @@
 const moneyInputErrorText = require('./moneyInputErrors');
 const respond = require('../utils/respond');
+const { USER_LIMITS } = require('../utils/constants');
 
 const MAX_RECURRING_AMOUNT = 99999999; // expenses.amount DECIMAL(10,2)
 const LIST_DESCRIPTION_LENGTH = 40; // строки списка: 20 позиций с полными описаниями не влезут в сообщение
 
 class RecurringExpenseHandlers {
-  constructor({ recurringExpenseService, expenseService, userService, premiumService, localizationService, formatter, stateService, validator, budgetService }) {
+  constructor({ recurringExpenseService, expenseService, userService, premiumService, localizationService, formatter, stateService, validator, budgetService, subscriptionAlertService = null }) {
     this.recurringExpenseService = recurringExpenseService;
     this.expenseService = expenseService;
     this.userService = userService;
@@ -15,6 +16,7 @@ class RecurringExpenseHandlers {
     this.stateService = stateService;
     this.validator = validator;
     this.budgetService = budgetService;
+    this.subscriptionAlertService = subscriptionAlertService; // «🔔 Предупреждать о списании» в карточке
   }
 
   t(lang, key, params) {
@@ -72,14 +74,28 @@ class RecurringExpenseHandlers {
     if (!item) {
       return this.render(ctx, this.t(lang, 'recurring_not_found'), [backRow]);
     }
-    const text = this.t(lang, 'recurring_item', {
+    const lines = [this.t(lang, 'recurring_item', {
       icon: item.category_icon || '🔁',
       description: this.formatter.escapeMarkdown(item.description),
       amount: this.formatter.formatAmount(Number(item.amount), item.currency),
       day: item.day_of_month,
       next: this.formatter.formatLocalDate(item.nextChargeDate)
-    });
-    await this.render(ctx, text, [[{ text: this.t(lang, 'button_delete_record'), callback_data: `recurring_delete|${item.id}` }], backRow]);
+    })];
+    const keyboard = [];
+    // Предупреждение о списании — только у регулярных-подписок (аренду и кредит напоминают «Платежи утром»)
+    if (this.subscriptionAlertService) {
+      const status = await this.subscriptionAlertService.recurringStatus(userId, item.id);
+      const days = this.subscriptionAlertService.daysPhrase(lang, status.days);
+      const on = status.subscription && !status.muted && !status.cancelling;
+      lines.push('', !status.subscription ? this.t(lang, 'sub_recurring_hint', { days })
+        : status.cancelling ? this.t(lang, 'sub_card_cancelling')
+          : status.muted ? this.t(lang, 'sub_card_muted')
+            : status.locked ? this.t(lang, 'sub_recurring_locked', { count: USER_LIMITS.regular.PLANNING_SUBSCRIPTIONS })
+              : status.enabled ? this.t(lang, 'sub_card_warn_on', { days }) : this.t(lang, 'sub_card_warn_off'));
+      keyboard.push([{ text: this.t(lang, on ? 'sub_button_recurring_off' : 'sub_button_recurring_on'), callback_data: `plwr|${item.id}` }]);
+    }
+    keyboard.push([{ text: this.t(lang, 'button_delete_record'), callback_data: `recurring_delete|${item.id}` }], backRow);
+    await this.render(ctx, lines.join('\n'), keyboard);
   }
 
   async startAdd(ctx) {

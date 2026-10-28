@@ -8,7 +8,8 @@ const USER_LIMITS = {
     MAX_CUSTOM_CATEGORIES: 0,
     MAX_SAVINGS_GOALS: 1,
     MAX_RECEIPTS_PER_MONTH: 10, // распознанных фото чеков в локальный календарный месяц
-    PLANNING_SUBSCRIPTIONS: 3, // найденных подписок в списке (остальные — числом и суммой)
+    PLANNING_SUBSCRIPTIONS: 3, // подписок в списке и с предупреждением о списании (остальные — числом и суммой)
+    SUB_TRIALS: 1, // пробных периодов с напоминанием одновременно
     PLANNING_INFLATION_ITEMS: 1, // «Моя инфляция»: тизер — одна позиция, без процента корзины
     STREAK_FREEZES_PER_WEEK: 1, // заморозок серии в неделю (закрывают пропущенный день автоматически)
     MAX_ACTIVE_CHALLENGES: 1, // челленджей одновременно
@@ -24,6 +25,7 @@ const USER_LIMITS = {
     MAX_SAVINGS_GOALS: 10,
     MAX_RECEIPTS_PER_MONTH: 300,
     PLANNING_SUBSCRIPTIONS: 20,
+    SUB_TRIALS: Infinity,
     PLANNING_INFLATION_ITEMS: 10, // в списках «подорожало» / «подешевело»
     STREAK_FREEZES_PER_WEEK: 2,
     MAX_ACTIVE_CHALLENGES: Infinity,

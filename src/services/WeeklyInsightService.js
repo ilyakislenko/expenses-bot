@@ -126,7 +126,7 @@ function projectPace({ spent, period, today }) {
 }
 
 class WeeklyInsightService {
-  constructor({ expenseService, incomeService, reportService, budgetService, userNotificationRepository, notificationService, localizationService, formatter, planningService = null, roastService = null }) {
+  constructor({ expenseService, incomeService, reportService, budgetService, userNotificationRepository, notificationService, localizationService, formatter, planningService = null, roastService = null, subscriptionAlertService = null }) {
     this.expenseService = expenseService;
     this.incomeService = incomeService;
     this.reportService = reportService;
@@ -137,13 +137,14 @@ class WeeklyInsightService {
     this.formatter = formatter;
     this.planningService = planningService; // новые найденные подписки — строкой в конце сводки, один раз
     this.roastService = roastService; // «😈 Злой режим» включён — одна строка о неделе
+    this.subscriptionAlertService = subscriptionAlertService; // списания подписок на этой неделе — одной строкой
   }
 
   t(lang, key, params) {
     return this.localizationService.getText(lang, key, params);
   }
 
-  // Кнопки под каждой сводкой недели; subscriptions — в сводке есть строка о найденных подписках
+  // Кнопки под каждой сводкой недели; subscriptions — в сводке есть строка о списаниях недели или найденных подписках
   keyboard(lang, { subscriptions = false } = {}) {
     const rows = [[{ text: this.t(lang, 'button_weekly_insight_overview'), callback_data: 'ov|0' }]];
     if (subscriptions) rows.push([{ text: this.t(lang, 'pl_button_subs'), callback_data: 'pls' }]);
@@ -204,9 +205,12 @@ class WeeklyInsightService {
     lines.push(...await this.periodLines(userId, lang, { timezone, currency, startDay, today, money }));
     const roast = this.roastService ? await this.roastService.weeklyLine(userId, lang, summary, currency) : '';
     if (roast) lines.push('', roast);
+    // «🗓 На этой неделе спишутся: …» — подписки и окончания пробных периодов на 7 дней вперёд
+    const upcoming = this.subscriptionAlertService ? await this.subscriptionAlertService.weekLine(userId, lang, today) : '';
+    if (upcoming) lines.push('', upcoming);
     const nudge = this.planningService ? await this.planningService.subscriptionNudge(userId, lang) : '';
     if (nudge) lines.push('', nudge);
-    return { text: lines.join('\n'), weekKey: thisMonday, subscriptions: !!nudge };
+    return { text: lines.join('\n'), weekKey: thisMonday, subscriptions: !!(nudge || upcoming) };
   }
 
   // Текущий период: потрачено, прогноз при текущем темпе, прошлый период, общий бюджет, доход − расходы

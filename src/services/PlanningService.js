@@ -5,8 +5,10 @@ const { commaDecimal } = require('../utils/savingsView');
 const {
   PACE_EMOJI, SCAN_DAYS, PAYDAY_SCAN_DAYS, INFLATION_WINDOW_DAYS,
   daysBetween, expectedIncome, computeAllowance, nextIncomeDate, normalizeMerchant, detectSubscriptions, detectPaydays,
-  paydayDates, monthlyDates, debtDates, subscriptionDates, buildCalendar, computeInflation
+  paydayDates, monthlyDates, debtDates, subscriptionDates, buildCalendar, computeInflation, isKnownSubscription, shortHash
 } = require('../utils/planning');
+const { subRef } = require('../utils/subscriptionAlerts');
+const RecurringExpenseService = require('./RecurringExpenseService');
 
 const AVERAGE_PERIODS = 3; // средний доход — за столько прошлых периодов, в которых был доход
 const NEW_USER_DAYS = 14; // подсказку «добавь доход или бюджет» в «Сегодня» видят только новые пользователи
@@ -20,6 +22,11 @@ function localDateHour(timezone, now) {
     timeZone: timezone || 'UTC', hourCycle: 'h23', hour: '2-digit', year: 'numeric', month: '2-digit', day: '2-digit'
   }).formatToParts(now).reduce((acc, p) => (acc[p.type] = p.value, acc), {});
   return { date: `${parts.year}-${parts.month}-${parts.day}`, hour: Number(parts.hour) % 24 };
+}
+
+// Подписка, которую ждём в календаре и резерве «Можно сегодня»: отмечена «✅» или известная, и её не отменяют
+function isExpected(sub) {
+  return (sub.confirmed || sub.known) && !(sub.alert && sub.alert.state === 'cancelling');
 }
 
 // «🧭 Планирование»: можно потратить сегодня, календарь платежей, найденные подписки, личная инфляция.
@@ -103,7 +110,7 @@ class PlanningService {
   async reservedSubscriptions(userId) {
     try {
       const { visible } = await this.getSubscriptions(userId);
-      return visible.filter(sub => sub.confirmed || sub.known);
+      return visible.filter(isExpected);
     } catch (error) {
       logger.warn('Subscriptions for allowance failed', { userId, error: error.message });
       return [];
@@ -222,15 +229,21 @@ class PlanningService {
   // ПОДПИСКИ
   // ========================================
 
-  // Найденные подписки (без скрытых), по убыванию цены в месяц в основной валюте. Без премиума видны первые
-  // PLANNING_SUBSCRIPTIONS, остальные — числом и суммой
-  async getSubscriptions(userId) {
-    const { timezone, currency, today } = await this.expenseService.getPeriodContext(userId, 'day', 0);
+  // Подписки по убыванию цены в месяц в основной валюте: найденные в тратах (без скрытых) и регулярные траты-подписки
+  // (заведённые из «✅ Это подписка», с названием известного сервиса или отмеченные «🔔» в карточке регулярной).
+  // Без премиума видны первые PLANNING_SUBSCRIPTIONS (shown, им же — предупреждения о списании), остальные — числом и
+  // суммой; visible — найденные в тратах из видимых (календарь, «Можно сегодня», сводка недели: регулярные там и так
+  // есть). alert — отметка «🔕 не напоминать» / «🚫 отменяю». today — подмена «сегодня» (cron с заданным временем)
+  async getSubscriptions(userId, { today: todayOverride = null } = {}) {
+    const ctx = await this.expenseService.getPeriodContext(userId, 'day', 0);
+    const { timezone, currency } = ctx;
+    const today = todayOverride || ctx.today;
     const convert = this.converter(currency);
-    const [rows, recurring, marks, { isPremium, limits }] = await Promise.all([
+    const [rows, recurring, marks, alerts, { isPremium, limits }] = await Promise.all([
       this.planningRepository.getExpenseRowsSince(userId, timezone, addDays(today, -SCAN_DAYS)),
       this.recurringExpenseService.list(userId),
       this.planningRepository.getMarks(userId),
+      this.planningRepository.getAlerts(userId),
       this.limits(userId)
     ]);
     const excludeKeys = new Set(recurring.map(r => normalizeMerchant(r.description)).filter(Boolean));
@@ -242,13 +255,50 @@ class PlanningService {
         dismissed++;
         continue;
       }
-      all.push({ ...sub, confirmed: marks.get(sub.key) === 'confirmed', monthlyMain: await convert(sub.monthlyCost, sub.currency) });
+      all.push({
+        ...sub,
+        kind: 'detected',
+        ref: subRef(sub.key),
+        confirmed: marks.get(sub.key) === 'confirmed',
+        alert: alerts.get(sub.key) || null,
+        monthlyMain: await convert(sub.monthlyCost, sub.currency)
+      });
+    }
+    for (const item of recurring) {
+      const key = normalizeMerchant(item.description);
+      const known = isKnownSubscription(item.description);
+      if (!key || (marks.get(key) !== 'confirmed' && !known)) continue;
+      if (marks.get(key) === 'dismissed') {
+        dismissed++;
+        continue;
+      }
+      const amount = Number(item.amount);
+      all.push({
+        kind: 'recurring',
+        id: shortHash(`r|${item.id}`),
+        ref: subRef(key),
+        recurringId: item.id,
+        key,
+        label: String(item.description || '').trim(),
+        amount,
+        currency: item.currency,
+        cadence: 'monthly',
+        day: item.day_of_month,
+        nextDate: RecurringExpenseService.nextChargeDate(item.day_of_month, item.last_charged_month, today),
+        monthlyCost: amount,
+        categoryId: item.category_id || null,
+        confirmed: marks.get(key) === 'confirmed',
+        known,
+        alert: alerts.get(key) || null,
+        monthlyMain: await convert(amount, item.currency)
+      });
     }
     all.sort((a, b) => b.monthlyMain - a.monthlyMain);
-    const visible = all.slice(0, limits.PLANNING_SUBSCRIPTIONS);
-    const hidden = all.slice(visible.length);
+    const shown = all.slice(0, limits.PLANNING_SUBSCRIPTIONS);
+    const hidden = all.slice(shown.length);
     return {
-      currency, today, isPremium, all, visible, dismissed,
+      currency, timezone, today, isPremium, all, shown, dismissed,
+      visible: shown.filter(sub => sub.kind === 'detected'),
       hiddenCount: hidden.length,
       hiddenMonthly: hidden.reduce((sum, s) => sum + s.monthlyMain, 0),
       totalMonthly: all.reduce((sum, s) => sum + s.monthlyMain, 0)
@@ -268,7 +318,7 @@ class PlanningService {
     const [categories, { limits }] = await Promise.all([this.expenseService.getCategories(userId), this.limits(userId)]);
     const category = categories.find(c => c.id === sub.categoryId) || await this.expenseService.getDefaultCategory();
     const t = parseYmd(today);
-    const day = parseYmd(sub.lastDate).d;
+    const day = sub.day || parseYmd(sub.lastDate).d;
     try {
       const recurring = await this.recurringExpenseService.create(userId, {
         amount: sub.amount,
@@ -287,10 +337,11 @@ class PlanningService {
     }
   }
 
-  // «🙈 Не подписка»: больше не показываем. { sub } или { error: 'outdated' }
+  // «🙈 Не подписка»: больше не показываем (регулярная трата остаётся, просто не в списке подписок).
+  // { sub } или { error: 'outdated' }
   async dismissSubscription(userId, subId) {
-    const { visible } = await this.getSubscriptions(userId);
-    const sub = visible.find(s => s.id === subId);
+    const { shown } = await this.getSubscriptions(userId);
+    const sub = shown.find(s => s.id === subId);
     if (!sub) return { error: 'outdated' };
     await this.planningRepository.setMark(userId, sub.key, 'dismissed');
     return { sub };
@@ -306,7 +357,8 @@ class PlanningService {
     try {
       const { visible } = await this.getSubscriptions(userId);
       const fresh = [];
-      for (const sub of visible.filter(s => !s.confirmed)) {
+      // Отмеченные и те, о которых пользователь уже ответил на предупреждение («🔕» / «🚫»), — не новость
+      for (const sub of visible.filter(s => !s.confirmed && !s.alert)) {
         if (await this.userNotificationRepository.markSent(userId, 'subscription_found', sub.key.slice(0, 64))) fresh.push(sub);
       }
       if (!fresh.length) return '';
@@ -341,8 +393,9 @@ class PlanningService {
       days,
       recurring,
       debts,
-      // В календаре — только отмеченные пользователем или известные подписки (бренд, связь, интернет…)
-      subscriptions: subscriptions.visible.filter(sub => sub.confirmed || sub.known),
+      // В календаре — только отмеченные пользователем или известные подписки (бренд, связь, интернет…), кроме тех,
+      // что пользователь отменяет («🚫 Отменю»)
+      subscriptions: subscriptions.visible.filter(isExpected),
       paydays: outlook.streams
     });
     let outTotal = 0;

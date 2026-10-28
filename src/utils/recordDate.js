@@ -31,26 +31,46 @@ function checkRecordDate(date, today) {
   return null;
 }
 
+// Числа даты из текста: '25.10', '25.10.2026', '25.10.26' (разделитель — точка, косая черта или дефис).
+// { d, m, year | null } или null — не дата
+function dateParts(text) {
+  const match = String(text || '').trim().match(/^(\d{1,2})[./-](\d{1,2})(?:[./-](\d{4}|\d{2}))?\.?$/);
+  if (!match) return null;
+  const year = match[3] ? (match[3].length === 2 ? 2000 + Number(match[3]) : Number(match[3])) : null;
+  return { d: Number(match[1]), m: Number(match[2]), year };
+}
+
 // Ввод «другой даты»: '25.10', '25.10.2026', '25.10.26' (разделитель — точка, косая черта или дефис).
 // Без года — этот год; если такой день этого месяца ещё не наступил — «в будущем», более поздний месяц — прошлый год
 // (в январе «25.12» — декабрь). Возвращает { date } или { error: 'format' | 'future' | 'too_old' }
 function parseRecordDate(text, today) {
-  const match = String(text || '').trim().match(/^(\d{1,2})[./-](\d{1,2})(?:[./-](\d{4}|\d{2}))?\.?$/);
-  if (!match) return { error: 'format' };
-  const d = Number(match[1]);
-  const m = Number(match[2]);
+  const parts = dateParts(text);
+  if (!parts) return { error: 'format' };
   let date;
-  if (match[3]) {
-    const year = match[3].length === 2 ? 2000 + Number(match[3]) : Number(match[3]);
-    date = validYmd(year, m, d);
+  if (parts.year) {
+    date = validYmd(parts.year, parts.m, parts.d);
   } else {
     const year = Number(today.slice(0, 4));
-    const laterMonth = m > Number(today.slice(5, 7));
-    date = validYmd(laterMonth ? year - 1 : year, m, d);
+    const laterMonth = parts.m > Number(today.slice(5, 7));
+    date = validYmd(laterMonth ? year - 1 : year, parts.m, parts.d);
   }
   if (!date) return { error: 'format' };
   const error = checkRecordDate(date, today);
   return error ? { error } : { date };
+}
+
+// Дата не в прошлом (окончание пробного периода) в том же формате. Без года — ближайшая такая дата не раньше
+// сегодня (в декабре «10.01» — январь следующего года). { date } или { error: 'format' | 'past' | 'too_far' }
+function parseFutureDate(text, today, maxDays = MAX_RECORD_AGE_DAYS) {
+  const parts = dateParts(text);
+  if (!parts) return { error: 'format' };
+  const thisYear = Number(today.slice(0, 4));
+  let date = validYmd(parts.year || thisYear, parts.m, parts.d);
+  if (date && !parts.year && date < today) date = validYmd(thisYear + 1, parts.m, parts.d);
+  if (!date) return { error: 'format' };
+  if (date < today) return { error: 'past' };
+  if (date > addDays(today, maxDays)) return { error: 'too_far' };
+  return { date };
 }
 
 // Локальная дата момента времени в поясе пользователя
@@ -120,6 +140,7 @@ module.exports = {
   unpackDate,
   checkRecordDate,
   parseRecordDate,
+  parseFutureDate,
   localDateOf,
   moveToDate,
   weekdayIndex,

@@ -77,6 +77,15 @@ class UserNotificationRepository extends BaseRepository {
     );
     return result.rowCount > 0;
   }
+
+  // Отметка уже есть (не ставит её)
+  async isSent(userId, kind, refKey) {
+    const result = await this.query(
+      'SELECT 1 FROM user_notifications WHERE user_id = $1 AND kind = $2 AND ref_key = $3',
+      [userId, kind, refKey]
+    );
+    return result.rowCount > 0;
+  }
 }
 
 module.exports = UserNotificationRepository;
