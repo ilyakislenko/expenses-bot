@@ -27,6 +27,16 @@ function changePercent(current, previous) {
   return Math.round((current - previous) / previous * 100);
 }
 
+// Прошлый период для сравнения. Незаконченный текущий (сегодня — не последний день) сравниваем с тем же числом
+// первых дней прошлого («к этому же дню»), иначе прошлый всегда больше. { period, days } — days: null, если целиком
+function comparablePrevious(period, previous, today) {
+  if (!(today >= period.start && today < period.last)) return { period: previous, days: null };
+  const days = daysBetween(period.start, addDays(today, 1));
+  const cut = addDays(previous.start, days);
+  if (cut >= previous.end) return { period: previous, days: null };
+  return { period: { start: previous.start, end: cut, last: addDays(cut, -1) }, days };
+}
+
 class ReportService {
   constructor({ expenseService, incomeService, budgetService, premiumService, userNotificationRepository, notificationService, localizationService, formatter, currencyUtils }) {
     this.expenseService = expenseService;
@@ -44,14 +54,17 @@ class ReportService {
     return this.localizationService.getText(lang, key, params);
   }
 
-  // Категории за период в основной валюте, по убыванию: [{ id, name, icon, total }]
+  // Категории за период в основной валюте, по убыванию: [{ id, name, icon, total, regular }]
+  // regular — из total авто-записи регулярных трат
   async categoryBreakdown(userId, timezone, period, currency) {
     const rows = await this.expenseService.getCategoryTotals(userId, timezone, period);
     const byName = new Map();
     for (const row of rows) {
       const converted = await this.currencyUtils.convert(Number(row.total), row.currency, currency);
-      const entry = byName.get(row.name) || { id: row.category_id, name: row.name, icon: row.icon, total: 0 };
+      const regular = Number(row.regular) > 0 ? await this.currencyUtils.convert(Number(row.regular), row.currency, currency) : 0;
+      const entry = byName.get(row.name) || { id: row.category_id, name: row.name, icon: row.icon, total: 0, regular: 0 };
       entry.total += converted;
+      entry.regular += regular;
       entry.id = Math.min(entry.id, row.category_id);
       byName.set(row.name, entry);
     }
@@ -73,7 +86,8 @@ class ReportService {
   // Возвращает { text, hasData }
   async buildReport(userId, offset, lang, { full }) {
     const { timezone, currency, today, period } = await this.expenseService.getPeriodContext(userId, 'month', offset);
-    const previous = (await this.expenseService.getPeriodContext(userId, 'month', offset - 1)).period;
+    const fullPrevious = (await this.expenseService.getPeriodContext(userId, 'month', offset - 1)).period;
+    const { period: previous, days: toDateDays } = comparablePrevious(period, fullPrevious, today);
     const [totals, prevTotals, incomeTotals, categories, prevCategories] = await Promise.all([
       this.expenseService.getTotals(userId, timezone, period),
       this.expenseService.getTotals(userId, timezone, previous),
@@ -95,7 +109,10 @@ class ReportService {
 
     lines.push(this.t(lang, 'overview_spent', { amount: money(spent), count: totals.count }));
     if (prevTotals.count) {
-      lines.push(this.t(lang, 'report_vs_previous', { change: this.changeText(lang, changePercent(spent, prevSpent)), amount: money(prevSpent) }));
+      const change = this.changeText(lang, changePercent(spent, prevSpent));
+      lines.push(toDateDays
+        ? this.t(lang, 'report_vs_previous_to_date', { change, amount: money(prevSpent), days: toDateDays })
+        : this.t(lang, 'report_vs_previous', { change, amount: money(prevSpent) }));
     }
     const incomeSummary = await this.formatter.formatIncomeSummary(incomeTotals, totals, currency, this.localizationService, lang);
     if (incomeSummary) lines.push(incomeSummary);
@@ -113,7 +130,8 @@ class ReportService {
     const hasPrevious = prevTotals.count > 0;
     const prevByName = new Map(prevCategories.map(c => [c.name, c.total]));
     const maxTotal = categories.length ? categories[0].total : 0;
-    lines.push('', `*${this.t(lang, hasPrevious ? 'report_categories_vs_previous' : 'by_categories')}*`);
+    const categoriesTitle = !hasPrevious ? 'by_categories' : toDateDays ? 'report_categories_vs_previous_to_date' : 'report_categories_vs_previous';
+    lines.push('', `*${this.t(lang, categoriesTitle, { days: toDateDays })}*`);
     for (const category of categories) {
       const change = hasPrevious ? ` · ${this.changeText(lang, changePercent(category.total, prevByName.get(category.name)))}` : '';
       lines.push(`${this.categoryLabel(category, lang)} — ${money(category.total)}${change}`);
@@ -187,5 +205,6 @@ class ReportService {
 }
 
 ReportService.changePercent = changePercent;
+ReportService.comparablePrevious = comparablePrevious;
 
 module.exports = ReportService;

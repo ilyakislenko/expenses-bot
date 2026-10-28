@@ -53,6 +53,30 @@ function searchStem(text) {
 
 // Синонимы системной категории; hasOwn — своя категория «constructor»/«toString» не находит методы Object.prototype
 const systemAliases = (name) => (Object.hasOwn(SYSTEM_CATEGORY_ALIASES, name) ? SYSTEM_CATEGORY_ALIASES[name] : []);
+// Одно и то же в описаниях пишут по-разному: бренды латиницей и кириллицей («нетфликс» — «Netflix»), частые слова
+// на двух языках (англоязычный вопрос, а модель положила в поиск «такси»). Поиск по любому слову группы находит все.
+const TERM_SYNONYMS = [
+  ['нетфликс', 'netflix'], ['спотифай', 'spotify'], ['озон', 'ozon'], ['вайлдберриз', 'wildberries'], ['яндекс', 'yandex'],
+  ['убер', 'uber'], ['старбакс', 'starbucks'], ['макдональдс', 'mcdonalds'], ['кфс', 'kfc'], ['ютуб', 'youtube'],
+  ['эпл', 'эппл', 'apple'], ['стим', 'steam'], ['чатгпт', 'chatgpt'], ['амазон', 'amazon'], ['айфон', 'iphone'],
+  ['икеа', 'ikea'],
+  ['такси', 'taxi'], ['кофе', 'coffee'], ['метро', 'metro', 'subway'], ['продукты', 'groceries'], ['обед', 'lunch'],
+  ['ужин', 'dinner'], ['завтрак', 'breakfast'], ['аптека', 'pharmacy'], ['лекарства', 'medicine'], ['кино', 'movies'],
+  ['аренда', 'rent'], ['подарок', 'gift'], ['отель', 'hotel'], ['спортзал', 'gym'], ['интернет', 'internet'],
+  ['бензин', 'fuel'], ['парикмахерская', 'стрижка', 'haircut']
+].map(group => group.map(searchStem));
+
+// Слова поиска (основы, см. searchStem) вместе с синонимами — без повторов
+function expandTerms(stems) {
+  const out = [];
+  const add = (value) => { if (value && !out.includes(value)) out.push(value); };
+  for (const value of stems) {
+    add(value);
+    const group = TERM_SYNONYMS.find(variants => variants.includes(value));
+    if (group) group.forEach(add);
+  }
+  return out;
+}
 
 // categories: [{ id, name, icon, label }] (label — как видит пользователь). Ищем по имени и подписи, затем по английским
 // синонимам системных категорий; в каждом случае сначала точно, затем по основам слов. Своя категория «Продукты»
@@ -80,4 +104,4 @@ function mentionsCategory(question, category) {
     .some(variant => words.includes(` ${stemPhrase(variant)} `));
 }
 
-module.exports = { SYSTEM_CATEGORY_ALIASES, normalizeText, plainWords, stem, stemPhrase, searchStem, matchCategory, mentionsCategory };
+module.exports = { SYSTEM_CATEGORY_ALIASES, normalizeText, plainWords, stem, stemPhrase, searchStem, expandTerms, matchCategory, mentionsCategory };

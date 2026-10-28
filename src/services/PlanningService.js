@@ -4,14 +4,16 @@ const { addDays, customPeriod, parseYmd, ymd } = require('../utils/period');
 const { commaDecimal } = require('../utils/savingsView');
 const {
   PACE_EMOJI, SCAN_DAYS, PAYDAY_SCAN_DAYS, INFLATION_WINDOW_DAYS,
-  daysBetween, expectedIncome, computeAllowance, normalizeMerchant, detectSubscriptions, detectPaydays,
-  paydayDates, debtDates, buildCalendar, computeInflation
+  daysBetween, expectedIncome, computeAllowance, nextIncomeDate, normalizeMerchant, detectSubscriptions, detectPaydays,
+  paydayDates, monthlyDates, debtDates, subscriptionDates, buildCalendar, computeInflation
 } = require('../utils/planning');
 
 const AVERAGE_PERIODS = 3; // средний доход — за столько прошлых периодов, в которых был доход
 const NEW_USER_DAYS = 14; // подсказку «добавь доход или бюджет» в «Сегодня» видят только новые пользователи
 const BILL_REMINDER_HOUR = 9; // утреннее напоминание о платежах — в 9:00 по местному времени
 const CALENDAR_DAYS = 30;
+const RESERVE_MAX_DAYS = 31; // резерв на платежи после конца периода — до следующего дохода, но не дальше месяца
+const SUBS_NUDGE_NAMES = 3; // в строке о найденных подписках — столько названий, остальные — «и ещё N»
 
 function localDateHour(timezone, now) {
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -78,7 +80,8 @@ class PlanningService {
     }
     const average = samples.length ? samples.reduce((sum, v) => sum + v, 0) / samples.length : null;
     const streams = detectPaydays(rows, { today }).map(stream => ({ ...stream, currency }));
-    const upcomingList = paydayDates(streams, today, period.end);
+    // По дате: «аванс ~20.11, зарплата ~05.11» читается как ошибка
+    const upcomingList = paydayDates(streams, today, period.end).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
     const upcoming = upcomingList.reduce((sum, item) => sum + item.stream.amount, 0);
     return {
       recorded,
@@ -95,16 +98,30 @@ class PlanningService {
   // МОЖНО ПОТРАТИТЬ СЕГОДНЯ
   // ========================================
 
+  // Подписки для резерва в «Можно сегодня» — как в календаре: отмеченные пользователем или известные.
+  // Ошибка поиска подписок расчёт не ломает — резерв без них
+  async reservedSubscriptions(userId) {
+    try {
+      const { visible } = await this.getSubscriptions(userId);
+      return visible.filter(sub => sub.confirmed || sub.known);
+    } catch (error) {
+      logger.warn('Subscriptions for allowance failed', { userId, error: error.message });
+      return [];
+    }
+  }
+
   async getAllowance(userId) {
     const ctx = await this.expenseService.getPeriodContext(userId, 'month', 0);
     const { timezone, currency, today, period } = ctx;
     const convert = this.converter(currency);
-    const [split, recurring, debts, contribution, outlook] = await Promise.all([
+    const [split, recurring, debts, contribution, outlook, statuses, subscriptions] = await Promise.all([
       this.planningRepository.getSpendSplit(userId, timezone, period.start, today),
       this.recurringExpenseService.list(userId),
       this.planningRepository.getDebts(userId),
       this.planningRepository.getMonthlyContribution(userId),
-      this.incomeOutlook(userId, ctx, convert)
+      this.incomeOutlook(userId, ctx, convert),
+      this.budgetService.getStatus(userId, { timezone, currency, period }),
+      this.reservedSubscriptions(userId)
     ]);
 
     let spentBefore = 0;
@@ -114,46 +131,66 @@ class PlanningService {
       spentToday += await convert(row.today, row.currency);
     }
 
-    // Регулярные, которые ещё спишутся в этом периоде (уже списанные — в «потрачено»)
+    // Резерв на платежи — до следующего ожидаемого дохода, если он позже конца периода: аренда 3-го при зарплате
+    // 5-го ляжет на деньги этого периода. Дохода по истории не видно — до конца периода
+    const nextIncome = nextIncomeDate(outlook.streams, today, addDays(period.end, RESERVE_MAX_DAYS));
+    const reserveUntil = nextIncome && nextIncome > period.end ? nextIncome : period.end;
+
+    // Регулярные и подписки, которые ещё спишутся до reserveUntil (уже списанные — в «потрачено»);
+    // budgetBills — только до конца периода (общий бюджет — на период)
     let bills = 0;
+    let budgetBills = 0;
     const billsList = [];
+    const reserve = async (item, date) => {
+      const amount = await convert(item.amount, item.currency);
+      bills += amount;
+      if (date < period.end) budgetBills += amount;
+      billsList.push({ ...item, date });
+    };
     for (const item of recurring) {
-      if (item.nextChargeDate >= today && item.nextChargeDate < period.end) {
-        bills += await convert(item.amount, item.currency);
-        billsList.push(item);
+      if (!item.nextChargeDate) continue;
+      for (const date of monthlyDates(item.nextChargeDate, item.day_of_month, reserveUntil)) {
+        if (date >= today) await reserve(item, date);
       }
     }
+    for (const sub of subscriptions) {
+      for (const date of subscriptionDates(sub, today, reserveUntil)) await reserve(sub, date);
+    }
 
-    // Платежи по долгам: с числом — если оно ещё впереди в этом периоде, без числа — доля по оставшимся дням
+    // Платежи по долгам: с числом — если оно ещё впереди до reserveUntil, без числа — доля по оставшимся дням периода
     const daysLeft = daysBetween(today, period.end);
     const periodDays = daysBetween(period.start, period.end);
     const recurringKeys = new Set(recurring.map(r => normalizeMerchant(r.description)).filter(Boolean));
     let debtsTotal = 0;
+    let budgetDebts = 0;
     let debtsProrated = false;
     for (const debt of debts) {
       if (!(debt.monthly_payment > 0) || !(debt.balance > 0) || recurringKeys.has(normalizeMerchant(debt.name))) continue;
       const payment = await convert(debt.monthly_payment, debt.currency);
       if (debt.due_day) {
-        debtsTotal += payment * debtDates(debt, today, period.end).length;
+        const dates = debtDates(debt, today, reserveUntil);
+        debtsTotal += payment * dates.length;
+        budgetDebts += payment * dates.filter(date => date < period.end).length;
       } else {
-        debtsTotal += Math.round(payment * daysLeft / periodDays);
+        const share = Math.round(payment * daysLeft / periodDays);
+        debtsTotal += share;
+        budgetDebts += share;
         debtsProrated = true;
       }
     }
 
-    let budget = null;
-    if (outlook.income === null) {
-      const statuses = await this.budgetService.getStatus(userId, { timezone, currency, period });
-      const total = statuses.find(b => b.category_name === null);
-      if (total) budget = total.limit;
-    }
+    // Общий бюджет учитываем и при доходе: лимит дня не больше остатка бюджета на день
+    const total = statuses.find(b => b.category_name === null);
+    const budget = total ? total.limit : null;
     const savings = contribution !== null && contribution > 0 ? contribution : 0;
     const result = computeAllowance({
-      daysLeft, income: outlook.income, budget, spentBefore, spentToday, bills, debts: debtsTotal, savings
+      daysLeft, periodDays, income: outlook.income, budget, spentBefore, spentToday,
+      bills, debts: debtsTotal, savings, budgetBills, budgetDebts
     });
     return {
-      ...result, currency, today, period, daysLeft, outlook, budget,
-      spentBefore, bills, billsList, debtsTotal, debtsProrated, savings: result.mode === 'income' ? savings : 0
+      ...result, currency, today, period, daysLeft, outlook, budget, nextIncome, reserveUntil,
+      spentBefore, bills, budgetBills, billsList, debtsTotal, budgetDebts, debtsProrated,
+      savings: result.mode === 'income' ? savings : 0
     };
   }
 
@@ -273,7 +310,9 @@ class PlanningService {
         if (await this.userNotificationRepository.markSent(userId, 'subscription_found', sub.key.slice(0, 64))) fresh.push(sub);
       }
       if (!fresh.length) return '';
-      const list = fresh.slice(0, 3).map(sub => this.formatter.escapeMarkdown(this.formatter.shorten(sub.label, 30))).join(', ');
+      const names = fresh.slice(0, SUBS_NUDGE_NAMES).map(sub => this.formatter.escapeMarkdown(this.formatter.shorten(sub.label, 30))).join(', ');
+      const more = fresh.length - SUBS_NUDGE_NAMES;
+      const list = more > 0 ? `${names} ${this.t(lang, 'pl_subs_more', { count: more })}` : names;
       return this.t(lang, 'pl_subs_nudge', { count: fresh.length, list });
     } catch (error) {
       logger.warn('Subscription nudge failed', { userId, error: error.message });

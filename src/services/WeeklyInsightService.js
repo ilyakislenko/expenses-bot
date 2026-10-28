@@ -63,13 +63,17 @@ function historyWeekCount(previousTotals) {
   return count;
 }
 
-// week: { total, categories: [{ name, icon, id, total }] }; previous — такие же недели, от новых к старым.
+// week: { total, regular, categories: [{ name, icon, id, total, regular }] }; previous — такие же недели, от новых к старым.
 // Возвращает сравнение недели со средним за историю и сравнение категорий (средние — по тем же неделям).
+// Авто-записи регулярных трат (regular: аренда раз в месяц и т.п.) в сравнении не участвуют — иначе неделя с арендой
+// раздувает «обычную неделю», а остальные выглядят экономными; в total недели они остаются.
 function summarizeWeeks(week, previous) {
   const weeks = historyWeekCount(previous.map(w => w.total));
   const history = previous.slice(0, weeks);
   const enoughHistory = weeks >= MIN_HISTORY_WEEKS;
-  const average = weeks ? history.reduce((sum, w) => sum + w.total, 0) / weeks : 0;
+  const comparable = (w) => w.total - (w.regular || 0);
+  const average = weeks ? history.reduce((sum, w) => sum + comparable(w), 0) / weeks : 0;
+  const current = comparable(week);
 
   const byName = new Map();
   const entry = (category) => {
@@ -78,9 +82,9 @@ function summarizeWeeks(week, previous) {
     }
     return byName.get(category.name);
   };
-  for (const category of week.categories) entry(category).total += category.total;
+  for (const category of week.categories) entry(category).total += comparable(category);
   for (const w of history) {
-    for (const category of w.categories) entry(category).historySum += category.total;
+    for (const category of w.categories) entry(category).historySum += comparable(category);
   }
   const categories = [...byName.values()].map(({ historySum, ...category }) => {
     const categoryAverage = weeks ? historySum / weeks : 0;
@@ -101,11 +105,12 @@ function summarizeWeeks(week, previous) {
 
   return {
     total: week.total,
+    regular: week.regular || 0,
     weeks,
     enoughHistory,
     average,
-    diff: week.total - average,
-    percent: enoughHistory ? percentChange(week.total, average) : null,
+    diff: current - average,
+    percent: enoughHistory ? percentChange(current, average) : null,
     top,
     overspend,
     improvement
@@ -146,13 +151,15 @@ class WeeklyInsightService {
     return { inline_keyboard: rows };
   }
 
-  // Траты недели в основной валюте — так же, как в обзоре (getTotals + categoryBreakdown)
+  // Траты недели в основной валюте — так же, как в обзоре (getTotals + categoryBreakdown); regular — из них
+  // авто-записи регулярных трат (для сравнения недель не учитываются)
   async loadWeek(userId, timezone, currency, period) {
     const [totals, categories] = await Promise.all([
       this.expenseService.getTotals(userId, timezone, period),
       this.reportService.categoryBreakdown(userId, timezone, period, currency)
     ]);
-    return { total: await this.formatter.sumInCurrency(totals.byCurrency, currency), count: totals.count, categories };
+    const regular = categories.reduce((sum, category) => sum + (category.regular || 0), 0);
+    return { total: await this.formatter.sumInCurrency(totals.byCurrency, currency), regular, count: totals.count, categories };
   }
 
   // Текст сводки недели; null — за последние 5 недель нет трат
@@ -169,6 +176,7 @@ class WeeklyInsightService {
     const lines = [`📈 *${this.t(lang, 'weekly_insight_title', { range: this.formatter.formatPeriodRange(week) })}*`, ''];
 
     lines.push(this.t(lang, 'weekly_insight_spent', { amount: money(summary.total) }));
+    if (summary.regular > 0) lines.push(this.t(lang, 'weekly_insight_regular', { amount: money(summary.regular) }));
     if (!summary.enoughHistory) {
       lines.push(this.t(lang, 'weekly_insight_no_history'));
     } else if (Math.abs(summary.percent) < SAME_PERCENT) {

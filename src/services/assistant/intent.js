@@ -11,7 +11,7 @@ const { normalizeText, plainWords, matchCategory, mentionsCategory } = require('
 
 const TYPES = [
   'spend_total', 'spend_by_category', 'top_expenses', 'largest_purchase', 'compare_periods', 'average_daily',
-  'income_total', 'balance', 'savings_status', 'budget_status', 'count_records'
+  'income_total', 'balance', 'savings_status', 'budget_status', 'count_records', 'subscriptions', 'debt_status'
 ];
 const TYPE_ALIASES = {
   total: 'spend_total', spend: 'spend_total', spent: 'spend_total', spending: 'spend_total', expenses: 'spend_total',
@@ -19,10 +19,12 @@ const TYPE_ALIASES = {
   top: 'top_expenses', top_expense: 'top_expenses', largest: 'largest_purchase', biggest: 'largest_purchase',
   largest_expense: 'largest_purchase', compare: 'compare_periods', comparison: 'compare_periods',
   average: 'average_daily', avg_daily: 'average_daily', income: 'income_total', incomes: 'income_total',
-  savings: 'savings_status', budget: 'budget_status', budgets: 'budget_status', count: 'count_records'
+  savings: 'savings_status', budget: 'budget_status', budgets: 'budget_status', count: 'count_records',
+  subscription: 'subscriptions', subscriptions_status: 'subscriptions', debt: 'debt_status', debts: 'debt_status',
+  loans: 'debt_status', debt_total: 'debt_status'
 };
-// Без периода: накопления — на сейчас, бюджеты — всегда текущий период
-const NO_PERIOD_TYPES = new Set(['savings_status', 'budget_status']);
+// Без периода: накопления и долги — на сейчас, бюджеты — всегда текущий период, подписки — найденные по истории
+const NO_PERIOD_TYPES = new Set(['savings_status', 'budget_status', 'subscriptions', 'debt_status']);
 // Фильтры по категориям и описанию имеют смысл только у трат
 const EXPENSE_TYPES = new Set(['spend_total', 'spend_by_category', 'top_expenses', 'largest_purchase', 'compare_periods', 'average_daily', 'count_records']);
 
@@ -148,7 +150,8 @@ function cleanTerm(value) {
 }
 
 // raw — объект из модели/быстрого разбора; context: { categories, today, question }.
-// { ok: true, intent } | { ok: false, reason: 'unknown' | 'future' }
+// { ok: true, intent, defaultedPeriod } | { ok: false, reason: 'unknown' | 'future' }. defaultedPeriod — период не
+// задан (или не разобран) и взят по умолчанию: этот месяц
 function normalizeIntent(raw, { categories = [], today, question = null }) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ok: false, reason: 'unknown' };
   let type = normalizeText(raw.type).replace(/[\s-]+/g, '_');
@@ -157,10 +160,12 @@ function normalizeIntent(raw, { categories = [], today, question = null }) {
 
   let period = null;
   let compareTo = null;
+  let defaultedPeriod = false;
   if (!NO_PERIOD_TYPES.has(type)) {
     const parsed = normalizePeriod(raw.period, today);
     if (parsed && parsed.error === 'future') return { ok: false, reason: 'future' };
-    period = parsed && parsed.spec ? parsed.spec : { kind: 'month', offset: 0 };
+    defaultedPeriod = !(parsed && parsed.spec);
+    period = defaultedPeriod ? { kind: 'month', offset: 0 } : parsed.spec;
     if (type === 'compare_periods') {
       const second = normalizePeriod(raw.compare_to, today);
       compareTo = second && second.spec ? second.spec : null;
@@ -200,6 +205,7 @@ function normalizeIntent(raw, { categories = [], today, question = null }) {
   const currency = String(raw.currency || '').trim().toUpperCase();
   return {
     ok: true,
+    defaultedPeriod,
     intent: {
       type,
       period,

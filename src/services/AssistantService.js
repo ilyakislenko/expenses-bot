@@ -4,16 +4,18 @@
 const logger = require('../utils/logger');
 const { USER_LIMITS } = require('../utils/constants');
 const { localToday } = require('../utils/period');
-const { normalizeIntent } = require('./assistant/intent');
+const { normalizeIntent, cleanTerm } = require('./assistant/intent');
 const { parseFastPath } = require('./assistant/fastPath');
 const { buildMessages } = require('./assistant/prompt');
 const { resolvePeriod, comparisonPeriods, elapsedDays } = require('./assistant/periods');
-const { searchStem } = require('./assistant/text');
+const { searchStem, expandTerms, matchCategory, mentionsCategory, stemPhrase } = require('./assistant/text');
 const { AnswerComposer } = require('./assistant/compose');
 
-// Сколько вопрос может ждать нейросеть вместе с очередью (локальная модель занята чеком — не ждём минутами)
-const MODEL_DEADLINE_MS = 75000;
+// Сколько вопрос может ждать нейросеть вместе с очередью. Вопросы встают в очереди перед чеками (receipt/chain.js),
+// но идущий чек не прерывается — дольше не ждём: честно отвечаем «нейросеть занята» с местом в очереди
+const MODEL_DEADLINE_MS = 30000;
 const MAX_QUESTION_LENGTH = 300;
+const MAX_TERMS = 3;
 // Кнопки-примеры (ai|<n>, тексты ai_example_<n>) — готовые намерения: ответ сразу и на любом языке, без нейросети
 const EXAMPLE_INTENTS = {
   1: { type: 'spend_total', period: { kind: 'month', offset: 0 } },
@@ -24,14 +26,21 @@ const EXAMPLE_INTENTS = {
   6: { type: 'average_daily', period: { kind: 'month', offset: 0 } }
 };
 
+// Сколько трат нашлось (у сравнения — в обоих периодах)
+function found(result) {
+  if (typeof result.count === 'number') return result.count;
+  return result.current ? result.current.count + result.previous.count : 0;
+}
+
 class AssistantService {
-  constructor({ assistantRepository, provider, expenseService, incomeService, savingsService, budgetService, premiumService, localizationService, formatter, currencyUtils, modelDeadlineMs = MODEL_DEADLINE_MS }) {
+  constructor({ assistantRepository, provider, expenseService, incomeService, savingsService, budgetService, planningService = null, premiumService, localizationService, formatter, currencyUtils, modelDeadlineMs = MODEL_DEADLINE_MS }) {
     this.assistantRepository = assistantRepository;
     this.provider = provider;
     this.expenseService = expenseService;
     this.incomeService = incomeService;
     this.savingsService = savingsService;
     this.budgetService = budgetService;
+    this.planningService = planningService;
     this.premiumService = premiumService;
     this.localizationService = localizationService;
     this.formatter = formatter;
@@ -45,6 +54,14 @@ class AssistantService {
 
   get freeLimit() {
     return USER_LIMITS.regular.MAX_ASSISTANT_QUESTIONS_PER_DAY;
+  }
+
+  modelCallsLimit(isPremium) {
+    return (isPremium ? USER_LIMITS.premium : USER_LIMITS.regular).MAX_ASSISTANT_MODEL_CALLS_PER_DAY;
+  }
+
+  get modelAvailable() {
+    return !!(this.provider && this.provider.configured);
   }
 
   // Дневной лимит отвеченных вопросов по локальной дате: { used, limit, remaining, isPremium }
@@ -71,16 +88,18 @@ class AssistantService {
     return { userId, lang, timezone, currency, startDay, today, isPremium, categories };
   }
 
-  // Вопрос → { raw, source } (source: fast | model | fallback) или { error: 'not_understood' | 'model_down' }.
-  // Вопрос, разобранный быстрым разбором целиком, модели не отправляется (skipFast — всё равно спросить модель).
-  async understand(question, context, { onStatus, skipFast = false } = {}) {
-    const fast = parseFastPath(question, context);
-    if (fast && fast.confident && !skipFast) return { raw: fast.intent, source: 'fast' };
-    if (!this.provider || !this.provider.configured) {
-      return fast && fast.usable ? { raw: fast.intent, source: 'fallback' } : { error: 'model_down' };
+  // Вопрос к нейросети → { raw } или { error: 'model_down' | 'model_busy' | 'model_limit', position }.
+  // usage.modelCalls — сколько раз для вопроса спросили модель (идёт в дневной потолок, с ответом или без).
+  // Не дождались своей очереди (слот занят чеком) — модель не спрашивали: «нейросеть занята» с местом в очереди
+  async askModel(question, context, { onStatus, usage }) {
+    if (!this.modelAvailable) return { error: 'model_down' };
+    if (usage.callsLeft === undefined) {
+      usage.callsLeft = this.modelCallsLimit(context.isPremium) - await this.assistantRepository.countModelCalls(context.userId, context.today);
     }
+    if (usage.callsLeft - usage.modelCalls <= 0) return { error: 'model_limit', limit: this.modelCallsLimit(context.isPremium) };
     let cancelled = false;
     let timer = null;
+    let position = null;
     const deadline = new Promise((resolve) => {
       timer = setTimeout(() => {
         cancelled = true;
@@ -91,65 +110,146 @@ class AssistantService {
     try {
       const request = this.provider.complete({
         messages: buildMessages({ question, today: context.today, startDay: context.startDay, categories: context.categories.map(c => c.label) }),
-        onStatus,
-        isCancelled: () => cancelled
+        onStatus: (status) => {
+          position = status.position;
+          if (onStatus) onStatus(status);
+        },
+        isCancelled: () => cancelled,
+        owner: context.userId
       }).then(raw => ({ raw }));
       const outcome = await Promise.race([request, deadline]);
       request.catch(() => {}); // опоздавший ответ (или ошибка) после срока никому не нужен
-      if (outcome.timeout) throw new Error('assistant model deadline');
+      if (outcome.timeout) {
+        if (position > 0) {
+          logger.warn('Assistant model busy', { userId: context.userId, position, ms: Date.now() - started });
+          return { error: 'model_busy', position };
+        }
+        usage.modelCalls++;
+        throw new Error('assistant model deadline');
+      }
+      usage.modelCalls++;
       logger.info('Assistant intent from model', { userId: context.userId, ms: Date.now() - started, type: outcome.raw && outcome.raw.type });
-      const checked = normalizeIntent(outcome.raw, { ...context, question });
-      // Модель не поняла, а быстрый разбор узнал тип — берём его
-      if (!checked.ok && checked.reason === 'unknown' && fast && fast.usable) return { raw: fast.intent, source: 'fallback' };
-      return { raw: outcome.raw, source: 'model' };
+      return { raw: outcome.raw };
     } catch (error) {
+      if (error.code === 'busy') return { error: 'model_busy', position: null };
+      if (error.message !== 'assistant model deadline' && position !== null && position <= 0) usage.modelCalls++;
       logger.warn('Assistant model failed', { userId: context.userId, error: error.message, code: error.code, ms: Date.now() - started });
-      if (fast && fast.usable) return { raw: fast.intent, source: 'fallback' };
       return { error: 'model_down' };
     } finally {
       clearTimeout(timer);
     }
   }
 
-  // Вопрос → { status: 'answered', text, keyboard, intent, source } | { status: 'not_understood' | 'model_down' | 'future' }.
-  // example — номер кнопки-примера: намерение готовое, вопрос не разбирается
+  // Вопрос → { status: 'answered', text, keyboard, intent, source, questionId } | { status: 'not_understood' |
+  // 'model_down' | 'model_busy' | 'model_limit' | 'period_unclear' | 'future', position? }.
+  // example — номер кнопки-примера: намерение готовое, вопрос не разбирается.
+  // В журнал (лимиты) пишутся ответы и вопросы без ответа, для которых спрашивали модель
   async answer(userId, question, { lang, onStatus, example = null } = {}) {
     const started = Date.now();
     const text = String(question || '').trim().slice(0, MAX_QUESTION_LENGTH);
     const context = await this.loadContext(userId, lang);
     const resolved = await this.resolve(text, context, { onStatus, example });
-    if (resolved.status !== 'ok') return resolved;
+    const modelCalls = resolved.usage ? resolved.usage.modelCalls : 0;
+    const ms = Date.now() - started;
+    if (resolved.status !== 'ok') {
+      if (modelCalls) {
+        await this.assistantRepository.logQuestion(userId, context.today, { intentType: resolved.status, source: 'model', ms, answered: false, modelCalls });
+      }
+      return { status: resolved.status, source: resolved.source, position: resolved.position, limit: resolved.limit };
+    }
     const { intent, result, source } = resolved;
     const { text: answerText, keyboard } = new AnswerComposer({ localizationService: this.localizationService, formatter: this.formatter, lang }).compose(result);
-    const ms = Date.now() - started;
-    await this.assistantRepository.logAnswered(userId, context.today, { intentType: intent.type, source, ms });
-    logger.info('Assistant answered', { userId, type: intent.type, source, ms });
-    return { status: 'answered', text: answerText, keyboard, intent, source };
+    const questionId = await this.assistantRepository.logQuestion(userId, context.today, { intentType: intent.type, source, ms, modelCalls });
+    // «🙅 Не то» — рядом с «🤖 Ещё вопрос»: вопрос возвращается в лимит, можно спросить точнее
+    keyboard[keyboard.length - 1].push({ text: this.localizationService.getText(lang, 'ai_button_wrong'), callback_data: `aiw|${questionId}` });
+    logger.info('Assistant answered', { userId, type: intent.type, source, ms, modelCalls });
+    return { status: 'answered', text: answerText, keyboard, intent, source, questionId };
   }
 
-  // Вопрос → проверенное намерение и посчитанный результат: { status: 'ok', intent, result, source } или
-  // { status: 'not_understood' | 'model_down' | 'future' }
+  // «🙅 Не то»: ответ не засчитывается в дневной лимит. true — отметили (false — уже отмечен или чужой)
+  async markWrong(userId, questionId) {
+    return this.assistantRepository.markWrong(userId, questionId);
+  }
+
+  // Вопрос → проверенное намерение и посчитанный результат: { status: 'ok', intent, result, source, usage } или
+  // { status: <без ответа>, usage }.
+  // Быстрый разбор понял вопрос целиком — модель не нужна. Иначе спрашиваем модель, но то, что быстрый разбор понял
+  // уверенно (период, второй период сравнения, валюта, число), остаётся его: модель дополняет, а не заменяет
   async resolve(text, context, { onStatus, example = null } = {}) {
-    let understood = EXAMPLE_INTENTS[example]
-      ? { raw: EXAMPLE_INTENTS[example], source: 'example' }
-      : await this.understand(text, context, { onStatus });
-    if (understood.error) return { status: understood.error };
-    const checked = normalizeIntent(understood.raw, { ...context, question: text });
-    if (!checked.ok) return { status: checked.reason === 'future' ? 'future' : 'not_understood', source: understood.source };
+    const usage = { modelCalls: 0 };
+    const ctx = { ...context, question: text };
+    if (EXAMPLE_INTENTS[example]) {
+      const { intent } = normalizeIntent(EXAMPLE_INTENTS[example], ctx);
+      return { status: 'ok', intent, result: await this.compute(intent, ctx), source: 'example', usage };
+    }
+    const fast = parseFastPath(text, ctx);
+    let raw;
+    let source;
+    if (fast && fast.confident) {
+      raw = fast.intent;
+      source = 'fast';
+    } else {
+      const asked = await this.askModel(text, ctx, { onStatus, usage });
+      if (asked.error) return { status: asked.error, position: asked.position, limit: asked.limit, usage };
+      raw = fast ? this.keepFast(fast.intent, asked.raw) : asked.raw;
+      source = 'model';
+    }
+    const checked = normalizeIntent(raw, ctx);
+    if (!checked.ok) return { status: checked.reason === 'future' ? 'future' : 'not_understood', source, usage };
+    // В вопросе есть слово о времени, которого не понял быстрый разбор, а модель период не назвала — не подставляем
+    // молча «этот месяц»
+    if (source === 'model' && checked.defaultedPeriod && fast && fast.unresolvedTime) return { status: 'period_unclear', source, usage };
     let { intent } = checked;
-    let result = await this.compute(intent, context);
+    let result = await this.compute(intent, ctx);
     // Быстрый разбор принял слово за поиск по описанию («на лекарства»), а таких трат нет: возможно, это смысл,
-    // а не слово из описания (лекарства → «Здоровье») — спросим модель и возьмём её ответ, если он другой
-    if (understood.source === 'fast' && intent.terms.length && result.count === 0 && this.provider && this.provider.configured) {
-      const retry = await this.understand(text, context, { onStatus, skipFast: true });
-      const second = retry.raw ? normalizeIntent(retry.raw, { ...context, question: text }) : null;
-      if (retry.source === 'model' && second && second.ok && JSON.stringify(second.intent) !== JSON.stringify(intent)) {
-        understood = retry;
+    // а не слово из описания (лекарства → «Здоровье»). Спросим модель, но возьмём от неё только категории и слова
+    // поиска — период и тип быстрый разбор понял сам
+    if (source === 'fast' && intent.terms.length && found(result) === 0 && this.modelAvailable) {
+      const asked = await this.askModel(text, ctx, { onStatus, usage });
+      const filter = asked.raw && typeof asked.raw === 'object' ? asked.raw : null;
+      const second = filter ? normalizeIntent({ ...fast.intent, categories: filter.categories, text_filter: filter.text_filter }, ctx) : null;
+      if (second && second.ok && (second.intent.categories.length || second.intent.terms.length)
+        && JSON.stringify(second.intent) !== JSON.stringify(intent)) {
         intent = second.intent;
-        result = await this.compute(intent, context);
+        result = await this.compute(intent, ctx);
+        source = 'model';
       }
     }
-    return { status: 'ok', intent, result, source: understood.source };
+    const described = await this.preferDescriptions(intent, fast, ctx);
+    if (described) ({ intent, result } = described);
+    return { status: 'ok', intent, result, source, usage };
+  }
+
+  // Ответ модели, где поля, уверенно разобранные быстрым разбором, остаются его
+  keepFast(fastIntent, modelRaw) {
+    if (!modelRaw || typeof modelRaw !== 'object' || Array.isArray(modelRaw)) return modelRaw;
+    const merged = { ...modelRaw };
+    if (fastIntent.period) merged.period = fastIntent.period;
+    if (fastIntent.compare_to) merged.compare_to = fastIntent.compare_to;
+    if (fastIntent.currency) merged.currency = fastIntent.currency;
+    if (fastIntent.limit) merged.limit = fastIntent.limit;
+    return merged;
+  }
+
+  // Модель назвала категорию, которой в вопросе нет («на кофе» → «Кафе», «на обеды» → «Еда»): если слово из вопроса
+  // встречается в описаниях — считаем по описаниям. В этом периоде нашлось — ответ по ним; не нашлось, но такие траты
+  // бывают в других категориях — тоже по описаниям («обедов на этой неделе не было»). Категория остаётся, если слова
+  // в описаниях нет совсем или все такие траты — в этой категории (лекарства → «Здоровье»)
+  async preferDescriptions(intent, fast, context) {
+    if (!fast || !intent.categories.length || intent.terms.length) return null;
+    if (intent.categories.some(category => mentionsCategory(context.question, category))) return null;
+    const filters = [].concat(fast.intent.text_filter || []);
+    const words = (filters.length ? filters : fast.words)
+      .map(cleanTerm).filter(Boolean)
+      .filter(term => !matchCategory(term, context.categories));
+    if (!words.length) return null;
+    const byText = { ...intent, categories: [], terms: words.slice(0, MAX_TERMS) };
+    const result = await this.compute(byText, context);
+    if (found(result) > 0) return { intent: byText, result };
+    const everywhere = await this.expenseRows(context, resolvePeriod({ kind: 'all' }, { today: context.today, startDay: context.startDay }), byText);
+    const names = new Set(intent.categories.map(category => category.name));
+    if (everywhere.some(row => !names.has(row.category_name))) return { intent: byText, result };
+    return null;
   }
 
   // ---------- Расчёт ----------
@@ -164,10 +264,11 @@ class AssistantService {
     };
   }
 
+  // Слова поиска — основы слов с синонимами и написанием брендов («нетфликс» найдёт и «Netflix»)
   async expenseRows(context, period, intent) {
     return this.assistantRepository.findExpenses(context.userId, context.timezone, period.start, period.end, {
       categoryNames: intent.categories.map(c => c.name),
-      terms: intent.terms.map(searchStem).filter(Boolean)
+      terms: expandTerms(intent.terms.map(searchStem).filter(Boolean))
     });
   }
 
@@ -197,6 +298,8 @@ class AssistantService {
 
     if (intent.type === 'savings_status') return { ...base, currency: context.currency, ...(await this.savings(context)) };
     if (intent.type === 'budget_status') return { ...base, currency: context.currency, ...(await this.budgets(context)) };
+    if (intent.type === 'subscriptions') return { ...base, currency: context.currency, ...(await this.subscriptions(context)) };
+    if (intent.type === 'debt_status') return { ...base, currency: context.currency, ...(await this.debts(context)) };
 
     if (intent.type === 'compare_periods') {
       const periods = comparisonPeriods(intent.period, intent.compareTo, periodContext);
@@ -273,6 +376,33 @@ class AssistantService {
       goals,
       empty: state.total === 0 && state.debtTotal === 0 && !goals.length
     };
+  }
+
+  // Подписки — те же, что на экране «🔁 Подписки» (поиск повторяющихся платежей, без премиума — первые N)
+  async subscriptions(context) {
+    if (!this.planningService) return { items: [], totalMonthly: 0, hiddenCount: 0, hiddenMonthly: 0 };
+    const subs = await this.planningService.getSubscriptions(context.userId);
+    return {
+      items: subs.visible.map(sub => ({ label: sub.label, monthly: sub.monthlyMain })),
+      count: subs.all.length,
+      totalMonthly: subs.totalMonthly,
+      hiddenCount: subs.hiddenCount,
+      hiddenMonthly: subs.hiddenMonthly
+    };
+  }
+
+  // Долги из накоплений. Если долг назван в вопросе («по кредитке» — «Кредитка») — только он
+  async debts(context) {
+    const state = await this.savingsService.getState(context.userId);
+    const all = [];
+    for (const debt of state.debts) {
+      const payment = debt.monthly_payment ? await this.currencyUtils.convert(debt.monthly_payment, debt.currency, state.currency) : null;
+      all.push({ name: debt.name, amount: debt.balanceMain, payment });
+    }
+    const asked = new Set(stemPhrase(context.question || '').split(' ').filter(w => w.length >= 3));
+    const named = all.filter(debt => stemPhrase(debt.name).split(' ').some(w => asked.has(w)));
+    const debts = named.length ? named : all;
+    return { debts, total: debts.reduce((sum, debt) => sum + debt.amount, 0), all: all.length };
   }
 
   async budgets(context) {

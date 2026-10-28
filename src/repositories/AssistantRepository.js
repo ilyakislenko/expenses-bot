@@ -28,22 +28,43 @@ class AssistantRepository extends BaseRepository {
     return result.rows;
   }
 
-  // Вопросы, на которые бот ответил в этот локальный день (для дневного лимита)
+  // Вопросы, на которые бот ответил в этот локальный день (для дневного лимита; «🙅 Не то» возвращает вопрос в лимит)
   async countAnswered(userId, localDate) {
     const result = await this.query(
-      'SELECT COUNT(*)::int AS count FROM assistant_questions WHERE user_id = $1 AND local_date = $2::date',
+      'SELECT COUNT(*)::int AS count FROM assistant_questions WHERE user_id = $1 AND local_date = $2::date AND answered',
       [userId, localDate]
     );
     return result.rows[0].count;
   }
 
-  // Текст вопроса не храним: только тип ответа, кто разобрал вопрос и сколько это заняло
-  async logAnswered(userId, localDate, { intentType, source, ms }) {
-    await this.query(
-      `INSERT INTO assistant_questions (user_id, local_date, intent_type, source, duration_ms)
-       VALUES ($1, $2::date, $3, $4, $5)`,
-      [userId, localDate, intentType, source, ms]
+  // Запросы к нейросети за локальный день — с ответом и без (дневной потолок вызовов модели)
+  async countModelCalls(userId, localDate) {
+    const result = await this.query(
+      'SELECT COALESCE(SUM(model_calls), 0)::int AS count FROM assistant_questions WHERE user_id = $1 AND local_date = $2::date',
+      [userId, localDate]
     );
+    return result.rows[0].count;
+  }
+
+  // Текст вопроса не храним: только тип ответа (или статус, если ответа нет), кто разобрал вопрос, сколько это
+  // заняло и сколько раз спросили модель. Возвращает id строки
+  async logQuestion(userId, localDate, { intentType, source, ms, answered = true, modelCalls = 0 }) {
+    const result = await this.query(
+      `INSERT INTO assistant_questions (user_id, local_date, intent_type, source, duration_ms, answered, model_calls)
+       VALUES ($1, $2::date, $3, $4, $5, $6, $7)
+       RETURNING id`,
+      [userId, localDate, String(intentType).slice(0, 30), String(source).slice(0, 10), ms, answered, modelCalls]
+    );
+    return result.rows[0].id;
+  }
+
+  // «🙅 Не то»: ответ не засчитывается в дневной лимит (вызовы модели остаются). true — отметили сейчас
+  async markWrong(userId, questionId) {
+    const result = await this.query(
+      'UPDATE assistant_questions SET answered = FALSE WHERE id = $1 AND user_id = $2 AND answered RETURNING id',
+      [questionId, userId]
+    );
+    return result.rowCount > 0;
   }
 }
 

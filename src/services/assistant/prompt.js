@@ -14,9 +14,11 @@ JSON keys:
   average_daily — average spending per day,
   income_total — income, salary, earnings,
   balance — income minus expenses, what is left, am I in plus,
-  savings_status — savings, goals, debts, net worth,
+  savings_status — savings, goals, net worth,
   budget_status — budgets and limits,
   count_records — how many expenses or how many times,
+  subscriptions — subscriptions (streaming, music, gym) and how much they cost,
+  debt_status — debts, loans, credit cards, mortgage, how much I owe,
   unknown — anything else (not about the user's own money).
 "period": the period the question is about, or null if not mentioned:
   {"kind":"day","offset":0} today, offset -1 yesterday;
@@ -28,11 +30,11 @@ JSON keys:
   {"kind":"custom","from":"YYYY-MM-DD","to":"YYYY-MM-DD"} explicit dates;
   {"kind":"all"} all time, ever.
 "compare_to": the second period for compare_periods if it is named, else null.
-"categories": names from the user's category list that the question mentions or clearly means (medicine → Health), else []. Do not add a category just because a text_filter belongs to it.
-"text_filter": a thing to search in expense descriptions (shop, product, service: "такси", "coffee") when it is not a category, in its base form and in the language of the question, else null.
+"categories": names from the user's category list that the question names or clearly means (medicine → Health), else []. Do not add a category just because a text_filter belongs to it: "coffee" is a text_filter, not the category "Cafe".
+"text_filter": a thing to search in expense descriptions (shop, product, service: "такси", "coffee") when it is not a category, copied from the question in its base form and in the language of the question (never translate it), else null.
 "limit": how many items for top_expenses, else null.
 "currency": a 3-letter currency code only if the user asks to show amounts in it, else null.
-Rules: "за неделю" / "for a week" means the last 7 days, "this week" means the calendar week. "в день" / "per day" is part of average_daily, not the period. "last month" / "в прошлом месяце" is offset -1, "last year" / "в прошлом году" is offset -1.
+Rules: "за неделю" / "for a week" means the last 7 days, "this week" means the calendar week. "в день" / "per day" is part of average_daily, not the period. "last month" / "в прошлом месяце" is offset -1, "last year" / "в прошлом году" is offset -1. Seasons, weekends, weekdays and "since <day>" are custom dates: summer is June 1 – August 31, "since Monday" is from this week's Monday to today. If the question names a period you cannot express, use null.
 Reply with the JSON object only.`;
 
 const EXAMPLE_CONTEXT = {
@@ -60,6 +62,9 @@ const EXAMPLES = [
   ['en', 'how much did I earn in 2025', { type: 'income_total', period: { kind: 'custom', from: '2025-01-01', to: '2025-12-31' } }],
   ['ru', 'сколько у меня накоплений', { type: 'savings_status' }],
   ['en', 'am I within my budget?', { type: 'budget_status' }],
+  ['ru', 'сколько я должен по ипотеке', { type: 'debt_status' }],
+  ['en', 'how much do I pay for subscriptions', { type: 'subscriptions' }],
+  ['ru', 'сколько я потратил с понедельника', { type: 'spend_total', period: { kind: 'custom', from: '2026-10-12', to: '2026-10-15' } }],
   ['ru', 'какая завтра погода', { type: 'unknown' }]
 ];
 

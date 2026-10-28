@@ -201,6 +201,32 @@ class AnswerComposer {
     return lines;
   }
 
+  compose_subscriptions(result) {
+    const { currency } = result;
+    const lines = [`*${this.t('ai_title_subscriptions')}*`];
+    if (!result.count) return [...lines, this.t('ai_subscriptions_none')];
+    lines.push(this.t('ai_subscriptions_total', { amount: this.money(result.totalMonthly, currency), count: result.count }), '');
+    for (const sub of result.items) {
+      lines.push(`• ${this.formatter.escapeMarkdown(sub.label)} — ${this.t('ai_per_month', { amount: this.money(sub.monthly, currency) })}`);
+    }
+    if (result.hiddenCount) {
+      lines.push(this.t('ai_subscriptions_hidden', { count: result.hiddenCount, amount: this.money(result.hiddenMonthly, currency) }));
+    }
+    return lines;
+  }
+
+  compose_debt_status(result) {
+    const { currency } = result;
+    const lines = [`*${this.t('ai_title_debts')}*`];
+    if (!result.debts.length) return [...lines, this.t('ai_debts_none')];
+    if (result.debts.length > 1) lines.push(this.t('ai_total', { amount: this.money(result.total, currency) }), '');
+    for (const debt of result.debts) {
+      const payment = debt.payment ? ` · ${this.t('ai_debt_payment', { amount: this.money(debt.payment, currency) })}` : '';
+      lines.push(`💳 ${this.formatter.escapeMarkdown(debt.name)} — *${this.money(debt.amount, currency)}*${payment}`);
+    }
+    return lines;
+  }
+
   // Кнопка на экран с подробностями, если такой есть, и «🤖 Ещё вопрос»
   keyboard(result) {
     const { intent } = result;
@@ -208,7 +234,8 @@ class AnswerComposer {
     const rows = [];
     const button = (key, callback) => rows.push([{ text: this.t(key), callback_data: callback }]);
     const expenseType = !['income_total', 'balance', 'savings_status', 'budget_status'].includes(intent.type);
-    if (intent.type === 'savings_status') button('ai_button_savings', 'sv');
+    if (intent.type === 'savings_status' || intent.type === 'debt_status') button('ai_button_savings', 'sv');
+    else if (intent.type === 'subscriptions') button('ai_button_subscriptions', 'pls');
     else if (intent.type === 'budget_status') {
       if (result.locked) button('button_premium', 'premium_subscription');
       else button('ai_button_budgets', 'bg_menu');

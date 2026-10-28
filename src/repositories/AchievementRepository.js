@@ -112,7 +112,8 @@ class AchievementRepository extends BaseRepository {
          EXISTS (SELECT 1 FROM manual WHERE h >= 23 OR h < 4) AS night_owl,
          (SELECT COUNT(*) FROM category_budgets WHERE user_id = $1)::int AS budgets,
          (SELECT COUNT(*) FROM savings_pots WHERE user_id = $1 AND kind = 'goal')::int AS goals,
-         (SELECT COUNT(*) FROM savings_pots WHERE user_id = $1 AND kind = 'goal' AND achieved_at IS NOT NULL)::int AS goals_reached,
+         -- Цель, выполненная уже при создании (achieved_at = created_at), — не достижение
+         (SELECT COUNT(*) FROM savings_pots WHERE user_id = $1 AND kind = 'goal' AND achieved_at > created_at)::int AS goals_reached,
          (SELECT COUNT(*) FROM savings_pots WHERE user_id = $1 AND kind = 'debt' AND balance = 0)::int AS debts_paid,
          (SELECT COUNT(*) FROM savings_operations WHERE user_id = $1)::int AS savings_ops,
          EXISTS (SELECT 1 FROM family_user WHERE user_id = $1) AS family,
