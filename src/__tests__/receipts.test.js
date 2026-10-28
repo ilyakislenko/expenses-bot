@@ -887,7 +887,7 @@ describe('ReceiptHandlers background recognition', () => {
     expect(receiptService.record).toHaveBeenCalledTimes(1);
     expect(stale.answerCbQuery).toHaveBeenCalledWith(t('receipt_draft_outdated'), { show_alert: true });
     expect(stale.editMessageReplyMarkup).toHaveBeenCalledWith({ inline_keyboard: [] });
-  });
+  }, 20000); // шесть задач в потоках обработки изображений: под нагрузкой сервера дольше 5 с по умолчанию
 
   // Кнопка на сообщении messageId (черновик привязан к сообщению)
   const buttonCtx = (ctx, messageId) => ({
