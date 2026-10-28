@@ -140,6 +140,21 @@ class NotificationService {
       throw error;
     }
   }
+
+  // Картинка (PNG в памяти, на диск не пишется) с подписью и кнопками
+  async sendPhoto(userId, png, options = {}) {
+    if (!this.bot) {
+      logger.warn('Bot not available for sending photo', { userId });
+      throw new Error('Bot not available');
+    }
+    await this.bot.telegram.sendPhoto(userId, { source: png, filename: 'chart.png' }, options);
+    logger.info('Photo sent successfully', { userId, bytes: png.length });
+  }
+
+  // Имя бота для подписи на картинках (известно после запуска бота)
+  botUsername() {
+    return (this.bot && this.bot.botInfo && this.bot.botInfo.username) || null;
+  }
 }
 
 module.exports = NotificationService; 

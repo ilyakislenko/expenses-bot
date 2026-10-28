@@ -98,6 +98,9 @@ const ImportHandlers = require('./handlers/ImportHandlers');
 const ReceiptHandlers = require('./handlers/ReceiptHandlers');
 const PlanningHandlers = require('./handlers/PlanningHandlers');
 const AchievementHandlers = require('./handlers/AchievementHandlers');
+const ChartHandlers = require('./handlers/ChartHandlers');
+const ChartService = require('./services/ChartService');
+const ChartRenderer = require('./services/ChartRenderer');
 const ReferralHandlers = require('./handlers/ReferralHandlers');
 const AssistantHandlers = require('./handlers/AssistantHandlers');
 const MultiEntryHandlers = require('./handlers/MultiEntryHandlers');
@@ -218,7 +221,31 @@ class Container {
           formatter: this.get('formatter'),
           localizationService: this.get('localizationService'),
           notificationService: this.get('notificationService'),
-          userNotificationRepository: this.get('userNotificationRepository')
+          userNotificationRepository: this.get('userNotificationRepository'),
+          chartService: this.get('chartService')
+        });
+
+      // Графики картинками: SVG → PNG без браузера (@resvg/resvg-js), шрифты — assets/fonts + системный CJK
+      case 'chartRenderer':
+        return new ChartRenderer();
+
+      case 'chartService':
+        return new ChartService({
+          expenseService: this.get('expenseService'),
+          reportService: this.get('reportService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter'),
+          chartRenderer: this.get('chartRenderer')
+        });
+
+      case 'chartHandlers':
+        return new ChartHandlers({
+          chartService: this.get('chartService'),
+          achievementService: this.get('achievementService'),
+          premiumService: this.get('premiumService'),
+          userService: this.get('userService'),
+          localizationService: this.get('localizationService'),
+          referralService: this.get('referralService')
         });
 
       case 'achievementHandlers':
@@ -227,7 +254,8 @@ class Container {
           expenseService: this.get('expenseService'),
           userService: this.get('userService'),
           localizationService: this.get('localizationService'),
-          formatter: this.get('formatter')
+          formatter: this.get('formatter'),
+          chartService: this.get('chartService')
         });
 
       case 'referralRepository':
@@ -737,7 +765,8 @@ class Container {
           reportService: this.get('reportService'),
           planningService: this.get('planningService'),
           achievementService: this.get('achievementService'),
-          roastService: this.get('roastService')
+          roastService: this.get('roastService'),
+          chartService: this.get('chartService')
         });
 
       case 'budgetHandlers':
@@ -855,6 +884,7 @@ class Container {
       expenseHandlers: this.get('expenseHandlers'),
       budgetHandlers: this.get('budgetHandlers'),
       achievementHandlers: this.get('achievementHandlers'),
+      chartHandlers: this.get('chartHandlers'),
       achievementService: this.get('achievementService'),
       exportHandlers: this.get('exportHandlers'),
       importHandlers: this.get('importHandlers'),
