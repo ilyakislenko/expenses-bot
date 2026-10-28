@@ -144,7 +144,7 @@ class ReceiptHandlers {
       const limit = await this.receiptService.checkLimit(userId, timezone);
       if (!limit.remaining) {
         const key = limit.isPremium ? 'receipt_limit_premium' : 'receipt_limit_regular';
-        let text = this.t(lang, key, { used: limit.used, limit: limit.limit, premium: this.receiptService.premiumLimit });
+        let text = `${this.t(lang, key, { used: limit.used, limit: limit.limit, premium: this.receiptService.premiumLimit })}\n\n${this.t(lang, 'receipt_limit_counting')}`;
         let keyboard = limit.isPremium ? [] : [[{ text: this.t(lang, 'button_premium'), callback_data: 'premium_subscription' }]];
         if (!limit.isPremium && this.referralService) ({ text, keyboard } = await this.referralService.withUpsell(userId, lang, text, keyboard));
         await ctx.reply(text, {
@@ -207,7 +207,8 @@ class ReceiptHandlers {
   // в Telegram, turn — на сколько градусов image повёрнут относительно подготовленного фото (для «повернуть» после рестарта).
   // previous — { receipt, timezone, frame } сообщения до поворота: если новый ответ не лучше (pickBetter), не
   // разобран или сервис недоступен, возвращается прежний черновик (или «не получилось» с кнопкой поворота).
-  // Показанный черновик и «не получилось распознать» засчитываются в месячный лимит (addAttempt)
+  // Показанный черновик и «не получилось распознать» засчитываются в месячный лимит — одна попытка на фото (сообщение
+  // statusId): повороты обновляют её, запись чека из этого сообщения её заменяет
   async recognizeAndRecord(ctx, { image, mimeType, userId, lang, timezone, currency, statusId, fileId = null, sourceMime = mimeType, turn = 0, prepared = false, retry = true, small = false, lowResolution = false, previous = null }) {
     const stopTyping = keepTyping(ctx);
     let statusText = prepared ? this.t(lang, 'receipt_retrying') : this.t(lang, 'receipt_recognizing');
@@ -251,9 +252,9 @@ class ReceiptHandlers {
         if (code === 'unreadable') {
           // Не разобрали даже повёрнутым: советы и кнопка «повернуть на 90°» (только для JPEG)
           const canRotate = result.mimeType === 'image/jpeg' && !!frame;
-          await this.receiptService.addAttempt(userId, 'unreadable');
+          await this.receiptService.addAttempt(userId, statusId, 'unreadable');
           if (canRotate) await this.keepFrame(userId, statusId, frame, result.image, null);
-          await this.editStatus(ctx, statusId, `${this.t(lang, 'receipt_unreadable')}\n\n${this.photoTips(lang, result.lowResolution)}`, {
+          await this.editStatus(ctx, statusId, `${this.t(lang, 'receipt_unreadable')}\n\n${this.photoTips(lang, result.lowResolution)}\n\n${this.t(lang, 'receipt_attempt_counted')}`, {
             parse_mode: 'Markdown',
             reply_markup: { inline_keyboard: canRotate ? [[{ text: this.t(lang, 'button_receipt_rotate'), callback_data: 'rvr' }]] : [] }
           });
@@ -264,7 +265,7 @@ class ReceiptHandlers {
       }
       if (result.receipt.lowConfidence) {
         // Цифрам нельзя верить — не записываем сами: черновик, советы и кнопка «повернуть на 90°»
-        const receipt = { ...result.receipt, attemptId: await this.receiptService.addAttempt(userId, 'draft') };
+        const receipt = { ...result.receipt, attemptId: await this.receiptService.addAttempt(userId, statusId, 'draft') };
         const canRotate = result.mimeType === 'image/jpeg' && !!frame;
         await this.keepFrame(userId, statusId, canRotate ? frame : null, canRotate ? result.image : null, { receipt, timezone });
         const view = await this.buildDraftView(userId, lang, receipt, { canRotate, lowResolution: result.lowResolution, timezone });
@@ -272,7 +273,7 @@ class ReceiptHandlers {
         return;
       }
       const { receipt } = result;
-      const receiptId = await this.recordReceipt(userId, receipt, timezone);
+      const receiptId = await this.recordReceipt(userId, receipt, timezone, statusId);
       recorded = true;
       if (previous) {
         await this.receiptService.deleteDraft(userId, statusId);
@@ -373,9 +374,9 @@ class ReceiptHandlers {
   }
 
   // rvr — тот же подготовленный кадр, повёрнутый ещё на 90° по часовой; одна попытка, очередь и «один чек за раз»
-  // как у нового фото. Это новое распознавание: нужен остаток месячного лимита, показанный результат засчитывается.
-  // Прежний черновик остаётся в БД («поворачивается»), пока новое распознавание не закончится: не лучше, сбой или
-  // перезапуск — возвращается прежний с кнопками
+  // как у нового фото. Фото, уже засчитанное в лимит, поворачивается бесплатно (та же попытка); фото без попытки
+  // (кадр сохранён до этого) требует остатка лимита. Прежний черновик остаётся в БД («поворачивается»), пока новое
+  // распознавание не закончится: не лучше, сбой или перезапуск — возвращается прежний с кнопками
   async rotateAndRetry(ctx) {
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
@@ -388,7 +389,7 @@ class ReceiptHandlers {
     this.busyUsers.add(userId);
     let started = false;
     try {
-      if (await this.limitReached(ctx, lang, userId)) return;
+      if (!(await this.receiptService.hasAttempt(userId, messageId)) && await this.limitReached(ctx, lang, userId)) return;
       const taken = await this.receiptService.takeFrame(userId, messageId);
       if (!taken) {
         // Исправленный вручную черновик не поворачивается (новое распознавание стёрло бы правки): кнопки остаются
@@ -440,9 +441,10 @@ class ReceiptHandlers {
     }
   }
 
-  async recordReceipt(userId, receipt, timezone) {
+  // messageId — сообщение фото: чек заменяет в лимите его попытку (после поворотов того же фото)
+  async recordReceipt(userId, receipt, timezone, messageId = null) {
     const familyId = await this.expenseHandlers.familyModeTarget(userId);
-    return this.receiptService.record(userId, receipt, { timezone, familyId });
+    return this.receiptService.record(userId, receipt, { timezone, familyId, messageId });
   }
 
   // Список записанного чека + «дата не распознана — записал на сегодня» (если так) + достижения и подколка
@@ -477,10 +479,15 @@ class ReceiptHandlers {
     const lines = [parts.join(' · ')];
     if (when.unknown) lines.push(this.t(lang, 'receipt_date_unknown_draft'));
     if (!receipt.edited) {
-      if (receipt.checks && receipt.checks.suspicious) lines.push(this.t(lang, 'receipt_suspicious'));
-      lines.push(this.t(lang, 'receipt_low_confidence', {
-        total: receipt.total !== null ? this.formatter.formatAmount(receipt.total, receipt.currency) : '—'
-      }), this.photoTips(lang, lowResolution));
+      // Одна причина — один текст: цифры сходятся и смущает только текст-«команда» — без «не уверен в цифрах» и советов;
+      // строки сходятся с итогом (или итога нет) — «не уверен, что прочитал верно», а не «не сходятся с итогом»
+      const checks = receipt.checks || {};
+      if (checks.suspicious) lines.push(this.t(lang, 'receipt_suspicious'));
+      if (!(checks.suspicious && checks.numbersOk === true && !checks.smallImage)) {
+        lines.push(check.matches === false
+          ? this.t(lang, 'receipt_low_confidence', { total: this.formatter.formatAmount(receipt.total, receipt.currency) })
+          : this.t(lang, 'receipt_low_confidence_unsure'), this.photoTips(lang, lowResolution));
+      }
     }
     if (receipt.items.length) lines.push(this.draftSumLine(lang, receipt, check));
     lines.push('');

@@ -17,18 +17,28 @@ class ReceiptRepository extends BaseRepository {
     return Number(result.rows[0].count);
   }
 
-  // Попытка распознавания без записи (outcome: 'draft' | 'unreadable'). Возвращает id (черновик хранит его, чтобы
-  // при записи заменить попытку чеком)
-  async addAttempt(userId, outcome) {
-    const result = await this.query('INSERT INTO receipt_attempts (user_id, outcome) VALUES ($1, $2) RETURNING id', [userId, outcome]);
+  // Попытка распознавания без записи (outcome: 'draft' | 'unreadable') — одна на фото: ключ — сообщение со статусом
+  // (messageId). Повороты того же фото обновляют ту же строку. Возвращает id (черновик хранит его, чтобы при записи
+  // заменить попытку чеком)
+  async addAttempt(userId, messageId, outcome) {
+    const result = await this.query(`
+      INSERT INTO receipt_attempts (user_id, message_id, outcome) VALUES ($1, $2, $3)
+      ON CONFLICT (user_id, message_id) WHERE message_id IS NOT NULL DO UPDATE SET outcome = EXCLUDED.outcome
+      RETURNING id`, [userId, messageId, outcome]);
     return result.rows[0].id;
+  }
+
+  // Фото этого сообщения уже засчитано в лимит (поворот его больше не тратит)
+  async hasAttempt(userId, messageId) {
+    const result = await this.query('SELECT 1 FROM receipt_attempts WHERE user_id = $1 AND message_id = $2', [userId, messageId]);
+    return result.rowCount > 0;
   }
 
   // Одна транзакция: чек и по трате на каждую позицию. localAt — локальное время траты ('YYYY-MM-DD HH:MM:SS')
   // или null (сейчас). items: [{ amount, description, categoryId, quantity, unitPrice }] — количество и цена
   // за единицу как в чеке (NULL — не распознаны или вне пределов колонок), по ним считается личная инфляция.
-  // attemptId — попытка черновика, которую заменяет этот чек (в лимите считается один раз)
-  async create(userId, { merchant, date, time, currency, total, itemsTotal, localAt, timezone, familyId, items, attemptId = null }) {
+  // attemptId — попытка черновика, messageId — сообщение фото: их попытку заменяет этот чек (в лимите фото считается один раз)
+  async create(userId, { merchant, date, time, currency, total, itemsTotal, localAt, timezone, familyId, items, attemptId = null, messageId = null }) {
     return this.transaction(async (client) => {
       const created = await client.query(`
         INSERT INTO receipts (user_id, merchant, purchased_date, purchased_time, currency, printed_total, items_total, item_count)
@@ -47,7 +57,9 @@ class ReceiptRepository extends BaseRepository {
         items.map(item => item.amount), items.map(item => item.description || null), items.map(item => item.categoryId),
         items.map(item => (Number(item.quantity) > 0 && Number(item.quantity) <= MAX_QUANTITY ? Math.round(Number(item.quantity) * 1000) / 1000 : null)),
         items.map(item => (Number(item.unitPrice) > 0 && Number(item.unitPrice) <= MAX_UNIT_PRICE ? item.unitPrice : null))]);
-      if (attemptId) await client.query('DELETE FROM receipt_attempts WHERE id = $1 AND user_id = $2', [attemptId, userId]);
+      if (attemptId || messageId) {
+        await client.query('DELETE FROM receipt_attempts WHERE user_id = $1 AND (id = $2 OR message_id = $3)', [userId, attemptId, messageId]);
+      }
       return receiptId;
     });
   }

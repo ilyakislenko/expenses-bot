@@ -273,7 +273,8 @@ describe('providers', () => {
   it('the prompt lists categories, currency and today', () => {
     const prompt = buildPrompt({ categories: ['Еда', 'Другое'], fallbackCategory: 'Другое', defaultCurrency: 'RUB', today: '2026-10-27' });
     expect(prompt).toContain('"Еда", "Другое"');
-    expect(prompt).toContain('The current year is 2026');
+    expect(prompt).toContain('A 2-digit year YY on the receipt means 20YY; receipts are recent — printed in 2026 or the year before');
+    expect(prompt).not.toMatch(/\d{2}\.\d{2}\.\d{2}|\d{4}-\d{2}-\d{2}/);
     // Сегодняшняя дата модели не даётся — иначе она подставляет её вместо непрочитанной
     expect(prompt).not.toContain('2026-10-27;');
   });
@@ -621,7 +622,9 @@ describe('confidence gate and prompt', () => {
     expect(prompt).not.toMatch(/\{\{\w+\}\}/);
     expect(prompt).toContain('"category":"<one of the categories below>"');
     expect(prompt).toContain('exactly one of: "Еда", "Другое"');
-    expect(prompt).toContain('27.10.26 → 2026-10-27');
+    expect(prompt).toContain('day.month.year');
+    // Конкретной даты в запросе нет: модель подставляла её вместо даты чека
+    expect(prompt).not.toMatch(/\d{2}\.\d{2}\.\d{2}|\d{4}-\d{2}-\d{2}/);
   });
 });
 
@@ -685,10 +688,17 @@ function memoryDraftStore() {
       row.taken = false;
       return { frame: copy(row.frame), receipt: copy(row.receipt), timezone: row.timezone };
     }),
-    addAttempt: jest.fn(async (userId, outcome) => {
-      attempts.push({ userId, outcome });
+    // Как ReceiptRepository.addAttempt: одна попытка на фото (сообщение), повторный вызов обновляет её
+    addAttempt: jest.fn(async (userId, messageId, outcome) => {
+      const index = attempts.findIndex(attempt => attempt.userId === userId && attempt.messageId === messageId);
+      if (index >= 0) {
+        attempts[index].outcome = outcome;
+        return index + 1;
+      }
+      attempts.push({ userId, messageId, outcome });
       return attempts.length;
-    })
+    }),
+    hasAttempt: jest.fn(async (userId, messageId) => attempts.some(attempt => attempt.userId === userId && attempt.messageId === messageId))
   };
 }
 
@@ -805,7 +815,7 @@ describe('ReceiptHandlers background recognition', () => {
     expect(text).toContain(t('receipt_photo_tips'));
     expect(extra.reply_markup.inline_keyboard.flat().map(b => b.callback_data)).toEqual(['rdl|i1', 'rda', 'rdt', 'rvd|1', 'rvr', 'rvd|0']);
     // Показанный черновик засчитан в месячный лимит; при записи он заменит свою попытку (attemptId)
-    expect(receiptService.attempts).toEqual([{ userId: 7, outcome: 'draft' }]);
+    expect(receiptService.attempts).toEqual([{ userId: 7, messageId: 101, outcome: 'draft' }]);
     expect(receiptService.rows.get('7:101').receipt.attemptId).toBe(1);
 
     const callbackCtx = { ...ctx, callbackQuery: { message: { message_id: 101 } }, answerCbQuery: jest.fn(async () => true), editMessageText: jest.fn(async () => true) };
@@ -825,7 +835,7 @@ describe('ReceiptHandlers background recognition', () => {
     finish({ error: new ReceiptError('unreadable'), image: tinyJpeg(16, 32), mimeType: 'image/jpeg', attempts: 2 });
     await handlers.idle();
     const [, , , text, extra] = ctx.telegram.editMessageText.mock.calls.pop();
-    expect(text).toBe(`${t('receipt_unreadable')}\n\n${t('receipt_photo_tips')}`);
+    expect(text).toBe(`${t('receipt_unreadable')}\n\n${t('receipt_photo_tips')}\n\n${t('receipt_attempt_counted')}`);
     expect(extra.reply_markup.inline_keyboard.flat().map(b => b.callback_data)).toEqual(['rvr']);
 
     let release;
