@@ -93,6 +93,19 @@ class ReceiptRepository extends BaseRepository {
     return result.rows[0];
   }
 
+  // Уже записанный (не отменённый) чек с той же датой, итогом и временем покупки (время не прочитано — без него) за
+  // последние 120 дней — то же фото, присланное ещё раз. null — такого нет
+  async findDuplicate(userId, { date, time, total }) {
+    const result = await this.query(`
+      SELECT id, created_at FROM receipts
+      WHERE user_id = $1 AND status <> 'undone' AND purchased_date = $2::date AND printed_total = $3
+        AND (($4::time IS NULL AND purchased_time IS NULL) OR purchased_time = $4::time)
+        AND created_at > NOW() - INTERVAL '120 days'
+      ORDER BY id DESC LIMIT 1
+    `, [userId, date, total, time || null]);
+    return result.rows[0] || null;
+  }
+
   // Отмена чека: удаляет оставшиеся траты чека. null — чек не найден или уже отменён
   async undo(userId, receiptId) {
     return this.transaction(async (client) => {

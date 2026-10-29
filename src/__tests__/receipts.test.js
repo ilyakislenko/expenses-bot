@@ -83,6 +83,11 @@ describe('receipt JSON normalization', () => {
     expect(many.items).toHaveLength(100);
     expect(cleanName('1. Кефир')).toBe('Кефир');
     expect(cleanName('[М] Молоко СТМ 3.2% полипак')).toBe('Молоко СТМ 3.2% полипак');
+    // количество × цена = сумма и НДС, прилипшие к названию, — не часть названия; размер «30х40» — часть
+    expect(cleanName('Хлеб деревенский 350г (Восход) 1*59.99=59.99 НДС 10%')).toBe('Хлеб деревенский 350г (Восход)');
+    expect(cleanName('Томаты сливовидные 0.404*199.99=80.80')).toBe('Томаты сливовидные');
+    expect(cleanName('Сыр Голландский 180г НДС 10%')).toBe('Сыр Голландский 180г');
+    expect(cleanName('Пакет 30х40')).toBe('Пакет 30х40');
   });
 
   it('maps categories by the user\'s names in any case, unknown → «Другое»', () => {
@@ -779,6 +784,7 @@ describe('ReceiptHandlers background recognition', () => {
       checkLimit: jest.fn(async () => ({ isPremium: false, limit: 10, used: 0, remaining: 10 })),
       recognizePhoto: jest.fn(() => recognition),
       record: jest.fn(async () => 1),
+      findDuplicate: jest.fn(async () => null),
       getReceipt: jest.fn(async () => ({ id: 1, merchant: 'Ярче', purchased_day: '2026-10-27', purchased_hm: '11:47', status: 'active', printed_total: '45', items_total: '45', currency: 'RUB' })),
       getExpenses: jest.fn(async () => [{ id: 5, amount: '45', currency: 'RUB', description: 'Хлеб', category_name: 'Еда', category_icon: '🍕' }]),
       categoriesById: jest.fn(async () => new Map([[1, { id: 1, name: 'Еда', icon: '🍕' }]])),
@@ -864,6 +870,37 @@ describe('ReceiptHandlers background recognition', () => {
     const texts = ctx.telegram.editMessageText.mock.calls.map(call => call[3]);
     expect(texts.slice(0, 3)).toEqual([t('receipt_queued', { position: 2 }), t('receipt_recognizing_slow'), t('receipt_retrying')]);
     expect(texts[3]).toContain('Хлеб');
+  });
+
+  it('the same receipt again is not recorded on its own: a draft says it is already recorded and opens it', async () => {
+    const { handlers, receiptService, ctx, finish, receipt, ok } = setup();
+    receiptService.findDuplicate.mockResolvedValue({ id: 8, created_at: '2026-10-29T10:59:34Z' });
+    await handlers.processImage(ctx, { fileId: 'f', fileSize: 1000, mimeType: 'image/jpeg' });
+    finish(ok(receipt()));
+    await handlers.idle();
+    expect(receiptService.record).not.toHaveBeenCalled();
+    const [, , , text, extra] = ctx.telegram.editMessageText.mock.calls.pop();
+    expect(text).toContain('этот чек уже записан');
+    expect(text).not.toContain(t('receipt_low_confidence_unsure'));
+    const buttons = extra.reply_markup.inline_keyboard.flat().map(b => b.callback_data);
+    expect(buttons).toEqual(expect.arrayContaining(['rv|8|0', 'rvd|1']));
+  });
+
+  it('«Всё верно» keeps the list; items dated by the receipt, not today, say so with a button to that day', async () => {
+    const { handlers, receiptService } = setup();
+    const threeDaysAgo = new Date(Date.now() - 3 * 86400000).toISOString();
+    receiptService.confirm = jest.fn(async () => ({ id: 1 }));
+    receiptService.getReceipt.mockResolvedValue({ id: 1, merchant: 'Ярче', purchased_day: '2026-10-26', purchased_hm: '17:57', status: 'confirmed', printed_total: '45', items_total: '45', currency: 'RUB' });
+    receiptService.getExpenses.mockResolvedValue([{ id: 5, amount: '45', currency: 'RUB', description: 'Хлеб', category_name: 'Еда', category_icon: '🍕', created_at_utc: threeDaysAgo }]);
+    const ctx = { from: { id: 7 }, callbackQuery: { message: { message_id: 3 } }, answerCbQuery: jest.fn(async () => true), editMessageText: jest.fn(async () => true) };
+    await handlers.confirm(ctx, 1);
+    const [text, extra] = ctx.editMessageText.mock.calls[0];
+    expect(text).toContain('Хлеб');
+    expect(text).toContain(t('receipt_confirmed'));
+    expect(text).toContain('Траты записаны на');
+    const buttons = extra.reply_markup.inline_keyboard.flat().map(b => b.callback_data);
+    expect(buttons).toContain('dy|-3|0');
+    expect(buttons).not.toContain('rvok|1');
   });
 
   it('low-confidence results become a draft with tips and «rotate»; nothing recorded until «Записать как есть»', async () => {
@@ -1447,6 +1484,7 @@ describe('small receipt with one or two lines', () => {
       checkLimit: jest.fn(async () => ({ isPremium: false, limit: 10, used: 0, remaining: 10 })),
       recognizePhoto: jest.fn(async () => ({ receipt: ReceiptService.distrustSparse({ receipt: check(invented) }, true).receipt, image: frame, mimeType: 'image/jpeg', attempts: 2, small: true, lowResolution: true })),
       record: jest.fn(async () => 1),
+      findDuplicate: jest.fn(async () => null),
       categoriesById: jest.fn(async () => new Map([[1, { id: 1, name: 'Еда', icon: '🍕' }]])),
       ...memoryDraftStore()
     };

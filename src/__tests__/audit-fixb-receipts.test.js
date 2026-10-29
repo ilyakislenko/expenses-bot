@@ -174,6 +174,7 @@ function setupHandlers({ remaining = 10 } = {}) {
     attempts,
     checkLimit: jest.fn(async () => ({ isPremium: false, limit: 10, used: 10 - remaining, remaining })),
     recognizePhoto: jest.fn(),
+    findDuplicate: jest.fn(async () => null),
     // Как ReceiptRepository: попытка — одна на фото (сообщение), чек заменяет попытку своего фото или черновика
     record: jest.fn(async (userId, receipt, { messageId = null } = {}) => {
       for (let i = attempts.length - 1; i >= 0; i -= 1) {

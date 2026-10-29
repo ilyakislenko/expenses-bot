@@ -263,9 +263,15 @@ class ReceiptHandlers {
         await this.editStatus(ctx, statusId, this.t(lang, ERROR_KEYS[code] || 'receipt_error_unavailable', result.error.params), { parse_mode: 'Markdown' });
         return;
       }
-      if (result.receipt.lowConfidence) {
+      // Тот же чек уже записан (то же фото ещё раз) — тоже не записываем сами: черновик с пометкой и кнопкой на тот чек
+      const duplicate = await this.receiptService.findDuplicate(userId, result.receipt);
+      if (result.receipt.lowConfidence || duplicate) {
         // Цифрам нельзя верить — не записываем сами: черновик, советы и кнопка «повернуть на 90°»
-        const receipt = { ...result.receipt, attemptId: await this.receiptService.addAttempt(userId, statusId, 'draft') };
+        const receipt = {
+          ...result.receipt,
+          attemptId: await this.receiptService.addAttempt(userId, statusId, 'draft'),
+          ...(duplicate ? { duplicateOf: { id: duplicate.id, createdAt: duplicate.created_at } } : {})
+        };
         const canRotate = result.mimeType === 'image/jpeg' && !!frame;
         await this.keepFrame(userId, statusId, canRotate ? frame : null, canRotate ? result.image : null, { receipt, timezone });
         const view = await this.buildDraftView(userId, lang, receipt, { canRotate, lowResolution: result.lowResolution, timezone });
@@ -478,7 +484,11 @@ class ReceiptHandlers {
     parts.push(this.t(lang, 'receipt_items_count', { count: receipt.items.length }), `*${this.formatter.formatAmount(check.itemsTotal, receipt.currency)}*`);
     const lines = [parts.join(' · ')];
     if (when.unknown) lines.push(this.t(lang, 'receipt_date_unknown_draft'));
-    if (!receipt.edited) {
+    if (receipt.duplicateOf && !receipt.edited) {
+      lines.push(this.t(lang, 'receipt_duplicate', { date: this.formatter.formatDate(receipt.duplicateOf.createdAt, timezone) }));
+    }
+    // Чек уверенный и только похож на уже записанный — без «не уверен в цифрах» и советов по съёмке
+    if (!receipt.edited && !(receipt.duplicateOf && receipt.lowConfidence === false)) {
       // Одна причина — один текст: цифры сходятся и смущает только текст-«команда» — без «не уверен в цифрах» и советов;
       // строки сходятся с итогом (или итога нет) — «не уверен, что прочитал верно», а не «не сходятся с итогом»
       const checks = receipt.checks || {};
@@ -496,6 +506,7 @@ class ReceiptHandlers {
     if (receipt.splitGroupId && receipt.items.length) {
       keyboard.push([{ text: this.t(lang, 'grp_split_send_here', { title: receipt.splitGroupTitle || '' }), callback_data: `gst|d|${receipt.splitGroupId}` }]);
     }
+    if (receipt.duplicateOf) keyboard.push([{ text: this.t(lang, 'button_receipt_open_previous'), callback_data: `rv|${receipt.duplicateOf.id}|0` }]);
     if (!receipt.items.length) {
       lines.push(this.t(lang, 'receipt_draft_empty'));
     } else {
@@ -1001,12 +1012,28 @@ class ReceiptHandlers {
         current < pages - 1 ? { text: '›', callback_data: `rv|${receiptId}|${current + 1}` } : { text: ' ', callback_data: 'noop' }
       ]);
     }
+    // Траты легли не на сегодня (дата с чека) — сказать прямо и дать кнопку на тот день: в «📅 Сегодня» их нет
+    const timezone = await this.userService.getUserTimezone(userId);
+    const localDay = (date) => new Intl.DateTimeFormat('en-CA', { timeZone: timezone || 'UTC', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(date));
+    const day = expenses[0].created_at_utc ? localDay(expenses[0].created_at_utc) : null;
+    const offset = day ? Math.round((Date.parse(`${day}T00:00:00Z`) - Date.parse(`${localDay(new Date())}T00:00:00Z`)) / 86400000) : 0;
+    if (offset !== 0) {
+      const label = this.formatter.formatLocalDate(day);
+      lines.splice(lines.length - 2, 0, this.t(lang, 'receipt_recorded_on_day', { date: label }));
+      keyboard.push([{ text: this.t(lang, 'button_receipt_open_day', { date: label }), callback_data: `dy|${offset}|0` }]);
+    }
     keyboard.push([{ text: this.t(lang, 'button_receipt_date'), callback_data: `rt|${receiptId}` }]);
     keyboard.push([{ text: this.t(lang, 'grp_button_split_friends'), callback_data: `gsr|${receiptId}` }]);
-    keyboard.push([
-      { text: this.t(lang, 'button_receipt_ok'), callback_data: `rvok|${receiptId}` },
-      { text: this.t(lang, 'button_receipt_undo'), callback_data: `rvx|${receiptId}` }
-    ]);
+    // «Всё верно» нажато — список остаётся (без этой кнопки) со строкой «✅ Чек записан»; отменить можно и потом
+    if (receipt.status === 'confirmed') {
+      lines.push('', this.t(lang, 'receipt_confirmed'));
+      keyboard.push([{ text: this.t(lang, 'button_receipt_undo'), callback_data: `rvx|${receiptId}` }]);
+    } else {
+      keyboard.push([
+        { text: this.t(lang, 'button_receipt_ok'), callback_data: `rvok|${receiptId}` },
+        { text: this.t(lang, 'button_receipt_undo'), callback_data: `rvx|${receiptId}` }
+      ]);
+    }
     return { text: lines.join('\n'), keyboard };
   }
 
@@ -1018,7 +1045,7 @@ class ReceiptHandlers {
     await respond(ctx, view.text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: view.keyboard } });
   }
 
-  // rvok|<id> — «Всё верно»: кнопки убираются, остаётся короткая сводка
+  // rvok|<id> — «Всё верно»: тот же список позиций со строкой «✅ Чек записан», без этой кнопки
   async confirm(ctx, receiptId) {
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
@@ -1028,10 +1055,8 @@ class ReceiptHandlers {
       return;
     }
     await ctx.answerCbQuery().catch(() => {});
-    const full = await this.receiptService.getReceipt(userId, receiptId);
-    const expenses = await this.receiptService.getExpenses(userId, receiptId);
-    const text = `${await this.header(userId, lang, full, expenses)}\n${this.t(lang, 'receipt_confirmed')}`;
-    await respond(ctx, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [] } });
+    const view = await this.buildReceiptView(userId, lang, receiptId, 0);
+    await respond(ctx, view.text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: view.keyboard } });
   }
 
   // rvx|<id> — подтверждение отмены чека

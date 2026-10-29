@@ -321,6 +321,12 @@ class ReceiptService {
     return this.receiptRepository.getExpenses(userId, receiptId);
   }
 
+  // Тот же чек уже записан? { id, created_at } | null. Без даты или итога не сравниваем — слишком мало признаков
+  async findDuplicate(userId, receipt) {
+    if (!receipt || !receipt.date || receipt.total === null || receipt.total === undefined) return null;
+    return this.receiptRepository.findDuplicate(userId, { date: receipt.date, time: receipt.time || null, total: receipt.total });
+  }
+
   async confirm(userId, receiptId) {
     return this.receiptRepository.setStatus(userId, receiptId, 'confirmed');
   }
