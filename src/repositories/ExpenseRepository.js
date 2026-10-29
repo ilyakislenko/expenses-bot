@@ -1,6 +1,7 @@
 const BaseRepository = require('./BaseRepository');
 const periodsConfig = require('../config/periods');
 const currencyConfig = require('../config/currencies');
+const { TAG_SQL_PATTERN } = require('../utils/tags');
 
 class ExpenseRepository extends BaseRepository {
   async addExpense(userId, amount, description, categoryId, currency = currencyConfig.BASE_CURRENCY, userTimezone = 'UTC', familyId = null) {
@@ -81,17 +82,31 @@ class ExpenseRepository extends BaseRepository {
   // Категория последней траты пользователя с таким же описанием (без учёта регистра).
   // Траты из импорта выписок не учитываются: импорт не меняет запомненные категории. Категория по умолчанию,
   // поставленная ботом при записи нескольких трат разом (category_guessed), — тоже: пользователь её не выбирал
+  // description — без тегов (utils/tags.stripTags); у прошлых трат теги тоже отрезаются: «кофе #отпуск» = «кофе»
   async getLastCategoryIdForDescription(userId, description) {
     const query = `
       SELECT category_id
       FROM expenses
       WHERE user_id = $1 AND category_id IS NOT NULL AND import_hash IS NULL AND NOT category_guessed
-        AND LOWER(TRIM(description)) = LOWER(TRIM($2))
+        AND LOWER(TRIM(regexp_replace(description, $3, '', 'g'))) = LOWER(TRIM($2))
       ORDER BY created_at_utc DESC
       LIMIT 1
     `;
-    const result = await this.query(query, [userId, description]);
+    const result = await this.query(query, [userId, description, TAG_SQL_PATTERN]);
     return result.rows[0] ? result.rows[0].category_id : null;
+  }
+
+  // Траты с тегами (в описании есть «#»), новые первыми — для экрана «🏷 Теги»
+  async getTaggedExpenses(userId, limit = 5000) {
+    const result = await this.query(`
+      SELECT e.id, e.amount::float AS amount, e.currency, e.description, e.created_at_utc, c.name AS category_name, c.icon AS category_icon
+      FROM expenses e
+      LEFT JOIN categories c ON c.id = e.category_id
+      WHERE e.user_id = $1 AND e.description LIKE '%#%'
+      ORDER BY e.created_at_utc DESC
+      LIMIT $2
+    `, [userId, limit]);
+    return result.rows;
   }
 
   // Категорию выбрал пользователь — она больше не «угаданная» и запоминается для описания

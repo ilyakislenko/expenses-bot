@@ -2,6 +2,7 @@ const logger = require('../utils/logger');
 const { expensesTotal, expensesAmountTotal } = require('../utils/metrics');
 const { localToday, customPeriod, dayPeriod } = require('../utils/period');
 const { moveToDate } = require('../utils/recordDate');
+const { stripTags } = require('../utils/tags');
 
 class ExpenseService {
   constructor(expenseRepository, userRepository, categoryRepository, premiumService, funnelService, referralService = null) {
@@ -49,11 +50,12 @@ class ExpenseService {
     return this.categoryRepository.getAvailableCategoryById(userId, categoryId);
   }
 
-  // Категория, в которую пользователь последний раз записывал трату с таким же описанием,
+  // Категория, в которую пользователь последний раз записывал трату с таким же описанием (теги «#отпуск» не в счёт),
   // если она всё ещё ему доступна (например, кастомная категория после окончания премиума — нет)
   async getRememberedCategory(userId, description, availableCategories) {
-    if (!description) return null;
-    const categoryId = await this.expenseRepository.getLastCategoryIdForDescription(userId, description);
+    const plain = stripTags(description);
+    if (!plain) return null;
+    const categoryId = await this.expenseRepository.getLastCategoryIdForDescription(userId, plain);
     return availableCategories.find(category => category.id === categoryId) || null;
   }
 

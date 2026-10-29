@@ -56,6 +56,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.command('savings', errorHandler((ctx) => savingsHandlers.showMenu(ctx))); // накопления, цели, прогноз
   bot.command('achievements', errorHandler((ctx) => achievementHandlers.show(ctx))); // уровень, серия, достижения, челленджи
   bot.command('coins', errorHandler((ctx) => handlers.coinHandlers.show(ctx))); // «🪙 Монеты»: баланс, обмен на дни премиума
+  bot.command('tags', errorHandler((ctx) => handlers.tagHandlers.show(ctx))); // «🏷 Теги»: суммы по «#тегам» в описаниях
   bot.command('invite', errorHandler((ctx) => handlers.referralHandlers.showInvite(ctx))); // пригласить друга
   bot.command('ask', errorHandler((ctx) => assistantHandlers.handleCommand(ctx))); // вопрос боту о своих тратах
   bot.command('roast', errorHandler((ctx) => handlers.roastHandlers.showMonth(ctx))); // «😈 Разнос месяца»
@@ -222,6 +223,8 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^ach/, errorHandler((ctx) => achievementHandlers.show(ctx)));
   // «🪙 Монеты»: экран, подтверждение обмена cnb|<дни>, обмен cnc|<дни>
   bot.action('coins', errorHandler((ctx) => handlers.coinHandlers.show(ctx)));
+  bot.action('tags', errorHandler((ctx) => handlers.tagHandlers.show(ctx))); // «🏷 Теги»
+  bot.action(/^tg\|(.+)$/, errorHandler((ctx) => handlers.tagHandlers.showTag(ctx)));
   bot.action(/^cnb\|(\d{1,2})$/, errorHandler((ctx) => handlers.coinHandlers.confirm(ctx)));
   bot.action(/^cnc\|(\d{1,2})$/, errorHandler((ctx) => handlers.coinHandlers.redeem(ctx)));
   // «☀️ План на день»: настройка (dpo), вкл/выкл (dpt), час (dph|<час>), «Показать сейчас» (dpn)

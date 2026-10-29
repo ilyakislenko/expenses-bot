@@ -87,6 +87,7 @@ const AchievementService = require('./services/AchievementService');
 const CoinService = require('./services/CoinService');
 const DailyPlanService = require('./services/DailyPlanService');
 const CoinHandlers = require('./handlers/CoinHandlers');
+const TagHandlers = require('./handlers/TagHandlers');
 const DailyPlanHandlers = require('./handlers/DailyPlanHandlers');
 const ReferralService = require('./services/ReferralService');
 const { createProviderFromEnv: createReceiptProvider } = require('./services/receipt/chain');
@@ -306,6 +307,16 @@ class Container {
           coinRepository: this.get('coinRepository'),
           userService: this.get('userService'),
           achievementRepository: this.get('achievementRepository')
+        });
+
+      // «🏷 Теги»: траты с «#тегом» в описании — суммы по тегам
+      case 'tagHandlers':
+        return new TagHandlers({
+          expenseRepository: this.get('expenseRepository'),
+          userService: this.get('userService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter'),
+          currencyUtils: this.get('currencyUtils')
         });
 
       case 'coinHandlers':
@@ -1103,6 +1114,7 @@ class Container {
       achievementService: this.get('achievementService'),
       coinService: this.get('coinService'),
       coinHandlers: this.get('coinHandlers'),
+      tagHandlers: this.get('tagHandlers'),
       dailyPlanService: this.get('dailyPlanService'),
       dailyPlanHandlers: this.get('dailyPlanHandlers'),
       exportHandlers: this.get('exportHandlers'),

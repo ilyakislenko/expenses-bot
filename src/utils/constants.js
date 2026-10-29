@@ -261,7 +261,7 @@ const LEGACY_MENU_BUTTON_KEYS = [
 function generateMoreMenu(localizationService, userLanguage, isAdmin = false) {
   const t = (key) => localizationService.getText(userLanguage, key);
   const keyboard = [
-    [{ text: t('button_ai'), callback_data: 'ai' }],
+    [{ text: t('button_ai'), callback_data: 'ai' }, { text: t('button_tags'), callback_data: 'tags' }],
     [{ text: t('button_quiz'), callback_data: 'qz' }],
     [{ text: t('button_planning'), callback_data: 'pl' }, { text: t('button_savings'), callback_data: 'sv' }],
     [{ text: t('button_achievements'), callback_data: 'ach' }, { text: t('button_invite'), callback_data: 'ref' }],
