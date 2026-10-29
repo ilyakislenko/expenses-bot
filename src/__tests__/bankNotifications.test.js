@@ -624,10 +624,10 @@ describe('routing: the bank branch comes after pending input and before question
 describe('texts: 13 languages', () => {
   const dir = path.join(__dirname, '..', 'locales');
   const ru = require('../locales/ru');
-  const keys = Object.keys(ru).slice(Object.keys(ru).indexOf('help_edit') + 1, Object.keys(ru).indexOf('onb_done_tip_bank') + 1);
+  const keys = Object.keys(ru).filter(key => /^(bank_|button_bank_)/.test(key) || ['help_bank', 'onb_input_bank', 'onb_done_tip_bank'].includes(key));
 
   it('every locale has the bank keys without leftover placeholders and with balanced Markdown', () => {
-    expect(keys[0]).toBe('bank_record_label');
+    expect(keys).toContain('bank_record_label');
     expect(keys).toHaveLength(24);
     const files = fs.readdirSync(dir).filter(file => file.endsWith('.js'));
     expect(files).toHaveLength(13);
