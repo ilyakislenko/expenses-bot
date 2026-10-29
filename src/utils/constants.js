@@ -16,6 +16,7 @@ const USER_LIMITS = {
     MAX_ASSISTANT_QUESTIONS_PER_DAY: 5, // отвеченных вопросов «🤖 Спроси бота» в локальный день
     MAX_ASSISTANT_MODEL_CALLS_PER_DAY: 15, // запросов к нейросети от «Спроси бота» в локальный день — с ответом или без (быстрый разбор не считается)
     MAX_VOICE_PER_DAY: 20, // распознанных голосовых в локальный день (запись текстом — без лимита)
+    MAX_BANK_MODEL_PER_DAY: 10, // уведомлений банка, разобранных нейросетью, в локальный день (по шаблонам — без лимита)
     ROAST_SAVAGE: true, // «😈 Злой режим» без цензуры (18+); false — только с премиумом (ехидный остаётся всем)
   },
   premium: {
@@ -32,6 +33,7 @@ const USER_LIMITS = {
     MAX_ASSISTANT_QUESTIONS_PER_DAY: 100,
     MAX_ASSISTANT_MODEL_CALLS_PER_DAY: 60,
     MAX_VOICE_PER_DAY: 300,
+    MAX_BANK_MODEL_PER_DAY: 100,
     ROAST_SAVAGE: true,
   }
 };

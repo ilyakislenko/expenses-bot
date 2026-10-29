@@ -14,8 +14,10 @@ class EntryBatchService {
   }
 
   // entries — из utils/multiEntry (описание уже в пределах лимита). Возвращает { batchId, defaulted } —
-  // defaulted: сколько трат попало в категорию по умолчанию (не запомнена)
-  async record(userId, entries, { source, familyId = null }) {
+  // defaulted: сколько трат попало в категорию по умолчанию (не запомнена).
+  // Уведомления банка (source 'bank'): у записи localAt — местное время из уведомления, categoryHint — системная категория
+  // известного магазина (если категория не запомнена; тоже «угадана»); onCreated — см. EntryBatchRepository.create
+  async record(userId, entries, { source, familyId = null, timezone = 'UTC', onCreated = null }) {
     const expenseEntries = entries.filter(entry => entry.kind === 'expense');
     const incomeEntries = entries.filter(entry => entry.kind === 'income');
     const [categories, fallback, currency, incomeCurrency] = await Promise.all([
@@ -29,22 +31,25 @@ class EntryBatchService {
     const expenses = [];
     for (const entry of expenseEntries) {
       const remembered = await this.expenseService.getRememberedCategory(userId, entry.description, categories);
-      if (!remembered) defaulted++;
+      const hinted = !remembered && entry.categoryHint ? categories.find(category => category.name === entry.categoryHint) : null;
+      if (!remembered && !hinted) defaulted++;
       expenses.push({
         amount: entry.amount,
         currency: entry.currency || currency,
         description: entry.description,
-        categoryId: (remembered || fallback).id,
-        guessed: !remembered
+        categoryId: (remembered || hinted || fallback).id,
+        guessed: !remembered,
+        localAt: entry.localAt || null
       });
     }
     const incomes = incomeEntries.map(entry => ({
       amount: entry.amount,
       currency: entry.currency || incomeCurrency,
-      description: entry.description
+      description: entry.description,
+      localAt: entry.localAt || null
     }));
 
-    const batchId = await this.entryBatchRepository.create(userId, { source, familyId, expenses, incomes });
+    const batchId = await this.entryBatchRepository.create(userId, { source, familyId, expenses, incomes, timezone }, onCreated);
     logger.info('Entry batch recorded', { userId, batchId, source, expenses: expenses.length, incomes: incomes.length, defaulted });
     if (expenses.length) {
       await this.funnelService.track(userId, 'first_expense');

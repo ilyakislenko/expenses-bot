@@ -7,7 +7,7 @@
 //   r — напоминания, n — что присылать (несколько), m — злой режим.
 
 const GOALS = ['track', 'budget', 'save', 'debt', 'family', 'subs'];
-const INPUTS = ['text', 'voice', 'receipt', 'statement'];
+const INPUTS = ['text', 'voice', 'receipt', 'statement', 'bank'];
 const NOTIFY = ['daily', 'weekly', 'month', 'bills'];
 const PAYDAYS = [1, 5, 10, 15, 20, 25];
 const ROAST_LEVELS = ['off', 'spicy', 'savage'];

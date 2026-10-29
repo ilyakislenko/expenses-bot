@@ -156,7 +156,7 @@ describe('onboarding rules', () => {
     expect(rules.paydayToPeriodDay('25')).toBe(25);
     expect(rules.paydayToPeriodDay(32)).toBeNull();
     expect(rules.notifyPlan(['daily', 'bills'])).toEqual({ daily: true, weekly: false, month: false, bills: true });
-    expect(rules.inputOptions({ voice: false, receipt: true })).toEqual(['text', 'receipt', 'statement']);
+    expect(rules.inputOptions({ voice: false, receipt: true })).toEqual(['text', 'receipt', 'statement', 'bank']);
     const draft = { goals: ['track', 'budget', 'save', 'debt', 'family', 'subs'], inputs: ['statement'] };
     expect(rules.finalActions(draft).map((a) => a.callback)).toEqual(['svgn', 'import', 'svbn', 'family']);
     expect(rules.finalActions({ goals: ['subs', 'track'], inputs: [] }).map((a) => a.callback)).toEqual(['pls', 'ov|0']);

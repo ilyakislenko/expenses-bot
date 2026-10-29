@@ -2,7 +2,7 @@ const { LEGACY_MENU_BUTTON_KEYS } = require('../utils/constants');
 const AssistantHandlers = require('./AssistantHandlers');
 
 class MessageHandlers {
-constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, donationRepository, bugReportRepository, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, savingsHandlers, planningHandlers, assistantHandlers, multiEntryHandlers, onboardingHandlers = null, receiptHandlers = null, subscriptionHandlers = null }) {
+constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, donationRepository, bugReportRepository, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, savingsHandlers, planningHandlers, assistantHandlers, multiEntryHandlers, onboardingHandlers = null, receiptHandlers = null, subscriptionHandlers = null, bankNotificationHandlers = null }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -29,6 +29,7 @@ constructor({ expenseService, userService, premiumService, familyService, catego
     this.onboardingHandlers = onboardingHandlers;
     this.receiptHandlers = receiptHandlers; // ввод строки/даты черновика чека и даты записанного чека
     this.subscriptionHandlers = subscriptionHandlers; // пробный период: название и цена, дата окончания
+    this.bankNotificationHandlers = bankNotificationHandlers; // пересланные и вставленные уведомления банка
   }
 
   async handleExpense(ctx) {
@@ -71,9 +72,10 @@ constructor({ expenseService, userService, premiumService, familyService, catego
 
       // Бот ждал ответ на подсказку, но срок вышел (в том числе пока бот был выключен). Ответ («25.10», «50000 зарплата»)
       // не превращаем молча в новую трату и не теряем: текст с числами — кнопка «✅ Записать …» (обычная запись),
-      // вопрос — как обычно, остальное — «ввод устарел»
+      // вопрос — как обычно, остальное — «ввод устарел». Уведомление банка ответом на подсказку не бывает — ниже своя ветка
+      const bankNotification = Boolean(this.bankNotificationHandlers && this.bankNotificationHandlers.accepts(ctx));
       const inputExpired = this.stateService.takeExpiredInput(userId);
-      if (inputExpired && !this.stateService.hasUserState(userId) && !this.stateService.hasUserEditState(userId)
+      if (inputExpired && !bankNotification && !this.stateService.hasUserState(userId) && !this.stateService.hasUserEditState(userId)
         && !(this.assistantHandlers && AssistantHandlers.isQuestion(text))) {
         if (/\d/.test(text)) return await this.offerRecordAfterExpired(ctx, text, userLanguage);
         return ctx.reply(t('input_expired'));
@@ -203,6 +205,15 @@ constructor({ expenseService, userService, premiumService, familyService, catego
       // «✏️ Изменить» запись: новая сумма, валюта и/или описание
       if (this.stateService.hasUserEditState(userId)) {
         return await this.expenseHandlers.handleEditInput(ctx, text, userLanguage, this.stateService.getUserEditState(userId));
+      }
+
+      // ===== Уведомление банка =====
+      // Пересланное или вставленное SMS/пуш/письмо банка («Покупка 1 250 ₽, PYATEROCHKA, карта *1234…») — после
+      // ожидаемого ввода и правки записи (они важнее), до вопросов и обычной записи. Обычный ввод («250 кофе», «кофе 250р,
+      // такси 400р», «оплата 500р интернет», вопросы) сюда не попадает: нужны сумма с валютой и признаки банка
+      // (utils/bankNotification.detect)
+      if (bankNotification) {
+        return await this.bankNotificationHandlers.handleMessage(ctx, userLanguage);
       }
 
       // Вопрос боту: «? сколько я потратил на такси», «сколько я потратил вчера», «14 сентября сколько потратил?»,

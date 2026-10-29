@@ -88,7 +88,8 @@ class IncomeHandlers {
   async buildCard(userId, lang, income) {
     const timezone = await this.userService.getUserTimezone(userId);
     const amount = this.formatter.formatAmount(Number(income.amount), income.currency);
-    const text = `💵 *${amount}* — ${this.incomeLabel(income, lang)}\n📅 ${this.formatter.formatDate(income.created_at_utc, timezone)}`;
+    let text = `💵 *${amount}* — ${this.incomeLabel(income, lang)}\n📅 ${this.formatter.formatDate(income.created_at_utc, timezone)}`;
+    if (income.batch_source === 'bank') text += `\n${this.t(lang, 'bank_record_label')}`;
     const actions = [
       { text: this.t(lang, 'button_edit_record'), callback_data: `ie|${income.id}` },
       { text: this.t(lang, 'button_record_date'), callback_data: `it|${income.id}` }

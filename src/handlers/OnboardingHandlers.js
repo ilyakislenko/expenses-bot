@@ -556,6 +556,7 @@ class OnboardingHandlers {
     if (inputs.includes('voice')) lines.push(t('onb_done_tip_voice'));
     if (inputs.includes('receipt')) lines.push(t('onb_done_tip_receipt'));
     if (inputs.includes('statement')) lines.push(t('onb_done_tip_statement'));
+    if (inputs.includes('bank')) lines.push(t('onb_done_tip_bank'));
 
     const actions = rules.finalActions(draft).map((action) => ({ text: t(action.key), callback_data: action.callback }));
     const keyboard = [];

@@ -4,35 +4,47 @@ const BaseRepository = require('./BaseRepository');
 // «Отменить всё». И счётчик голосовых за локальный день (voice_usage).
 class EntryBatchRepository extends BaseRepository {
   // Одна транзакция: партия, траты и доходы в порядке сообщения.
-  // expenses: [{ amount, currency, description, categoryId, guessed }] (guessed — категория по умолчанию, не запомненная),
-  // incomes: [{ amount, currency, description }]
-  async create(userId, { source, familyId = null, expenses, incomes }) {
+  // expenses: [{ amount, currency, description, categoryId, guessed, localAt }] (guessed — категория по умолчанию, не запомненная),
+  // incomes: [{ amount, currency, description, localAt }]. localAt — местное время записи 'YYYY-MM-DD HH:MM:SS' в поясе
+  // timezone (время из уведомления банка), без него — сейчас. onCreated(client, { batchId, expenseIds, incomeIds }) —
+  // ещё в этой транзакции (id в порядке записей)
+  async create(userId, { source, familyId = null, expenses, incomes, timezone = 'UTC' }, onCreated = null) {
     return this.transaction(async (client) => {
       const created = await client.query(
         'INSERT INTO entry_batches (user_id, source, item_count) VALUES ($1, $2, $3) RETURNING id',
         [userId, source, expenses.length + incomes.length]
       );
       const batchId = created.rows[0].id;
+      let expenseIds = [];
+      let incomeIds = [];
       if (expenses.length) {
-        await client.query(`
+        const inserted = await client.query(`
           INSERT INTO expenses (user_id, amount, description, category_id, currency, family_id, created_at_utc, batch_id, category_guessed)
-          SELECT $1::bigint, t.amount, t.description, t.category_id, t.currency, $3::int, NOW(), $2::int, t.guessed
-          FROM unnest($4::numeric[], $5::text[], $6::int[], $7::varchar[], $8::boolean[])
-            WITH ORDINALITY AS t(amount, description, category_id, currency, guessed, position)
+          SELECT $1::bigint, t.amount, t.description, t.category_id, t.currency, $3::int,
+            COALESCE(t.local_at::timestamp AT TIME ZONE $10::text, NOW()), $2::int, t.guessed
+          FROM unnest($4::numeric[], $5::text[], $6::int[], $7::varchar[], $8::boolean[], $9::text[])
+            WITH ORDINALITY AS t(amount, description, category_id, currency, guessed, local_at, position)
           ORDER BY t.position
+          RETURNING id
         `, [userId, batchId, familyId,
           expenses.map(item => item.amount), expenses.map(item => item.description || null),
-          expenses.map(item => item.categoryId), expenses.map(item => item.currency), expenses.map(item => Boolean(item.guessed))]);
+          expenses.map(item => item.categoryId), expenses.map(item => item.currency), expenses.map(item => Boolean(item.guessed)),
+          expenses.map(item => item.localAt || null), timezone]);
+        expenseIds = inserted.rows.map(row => row.id).sort((a, b) => a - b);
       }
       if (incomes.length) {
-        await client.query(`
+        const inserted = await client.query(`
           INSERT INTO incomes (user_id, amount, currency, description, created_at_utc, batch_id)
-          SELECT $1::bigint, t.amount, t.currency, t.description, NOW(), $2::int
-          FROM unnest($3::numeric[], $4::varchar[], $5::text[]) WITH ORDINALITY AS t(amount, currency, description, position)
+          SELECT $1::bigint, t.amount, t.currency, t.description, COALESCE(t.local_at::timestamp AT TIME ZONE $7::text, NOW()), $2::int
+          FROM unnest($3::numeric[], $4::varchar[], $5::text[], $6::text[]) WITH ORDINALITY AS t(amount, currency, description, local_at, position)
           ORDER BY t.position
+          RETURNING id
         `, [userId, batchId,
-          incomes.map(item => item.amount), incomes.map(item => item.currency), incomes.map(item => item.description || null)]);
+          incomes.map(item => item.amount), incomes.map(item => item.currency), incomes.map(item => item.description || null),
+          incomes.map(item => item.localAt || null), timezone]);
+        incomeIds = inserted.rows.map(row => row.id).sort((a, b) => a - b);
       }
+      if (onCreated) await onCreated(client, { batchId, expenseIds, incomeIds });
       return batchId;
     });
   }

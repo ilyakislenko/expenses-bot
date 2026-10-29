@@ -285,6 +285,8 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.on('voice', errorHandler((ctx) => multiEntryHandlers.handleVoice(ctx)));
   bot.action(/^vcb\|(\d+)$/, errorHandler((ctx) => multiEntryHandlers.showBatch(ctx, parseInt(ctx.match[1], 10))));
   bot.action(/^vcx\|(\d+)$/, errorHandler((ctx) => multiEntryHandlers.undo(ctx, parseInt(ctx.match[1], 10))));
+  // Уведомления банка (пересылка/вставка — ветка в messageHandlers.handleExpense): «Всё равно записать» / «Записать как трату»
+  bot.action(/^bfa\|([0-9a-f]{12})$/, errorHandler((ctx) => handlers.bankNotificationHandlers.recordAnyway(ctx)));
   bot.action('limits', errorHandler(async (ctx) => {
     await ctx.answerCbQuery();
     await commandHandlers.premiumSubscription(ctx);

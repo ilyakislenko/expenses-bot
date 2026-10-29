@@ -118,6 +118,13 @@ class MultiEntryHandlers {
     }));
     const familyId = await this.expenseHandlers.familyModeTarget(userId);
     const { batchId, defaulted } = await this.entryBatchService.record(userId, prepared, { source, familyId });
+    await this.showRecordedBatch(ctx, lang, batchId, { source, defaulted, header, send });
+  }
+
+  // Сводка только что записанной партии (несколько записей, голос, уведомления банка): строка достижений и злого
+  // режима, затем предупреждения бюджетов один раз на партию. send(text, extra) — новым сообщением или правкой статуса
+  async showRecordedBatch(ctx, lang, batchId, { source, defaulted = 0, header = '', send = (text, extra) => ctx.reply(text, extra) }) {
+    const userId = ctx.from.id;
     const { expenses } = await this.entryBatchService.getItems(userId, batchId);
     const categoryNames = [...new Set(expenses.map(expense => expense.category_name).filter(Boolean))];
     const view = await this.buildBatchView(userId, lang, batchId, { header, defaulted });
