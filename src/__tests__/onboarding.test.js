@@ -547,6 +547,7 @@ describe('routing', () => {
     handlers = {
       errorHandler: (fn) => fn,
       commandHandlers: any(), messageHandlers: any(), callbackHandlers: any(), onboardingHandlers: any(), roastHandlers: any(),
+      groupHandlers: { middleware: () => (ctx, next) => next(), sharedRoutes: () => [], handlePrivateStart: async () => false },
       stateService: new StateService(), localizationService,
       userService: { getUserLanguage: jest.fn().mockResolvedValue('en'), userRepository: { refreshProfile: jest.fn() } },
       enhancedValidator: new EnhancedValidator()

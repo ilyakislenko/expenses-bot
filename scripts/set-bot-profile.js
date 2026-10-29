@@ -1,4 +1,5 @@
-// Профиль бота в Telegram на всех языках интерфейса: описание (до /start), короткое описание и меню команд.
+// Профиль бота в Telegram на всех языках интерфейса: описание (до /start), короткое описание и меню команд
+// (в личке и отдельно в группах).
 // Тексты — в src/locales (bot_description, bot_short_description, command_*).
 // Запускать после изменения этих текстов или списка команд: node scripts/set-bot-profile.js
 require('dotenv').config();
@@ -9,6 +10,9 @@ const COMMANDS = [
   'start', 'stats', 'ask', 'history', 'income', 'recurring', 'savings', 'achievements', 'roast', 'quiz', 'export', 'import', 'family',
   'settings', 'setup', 'limits', 'invite', 'help', 'cancel', 'paysupport', 'terms', 'privacy'
 ];
+// Меню команд в группах (scope all_group_chats): только общие расходы — личные команды в группе не работают.
+// Тексты — command_group_<команда>
+const GROUP_COMMANDS = ['spent', 'split', 'balance', 'undo', 'group', 'help'];
 // Коды языков бота, которые в Telegram называются иначе
 const TELEGRAM_LANGUAGE = { jp: 'ja', kz: 'kk' };
 const DEFAULT_LANGUAGE = 'en'; // для языков Telegram, которых нет в боте (как и в онбординге)
@@ -33,6 +37,11 @@ async function setProfile(localization, lang, languageCode) {
   await call('setMyShortDescription', { short_description: t('bot_short_description'), ...scope });
   await call('setMyCommands', {
     commands: COMMANDS.map(command => ({ command, description: t(`command_${command}`) })),
+    ...scope
+  });
+  await call('setMyCommands', {
+    commands: GROUP_COMMANDS.map(command => ({ command, description: t(`command_group_${command}`) })),
+    scope: { type: 'all_group_chats' },
     ...scope
   });
   console.log(`${languageCode || 'default'} (${lang}): ok`);

@@ -31,6 +31,11 @@ class PaymentService {
     this.bot = bot;
   }
 
+  // «🎫 Пропуск для группы» (payload type group_pass): выдача, проверка перед оплатой, возврат
+  setGroupService(groupService) {
+    this.groupService = groupService;
+  }
+
   /**
    * Создает инвойс для Telegram Stars
    * @param {number} userId - ID пользователя
@@ -118,6 +123,13 @@ class PaymentService {
         }
         logger.info(`Donation completed for user ${user_id}, stars: ${stars}`);
         return { type: 'donation', status: 'completed' };
+      } else if (type === 'group_pass') {
+        // Пропуск группы: повторная доставка того же платежа не продлевает его второй раз (UNIQUE telegram_payment_id)
+        if (!this.groupService || !telegram_payment_charge_id) return { type: 'group_pass', status: 'ignored' };
+        const result = await this.groupService.grantPass({
+          groupId: payload.group_id, userId: user_id, stars: total_amount, days: payload.days, chargeId: telegram_payment_charge_id
+        });
+        return { type: 'group_pass', ...result };
       } else if (type === 'premium_subscription') {
         // Telegram может прислать то же обновление повторно — один платёж засчитываем один раз
         if (telegram_payment_charge_id && await userService.transactionExists(telegram_payment_charge_id)) {
@@ -208,6 +220,11 @@ class PaymentService {
     if (payload.type === 'donation') {
       return payload.donation_id && totalAmount > 0 ? { ok: true } : { ok: false, reason: 'donation' };
     }
+    if (payload.type === 'group_pass') {
+      const { GROUP_PASS } = require('../utils/constants');
+      if (!payload.group_id || payload.days !== GROUP_PASS.days) return { ok: false, reason: 'price_changed' };
+      return GROUP_PASS.stars === totalAmount ? { ok: true } : { ok: false, reason: 'price_changed' };
+    }
     if (payload.type === 'premium_subscription') {
       const tariff = this.getTariffData(payload.tariff);
       if (!tariff.stars) return { ok: false, reason: 'unknown_tariff' };
@@ -228,6 +245,7 @@ class PaymentService {
    * Семейный тариф: платит владелец семьи из ссылки, и семья помещается в тариф.
    */
   async checkPreCheckout(query, payerId) {
+    if (this.payloadType(query.invoice_payload) === 'group_pass') return this.checkGroupPassPreCheckout(query, payerId);
     const check = this.validatePreCheckout(query, payerId);
     if (!check.ok) return check;
     const payload = JSON.parse(query.invoice_payload);
@@ -252,14 +270,38 @@ class PaymentService {
     return check;
   }
 
+  payloadType(invoicePayload) {
+    try {
+      return JSON.parse(invoicePayload).type || null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  // Пропуск — по текущей цене, группе, где учёт ещё ведётся, и её участнику. Отказ помечен type: у него свой текст
+  async checkGroupPassPreCheckout(query, payerId) {
+    const check = this.validatePreCheckout(query, payerId);
+    if (!check.ok) return { ...check, type: 'group_pass' };
+    const payload = JSON.parse(query.invoice_payload);
+    const ledger = this.groupService ? await this.groupService.getLedger(payload.group_id) : null;
+    if (!ledger || ledger.chat_id === null || !(await this.groupService.member(ledger.id, payerId))) {
+      return { ok: false, reason: 'group_outdated', type: 'group_pass' };
+    }
+    return check;
+  }
+
   /**
-   * Платёж для возврата из админки: премиум или пожертвование с этим telegram_payment_charge_id.
-   * @returns {Promise<{ kind: 'premium'|'donation', id: number, userId: number, stars: number, status: string, chargeId: string }|null>}
+   * Платёж для возврата из админки: премиум, пропуск группы или пожертвование с этим telegram_payment_charge_id.
+   * @returns {Promise<{ kind: 'premium'|'group_pass'|'donation', id: number, userId: number, stars: number, status: string, chargeId: string }|null>}
    */
   async findPaymentByChargeId(chargeId) {
     const transaction = await this.premiumTransactionRepository.getTransactionByTelegramPaymentId(chargeId);
     if (transaction) {
       return { kind: 'premium', id: transaction.id, userId: Number(transaction.user_id), stars: transaction.stars_amount, status: transaction.status, chargeId };
+    }
+    const pass = this.groupService ? await this.groupService.findPass(chargeId) : null;
+    if (pass) {
+      return { kind: 'group_pass', id: pass.id, userId: Number(pass.user_id), stars: pass.stars, status: pass.status, chargeId };
     }
     const donation = this.donationRepository ? await this.donationRepository.getDonationByTelegramPaymentId(chargeId) : null;
     if (donation) {
@@ -276,7 +318,7 @@ class PaymentService {
    */
   async revokeRefundedPayment(chargeId) {
     const transaction = await this.premiumTransactionRepository.getTransactionByTelegramPaymentId(chargeId);
-    if (!transaction) return this.revokeRefundedDonation(chargeId);
+    if (!transaction) return this.revokeRefundedGroupPass(chargeId);
     if (transaction.status === 'refunded') return { status: 'already_refunded' };
     await this.premiumTransactionRepository.updateTransactionStatus(transaction.id, 'refunded', null);
 
@@ -306,6 +348,13 @@ class PaymentService {
       premiumUntil: stillPremium ? newExpiry : null,
       ...(family ? { familyPremiumUntil: family.familyExpiresAt } : {})
     };
+  }
+
+  // Возврат пропуска группы: срок покупки вычитается из пропуска; не пропуск — пожертвование
+  async revokeRefundedGroupPass(chargeId) {
+    const result = this.groupService ? await this.groupService.revokePass(chargeId) : null;
+    if (!result) return this.revokeRefundedDonation(chargeId);
+    return { ...result, premiumUntil: null };
   }
 
   async revokeRefundedDonation(chargeId) {
@@ -415,6 +464,22 @@ class PaymentService {
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  // Ссылка на оплату «🎫 Пропуск для группы» тому, кто нажал (payload.user_id — плательщик, group_id — учёт группы)
+  async createGroupPassInvoiceLink(userId, ledger, userLanguage) {
+    const { GROUP_PASS } = require('../utils/constants');
+    const t = (key, params) => (this.localizationService ? this.localizationService.getText(userLanguage, key, params) : key);
+    const title = t('grp_product_pass');
+    const payload = JSON.stringify({ type: 'group_pass', group_id: ledger.id, days: GROUP_PASS.days, user_id: userId });
+    return this.requestInvoiceLink({
+      title,
+      description: t('grp_product_pass_description', { title: String(ledger.title || '').slice(0, 100), days: GROUP_PASS.days }).slice(0, 255),
+      payload,
+      provider_token: '',
+      currency: 'XTR',
+      prices: [{ label: title, amount: GROUP_PASS.stars }]
+    });
   }
 
   /**

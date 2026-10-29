@@ -492,6 +492,10 @@ class ReceiptHandlers {
     if (receipt.items.length) lines.push(this.draftSumLine(lang, receipt, check));
     lines.push('');
     const keyboard = [];
+    // Неуверенный чек из группы (GroupHandlers): кнопка «👥 Разделить в «группе»» — и после правок
+    if (receipt.splitGroupId && receipt.items.length) {
+      keyboard.push([{ text: this.t(lang, 'grp_split_send_here', { title: receipt.splitGroupTitle || '' }), callback_data: `gst|d|${receipt.splitGroupId}` }]);
+    }
     if (!receipt.items.length) {
       lines.push(this.t(lang, 'receipt_draft_empty'));
     } else {
@@ -523,6 +527,8 @@ class ReceiptHandlers {
     ]);
     if (receipt.items.length) {
       keyboard.push([{ text: this.t(lang, receipt.edited ? 'button_receipt_record_edited' : 'button_receipt_record_draft'), callback_data: 'rvd|1' }]);
+      // Поделить с друзьями вместо записи себе: черновик (с правками) уходит в делёж по позициям
+      keyboard.push([{ text: this.t(lang, 'grp_button_split_friends'), callback_data: 'gsd' }]);
     }
     if (canRotate && !receipt.edited) keyboard.push([{ text: this.t(lang, 'button_receipt_rotate'), callback_data: 'rvr' }]);
     keyboard.push([{ text: this.t(lang, 'button_cancel'), callback_data: 'rvd|0' }]);
@@ -996,6 +1002,7 @@ class ReceiptHandlers {
       ]);
     }
     keyboard.push([{ text: this.t(lang, 'button_receipt_date'), callback_data: `rt|${receiptId}` }]);
+    keyboard.push([{ text: this.t(lang, 'grp_button_split_friends'), callback_data: `gsr|${receiptId}` }]);
     keyboard.push([
       { text: this.t(lang, 'button_receipt_ok'), callback_data: `rvok|${receiptId}` },
       { text: this.t(lang, 'button_receipt_undo'), callback_data: `rvx|${receiptId}` }

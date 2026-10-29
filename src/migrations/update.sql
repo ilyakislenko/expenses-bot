@@ -1186,3 +1186,127 @@ CREATE INDEX IF NOT EXISTS idx_bank_notifications_user_hash ON bank_notification
 CREATE INDEX IF NOT EXISTS idx_bank_notifications_user_forward ON bank_notifications(user_id, forward_key) WHERE forward_key IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_bank_notifications_user_day ON bank_notifications(user_id, local_day);
 CREATE INDEX IF NOT EXISTS idx_bank_notifications_user_occurred ON bank_notifications(user_id, occurred_at) WHERE occurred_at IS NOT NULL;
+
+
+-- ==== GROUPS ====
+-- Общие расходы в групповых чатах (как Splitwise): учёт группы, участники, траты с долями, «✅ Рассчитались»,
+-- делёж чека по позициям, «🎫 Пропуск для группы» за звёзды. chat_id NULL — счёт «по ссылке»: чеки, которые
+-- пользователь делит из лички без группы (один такой счёт на пользователя). Участники — по кнопке, без строки в users.
+CREATE TABLE IF NOT EXISTS group_ledgers (
+    id SERIAL PRIMARY KEY,
+    chat_id BIGINT NULL,
+    token VARCHAR(16) NOT NULL UNIQUE,
+    title VARCHAR(128) NOT NULL DEFAULT '',
+    currency VARCHAR(3) NOT NULL,
+    lang VARCHAR(5) NOT NULL DEFAULT 'en',
+    created_by BIGINT NOT NULL,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    pass_until TIMESTAMPTZ NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+COMMENT ON TABLE group_ledgers IS 'Общий учёт группового чата (chat_id) или счёт «по ссылке» пользователя (chat_id NULL, created_by — владелец)';
+COMMENT ON COLUMN group_ledgers.token IS 'Код для ссылок t.me/<бот>?start=gpass_<token> (покупка пропуска в личке)';
+COMMENT ON COLUMN group_ledgers.active IS 'FALSE — бота удалили из группы (данные остаются, при возвращении учёт продолжается)';
+COMMENT ON COLUMN group_ledgers.pass_until IS '«🎫 Пропуск для группы»: без месячных лимитов до этого момента';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_group_ledgers_chat ON group_ledgers(chat_id) WHERE chat_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_group_ledgers_link_owner ON group_ledgers(created_by) WHERE chat_id IS NULL;
+
+CREATE TABLE IF NOT EXISTS group_members (
+    group_id INT NOT NULL REFERENCES group_ledgers(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL,
+    name VARCHAR(64) NOT NULL,
+    username VARCHAR(64) NULL,
+    lang VARCHAR(5) NULL,
+    via_link BOOLEAN NOT NULL DEFAULT FALSE,
+    joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    left_at TIMESTAMPTZ NULL,
+    PRIMARY KEY (group_id, user_id)
+);
+COMMENT ON COLUMN group_members.via_link IS 'Пришёл по ссылке на чек (не в чате): не входит в «поровну на всех» у обычных трат';
+CREATE INDEX IF NOT EXISTS idx_group_members_user ON group_members(user_id);
+
+CREATE TABLE IF NOT EXISTS group_expenses (
+    id SERIAL PRIMARY KEY,
+    group_id INT NOT NULL REFERENCES group_ledgers(id) ON DELETE CASCADE,
+    kind VARCHAR(8) NOT NULL DEFAULT 'expense' CHECK (kind IN ('expense', 'settle')),
+    payer_id BIGINT NOT NULL,
+    created_by BIGINT NOT NULL,
+    amount DECIMAL(12,2) NOT NULL,
+    currency VARCHAR(3) NOT NULL,
+    amount_group DECIMAL(12,2) NOT NULL,
+    description VARCHAR(128) NULL,
+    split_mode VARCHAR(8) NOT NULL DEFAULT 'equal' CHECK (split_mode IN ('equal', 'exact', 'receipt', 'settle')),
+    split_id INT NULL,
+    message_id BIGINT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ NULL
+);
+COMMENT ON TABLE group_expenses IS 'Траты группы (kind expense) и «рассчитались» (kind settle: payer_id отдал долю получателю)';
+COMMENT ON COLUMN group_expenses.amount_group IS 'Сумма в валюте группы на момент записи (при смене валюты группы пересчитывается)';
+CREATE INDEX IF NOT EXISTS idx_group_expenses_group ON group_expenses(group_id, created_at);
+
+CREATE TABLE IF NOT EXISTS group_expense_shares (
+    expense_id INT NOT NULL REFERENCES group_expenses(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL,
+    share DECIMAL(12,2) NOT NULL,
+    copied_expense_id INT NULL REFERENCES expenses(id) ON DELETE SET NULL,
+    PRIMARY KEY (expense_id, user_id)
+);
+COMMENT ON COLUMN group_expense_shares.share IS 'Доля участника в валюте группы; сумма долей = amount_group';
+COMMENT ON COLUMN group_expense_shares.copied_expense_id IS '«📥 Моя доля → в личные»: личная трата с этой долей';
+
+CREATE TABLE IF NOT EXISTS group_splits (
+    id SERIAL PRIMARY KEY,
+    group_id INT NOT NULL REFERENCES group_ledgers(id) ON DELETE CASCADE,
+    token VARCHAR(16) NOT NULL UNIQUE,
+    payer_id BIGINT NOT NULL,
+    merchant VARCHAR(128) NULL,
+    currency VARCHAR(3) NOT NULL,
+    items JSONB NOT NULL,
+    warn BOOLEAN NOT NULL DEFAULT FALSE,
+    status VARCHAR(8) NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'closed', 'canceled')),
+    chat_id BIGINT NULL,
+    message_id BIGINT NULL,
+    page SMALLINT NOT NULL DEFAULT 0,
+    dirty BOOLEAN NOT NULL DEFAULT FALSE,
+    source_receipt_id INT NULL,
+    expense_id INT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    closed_at TIMESTAMPTZ NULL
+);
+COMMENT ON TABLE group_splits IS '«🧾 Разделить чек»: позиции чека (items — [{ id, name, amount, extra }]), сообщение с кнопками (chat_id, message_id), token — ссылка t.me/<бот>?start=split_<token>';
+COMMENT ON COLUMN group_splits.dirty IS 'Отметки изменились, сообщение ещё не перерисовано (правки сообщения реже раза в 3 с; после перезапуска — перерисовать)';
+CREATE INDEX IF NOT EXISTS idx_group_splits_group ON group_splits(group_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_group_splits_dirty ON group_splits(id) WHERE dirty;
+
+CREATE TABLE IF NOT EXISTS group_split_claims (
+    split_id INT NOT NULL REFERENCES group_splits(id) ON DELETE CASCADE,
+    item_id INT NOT NULL,
+    user_id BIGINT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (split_id, item_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS group_prompts (
+    chat_id BIGINT NOT NULL,
+    message_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    kind VARCHAR(8) NOT NULL CHECK (kind IN ('spent', 'exact', 'split')),
+    ref_id INT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (chat_id, message_id)
+);
+COMMENT ON TABLE group_prompts IS 'Вопрос бота в группе, на который ждём ответ (privacy mode: бот видит только ответы себе): сумма траты, точные доли, фото чека';
+
+CREATE TABLE IF NOT EXISTS group_passes (
+    id SERIAL PRIMARY KEY,
+    group_id INT NOT NULL REFERENCES group_ledgers(id),
+    user_id BIGINT NOT NULL,
+    stars INT NOT NULL,
+    days INT NOT NULL,
+    telegram_payment_id VARCHAR(255) NOT NULL UNIQUE,
+    status VARCHAR(10) NOT NULL DEFAULT 'paid' CHECK (status IN ('paid', 'refunded')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    refunded_at TIMESTAMPTZ NULL
+);
+COMMENT ON TABLE group_passes IS 'Покупки «🎫 Пропуск для группы» (Stars, payload type group_pass); повторная доставка платежа — UNIQUE telegram_payment_id';

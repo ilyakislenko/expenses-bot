@@ -131,6 +131,18 @@ const QUIZ = {
   PERCENTILE_WEEKS: 4
 };
 
+// Общие расходы в группах: бесплатно — GROUP_LIMITS в месяц на группу (траты без «рассчитались» и без итогов чеков;
+// начатые дележи чеков). «🎫 Пропуск для группы» (GROUP_PASS, Stars) снимает лимиты группы на DAYS дней; премиум у того,
+// кто включил учёт группы, — тоже
+const GROUP_LIMITS = {
+  FREE_EXPENSES_PER_MONTH: 30,
+  FREE_SPLITS_PER_MONTH: 3
+};
+const GROUP_PASS = {
+  days: 30,
+  stars: 99
+};
+
 // Константы для тарифов премиум подписки. Скидки не хранятся: их считает tariffDiscount от месячной цены.
 const PREMIUM_TARIFFS = {
   MONTH_1: {
@@ -403,6 +415,8 @@ module.exports = {
   DAILY_PLAN,
   COINS,
   QUIZ,
+  GROUP_LIMITS,
+  GROUP_PASS,
   ROAST,
   generateMainMenuKeyboard,
   generateMoreMenu,
