@@ -32,7 +32,8 @@ function shortDate(day) {
 class AchievementService {
   constructor({
     achievementRepository, userService, premiumService, expenseService, reportService, budgetService, savingsService,
-    currencyUtils, formatter, localizationService, notificationService, userNotificationRepository, chartService = null
+    currencyUtils, formatter, localizationService, notificationService, userNotificationRepository, chartService = null,
+    coinService = null
   }) {
     this.achievementRepository = achievementRepository;
     this.userService = userService;
@@ -47,6 +48,7 @@ class AchievementService {
     this.notificationService = notificationService;
     this.userNotificationRepository = userNotificationRepository;
     this.chartService = chartService;
+    this.coinService = coinService; // «🪙 Монеты»: день с записями, серия, значки, челленджи
   }
 
   t(lang, key, params) {
@@ -190,6 +192,9 @@ class AchievementService {
       }
       const result = await this.grant(userId, snap, event);
       lines.push(...this.grantLines(language, result));
+      // Монеты: день с записями — молча, бонус (каждые 7 дней серии, значки) — строкой
+      const coins = this.coinService ? await this.coinService.onActivity(userId, snap, result.unlocked) : 0;
+      if (coins > 0) lines.push(this.t(language, 'coins_earned_line', { amount: coins }));
       const freeze = this.freezeLine(language, snap);
       if (freeze) lines.push(freeze);
       if (!result.initialized && snap.streak.todayActive && snap.streak.current >= 2
@@ -249,6 +254,8 @@ class AchievementService {
       }
     }
     const result = await this.grant(userId, snap, event);
+    // Монеты за все открытые значки (в том числе открытые до появления монет) — по разу на значок
+    if (this.coinService) await this.coinService.syncBadges(userId, [...snap.unlocked]);
     // Первый заход: значки за историю — одной строкой-сюрпризом, без перечисления
     notes.push(...(result.retroactive
       ? [this.t(lang, 'ach_retro_banner', { count: result.unlocked.length })]
@@ -260,7 +267,8 @@ class AchievementService {
       xp,
       level: levelForXp(xp),
       active,
-      unlockedRows: await this.achievementRepository.getUnlocked(userId)
+      unlockedRows: await this.achievementRepository.getUnlocked(userId),
+      coins: this.coinService ? await this.coinService.getBalance(userId).catch(() => null) : null
     };
   }
 
@@ -335,6 +343,7 @@ class AchievementService {
       }
       const closed = await this.achievementRepository.finishChallenge(challenge.id, result.status);
       if (closed && closed.status !== 'canceled') finished.push(closed);
+      if (closed && closed.status === 'won' && this.coinService) await this.coinService.onChallengeWon(userId, closed.id);
     }
     return { finished, active };
   }

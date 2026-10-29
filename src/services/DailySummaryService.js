@@ -19,7 +19,7 @@ function summaryDayOffset(hour) {
 }
 
 class DailySummaryService {
-  constructor({ expenseService, incomeService, reportService, userNotificationRepository, notificationService, localizationService, formatter, achievementService = null }) {
+  constructor({ expenseService, incomeService, reportService, userNotificationRepository, notificationService, localizationService, formatter, achievementService = null, dailyPlanService = null }) {
     this.expenseService = expenseService;
     this.incomeService = incomeService;
     this.reportService = reportService;
@@ -28,6 +28,7 @@ class DailySummaryService {
     this.localizationService = localizationService;
     this.formatter = formatter;
     this.achievementService = achievementService;
+    this.dailyPlanService = dailyPlanService; // «☀️ План на день»: вечером — сравнение с утренним планом
   }
 
   t(lang, key, params) {
@@ -57,6 +58,9 @@ class DailySummaryService {
     if (incomeTotals.count) {
       lines.push(this.t(lang, 'income_total', { amount: money(await this.formatter.sumInCurrency(incomeTotals.byCurrency, currency)) }));
     }
+    // План этого дня из утреннего «☀️ План на день» (если был): уложился ли
+    const planLine = this.dailyPlanService ? await this.dailyPlanService.eveningLine(userId, lang, day) : '';
+    if (planLine) lines.push(planLine);
     lines.push('', `*${this.t(lang, 'report_top_categories')}*`);
     for (const category of categories.slice(0, TOP_CATEGORIES)) {
       lines.push(`${this.reportService.categoryLabel(category, lang)} — ${money(category.total)}`);

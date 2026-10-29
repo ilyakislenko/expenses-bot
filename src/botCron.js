@@ -2,6 +2,8 @@ const currencyConfig = require('./config/currencies');
 const logger = require('./utils/logger');
 
 const { DEFAULT_REMINDER_HOURS } = require('./utils/constants');
+// Напоминалка до этого локального часа — «утренняя»: её заменяет «☀️ План на день», если он уже пришёл сегодня
+const MORNING_UNTIL_HOUR = 12;
 
 // Локальные дата (YYYY-MM-DD) и час. hourCycle h23: в полночь час 0, а не 24
 function localDateHour(timezone, now) {
@@ -13,8 +15,9 @@ function localDateHour(timezone, now) {
 
 // Напоминалки: в выбранные локальные часы (до 3 раз в день), только если за сегодняшний локальный день ещё нет трат.
 // Серия от 3 дней под угрозой и сработавшая заморозка — строкой в той же напоминалке (achievementService, если есть).
+// Утром (до 12:00), если сегодня уже пришёл «☀️ План на день», напоминалка не нужна — план и есть утреннее сообщение.
 // Ошибка у одного пользователя (невалидный пояс, заблокированный бот) не прерывает рассылку остальным.
-async function sendReminders({ userService, expenseService, notificationService, achievementService = null }, now = new Date()) {
+async function sendReminders({ userService, expenseService, notificationService, achievementService = null, dailyPlanService = null }, now = new Date()) {
   const { rows } = await userService.userRepository.query(`
     SELECT id, timezone, language, reminder_hours, reminder_sent_today_hours,
            to_char(last_reminder_local_date, 'YYYY-MM-DD') AS last_reminder_local_date
@@ -35,6 +38,7 @@ async function sendReminders({ userService, expenseService, notificationService,
         : [];
       if (sentHours.includes(hour)) continue;
       if (await expenseService.hasAnyExpenseToday(user.id, tz)) continue;
+      if (dailyPlanService && hour < MORNING_UNTIL_HOUR && await dailyPlanService.sentOn(user.id, date)) continue;
 
       const lang = user.language || 'en';
       const variants = localizationService.getText(lang, 'reminder_sample_variants');
@@ -53,7 +57,7 @@ async function sendReminders({ userService, expenseService, notificationService,
   return sent;
 }
 
-function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, recurringExpenseService, premiumLifecycleService, reportService, dailySummaryService, weeklyInsightService, planningService, achievementService, subscriptionAlertService, supportedCurrencies = currencyConfig.SUPPORTED_CURRENCIES) {
+function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, recurringExpenseService, premiumLifecycleService, reportService, dailySummaryService, weeklyInsightService, planningService, achievementService, subscriptionAlertService, dailyPlanService = null, supportedCurrencies = currencyConfig.SUPPORTED_CURRENCIES) {
   // Проверяем, нужно ли обновлять курсы при запуске
   (async () => {
     try {
@@ -196,10 +200,21 @@ function setupBotCron(cron, currencyUtils, donationRepository, userService, expe
     }
   });
 
-  // Ежедневные напоминалки до 3 раз в локальные часы пользователя
+  // «☀️ План на день» (в выбранный утренний час), затем напоминалки до 3 раз в локальные часы пользователя: по очереди,
+  // чтобы утренняя напоминалка в тот же час уже видела отправленный план
   cron.schedule('0 * * * *', async () => {
+    if (dailyPlanService) {
+      try {
+        const plans = await dailyPlanService.processDue();
+        if (plans > 0) {
+          console.log(`План на день: отправлено ${plans}`);
+        }
+      } catch (err) {
+        console.error('Ошибка при отправке плана на день:', err);
+      }
+    }
     try {
-      const sent = await sendReminders({ userService, expenseService, notificationService, achievementService });
+      const sent = await sendReminders({ userService, expenseService, notificationService, achievementService, dailyPlanService });
       if (sent > 0) {
         console.log(`Напоминалки: отправлено ${sent}`);
       }

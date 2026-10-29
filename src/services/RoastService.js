@@ -467,6 +467,24 @@ class RoastService {
     }
   }
 
+  // Строка к утреннему плану ('' — режим выключен): good — вчера в плане (или сравнивать не с чем, а период в плане),
+  // иначе — вчера сверх плана или период уже сверх плана. daily — «можно сегодня», over — на сколько вчера сверх плана
+  async morningLine(userId, lang, { good, daily = null, over = null }) {
+    try {
+      const settings = await this.roastRepository.getSettings(userId);
+      if (settings.level === 'off') return '';
+      const level = await this.effectiveLevel(userId, settings.level, lang);
+      const state = await this.roastRepository.getState(userId);
+      const picked = this.pick(lang, level, good ? 'morning_good' : 'morning_bad', { daily, over }, settings.gender, state.recent);
+      if (!picked) return '';
+      await this.roastRepository.rememberVariants(userId, [picked.key], ROAST.RECENT_VARIANTS);
+      return PREFIX + picked.text;
+    } catch (error) {
+      logger.warn('Morning roast failed', { userId, error: error.message });
+      return '';
+    }
+  }
+
   // ========================================
   // «РАЗНОС МЕСЯЦА»
   // ========================================

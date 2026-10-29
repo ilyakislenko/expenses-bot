@@ -19,6 +19,20 @@ module.exports = {
   },
 
   spicy: {
+    morning_good: [
+      "Today's limit is {daily}. It's not a challenge, it's a request.",
+      "{daily} for the day. One fancy latte already eats a chunk of it, just saying.",
+      "Plan is ready. The hard part is not pretending it doesn't exist.",
+      "Yesterday went to plan. Your wallet is cautiously hoping for a repeat.",
+      "Limit {daily}. The marketplaces are already warming up your cart — don't fall for it."
+    ],
+    morning_bad: [
+      "Yesterday went {over} over plan. Today is redemption day.",
+      "{over} over plan yesterday. Your wallet is begging for mercy.",
+      "The plan lost yesterday. Rematch today, no delivery this time.",
+      "Yesterday your wallet slimmed down faster than planned. Easy today.",
+      "Yesterday cost more than planned. Today we train willpower."
+    ],
     // {budget} {limit} {spent} {over} {percent} {amount} {desc} {days_left}
     budget_over: [
       'And that\'s {budget} gone: {spent} against a {limit} limit. Over by {over}. Turns out the limit was just a suggestion.',
@@ -294,6 +308,20 @@ module.exports = {
   },
 
   savage: {
+    morning_good: [
+      "Today's limit is {daily}. Blowing it all by lunch is not the goal, for fuck's sake.",
+      "{daily} for the day. Keep your shit together and the card in your pocket.",
+      "Yesterday stayed on plan. Holy shit, keep it up.",
+      "Plan is ready. Don't fuck around, just don't overspend.",
+      "Limit {daily}. One more day like yesterday and your wallet might believe in miracles."
+    ],
+    morning_bad: [
+      "Yesterday went {over} over plan. Well, shit — savings mode today.",
+      "{over} over plan. Money's leaking and you're acting like that's fine. It's fucking not.",
+      "The plan got told to fuck off yesterday. Let's not do that today.",
+      "Yesterday blew past the plan. Hell of a pace — hit the brakes.",
+      "Yesterday blew the plan. Today: zero deliveries, got it?"
+    ],
     // {budget} {limit} {spent} {over} {percent} {amount} {desc} {days_left}
     budget_over: [
       'Well done, genius — {budget} is fucked: {spent} against {limit}. {over} over. Happy now?',

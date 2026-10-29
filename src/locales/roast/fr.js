@@ -9,6 +9,16 @@ module.exports = {
 
   // 🌶 Piquant: сарказм без мата
   spicy: {
+    morning_good: [
+      "Limite du jour : {daily}. Ce n'est pas un défi, c'est une prière.",
+      "Le plan est prêt. Le plus dur : ne pas faire comme s'il n'existait pas.",
+      "Hier, dans le plan. Ton portefeuille espère une rediffusion."
+    ],
+    morning_bad: [
+      "Hier, {over} au-dessus du plan. Aujourd'hui, jour de rédemption.",
+      "Le plan a perdu hier. Revanche aujourd'hui, sans livraison.",
+      "Hier, le portefeuille a maigri plus que prévu. Doucement aujourd'hui."
+    ],
     budget_over: [
       'Et voilà, {budget} y est passé : {spent} pour une limite de {limit}. Dépassement : {over}. La limite, c’était une suggestion, visiblement.',
       '«{desc}» pour {amount}, et {budget} est officiellement mort. Une minute de silence, s’il te plaît.',
@@ -161,6 +171,16 @@ module.exports = {
 
   // 🔥 Sans filtre: мат и грубость — по тратам и решениям, без оскорблений по признакам
   savage: {
+    morning_good: [
+      "Limite du jour : {daily}. Tout claquer avant midi, c'est pas l'objectif, putain.",
+      "Hier, dans le plan. Bordel, continue comme ça.",
+      "Le plan est prêt. Fais pas le con, dépense pas plus."
+    ],
+    morning_bad: [
+      "Hier, {over} au-dessus du plan. Merde, mode économie aujourd'hui.",
+      "Le plan s'est fait envoyer chier hier. Pas aujourd'hui.",
+      "Hier, t'as dépassé le plan. Freine, bordel."
+    ],
     budget_over: [
       'Bravo, génie : {budget} est foutu. {spent} pour {limit}, {over} de dépassement. {Content|Contente} de toi ?',
       '«{desc}» pour {amount}, et {budget} part en couille. {over} de trop. Putain de bravo.',

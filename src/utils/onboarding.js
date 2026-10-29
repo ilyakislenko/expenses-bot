@@ -8,7 +8,7 @@
 
 const GOALS = ['track', 'budget', 'save', 'debt', 'family', 'subs'];
 const INPUTS = ['text', 'voice', 'receipt', 'statement'];
-const NOTIFY = ['daily', 'weekly', 'month', 'bills'];
+const NOTIFY = ['plan', 'daily', 'weekly', 'month', 'bills'];
 const PAYDAYS = [1, 5, 10, 15, 20, 25];
 const ROAST_LEVELS = ['off', 'spicy', 'savage'];
 // Напоминания «записать траты»: часы по местному времени; null — выключить
@@ -103,9 +103,11 @@ function toggle(list, value) {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 }
 
-// Начальный выбор «что присылать»: текущие настройки, плюс подсказка по целям, если пользователь ещё не включал
+// Начальный выбор «что присылать»: текущие настройки, плюс подсказка по целям, если пользователь ещё не включал.
+// Новому пользователю «☀️ План на день» отмечен сразу (придёт, когда появится доход или бюджет)
 function initialNotify(draft, current) {
   const selected = NOTIFY.filter((code) => current[code]);
+  if (draft.mode === 'new' && !selected.includes('plan')) selected.push('plan');
   if (draft.goals.includes('subs') && !selected.includes('bills')) selected.push('bills');
   if (draft.goals.includes('track') && !selected.includes('weekly')) selected.push('weekly');
   return NOTIFY.filter((code) => selected.includes(code));

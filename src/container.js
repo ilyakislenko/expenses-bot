@@ -45,6 +45,8 @@ const PendingJobRepository = require('./repositories/PendingJobRepository');
 const PendingJobService = require('./services/PendingJobService');
 const PlanningRepository = require('./repositories/PlanningRepository');
 const AchievementRepository = require('./repositories/AchievementRepository');
+const CoinRepository = require('./repositories/CoinRepository');
+const DailyPlanRepository = require('./repositories/DailyPlanRepository');
 const ReferralRepository = require('./repositories/ReferralRepository');
 const AssistantRepository = require('./repositories/AssistantRepository');
 const EntryBatchRepository = require('./repositories/EntryBatchRepository');
@@ -75,6 +77,10 @@ const ReceiptService = require('./services/ReceiptService');
 const PlanningService = require('./services/PlanningService');
 const SubscriptionAlertService = require('./services/SubscriptionAlertService');
 const AchievementService = require('./services/AchievementService');
+const CoinService = require('./services/CoinService');
+const DailyPlanService = require('./services/DailyPlanService');
+const CoinHandlers = require('./handlers/CoinHandlers');
+const DailyPlanHandlers = require('./handlers/DailyPlanHandlers');
 const ReferralService = require('./services/ReferralService');
 const { createProviderFromEnv: createReceiptProvider } = require('./services/receipt/chain');
 const AssistantService = require('./services/AssistantService');
@@ -224,7 +230,52 @@ class Container {
           localizationService: this.get('localizationService'),
           notificationService: this.get('notificationService'),
           userNotificationRepository: this.get('userNotificationRepository'),
-          chartService: this.get('chartService')
+          chartService: this.get('chartService'),
+          coinService: this.get('coinService')
+        });
+
+      // «🪙 Монеты»: журнал с ключами идемпотентности, обмен на дни премиума (UserService.grantRewardDays)
+      case 'coinRepository':
+        return new CoinRepository();
+
+      case 'coinService':
+        return new CoinService({
+          coinRepository: this.get('coinRepository'),
+          userService: this.get('userService'),
+          achievementRepository: this.get('achievementRepository')
+        });
+
+      case 'coinHandlers':
+        return new CoinHandlers({
+          coinService: this.get('coinService'),
+          userService: this.get('userService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter')
+        });
+
+      // «☀️ План на день»: утром — «можно сегодня», вчера против плана, платежи, серия
+      case 'dailyPlanRepository':
+        return new DailyPlanRepository();
+
+      case 'dailyPlanService':
+        return new DailyPlanService({
+          dailyPlanRepository: this.get('dailyPlanRepository'),
+          planningService: this.get('planningService'),
+          achievementService: this.get('achievementService'),
+          roastService: this.get('roastService'),
+          coinService: this.get('coinService'),
+          userService: this.get('userService'),
+          userNotificationRepository: this.get('userNotificationRepository'),
+          notificationService: this.get('notificationService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter')
+        });
+
+      case 'dailyPlanHandlers':
+        return new DailyPlanHandlers({
+          dailyPlanService: this.get('dailyPlanService'),
+          userService: this.get('userService'),
+          localizationService: this.get('localizationService')
         });
 
       // Графики картинками: SVG → PNG без браузера (@resvg/resvg-js), шрифты — assets/fonts + системный CJK
@@ -257,7 +308,8 @@ class Container {
           userService: this.get('userService'),
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
-          chartService: this.get('chartService')
+          chartService: this.get('chartService'),
+          coinService: this.get('coinService')
         });
 
       case 'referralRepository':
@@ -424,6 +476,7 @@ class Container {
           budgetService: this.get('budgetService'),
           planningService: this.get('planningService'),
           achievementService: this.get('achievementService'),
+          dailyPlanService: this.get('dailyPlanService'),
           premiumService: this.get('premiumService'),
           funnelService: this.get('funnelService')
         });
@@ -577,7 +630,8 @@ class Container {
           notificationService: this.get('notificationService'),
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
-          achievementService: this.get('achievementService')
+          achievementService: this.get('achievementService'),
+          dailyPlanService: this.get('dailyPlanService')
         });
 
       case 'weeklyInsightService':
@@ -765,7 +819,8 @@ class Container {
           planningService: this.get('planningService'),
           achievementService: this.get('achievementService'),
           onboardingHandlers: this.get('onboardingHandlers'),
-          subscriptionAlertService: this.get('subscriptionAlertService')
+          subscriptionAlertService: this.get('subscriptionAlertService'),
+          dailyPlanService: this.get('dailyPlanService')
         });
 
       case 'adminHandlers':
@@ -918,6 +973,10 @@ class Container {
       achievementHandlers: this.get('achievementHandlers'),
       chartHandlers: this.get('chartHandlers'),
       achievementService: this.get('achievementService'),
+      coinService: this.get('coinService'),
+      coinHandlers: this.get('coinHandlers'),
+      dailyPlanService: this.get('dailyPlanService'),
+      dailyPlanHandlers: this.get('dailyPlanHandlers'),
       exportHandlers: this.get('exportHandlers'),
       importHandlers: this.get('importHandlers'),
       receiptHandlers: this.get('receiptHandlers'),

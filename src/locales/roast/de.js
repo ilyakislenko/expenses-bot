@@ -10,6 +10,16 @@ module.exports = {
 
   // 🌶 Scharf: сарказм без мата
   spicy: {
+    morning_good: [
+      "Heutiges Limit: {daily}. Keine Herausforderung, eine Bitte.",
+      "Der Plan steht. Schwer ist nur, ihn nicht zu ignorieren.",
+      "Gestern im Plan. Dein Geldbeutel hofft vorsichtig auf eine Wiederholung."
+    ],
+    morning_bad: [
+      "Gestern {over} über dem Plan. Heute ist Tag der Wiedergutmachung.",
+      "Der Plan hat gestern verloren. Revanche heute, ohne Lieferdienst.",
+      "Gestern ist der Geldbeutel schneller geschrumpft als geplant. Heute ruhiger."
+    ],
     budget_over: [
       'Und das war’s: {spent} bei einem Limit von {limit}, also {over} drüber. Das Limit war wohl nur eine Empfehlung.',
       '«{desc}» für {amount}, und {budget} ist offiziell hinüber. Eine Schweigeminute, bitte.',
@@ -158,6 +168,16 @@ module.exports = {
 
   // 🔥 Unzensiert: мат и грубость — по тратам и решениям, без оскорблений по признакам
   savage: {
+    morning_good: [
+      "Heutiges Limit: {daily}. Alles bis Mittag verballern ist nicht das Ziel, verdammt.",
+      "Gestern im Plan. Scheiße, weiter so.",
+      "Der Plan steht. Bau keinen Mist, gib einfach nicht mehr aus."
+    ],
+    morning_bad: [
+      "Gestern {over} über dem Plan. Scheiße, heute Sparmodus.",
+      "Gestern hast du den Plan zum Teufel geschickt. Heute nicht.",
+      "Gestern über den Plan geschossen. Bremsen, verdammt."
+    ],
     budget_over: [
       'Stark, du {Vollidiot|Vollidiotin}: {budget} ist im Arsch. {spent} bei {limit}, {over} drüber. Zufrieden?',
       '«{desc}» für {amount}, und {budget} ist gerade den Bach runter. {over} drüber. Applaus, verdammt nochmal.',

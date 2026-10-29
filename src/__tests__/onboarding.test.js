@@ -155,7 +155,7 @@ describe('onboarding rules', () => {
     expect(rules.paydayToPeriodDay(0)).toBe(1); // нерегулярно — с 1-го
     expect(rules.paydayToPeriodDay('25')).toBe(25);
     expect(rules.paydayToPeriodDay(32)).toBeNull();
-    expect(rules.notifyPlan(['daily', 'bills'])).toEqual({ daily: true, weekly: false, month: false, bills: true });
+    expect(rules.notifyPlan(['daily', 'bills'])).toEqual({ plan: false, daily: true, weekly: false, month: false, bills: true });
     expect(rules.inputOptions({ voice: false, receipt: true })).toEqual(['text', 'receipt', 'statement']);
     const draft = { goals: ['track', 'budget', 'save', 'debt', 'family', 'subs'], inputs: ['statement'] };
     expect(rules.finalActions(draft).map((a) => a.callback)).toEqual(['svgn', 'import', 'svbn', 'family']);

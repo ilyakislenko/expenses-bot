@@ -10,6 +10,16 @@ module.exports = {
 
   // 🌶 Acı: küfürsüz iğneleme
   spicy: {
+    morning_good: [
+      "Bugünün limiti {daily}. Bu bir meydan okuma değil, rica.",
+      "Plan hazır. Zor olan, yokmuş gibi davranmamak.",
+      "Dün planda kaldı. Cüzdan tekrarını umuyor."
+    ],
+    morning_bad: [
+      "Dün plandan {over} fazla. Bugün telafi günü.",
+      "Plan dün kaybetti. Rövanş bugün, siparişsiz.",
+      "Dün cüzdan plandan hızlı eridi. Bugün yavaş."
+    ],
     // {budget} {limit} {spent} {over} {percent} {amount} {desc} {days_left}
     budget_over: [
       '{budget} bitti: {limit} limitle {spent} harcadın. Aşım: {over}. Demek ki limit sadece bir öneriymiş.',
@@ -173,6 +183,16 @@ module.exports = {
 
   // 🔥 Sansürsüz: küfürlü, ama hedef harcamalar
   savage: {
+    morning_good: [
+      "Bugünün limiti {daily}. Öğlene kadar hepsini çarçur etmek hedef değil, lan.",
+      "Dün planda kaldı. Vay be, böyle devam.",
+      "Plan hazır. Saçmalama, fazla harcama yeter."
+    ],
+    morning_bad: [
+      "Dün plandan {over} fazla. Kahretsin, bugün tasarruf modu.",
+      "Dün planı siktir ettin. Bugün yapma.",
+      "Dün planı aştın. Fren yap, lan."
+    ],
     budget_over: [
       'Aferin dâhi, {budget} bitti: {limit} limite karşı {spent}. Aşım {over}. Mutlu musun şimdi?',
       '«{desc}» için {amount} ve {budget} boka sardı. Aşım {over}. Yavaş alkış, lan.',

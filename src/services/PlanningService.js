@@ -225,6 +225,18 @@ class PlanningService {
     return this.t(lang, 'pl_line', { amount: money(allowance.daily), spent: money(allowance.spentToday), pace: PACE_EMOJI[allowance.pace] });
   }
 
+  // Ручные траты за локальный день (без авто-записей регулярных — они в резерве плана) в основной валюте:
+  // с ними «☀️ План на день» сравнивает «можно сегодня»
+  async spentOnDay(userId, day) {
+    const { timezone, currency } = await this.expenseService.getPeriodContext(userId, 'day', 0);
+    const convert = this.converter(currency);
+    let spent = 0;
+    for (const row of await this.planningRepository.getSpendSplit(userId, timezone, day, day)) {
+      spent += await convert(row.today, row.currency);
+    }
+    return spent;
+  }
+
   // ========================================
   // ПОДПИСКИ
   // ========================================
@@ -495,6 +507,8 @@ class PlanningService {
       try {
         const local = localDateHour(candidate.timezone, now);
         if (local.hour !== BILL_REMINDER_HOUR) continue;
+        // Включён «☀️ План на день» и есть из чего его считать — платежи сегодня и завтра приходят в нём
+        if (candidate.daily_plan_enabled && (await this.getAllowance(candidate.id)).mode !== 'none') continue;
         const lang = candidate.language || 'en';
         const reminder = await this.buildBillReminder(candidate.id, lang);
         if (!reminder) continue;

@@ -8,13 +8,14 @@ const BUTTON_NAME_LENGTH = 24;
 
 // Экран «🏆 Достижения» (ach…): уровень и XP, серия, значки, ближайшие цели, челленджи, «Итоги месяца»
 class AchievementHandlers {
-  constructor({ achievementService, expenseService, userService, localizationService, formatter, chartService = null }) {
+  constructor({ achievementService, expenseService, userService, localizationService, formatter, chartService = null, coinService = null }) {
     this.achievementService = achievementService;
     this.expenseService = expenseService;
     this.userService = userService;
     this.localizationService = localizationService;
     this.formatter = formatter;
     this.chartService = chartService; // «📤 Поделиться» — карточка итогов картинкой (ChartHandlers.shareWrapped)
+    this.coinService = coinService; // «🪙 Монеты»: баланс строкой и кнопка экрана монет
   }
 
   t(lang, key, params) {
@@ -64,6 +65,7 @@ class AchievementHandlers {
       : `${this.formatter.progressBar(level.ratio)} ${this.t(lang, 'ach_xp_line', { xp, next: level.next })}`);
     lines.push(this.t(lang, 'ach_screen_streak', { days: snap.streak.current, best: snap.stats.bestStreak }));
     lines.push(this.t(lang, 'ach_screen_freezes', { left: snap.streak.freezesLeft, total: snap.freezesPerWeek }));
+    if (overview.coins !== null && overview.coins !== undefined) lines.push(this.t(lang, 'ach_screen_coins', { balance: overview.coins }));
     if (snap.streak.atRisk) lines.push(this.t(lang, 'ach_screen_risk'));
 
     const unlocked = snap.unlocked;
@@ -99,7 +101,8 @@ class AchievementHandlers {
     if (!snap.expenseDays.has(snap.today) && !snap.markDays.has(snap.today)) {
       keyboard.push([{ text: this.t(lang, 'ach_button_no_spend'), callback_data: 'achn' }]);
     }
-    keyboard.push([{ text: this.t(lang, 'ach_button_wrapped'), callback_data: 'achw|-1' }]);
+    const wrappedButton = { text: this.t(lang, 'ach_button_wrapped'), callback_data: 'achw|-1' };
+    keyboard.push(this.coinService ? [wrappedButton, { text: this.t(lang, 'coins_button_open'), callback_data: 'coins' }] : [wrappedButton]);
     keyboard.push([{ text: this.t(lang, 'button_back'), callback_data: 'menu' }]);
     await respond(ctx, lines.join('\n'), { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
   }
