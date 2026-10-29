@@ -29,6 +29,7 @@ const ExpenseRepository = require('./repositories/ExpenseRepository');
 const CategoryRepository = require('./repositories/CategoryRepository');
 const CurrencyRepository = require('./repositories/CurrencyRepository');
 const FamilyRepository = require('./repositories/FamilyRepository');
+const FamilyPremiumRepository = require('./repositories/FamilyPremiumRepository');
 const FamilyInvitationRepository = require('./repositories/FamilyInvitationRepository');
 const PremiumTransactionRepository = require('./repositories/PremiumTransactionRepository');
 const DonationRepository = require('./repositories/DonationRepository');
@@ -69,6 +70,8 @@ const SavingsService = require('./services/SavingsService');
 const RecurringExpenseService = require('./services/RecurringExpenseService');
 const FunnelService = require('./services/FunnelService');
 const PremiumLifecycleService = require('./services/PremiumLifecycleService');
+const FamilyPremiumService = require('./services/FamilyPremiumService');
+const FamilyPremiumHandlers = require('./handlers/FamilyPremiumHandlers');
 const BudgetService = require('./services/BudgetService');
 const ReportService = require('./services/ReportService');
 const DailySummaryService = require('./services/DailySummaryService');
@@ -160,6 +163,32 @@ class Container {
 
       case 'familyRepository':
         return new FamilyRepository();
+
+      case 'familyPremiumRepository':
+        return new FamilyPremiumRepository();
+
+      // Семейный тариф: покупка, возврат, места в семье, уведомления (право на премиум — PremiumService)
+      case 'familyPremiumService':
+        return new FamilyPremiumService({
+          familyPremiumRepository: this.get('familyPremiumRepository'),
+          familyRepository: this.get('familyRepository'),
+          userService: this.get('userService'),
+          premiumService: this.get('premiumService'),
+          userNotificationRepository: this.get('userNotificationRepository'),
+          notificationService: this.get('notificationService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter')
+        });
+
+      case 'familyPremiumHandlers':
+        return new FamilyPremiumHandlers({
+          familyPremiumService: this.get('familyPremiumService'),
+          paymentService: this.get('paymentService'),
+          userService: this.get('userService'),
+          stateService: this.get('stateService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter')
+        });
 
       case 'familyInvitationRepository':
         return new FamilyInvitationRepository();
@@ -621,7 +650,8 @@ class Container {
           this.get('userNotificationRepository'),
           this.get('notificationService'),
           this.get('localizationService'),
-          this.get('formatter')
+          this.get('formatter'),
+          this.get('familyPremiumService')
         );
 
       case 'budgetRepository':
@@ -699,7 +729,8 @@ class Container {
       case 'premiumService':
         return new PremiumService(
           this.get('userRepository'),
-          this.get('userService')
+          this.get('userService'),
+          this.get('familyPremiumRepository')
         );
 
       case 'paymentService':
@@ -709,7 +740,8 @@ class Container {
           this.get('localizationService'),
           this.get('funnelService'),
           this.get('premiumTransactionRepository'),
-          this.get('userRepository')
+          this.get('userRepository'),
+          this.get('familyPremiumService')
         );
         // Устанавливаем бота позже, когда он будет создан
         if (this.instances.has('bot')) {
@@ -734,7 +766,8 @@ class Container {
           this.get('userRepository'),
           this.get('expenseRepository'),
           this.get('notificationService'),
-          this.get('premiumService')
+          this.get('premiumService'),
+          this.get('familyPremiumService')
         );
 
       case 'categoryService':
@@ -752,7 +785,8 @@ class Container {
           this.get('donationRepository'),
           this.get('premiumTransactionRepository'),
           this.get('notificationService'),
-          this.get('localizationService')
+          this.get('localizationService'),
+          this.get('familyPremiumService')
         );
 
       case 'savingsService':
@@ -798,7 +832,8 @@ class Container {
           referralService: this.get('referralService'),
           voiceService: this.get('voiceService'),
           roastService: this.get('roastService'),
-          quizHandlers: this.get('quizHandlers')
+          quizHandlers: this.get('quizHandlers'),
+          familyPremiumService: this.get('familyPremiumService')
         });
 
       case 'messageHandlers':
@@ -1013,6 +1048,8 @@ class Container {
       importHandlers: this.get('importHandlers'),
       receiptHandlers: this.get('receiptHandlers'),
       referralHandlers: this.get('referralHandlers'),
+      familyPremiumHandlers: this.get('familyPremiumHandlers'),
+      familyPremiumService: this.get('familyPremiumService'),
       referralService: this.get('referralService'),
       assistantHandlers: this.get('assistantHandlers'),
       multiEntryHandlers: this.get('multiEntryHandlers'),

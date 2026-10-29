@@ -1139,3 +1139,11 @@ CREATE TABLE IF NOT EXISTS quiz_prizes (
 );
 COMMENT ON TABLE quiz_prizes IS 'Призы квиза (дни премиума, транзакция reward с prize_id в invoice_payload — выдача ровно один раз)';
 CREATE INDEX IF NOT EXISTS idx_quiz_prizes_pending ON quiz_prizes(week_key) WHERE granted_at IS NULL OR notified_at IS NULL;
+
+
+-- ==== FAMILY PREMIUM ====
+-- Семейный тариф: до какого момента владелец семьи оплатил премиум для семьи. Как premium_expires_at — TIMESTAMP
+-- без пояса во времени процесса Node. Премиум получают владелец и первые участники его семьи (FAMILY_PREMIUM.MAX_MEMBERS)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS family_premium_expires_at TIMESTAMP NULL;
+COMMENT ON COLUMN users.family_premium_expires_at IS 'Семейный тариф, оплаченный этим пользователем (владельцем семьи): действует до';
+CREATE INDEX IF NOT EXISTS idx_users_family_premium_expires_at ON users(family_premium_expires_at) WHERE family_premium_expires_at IS NOT NULL;

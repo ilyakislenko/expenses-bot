@@ -323,7 +323,7 @@ describe('FamilyService.removeMemberFromFamily', () => {
     const { service, members, notificationService } = await withFamily();
     await service.removeMemberFromFamily(OWNER, MEMBER);
     expect(members.has(MEMBER)).toBe(false);
-    expect(notificationService.sendFamilyMemberRemoved).toHaveBeenCalledWith(MEMBER, 'Home');
+    expect(notificationService.sendFamilyMemberRemoved).toHaveBeenCalledWith(MEMBER, 'Home', { lostFamilyPremium: false });
   });
 
   test('a regular member cannot remove others', async () => {

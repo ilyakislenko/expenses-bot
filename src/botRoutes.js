@@ -2,6 +2,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   const { errorHandler, commandHandlers, messageHandlers, callbackHandlers, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, importHandlers, receiptHandlers, multiEntryHandlers, savingsHandlers, planningHandlers, subscriptionHandlers, achievementHandlers, assistantHandlers, stateService } = handlers;
   const ReceiptHandlers = require('./handlers/ReceiptHandlers');
   const { BACK_VIEW_PATTERN } = require('./handlers/ExpenseHandlers');
+  const { FAMILY_PREMIUM } = require('./utils/constants');
 
   // Импортируем middleware для автоматической очистки состояний
   const stateCleanupMiddleware = require('./middleware/stateCleanupMiddleware');
@@ -410,6 +411,9 @@ module.exports = function registerBotRoutes(bot, handlers) {
   // ========================================
 
   bot.action('premium_tariffs', errorHandler((ctx) => callbackHandlers.handlePremiumTariffs(ctx)));
+  // Семейный тариф: экран тарифа и создание семьи для него (можно без своего премиума)
+  bot.action('pfam', errorHandler((ctx) => handlers.familyPremiumHandlers.showTariffs(ctx)));
+  bot.action('pfam_create', errorHandler((ctx) => handlers.familyPremiumHandlers.startCreateFamily(ctx)));
   bot.action('premium_why_paid', errorHandler((ctx) => callbackHandlers.handlePremiumWhyPaid(ctx)));
   bot.action('premium_donate', errorHandler((ctx) => callbackHandlers.handlePremiumDonate(ctx)));
   bot.action(/^premium_purchases(?:\|(\d+))?$/, errorHandler((ctx) => callbackHandlers.handlePremiumPurchases(ctx)));
@@ -420,7 +424,9 @@ module.exports = function registerBotRoutes(bot, handlers) {
   const preCheckoutRejectionKeys = {
     foreign_payer: 'payment_foreign_payer',
     subscription_active: 'payment_subscription_already_active',
-    donation_outdated: 'donation_outdated'
+    donation_outdated: 'donation_outdated',
+    family_not_owner: 'payment_family_not_owner',
+    family_too_big: 'payment_family_too_big'
   };
   bot.on('pre_checkout_query', errorHandler(async (ctx) => {
     const check = await handlers.paymentService.checkPreCheckout(ctx.preCheckoutQuery, ctx.from.id);
@@ -431,7 +437,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
     handlers.logger.warn('Pre-checkout rejected', { userId: ctx.from.id, reason: check.reason, payload: ctx.preCheckoutQuery.invoice_payload });
     const userLanguage = await handlers.userService.getUserLanguage(ctx.from.id);
     const textKey = preCheckoutRejectionKeys[check.reason] || 'payment_outdated';
-    await ctx.answerPreCheckoutQuery(false, handlers.localizationService.getText(userLanguage, textKey));
+    await ctx.answerPreCheckoutQuery(false, handlers.localizationService.getText(userLanguage, textKey, { max: FAMILY_PREMIUM.MAX_MEMBERS }));
   }));
 
   // Возврат звёзд (из админки или со стороны Telegram): снимаем премиум по этому платежу и отменяем подписку.
@@ -470,6 +476,23 @@ module.exports = function registerBotRoutes(bot, handlers) {
       // Для премиум подписок показываем сообщение об активации
       const successText = handlers.localizationService.getText(userLanguage, 'payment_success');
       await ctx.reply(successText, { parse_mode: 'Markdown' });
+    } else if (result.type === 'family_premium') {
+      if (result.status === 'duplicate') return; // повторная доставка того же платежа
+      const timezone = await handlers.userService.getUserTimezone(ctx.from.id);
+      const date = handlers.formatter.formatDate(result.familyExpiresAt, timezone);
+      if (result.isRenewal) {
+        await ctx.reply(handlers.localizationService.getText(userLanguage, 'subscription_renewed', { date }));
+        return;
+      }
+      // Покупателю — до какого числа и сколько людей в семье получили премиум; участникам пишет FamilyPremiumService
+      const max = FAMILY_PREMIUM.MAX_MEMBERS;
+      const text = handlers.localizationService.getText(userLanguage, 'family_payment_success', {
+        date, members: result.coveredMembers + 1, max
+      });
+      const keyboard = result.coveredMembers + 1 < max
+        ? [[{ text: handlers.localizationService.getText(userLanguage, 'invite_member'), callback_data: 'family_invite' }]]
+        : [];
+      await ctx.reply(text, { parse_mode: 'Markdown', ...(keyboard.length ? { reply_markup: { inline_keyboard: keyboard } } : {}) });
     } else {
       // Для неизвестных типов платежей показываем общее сообщение
       const generalSuccessText = handlers.localizationService.getText(userLanguage, 'general_payment_success');

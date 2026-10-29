@@ -1,4 +1,5 @@
 const logger = require('../utils/logger');
+const { findTariff } = require('../utils/constants');
 
 // Месячный тариф продаётся как подписка Telegram Stars с автопродлением (Telegram допускает только 30 дней)
 const STARS_SUBSCRIPTION_PERIOD_SECONDS = 2592000;
@@ -6,14 +7,24 @@ const SUBSCRIPTION_TARIFF_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const INVOICE_LINK_TIMEOUT_MS = 10000;
 
+// Платёж семейного тарифа (по payload транзакции)
+function isFamilyPayment(transaction) {
+  try {
+    return JSON.parse(transaction.invoice_payload || '{}').type === 'family_premium';
+  } catch (error) {
+    return false;
+  }
+}
+
 class PaymentService {
-  constructor(donationRepository, localizationService, funnelService, premiumTransactionRepository, userRepository) {
+  constructor(donationRepository, localizationService, funnelService, premiumTransactionRepository, userRepository, familyPremiumService = null) {
     this.bot = null;
     this.donationRepository = donationRepository;
     this.localizationService = localizationService;
     this.funnelService = funnelService;
     this.premiumTransactionRepository = premiumTransactionRepository;
     this.userRepository = userRepository;
+    this.familyPremiumService = familyPremiumService;
   }
 
   setBot(bot) {
@@ -129,6 +140,26 @@ class PaymentService {
         const isRenewal = is_recurring === true && is_first_recurring !== true;
         logger.info(`Premium subscription ${isRenewal ? 'renewed' : (result.isNewActivation ? 'activated' : 'extended')} for user ${user_id}, expires at ${result.newExpiryDate}`);
         return { type: 'premium_subscription', isRenewal, ...result };
+      } else if (type === 'family_premium') {
+        // Семейный тариф: платит владелец семьи; повтор того же платежа не засчитывается
+        if (telegram_payment_charge_id && await userService.transactionExists(telegram_payment_charge_id)) {
+          logger.warn('Duplicate family successful_payment ignored', { user_id, telegram_payment_charge_id });
+          return { type: 'family_premium', status: 'duplicate' };
+        }
+        const tariffData = findTariff(tariff, true) || { usd: 0, rub: 0 };
+        const transactionData = {
+          stars: stars,
+          usd: tariffData.usd,
+          rub: tariffData.rub,
+          telegram_payment_id: telegram_payment_charge_id || null,
+          invoice_payload: invoice_payload,
+          is_recurring: is_recurring === true,
+          subscription_expires_at: subscription_expiration_date ? new Date(subscription_expiration_date * 1000) : null
+        };
+        const result = await this.familyPremiumService.applyPurchase(user_id, tariff, transactionData);
+        if (this.funnelService) await this.funnelService.track(user_id, 'paid');
+        const isRenewal = is_recurring === true && is_first_recurring !== true;
+        return { type: 'family_premium', isRenewal, ...result };
       } else {
         // Неизвестный тип платежа
         logger.warn(`Unknown payment type: ${type}, payload: ${JSON.stringify(payload)}`);
@@ -182,20 +213,32 @@ class PaymentService {
       if (!tariff.stars) return { ok: false, reason: 'unknown_tariff' };
       return tariff.stars === totalAmount ? { ok: true } : { ok: false, reason: 'price_changed' };
     }
+    if (payload.type === 'family_premium') {
+      const tariff = findTariff(payload.tariff, true);
+      if (!tariff) return { ok: false, reason: 'unknown_tariff' };
+      if (!payload.family_id) return { ok: false, reason: 'family_not_owner' };
+      return tariff.stars === totalAmount ? { ok: true } : { ok: false, reason: 'price_changed' };
+    }
     return { ok: false, reason: 'unknown_type' };
   }
 
   /**
    * validatePreCheckout + вторая месячная подписка: Telegram допускает несколько одновременных подписок,
-   * а кнопка 🔁 в старом сообщении с тарифами остаётся рабочей.
+   * а кнопка 🔁 в старом сообщении с тарифами остаётся рабочей. Личная и семейная месячные — тоже не обе сразу.
+   * Семейный тариф: платит владелец семьи из ссылки, и семья помещается в тариф.
    */
   async checkPreCheckout(query, payerId) {
     const check = this.validatePreCheckout(query, payerId);
     if (!check.ok) return check;
     const payload = JSON.parse(query.invoice_payload);
-    if (payload.type === 'premium_subscription' && payload.tariff === SUBSCRIPTION_TARIFF_DAYS
+    if ((payload.type === 'premium_subscription' || payload.type === 'family_premium') && payload.tariff === SUBSCRIPTION_TARIFF_DAYS
       && await this.premiumTransactionRepository.getActiveRecurringSubscription(payerId)) {
       return { ok: false, reason: 'subscription_active' };
+    }
+    if (payload.type === 'family_premium') {
+      if (!this.familyPremiumService) return { ok: false, reason: 'unknown_type' };
+      const family = await this.familyPremiumService.checkPurchase(payerId, payload.family_id);
+      if (!family.ok) return family;
     }
     // Ссылка на донат живёт вечно, а донат могли отменить (новый донат отменяет прежние) или он истёк:
     // принимаем оплату только ожидающего доната этого пользователя на ту же сумму
@@ -247,11 +290,22 @@ class PaymentService {
     const stillPremium = newExpiry > now;
     await this.userRepository.updateUser(userId, { premium: stillPremium, premium_expires_at: stillPremium ? newExpiry : now });
 
+    // Семейный платёж: те же дни снимаются с семейного срока — участники теряют купленный им премиум
+    const family = isFamilyPayment(transaction) && this.familyPremiumService
+      ? await this.familyPremiumService.revokePurchase(userId, days, now)
+      : null;
+
     // Иначе Telegram продолжит списывать подписку и премиум включится снова
     if (transaction.is_recurring) await this.cancelStarsSubscription(userId, chargeId);
 
-    logger.info('Payment refunded, premium revoked', { userId, chargeId, premiumUntil: stillPremium ? newExpiry : null });
-    return { status: 'refunded', type: 'premium_subscription', userId, premiumUntil: stillPremium ? newExpiry : null };
+    logger.info('Payment refunded, premium revoked', { userId, chargeId, premiumUntil: stillPremium ? newExpiry : null, family: !!family });
+    return {
+      status: 'refunded',
+      type: family ? 'family_premium' : 'premium_subscription',
+      userId,
+      premiumUntil: stillPremium ? newExpiry : null,
+      ...(family ? { familyPremiumUntil: family.familyExpiresAt } : {})
+    };
   }
 
   async revokeRefundedDonation(chargeId) {
@@ -296,7 +350,7 @@ class PaymentService {
    * @param {string} userLanguage - Язык пользователя
    * @returns {Promise<string>} Прямая ссылка на оплату
    */
-  async createInvoiceLink(userId, tariff, userLanguage) {
+  async createInvoiceLink(userId, tariff, userLanguage, { familyId = null } = {}) {
     const { duration, stars } = tariff;
     
     const durationKey = duration === 30 ? 'tariff_button_30' :
@@ -306,14 +360,22 @@ class PaymentService {
       ? this.localizationService.getText(userLanguage, durationKey)
       : `${duration}d`;
     
+    const productKey = familyId ? 'family_premium_product' : 'premium_product';
     const productName = this.localizationService
-      ? this.localizationService.getText(userLanguage, 'premium_product')
+      ? this.localizationService.getText(userLanguage, productKey)
       : (userLanguage === 'en' ? 'Premium subscription' : 'Премиум подписка');
 
     const title = productName;
     const description = `${productName} — ${tariffName}`;
     
-    const payload = JSON.stringify({
+    // Семейный: family_id — семья, которой владеет покупатель (проверяется перед оплатой)
+    const payload = JSON.stringify(familyId ? {
+      type: 'family_premium',
+      tariff: duration,
+      stars: stars,
+      user_id: userId,
+      family_id: Number(familyId)
+    } : {
       type: 'premium_subscription',
       tariff: duration,
       stars: stars,
@@ -334,7 +396,7 @@ class PaymentService {
 
     try {
       const link = await this.requestInvoiceLink(invoiceParams);
-      logger.info(`Created invoice link for user ${userId}, tariff: ${duration} days, stars: ${stars}`);
+      logger.info(`Created invoice link for user ${userId}, tariff: ${duration} days, stars: ${stars}${familyId ? `, family ${familyId}` : ''}`);
       return link;
     } catch (error) {
       logger.error('Error creating invoice link:', error);

@@ -172,6 +172,44 @@ function tariffDiscount(tariff) {
   };
 }
 
+// Семейный премиум: платит владелец семьи, премиум получают он и первые участники по дате вступления —
+// всего до MAX_MEMBERS человек. Цена ≈ 1,65× личного тарифа той же длины.
+const FAMILY_PREMIUM = {
+  MAX_MEMBERS: 5
+};
+
+const FAMILY_TARIFFS = {
+  MONTH_1: { duration: 30, months: 1, stars: 249, usd: 4.99, rub: 429 },
+  MONTH_3: { duration: 90, months: 3, stars: 579, usd: 11.59, rub: 999 },
+  MONTH_6: { duration: 180, months: 6, stars: 999, usd: 19.99, rub: 1649 },
+  MONTH_12: { duration: 365, months: 12, stars: 1649, usd: 32.99, rub: 2749 }
+};
+
+// Тариф по сроку (null — такого нет): familyPlan — семейный, иначе личный
+function findTariff(duration, familyPlan = false) {
+  return Object.values(familyPlan ? FAMILY_TARIFFS : PREMIUM_TARIFFS).find(tariff => tariff.duration === duration) || null;
+}
+
+// Скидка семейного тарифа к помесячной оплате семейного (как tariffDiscount у личных)
+function familyTariffDiscount(tariff) {
+  const month = FAMILY_TARIFFS.MONTH_1;
+  const fullStars = month.stars * tariff.months;
+  return { fullStars, fullUsd: month.usd * tariff.months, percent: Math.round((1 - tariff.stars / fullStars) * 100) };
+}
+
+// Честная выгода семейного тарифа для people человек против личных тарифов той же длины у каждого:
+// percent < 0 — семейный дороже (один человек)
+function familyTariffSaving(tariff, people) {
+  const personal = findTariff(tariff.duration);
+  const personalStars = personal.stars * people;
+  return {
+    people,
+    personalStars,
+    perPerson: Math.round(tariff.stars / people),
+    percent: Math.round((1 - tariff.stars / personalStars) * 100)
+  };
+}
+
 
 // Главная reply-клавиатура: только частые разделы, остальное — в «☰ Ещё».
 // quickExpense — быстрая кнопка-исключение: 'family' (траты по умолчанию личные) или 'personal'
@@ -352,6 +390,11 @@ module.exports = {
   USER_LIMITS,
   PREMIUM_TARIFFS,
   tariffDiscount,
+  FAMILY_PREMIUM,
+  FAMILY_TARIFFS,
+  findTariff,
+  familyTariffDiscount,
+  familyTariffSaving,
   TRIAL_PERIOD,
   DEFAULT_REMINDER_HOURS,
   REFERRAL,

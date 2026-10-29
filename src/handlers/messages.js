@@ -86,6 +86,11 @@ constructor({ expenseService, userService, premiumService, familyService, catego
         if (userState === 'creating_family') {
           return await this.handleCreateFamily(ctx, text, userLanguage);
         }
+
+        // Семья для семейного тарифа (pfam_create): можно и без своего премиума, после — снова экран тарифа
+        if (userState === 'creating_family_plan') {
+          return await this.handleCreateFamily(ctx, text, userLanguage, { forPlan: true });
+        }
         
         if (userState === 'joining_family') {
           return await this.handleJoinFamily(ctx, text, userLanguage);
@@ -341,7 +346,7 @@ constructor({ expenseService, userService, premiumService, familyService, catego
   // FAMILY STATE HANDLERS
   // ========================================
 
-  async handleCreateFamily(ctx, text, userLanguage) {
+  async handleCreateFamily(ctx, text, userLanguage, { forPlan = false } = {}) {
     try {
       const userId = ctx.from.id;
       const familyName = text.trim();
@@ -359,13 +364,16 @@ constructor({ expenseService, userService, premiumService, familyService, catego
       const family = await this.familyService.createFamily(userId, familyName);
       this.stateService.deleteUserState(userId);
       
-      const message = this.localizationService.getText(userLanguage, 'family_created', { name: family.name });
+      const message = this.localizationService.getText(userLanguage, forPlan ? 'family_created_for_plan' : 'family_created', { name: family.name });
       const backText = this.localizationService.getText(userLanguage, 'button_back');
+      const button = forPlan
+        ? { text: this.localizationService.getText(userLanguage, 'button_family_tariffs'), callback_data: 'pfam' }
+        : { text: backText, callback_data: 'back_to_menu' };
       
       await ctx.reply(message, {
         reply_markup: {
           inline_keyboard: [
-            [{ text: backText, callback_data: 'back_to_menu' }]
+            [button]
           ]
         }
       });
@@ -386,7 +394,14 @@ constructor({ expenseService, userService, premiumService, familyService, catego
       const result = await this.familyService.acceptInvitation(userId, invitationCode);
       this.stateService.deleteUserState(userId);
       
-      const message = this.localizationService.getText(userLanguage, 'invitation_accepted', { familyName: result.family.name });
+      let message = this.localizationService.getText(userLanguage, 'invitation_accepted', { familyName: result.family.name });
+      if (result.familyPremium) {
+        const timezone = await this.userService.getUserTimezone(userId);
+        message += `\n\n${this.localizationService.getText(userLanguage, 'family_premium_joined', {
+          payer: result.familyPremium.payerName,
+          date: this.formatter.formatDate(result.familyPremium.expiresAt, timezone)
+        })}`;
+      }
       const backText = this.localizationService.getText(userLanguage, 'button_back');
       
       await ctx.reply(message, {

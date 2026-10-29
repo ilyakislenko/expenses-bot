@@ -2,6 +2,8 @@ const logger = require('../utils/logger');
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
+// Свой и семейный сроки плательщика считаем совпадающими, если они ближе суток (FamilyPremiumService.SAME_EXPIRY)
+const FAMILY_SAME_EXPIRY = DAY;
 
 // Окна относительно окончания премиума и тексты по источнику премиума
 // (trial — только пробный период, granted — выдан админом без оплат, paid — были оплаты)
@@ -30,19 +32,31 @@ function stageFor(candidate, now) {
   return STAGES.find(stage => sinceExpiry >= stage.from && sinceExpiry < stage.to) || null;
 }
 
+// Купил семейный тариф без своего премиума: свой и семейный сроки совпадают — предупреждение говорит о семейном
 function textKeyFor(stage, candidate) {
+  if (stage.kind === 'premium_expiring' && candidate.family_premium_expires_at
+    && Math.abs(new Date(candidate.family_premium_expires_at) - new Date(candidate.premium_expires_at)) < FAMILY_SAME_EXPIRY) {
+    return 'premium_expiring_family';
+  }
   return stage.text[candidate.premium_source] || stage.text.paid;
 }
 
+// Премиум не кончается со своим сроком: его дальше даёт чужой семейный тариф
+function coveredByFamily(candidate, plan) {
+  return !!plan && plan.expiresAt > new Date(candidate.premium_expires_at);
+}
+
 class PremiumLifecycleService {
-  constructor(userNotificationRepository, notificationService, localizationService, formatter) {
+  constructor(userNotificationRepository, notificationService, localizationService, formatter, familyPremiumService = null) {
     this.userNotificationRepository = userNotificationRepository;
     this.notificationService = notificationService;
     this.localizationService = localizationService;
     this.formatter = formatter;
+    this.familyPremiumService = familyPremiumService;
   }
 
-  // Cron: предупреждение за 2 дня, сообщение об окончании и напоминание через неделю — по одному разу на срок
+  // Cron: предупреждение за 2 дня, сообщение об окончании и напоминание через неделю — по одному разу на срок;
+  // затем уведомления семейного тарифа (FamilyPremiumService.processDue)
   async processDue(now = new Date()) {
     const candidates = await this.userNotificationRepository.getPremiumLifecycleCandidates(now);
     let sent = 0;
@@ -53,6 +67,7 @@ class PremiumLifecycleService {
       try {
         const hour = localHour(candidate.timezone, now);
         if (hour < SEND_FROM_HOUR || hour > SEND_TO_HOUR) continue;
+        if (this.familyPremiumService && coveredByFamily(candidate, await this.familyPremiumService.inheritedPlan(candidate.id))) continue;
 
         const refKey = String(new Date(candidate.premium_expires_at).getTime());
         if (!(await this.userNotificationRepository.markSent(candidate.id, stage.kind, refKey))) continue;
@@ -70,11 +85,19 @@ class PremiumLifecycleService {
         logger.warn('Premium lifecycle notification not delivered', { userId: candidate.id, kind: stage.kind, error: error.message });
       }
     }
+    if (this.familyPremiumService) {
+      try {
+        sent += await this.familyPremiumService.processDue(now);
+      } catch (error) {
+        logger.warn('Family premium notifications failed', { error: error.message });
+      }
+    }
     return sent;
   }
 }
 
 PremiumLifecycleService.stageFor = stageFor;
 PremiumLifecycleService.textKeyFor = textKeyFor;
+PremiumLifecycleService.coveredByFamily = coveredByFamily;
 
 module.exports = PremiumLifecycleService;

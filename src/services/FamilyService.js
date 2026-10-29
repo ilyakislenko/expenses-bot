@@ -5,13 +5,19 @@ const logger = require('../utils/logger');
 const isUniqueViolation = (error) => error && error.code === '23505';
 
 class FamilyService {
-  constructor(familyRepository, familyInvitationRepository, userRepository, expenseRepository, notificationService, premiumService) {
+  constructor(familyRepository, familyInvitationRepository, userRepository, expenseRepository, notificationService, premiumService, familyPremiumService = null) {
     this.familyRepository = familyRepository;
     this.familyInvitationRepository = familyInvitationRepository;
     this.userRepository = userRepository;
     this.expenseRepository = expenseRepository;
     this.notificationService = notificationService;
     this.premiumService = premiumService;
+    this.familyPremiumService = familyPremiumService;
+  }
+
+  // Состав семьи изменился: семейный премиум участников пересчитывается (кэш PremiumService)
+  familyChanged() {
+    if (this.familyPremiumService) this.familyPremiumService.planChanged();
   }
 
   async createFamily(ownerId, name) {
@@ -88,8 +94,12 @@ class FamilyService {
         throw new Error('Family owner cannot leave family. Use delete family instead.');
       }
 
+      // Премиум только от семейного тарифа этой семьи — с выходом он заканчивается (сообщает экран выхода)
+      const lostFamilyPremium = this.familyPremiumService ? await this.familyPremiumService.dependsOnFamily(userId) : false;
+
       // Траты участника в этой семье становятся его личными
       await this.familyRepository.removeMemberFromFamily(userFamily.id, userId);
+      this.familyChanged();
       
       logger.info('Family service: user left family', {
         userId,
@@ -97,7 +107,7 @@ class FamilyService {
         familyName: userFamily.name
       });
 
-      return userFamily;
+      return { ...userFamily, lostFamilyPremium };
     } catch (error) {
       logger.error('Family service: failed to leave family', {
         userId,
@@ -119,11 +129,16 @@ class FamilyService {
         throw new Error('Only family owner can delete family');
       }
 
+      // Участники, у которых премиум только от семейного тарифа владельца, — их предупредим после удаления
+      const losing = this.familyPremiumService ? await this.familyPremiumService.membersDependingOnPlan(userId) : [];
+
       // Конвертируем семейные траты в личные
       await this.familyRepository.convertFamilyExpensesToPersonal(userFamily.id);
       
       // Удаляем семью
       await this.familyRepository.deleteFamily(userFamily.id);
+      this.familyChanged();
+      if (losing.length) await this.familyPremiumService.notifyLost(losing, userFamily.name);
       
       logger.info('Family service: family deleted', {
         userId,
@@ -168,8 +183,10 @@ class FamilyService {
       const invitee = candidates[0];
       invitee.id = Number(invitee.id);
 
-      // Проверяем премиум по сроку, а не по флагу users.premium (флаг снимается с опозданием)
-      const isPremium = await this.premiumService.isPremiumUser(invitee.id);
+      // Проверяем премиум по сроку, а не по флагу users.premium (флаг снимается с опозданием).
+      // Без своего премиума можно, если у владельца действует семейный тариф и в семье есть место
+      const isPremium = await this.premiumService.isPremiumUser(invitee.id)
+        || (this.familyPremiumService ? await this.familyPremiumService.hasFreeSeat(inviterId, userFamily.id) : false);
       if (!isPremium) {
         throw new Error('User does not have premium status');
       }
@@ -277,6 +294,7 @@ class FamilyService {
         if (isUniqueViolation(error)) throw new Error('User is already a member of a family');
         throw error;
       }
+      this.familyChanged();
       
       // Обновляем статус приглашения
       await this.familyInvitationRepository.updateInvitationStatusByCode(inviteCode, 'accepted');
@@ -290,7 +308,10 @@ class FamilyService {
         familyName: family.name
       });
 
-      return { family, invitation };
+      // Семейный тариф владельца, который теперь даёт премиум и этому участнику (null — нет)
+      const familyPremium = this.familyPremiumService ? await this.familyPremiumService.inheritedPlan(userId) : null;
+
+      return { family, invitation, familyPremium };
     } catch (error) {
       logger.error('Family service: failed to accept invitation', {
         userId,
@@ -376,10 +397,12 @@ class FamilyService {
 
       // Траты участника в этой семье становятся его личными. Повторное «Подтвердить» (двойное нажатие) уже никого
       // не исключает — второго уведомления нет
+      const lostFamilyPremium = this.familyPremiumService ? await this.familyPremiumService.dependsOnFamily(memberId) : false;
       const removed = await this.familyRepository.removeMemberFromFamily(userFamily.id, memberId);
+      if (removed) this.familyChanged();
 
       if (removed && this.notificationService) {
-        await this.notificationService.sendFamilyMemberRemoved(memberId, userFamily.name);
+        await this.notificationService.sendFamilyMemberRemoved(memberId, userFamily.name, { lostFamilyPremium });
       }
 
       logger.info('Family service: member removed from family', {
