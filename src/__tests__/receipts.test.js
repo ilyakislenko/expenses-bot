@@ -626,6 +626,36 @@ describe('confidence gate and prompt', () => {
     // Конкретной даты в запросе нет: модель подставляла её вместо даты чека
     expect(prompt).not.toMatch(/\d{2}\.\d{2}\.\d{2}|\d{4}-\d{2}-\d{2}/);
   });
+
+  // Настоящий ответ qwen2.5vl:3b на чек «Перспектива» (Магнит, 9 позиций, итог 1042,92): у трёх строк напечатана цена до
+  // скидки, а сумма — со скидкой. Раньше это считалось «не сходится», бот поворачивал кадр на 180° и записывал выдумку
+  const magnit = () => ({
+    is_receipt: true, merchant: 'ООО "ПЕРСПЕКТИВА"', date: '2026-10-27', time: '22:37', currency: 'RUB', total: 1042.92, items: [
+      { name: 'КОМПОТ МЕДВЕДЬ Л', quantity: 1, price: 184.99, amount: 184.99 }, { name: 'БАТОН НАРЕЗНОЙ 4', quantity: 1, price: 82.99, amount: 82.99 },
+      { name: 'СЫР САРМ', quantity: 1, price: 229.99, amount: 159.99 }, { name: 'КЕФИР ХО', quantity: 1, price: 89.99, amount: 89.99 },
+      { name: 'ИКОРНАЯ ПАСТА КО', quantity: 1, price: 104.99, amount: 104.99 }, { name: 'КОЛБАСА МПФ ВЕТЧ', quantity: 1, price: 309.99, amount: 279.99 },
+      { name: 'КАПУСТА КВАШЕННА', quantity: 1, price: 129.99, amount: 129.99 }, { name: 'ПАКЕТ ФИРМЕННЫЙ', quantity: 1, price: 9.99, amount: 9.99 },
+      { name: 'МАГНИТ БОЛЬШАЯ Р', quantity: 1, price: 59.99, amount: 0.01 }
+    ]
+  });
+
+  it('discounted lines are not errors when the lines add up to the printed total; such a receipt is not re-read rotated', () => {
+    const receipt = check(magnit());
+    expect(receipt).toMatchObject({ lowConfidence: false, merchant: 'ПЕРСПЕКТИВА', date: '2026-10-27', checks: { badLines: 0, lines: 9 } });
+    expect(receipt.itemsTotal).toBeCloseTo(1042.92, 1);
+  });
+
+  it('total lines of the receipt are not items; a receipt of only such a line is unreadable', () => {
+    const withTotal = magnit();
+    withTotal.items.push({ name: 'СУММА ЧЕКА БЕЗ УЧЁТА СКИДОК', quantity: 1, price: 1202.91, amount: 1202.91 }, { name: 'ИТОГО', amount: 1042.92 });
+    const receipt = check(withTotal);
+    expect(receipt.items.map(item => item.name)).not.toContain('СУММА ЧЕКА БЕЗ УЧЁТА СКИДОК');
+    expect(receipt).toMatchObject({ lowConfidence: false, checks: { lines: 9, totalLines: 2 } });
+    expect(() => check({ is_receipt: true, merchant: 'ЧЕК', total: 1202.91, items: [{ name: 'Сумма чека без учёта скидок', quantity: 1, price: 1202.91, amount: 1202.91 }] }))
+      .toThrow(expect.objectContaining({ code: 'unreadable' }));
+    expect(cleanName('КАРТОФЕЛЬ ИТОГОВЫЙ')).toBe('КАРТОФЕЛЬ ИТОГОВЫЙ');
+    expect(check({ ...magnit(), items: [{ name: 'Totally Organic Milk', amount: 1042.92 }, ...magnit().items.slice(0, 2)], total: null }).items[0].name).toBe('Totally Organic Milk');
+  });
 });
 
 // Хранилище черновиков как в receipt_drafts: живёт отдельно от обработчика (переживает «перезапуск» — новый ReceiptHandlers)
@@ -1292,6 +1322,18 @@ describe('retry selection', () => {
     expect(ReceiptService.pickBetter(r(true, [good], 0.2), closer)).toBe(closer);
     const first = r(true, [good], 0.1);
     expect(ReceiptService.pickBetter(first, r(true, [good], 0.1))).toBe(first);
+  });
+
+  // Чек «Перспектива»: 9 строк, сумма сходится с итогом, сомнения только в строках — кадр стоит правильно, не поворачиваем;
+  // а если повтор всё же был, одна «сошедшаяся» строка с перевёрнутого кадра не заменяет 9 прочитанных
+  it('a receipt read upright (3+ lines, sum within 3%) is not re-read rotated, and a 1–2 line answer never replaces it', () => {
+    const nine = r(true, Array(9).fill(bad), 0.001);
+    expect(ReceiptService.needsRetry(nine)).toBe(false);
+    expect(ReceiptService.needsRetry(r(true, Array(9).fill(bad), 0.2))).toBe(true);
+    expect(ReceiptService.needsRetry(r(true, [bad, bad], 0.001))).toBe(true);
+    const invented = r(false, [good], 0);
+    expect(ReceiptService.pickBetter(nine, invented)).toBe(nine);
+    expect(ReceiptService.pickBetter(invented, nine)).toBe(nine);
   });
 
   it('recognizePhoto prepares the image, retries rotated by 180° once and keeps the better answer', async () => {

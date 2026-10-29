@@ -11,10 +11,20 @@ const { MAX_RECORD_AGE_DAYS } = require('../utils/recordDate');
 const DRAFT_TTL_DAYS = 7; // черновик чека и кадр для «повернуть» (receipt_drafts)
 const DRAFT_TAKE_STALE_SECONDS = 300; // захват черновика под запись, после которого его можно взять снова (сбой записи)
 
-// Повторять с поворотом: ответ не разобран (в том числе битый JSON) или цифрам нельзя верить. Чек с текстом-«командой»
-// не повторяем: поворот его не исправит, а локальная модель занята минуты
+// Повторять с поворотом: ответ не разобран (в том числе битый JSON) или цифрам нельзя верить. Не повторяем, если чек с
+// текстом-«командой» (поворот его не исправит, а локальная модель занята минуты) или прочитан явно правильно ориентированным:
+// три строки и больше, а сумма строк в пределах 3% от итога — сомнения только в отдельных строках, поворот их не улучшит,
+// а перевёрнутый кадр маленькая модель читает выдумкой
+const ORIENTED_LINES = 3;
+const ORIENTED_DEVIATION = 0.03;
+function readUpright(receipt) {
+  const deviation = receipt.checks.sumDeviation;
+  return receipt.items.length >= ORIENTED_LINES && deviation !== null && deviation <= ORIENTED_DEVIATION;
+}
+
 function needsRetry(result) {
-  return result.error ? result.error.code === 'unreadable' : result.receipt.lowConfidence && !result.receipt.checks.suspicious;
+  if (result.error) return result.error.code === 'unreadable';
+  return result.receipt.lowConfidence && !result.receipt.checks.suspicious && !readUpright(result.receipt);
 }
 
 // Строки, где сумма = round(количество × цена)
@@ -22,12 +32,17 @@ function exactLines(receipt) {
   return receipt.items.filter(item => item.price !== null && Math.abs(Math.round(item.quantity * item.price * 100) / 100 - item.amount) < 0.005).length;
 }
 
-// Лучший из двух ответов: распознанный лучше ошибки, уверенный лучше черновика, дальше — больше строк, где сумма =
-// количество × цена, затем сумма ближе к итогу. При равенстве — первый
+// Лучший из двух ответов: распознанный лучше ошибки; ответ из многих строк лучше ответа из одной-двух (одна строка на весь
+// итог — типичная выдумка на перевёрнутом кадре, даже если «сходится»); уверенный лучше черновика, дальше — больше строк,
+// где сумма = количество × цена, затем сумма ближе к итогу. При равенстве — первый
 function pickBetter(first, second) {
   if (!first.receipt || !second.receipt) return first.receipt ? first : second.receipt ? second : first;
   const a = first.receipt;
   const b = second.receipt;
+  const linesA = a.items.length;
+  const linesB = b.items.length;
+  if (linesA >= ORIENTED_LINES && linesB <= SPARSE_ITEMS) return first;
+  if (linesB >= ORIENTED_LINES && linesA <= SPARSE_ITEMS) return second;
   if (a.lowConfidence !== b.lowConfidence) return a.lowConfidence ? second : first;
   const exactA = exactLines(a);
   const exactB = exactLines(b);

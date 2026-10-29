@@ -16,6 +16,13 @@ const MAX_QUANTITY = 100000; // больше — не количество (мо
 const SPARSE_ITEMS = 2; // одна-две строки без продавца — черновик (так выглядит выдумка на нечитаемом фото)
 const INVENTED_DEVIATION = 0.5; // …а если они расходятся с итогом больше чем вдвое — «не получилось распознать»
 const GENERIC_MERCHANT = /^(магазин|магазин продуктов|супермаркет|store|shop|supermarket|market|маркет)$/iu;
+// Итоговые и служебные строки чека — не товар: «СУММА ЧЕКА БЕЗ УЧЁТА СКИДОК», «ИТОГО», «К ОПЛАТЕ», «TOTAL», «Subtotal»…
+// Маленькая модель на плохом кадре кладёт такую строку в items — единственной «позицией» на весь итог
+const TOTAL_LINE = /^(сумма(\s+чека)?|итог\p{L}*|всего|к\s+оплате|без\s+уч[её]та\s+скид\p{L}*|скидк\p{L}*|сдача|наличными|безналичными|total|subtotal|sub-total|amount\s+due|grand\s+total)(?!\p{L})/iu;
+
+function isTotalLine(name) {
+  return TOTAL_LINE.test(String(name || '').trim());
+}
 
 const round2 = (value) => Math.round(value * 100) / 100;
 const round3 = (value) => Math.round(value * 1000) / 1000;
@@ -168,6 +175,7 @@ function normalizeReceipt(raw, { categories = [], fallbackCategoryId, defaultCur
 
   let lineDiscount = 0;
   let suspicious = looksLikeInstruction(raw.merchant);
+  let totalLines = 0;
   let items = [];
   for (const item of rawItems) {
     if (!item || typeof item !== 'object') continue;
@@ -185,16 +193,29 @@ function normalizeReceipt(raw, { categories = [], fallbackCategoryId, defaultCur
     }
     if (amount === 0 || amount > MAX_AMOUNT) continue;
     if (looksLikeInstruction(item.name)) suspicious = true;
+    const name = cleanName(item.name);
+    if (isTotalLine(name)) {
+      totalLines++;
+      continue;
+    }
+    const expected = price !== null ? round2(quantity * price) : null;
+    // Сумма — целое число цен (74,99 при «9 × 74,99»): ошибка в количестве, а не скидка
+    const units = price !== null ? amount / price : null;
+    const wholeUnits = units !== null && units >= 0.99 && Math.abs(units - Math.round(units)) < 0.01;
     items.push({
-      name: cleanName(item.name),
+      name,
       quantity,
       price,
       amount,
       categoryId: byName.get(categoryKey(item.category)) || fallbackCategoryId,
-      lineMismatch: price !== null && Math.abs(round2(quantity * price) - amount) > LINE_TOLERANCE
+      lineMismatch: expected !== null && Math.abs(expected - amount) > LINE_TOLERANCE,
+      // Сумма меньше «цена × количество» — в чеке напечатана цена до скидки, а сумма уже со скидкой (СЫР 229,99 → 159,99)
+      lineDiscounted: expected !== null && amount < expected - LINE_TOLERANCE && !wholeUnits
     });
   }
-  if (!items.length) throw new ReceiptError(raw.is_receipt === false ? 'not_receipt' : 'unreadable', 'no usable items');
+  if (!items.length) {
+    throw new ReceiptError(raw.is_receipt === false ? 'not_receipt' : 'unreadable', totalLines ? 'only total lines' : 'no usable items');
+  }
 
   const truncated = items.length > maxItems;
   if (truncated) items = items.slice(0, maxItems);
@@ -216,7 +237,8 @@ function normalizeReceipt(raw, { categories = [], fallbackCategoryId, defaultCur
   const residual = total !== null ? round2(Math.abs(total - sumOf(items))) : 0;
   const mismatch = residual > SUM_TOLERANCE;
   const sumDeviation = total !== null ? residual / total : null;
-  const badLines = items.filter(item => item.lineMismatch).length;
+  // Строки со скидкой не считаются ошибкой, если сумма всех строк до копейки сходится с итогом чека: итог это подтверждает
+  const badLines = items.filter(item => item.lineMismatch && !(item.lineDiscounted && !mismatch && total !== null)).length;
 
   const currencyText = String(raw.currency || '').trim();
   const currency = normalizeCurrency(currencyText, defaultCurrency);
@@ -242,6 +264,7 @@ function normalizeReceipt(raw, { categories = [], fallbackCategoryId, defaultCur
     && !sparse && !truncated;
   const lowConfidence = !numbersOk || suspicious;
   const checks = { sumDeviation, badLines, lines: items.length, corrected: reconciled.fixed.length, numbersOk };
+  if (totalLines) checks.totalLines = totalLines;
   if (total === null) checks.noTotal = true;
   if (sparse) checks.sparse = true;
   if (truncated) checks.truncated = true;
