@@ -7,7 +7,7 @@ const LocalizationService = require('../src/services/LocalizationService');
 
 // Команды в меню (порядок важен). Все обрабатываются в src/botRoutes.js
 const COMMANDS = [
-  'start', 'stats', 'ask', 'history', 'income', 'recurring', 'savings', 'achievements', 'roast', 'quiz', 'export', 'import', 'family',
+  'start', 'stats', 'ask', 'history', 'income', 'recurring', 'savings', 'achievements', 'coins', 'roast', 'quiz', 'export', 'import', 'family',
   'settings', 'setup', 'limits', 'invite', 'help', 'cancel', 'paysupport', 'terms', 'privacy'
 ];
 // Меню команд в группах (scope all_group_chats): только общие расходы — личные команды в группе не работают.

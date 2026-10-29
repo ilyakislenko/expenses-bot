@@ -1188,6 +1188,7 @@ module.exports = {
   receipt_line_limit: "小票已有 {max} 行 — 无法再添加。",
   receipt_rotate_edited: "✏️ 你已手动修改过这份草稿 — 旋转会清除修改。请记录它，或取消后重新发送照片。",
   help_edit: "✏️ 记错了？在 📅 今天、概览或小票里点记录的编号 — 可以修改金额、类别和 📅 日期。小票草稿在记录前也能修改。",
+  command_coins: "金币与兑换高级会员天数",
   dp_title: "今日计划 · {date}",
   dp_yesterday_kept: "昨天：{spent} / {daily} — 在计划内 ✅",
   dp_yesterday_over: "昨天：{spent} / {daily} — 超出计划 {over} 🔴",

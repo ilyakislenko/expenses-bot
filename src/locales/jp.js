@@ -1187,6 +1187,7 @@ module.exports = {
   receipt_line_limit: "レシートにはもう{max}行あるので、これ以上追加できないよ。",
   receipt_rotate_edited: "✏️ この下書きはもう手で直してあるよ — 回転すると修正が消えちゃう。記録するか、取り消して写真を送り直してね。",
   help_edit: "✏️ 間違えた？ 📅 今日、概要、レシートで記録の番号をタップ — 金額、カテゴリ、📅 日付を変えられるよ。レシートの下書きも記録前に直せるよ。",
+  command_coins: "コインとプレミアム日数への交換",
   dp_title: "今日のプラン · {date}",
   dp_yesterday_kept: "昨日：{daily}中{spent} — プラン内 ✅",
   dp_yesterday_over: "昨日：{daily}中{spent} — プランを{over}オーバー 🔴",
