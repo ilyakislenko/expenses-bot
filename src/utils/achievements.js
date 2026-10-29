@@ -22,6 +22,7 @@ const ACHIEVEMENTS = [
   { code: 'budget_set', emoji: '🎯', tier: 'bronze', xp: 15, metric: 'budgets', target: 1 },
   { code: 'goal_created', emoji: '🌱', tier: 'bronze', xp: 15, metric: 'goals', target: 1 },
   { code: 'savings_updated', emoji: '🐷', tier: 'bronze', xp: 15, metric: 'savingsOps', target: 1 },
+  { code: 'quiz_first', emoji: '🎲', tier: 'bronze', xp: 15, metric: 'quizzes', target: 1 },
   { code: 'categories_5', emoji: '🎨', tier: 'silver', xp: 30, metric: 'categories', target: 5 },
   { code: 'streak_7', emoji: '📆', tier: 'silver', xp: 40, metric: 'bestStreak', target: 7, progress: 'currentStreak' },
   { code: 'records_100', emoji: '📚', tier: 'silver', xp: 50, metric: 'records', target: 100 },
@@ -30,12 +31,14 @@ const ACHIEVEMENTS = [
   { code: 'family_joined', emoji: '👨‍👩‍👧', tier: 'silver', xp: 30, metric: 'family', target: 1 },
   { code: 'under_budget', emoji: '🛡', tier: 'silver', xp: 60, event: 'under_budget_period' },
   { code: 'challenge_won', emoji: '🥊', tier: 'silver', xp: 50, metric: 'challengesWon', target: 1 },
+  { code: 'quiz_perfect', emoji: '🧠', tier: 'silver', xp: 40, metric: 'quizPerfect', target: 1 },
   { code: 'streak_30', emoji: '⚡', tier: 'gold', xp: 120, metric: 'bestStreak', target: 30, progress: 'currentStreak' },
   { code: 'month_complete', emoji: '🗓', tier: 'gold', xp: 100, metric: 'completeMonths', target: 1, progress: 'monthDays' },
   { code: 'records_1000', emoji: '🏛', tier: 'gold', xp: 200, metric: 'records', target: 1000 },
   { code: 'goal_reached', emoji: '🏆', tier: 'gold', xp: 150, metric: 'goalsReached', target: 1 },
   { code: 'debt_paid_off', emoji: '🕊', tier: 'gold', xp: 150, metric: 'debtsPaid', target: 1 },
   { code: 'challenges_5', emoji: '👑', tier: 'gold', xp: 150, metric: 'challengesWon', target: 5 },
+  { code: 'quiz_streak_4', emoji: '🔮', tier: 'gold', xp: 100, metric: 'quizBestStreak', target: 4, progress: 'quizStreak' },
   { code: 'streak_100', emoji: '💎', tier: 'legendary', xp: 400, metric: 'bestStreak', target: 100, progress: 'currentStreak' },
   { code: 'months_complete_6', emoji: '🌟', tier: 'legendary', xp: 500, metric: 'completeMonths', target: 6 },
   { code: 'streak_365', emoji: '🦄', tier: 'legendary', xp: 1000, metric: 'bestStreak', target: 365, progress: 'currentStreak' }
@@ -56,7 +59,7 @@ const LEVEL_ICONS = ['🌱', '🐷', '🧮', '📊', '🎯', '🥷', '🧠', '�
 const EVENTS = [
   'expense_added', 'income_added', 'receipt_recorded', 'import_done', 'voice_used', 'goal_created', 'goal_reached',
   'budget_set', 'under_budget_period', 'family_joined', 'savings_updated', 'debt_paid_off', 'no_spend_day',
-  'challenge_won'
+  'challenge_won', 'quiz_finished'
 ];
 
 function metricValue(stats, metric) {

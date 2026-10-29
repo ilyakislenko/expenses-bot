@@ -45,6 +45,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.command('invite', errorHandler((ctx) => handlers.referralHandlers.showInvite(ctx))); // пригласить друга
   bot.command('ask', errorHandler((ctx) => assistantHandlers.handleCommand(ctx))); // вопрос боту о своих тратах
   bot.command('roast', errorHandler((ctx) => handlers.roastHandlers.showMonth(ctx))); // «😈 Разнос месяца»
+  bot.command('quiz', errorHandler((ctx) => handlers.quizHandlers.show(ctx))); // «🎲 Угадай свои траты» — квиз недели
   bot.command('cancel', errorHandler(async (ctx) => {
     const userId = ctx.from.id;
     const userLanguage = await handlers.userService.getUserLanguage(userId);
@@ -220,6 +221,17 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^rstgs\|(m|f|x)\|(off|spicy|savage|-)\|(s|m|o)$/, errorHandler((ctx) => handlers.roastHandlers.setGender(ctx)));
   bot.action(/^rsty\|(s|m|o)$/, errorHandler((ctx) => handlers.roastHandlers.confirmAdult(ctx)));
   bot.action('rsm', errorHandler((ctx) => handlers.roastHandlers.showMonth(ctx)));
+  // «🎲 Угадай свои траты»: экран (qz), играть / продолжить (qz|go), правила (qzr), приглашения вкл/выкл (qzo|s — экран,
+  // qzo|i — под приглашением, qzt — «🔔 Напоминания»), ответ кнопкой, если опрос не отправить (qza|<сессия>|<вопрос>|<вариант>)
+  bot.action('qz', errorHandler((ctx) => handlers.quizHandlers.show(ctx)));
+  bot.action('qz|go', errorHandler((ctx) => handlers.quizHandlers.start(ctx)));
+  bot.action('qzr', errorHandler((ctx) => handlers.quizHandlers.rules(ctx)));
+  bot.action(/^qzo\|([si])$/, errorHandler((ctx) => handlers.quizHandlers.toggleInvites(ctx)));
+  bot.action('qzt', errorHandler((ctx) => handlers.quizHandlers.toggleFromReminders(ctx, (c) => callbackHandlers.handleConfigureReminderHours(c))));
+  bot.action(/^qza\|(\d+)\|(\d+)\|(\d+)$/, errorHandler((ctx) => handlers.quizHandlers.buttonAnswer(ctx)));
+  // Ответ на опрос-викторину квиза (poll_answer — без чата) и закрытие опроса Telegram (poll — без пользователя)
+  bot.on('poll_answer', errorHandler((ctx) => handlers.quizHandlers.pollAnswer(ctx)));
+  bot.on('poll', errorHandler((ctx) => handlers.quizHandlers.pollClosed(ctx)));
 
   // Текстовые сообщения
   bot.on('text', errorHandler((ctx) => messageHandlers.handleExpense(ctx))); // ввод трат, доходов и кнопки клавиатуры

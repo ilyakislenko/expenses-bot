@@ -53,7 +53,7 @@ async function sendReminders({ userService, expenseService, notificationService,
   return sent;
 }
 
-function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, recurringExpenseService, premiumLifecycleService, reportService, dailySummaryService, weeklyInsightService, planningService, achievementService, subscriptionAlertService, supportedCurrencies = currencyConfig.SUPPORTED_CURRENCIES) {
+function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, recurringExpenseService, premiumLifecycleService, reportService, dailySummaryService, weeklyInsightService, planningService, achievementService, subscriptionAlertService, quizService = null, supportedCurrencies = currencyConfig.SUPPORTED_CURRENCIES) {
   // Проверяем, нужно ли обновлять курсы при запуске
   (async () => {
     try {
@@ -207,6 +207,35 @@ function setupBotCron(cron, currencyUtils, donationRepository, userService, expe
       console.error('Ошибка при отправке напоминалок:', err);
     }
   });
+
+  if (quizService) {
+    // Квиз недели: каждую минуту — вопросы, срок которых вышел (таймеры теряются при перезапуске), и неотправленные
+    cron.schedule('* * * * *', async () => {
+      try {
+        await quizService.sweep();
+      } catch (err) {
+        console.error('Ошибка квиза недели (сроки вопросов):', err);
+      }
+    });
+    // Приглашения (четверг 19:00–20:59 по местному времени, по разу за неделю) — в :50, не в одну минуту с рассылками;
+    // розыгрыш (понедельник 12:00 UTC), выдача призов и объявление днём по местному времени — в :45
+    cron.schedule('50 * * * *', async () => {
+      try {
+        const sent = await quizService.processInvites();
+        if (sent > 0) console.log(`Квиз недели: приглашений ${sent}`);
+      } catch (err) {
+        console.error('Ошибка приглашений в квиз недели:', err);
+      }
+    });
+    cron.schedule('45 * * * *', async () => {
+      try {
+        const { drawn, granted, announced } = await quizService.processPrizes();
+        if (drawn + granted + announced > 0) console.log(`Квиз недели: розыгрышей ${drawn}, призов выдано ${granted}, объявлено ${announced}`);
+      } catch (err) {
+        console.error('Ошибка розыгрыша квиза недели:', err);
+      }
+    });
+  }
 }
 
 module.exports = setupBotCron;

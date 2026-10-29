@@ -221,6 +221,39 @@ class ChartService {
     }, this.renderer.createText());
     return this.render(svg, IMAGE_WIDTH.card);
   }
+
+  // 🎲 Карточка результата квиза недели → PNG или null (нет рендера или шрифта для языка).
+  // card: { weekRange, score, correct, total, answers, percent, streak, perfect }. Сумм и описаний трат нет
+  async quizCard(card, lang, { botUsername } = {}) {
+    const link = botUsername ? `t.me/${botUsername}?start=quiz` : '';
+    const labels = {
+      title: this.t(lang, 'quiz_card_title'),
+      subtitle: this.t(lang, 'quiz_card_week', { range: card.weekRange }),
+      points: this.t(lang, 'quiz_card_points'),
+      correct: this.t(lang, 'quiz_card_correct'),
+      better: this.t(lang, 'quiz_card_better'),
+      streak: this.t(lang, 'quiz_card_streak'),
+      footer: this.t(lang, 'quiz_card_footer'),
+      badge: card.perfect ? this.t(lang, 'quiz_card_perfect') : ''
+    };
+    if (!(await this.canRender([...Object.values(labels), link]))) return null;
+    const tiles = [{ value: `${card.correct}/${card.total}`, label: labels.correct }];
+    if (card.percent !== null && card.percent !== undefined) tiles.push({ value: `${card.percent}%`, label: labels.better });
+    if (card.streak >= 2) tiles.push({ value: String(card.streak), label: labels.streak });
+    const svg = charts.quizCardSvg({
+      title: labels.title,
+      subtitle: labels.subtitle,
+      score: String(card.score),
+      scoreLabel: labels.points,
+      badge: labels.badge,
+      answers: card.answers,
+      tiles,
+      footer: labels.footer,
+      link,
+      brand: this.brand(botUsername)
+    }, this.renderer.createText());
+    return this.render(svg, IMAGE_WIDTH.card);
+  }
 }
 
 ChartService.TREND_PERIODS = TREND_PERIODS;

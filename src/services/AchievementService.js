@@ -7,6 +7,7 @@ const {
 const { CHALLENGE_DAYS, NO_SPEND_TARGET, evaluateChallenge, countNoSpendDays } = require('../utils/challenges');
 const { COMPARISON_ITEMS, countKeywords, pickComparison, biggestDay } = require('../utils/wrapped');
 const { USER_LIMITS } = require('../utils/constants');
+const { weekStart, weekStreak, bestWeekStreak } = require('../utils/quiz');
 
 // Первое знакомство открывает значки за всю историю. До стольких — празднуем как обычно (новичок и его первая
 // трата), больше — одна строка-сюрприз, без перечисления
@@ -91,7 +92,10 @@ class AchievementService {
       bestStreak: Math.max(streak.current, bestStreak(activeDays, [...freezes, ...streak.newFreezes])),
       completeMonths: completeMonths(activeDays),
       monthDays: [...activeDays].filter(day => day.startsWith(month)).length,
-      noSpendDays: countNoSpendDays({ markDays: days.markDays, windows, expenseDays, today })
+      noSpendDays: countNoSpendDays({ markDays: days.markDays, windows, expenseDays, today }),
+      // Квиз недели: серия недель подряд (текущая — для прогресса, лучшая — открывает значок)
+      quizStreak: weekStreak(stats.quizWeeks || [], weekStart(today)),
+      quizBestStreak: bestWeekStreak(stats.quizWeeks || [])
     });
     return {
       timezone,

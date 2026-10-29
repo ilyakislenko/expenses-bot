@@ -24,7 +24,8 @@ class SecurityMiddleware {
   // Основной middleware для безопасности
   middleware() {
     return async (ctx, next) => {
-      if (isPaymentUpdate(ctx)) {
+      // Закрытие своего опроса квиза (апдейт poll) приходит от Telegram без пользователя — не ввод и не под лимиты
+      if (isPaymentUpdate(ctx) || ctx.updateType === 'poll') {
         return next();
       }
 

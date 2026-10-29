@@ -50,6 +50,7 @@ const AssistantRepository = require('./repositories/AssistantRepository');
 const EntryBatchRepository = require('./repositories/EntryBatchRepository');
 const RoastRepository = require('./repositories/RoastRepository');
 const UserInputStateRepository = require('./repositories/UserInputStateRepository');
+const QuizRepository = require('./repositories/QuizRepository');
 
 // Services
 const ExpenseService = require('./services/ExpenseService');
@@ -83,6 +84,7 @@ const EntryBatchService = require('./services/EntryBatchService');
 const VoiceService = require('./services/VoiceService');
 const RoastService = require('./services/RoastService');
 const { createSttFromEnv } = require('./services/voice/whisper');
+const QuizService = require('./services/QuizService');
 
 // Handlers
 const CommandHandlers = require('./handlers/commands');
@@ -109,6 +111,7 @@ const MultiEntryHandlers = require('./handlers/MultiEntryHandlers');
 const RoastHandlers = require('./handlers/RoastHandlers');
 const OnboardingHandlers = require('./handlers/OnboardingHandlers');
 const OnboardingService = require('./services/OnboardingService');
+const QuizHandlers = require('./handlers/QuizHandlers');
 
 // State management
 const StateService = require('./services/StateService');
@@ -275,6 +278,33 @@ class Container {
       case 'referralHandlers':
         return new ReferralHandlers({
           referralService: this.get('referralService'),
+          userService: this.get('userService'),
+          localizationService: this.get('localizationService')
+        });
+
+      case 'quizRepository':
+        return new QuizRepository();
+
+      // «🎲 Угадай свои траты» — квиз недели: вопросы из своих трат, опросы-викторины, розыгрыш дней премиума
+      case 'quizService':
+        return new QuizService({
+          quizRepository: this.get('quizRepository'),
+          userService: this.get('userService'),
+          expenseService: this.get('expenseService'),
+          incomeService: this.get('incomeService'),
+          budgetService: this.get('budgetService'),
+          currencyUtils: this.get('currencyUtils'),
+          formatter: this.get('formatter'),
+          localizationService: this.get('localizationService'),
+          notificationService: this.get('notificationService'),
+          userNotificationRepository: this.get('userNotificationRepository'),
+          achievementService: this.get('achievementService'),
+          chartService: this.get('chartService')
+        });
+
+      case 'quizHandlers':
+        return new QuizHandlers({
+          quizService: this.get('quizService'),
           userService: this.get('userService'),
           localizationService: this.get('localizationService')
         });
@@ -713,7 +743,8 @@ class Container {
           receiptService: this.get('receiptService'),
           referralService: this.get('referralService'),
           voiceService: this.get('voiceService'),
-          roastService: this.get('roastService')
+          roastService: this.get('roastService'),
+          quizHandlers: this.get('quizHandlers')
         });
 
       case 'messageHandlers':
@@ -765,7 +796,8 @@ class Container {
           planningService: this.get('planningService'),
           achievementService: this.get('achievementService'),
           onboardingHandlers: this.get('onboardingHandlers'),
-          subscriptionAlertService: this.get('subscriptionAlertService')
+          subscriptionAlertService: this.get('subscriptionAlertService'),
+          quizService: this.get('quizService')
         });
 
       case 'adminHandlers':
@@ -927,6 +959,8 @@ class Container {
       multiEntryHandlers: this.get('multiEntryHandlers'),
       pendingJobService: this.get('pendingJobService'),
       roastHandlers: this.get('roastHandlers'),
+      quizHandlers: this.get('quizHandlers'),
+      quizService: this.get('quizService'),
       onboardingHandlers: this.get('onboardingHandlers'),
       savingsHandlers: this.get('savingsHandlers'),
       planningHandlers: this.get('planningHandlers'),
