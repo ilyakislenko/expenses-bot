@@ -68,13 +68,17 @@ class NotificationService {
     }
   }
 
-  async sendFamilyMemberRemoved(userId, familyName) {
+  // lostFamilyPremium — премиум был только от семейного тарифа этой семьи и закончился вместе с членством
+  async sendFamilyMemberRemoved(userId, familyName, { lostFamilyPremium = false } = {}) {
     try {
       let userLanguage = await this.userService.getUserLanguage(userId) || 'ru';
       
-      const message = this.localizationService.getText(userLanguage, 'family_member_removed_notification', {
+      let message = this.localizationService.getText(userLanguage, 'family_member_removed_notification', {
         familyName: this.formatter.escapeMarkdown(familyName)
       });
+      if (lostFamilyPremium) {
+        message += `\n\n${this.localizationService.getText(userLanguage, 'family_premium_lost', { family: this.formatter.escapeMarkdown(familyName) })}`;
+      }
 
       await this.bot.telegram.sendMessage(userId, message, {
         parse_mode: 'Markdown'

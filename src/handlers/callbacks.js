@@ -254,7 +254,9 @@ class CallbackHandlers {
           const stars = t.stars_amount || 0;
           const status = t.status || 'completed';
           const hash = shorten(t.telegram_payment_id || '-');
-          text += `• ${date} — ${stars}⭐ — ${status} — ${hash}\n`;
+          // Семейный тариф помечаем — его оплатил этот пользователь для своей семьи
+          const family = String(t.invoice_payload || '').includes('"type":"family_premium"') ? '👨‍👩‍👧 ' : '';
+          text += `• ${family}${date} — ${stars}⭐ — ${status} — ${hash}\n`;
         }
         text += `\n`;
       }
@@ -1029,7 +1031,10 @@ class CallbackHandlers {
     const family = await this.familyService.getUserFamily(userId);
     if (!family) return ctx.answerCbQuery(t('not_family_member'));
     await ctx.answerCbQuery().catch(() => {});
-    await respond(ctx, t('family_leave_confirm', { name: this.formatter.escapeMarkdown(family.name) }), {
+    // Премиум только от семейного тарифа этой семьи — предупреждаем, что он закончится с выходом
+    const info = this.premiumService && this.premiumService.getPremiumInfo ? await this.premiumService.getPremiumInfo(userId).catch(() => null) : null;
+    const warning = info && info.family && !info.personalActive ? `\n\n${t('family_leave_premium_warning')}` : '';
+    await respond(ctx, `${t('family_leave_confirm', { name: this.formatter.escapeMarkdown(family.name) })}${warning}`, {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [[
@@ -1049,7 +1054,10 @@ class CallbackHandlers {
       // Покидаем семью
       const leftFamily = await this.familyService.leaveFamily(userId);
       
-      const familyLeftText = this.localizationService.getText(userLanguage, 'family_left', { name: this.formatter.escapeMarkdown(leftFamily.name) });
+      let familyLeftText = this.localizationService.getText(userLanguage, 'family_left', { name: this.formatter.escapeMarkdown(leftFamily.name) });
+      if (leftFamily.lostFamilyPremium) {
+        familyLeftText += `\n\n${this.localizationService.getText(userLanguage, 'family_premium_lost', { family: this.formatter.escapeMarkdown(leftFamily.name) })}`;
+      }
       const backText = this.localizationService.getText(userLanguage, 'button_back');
       
       await ctx.answerCbQuery();
@@ -1087,11 +1095,21 @@ class CallbackHandlers {
       await ctx.answerCbQuery(invitationAcceptedText);
       // Строка достижений — в Markdown, поэтому название семьи (пользовательский текст) экранируется
       const note = this.achievementService ? await this.achievementService.track(userId, 'family_joined', { lang: userLanguage }) : '';
-      const text = note
-        ? `${this.localizationService.getText(userLanguage, 'invitation_accepted', { familyName: this.formatter.escapeMarkdown(result.family?.name || 'Unknown Family') })}\n\n${note}`
+      // Семейный тариф владельца теперь даёт премиум и этому участнику
+      let premiumLine = '';
+      if (result.familyPremium) {
+        const timezone = await this.userService.getUserTimezone(userId);
+        premiumLine = this.localizationService.getText(userLanguage, 'family_premium_joined', {
+          payer: this.formatter.escapeMarkdown(result.familyPremium.payerName),
+          date: this.formatter.formatDate(result.familyPremium.expiresAt, timezone)
+        });
+      }
+      const markdown = !!(note || premiumLine);
+      const text = markdown
+        ? [this.localizationService.getText(userLanguage, 'invitation_accepted', { familyName: this.formatter.escapeMarkdown(result.family?.name || 'Unknown Family') }), premiumLine, note].filter(Boolean).join('\n\n')
         : invitationAcceptedText;
       await ctx.editMessageText(text, {
-        ...(note ? { parse_mode: 'Markdown' } : {}),
+        ...(markdown ? { parse_mode: 'Markdown' } : {}),
         reply_markup: {
           inline_keyboard: [
             [{ text: this.localizationService.getText(userLanguage, 'button_back'), callback_data: 'family_menu' }]
@@ -1238,7 +1256,7 @@ class CallbackHandlers {
       await this.funnelService.track(userId, 'tariffs_viewed');
       const subscription = await this.userService.getActiveRecurringSubscription(userId);
       
-      const { PREMIUM_TARIFFS, tariffDiscount, generatePremiumPaymentButtons } = require('../utils/constants');
+      const { PREMIUM_TARIFFS, tariffDiscount, generatePremiumPaymentButtons, FAMILY_TARIFFS, FAMILY_PREMIUM } = require('../utils/constants');
       
       const tariffsTitle = this.localizationService.getText(userLanguage, 'premium_tariffs_title');
       const paymentInfo = this.localizationService.getText(userLanguage, 'premium_payment_info');
@@ -1292,7 +1310,15 @@ class CallbackHandlers {
       }
       const lines = linesArr.join('\n\n');
 
-      let message = `${tariffsTitle}\n\n${lines}\n\n${paymentInfo}\n\n${renewalInfo}\n\n${starsInfo}`;
+      // Семейный тариф — строкой и кнопкой на свой экран (pfam)
+      const familyMonth = FAMILY_TARIFFS.MONTH_1;
+      const familyLine = this.localizationService.getText(userLanguage, 'premium_family_tariffs_line', {
+        max: FAMILY_PREMIUM.MAX_MEMBERS,
+        stars: familyMonth.stars,
+        perPerson: Math.round(familyMonth.stars / FAMILY_PREMIUM.MAX_MEMBERS)
+      });
+
+      let message = `${tariffsTitle}\n\n${lines}\n\n${familyLine}\n\n${paymentInfo}\n\n${renewalInfo}\n\n${starsInfo}`;
       if (subscription) {
         message += `\n\n${this.localizationService.getText(userLanguage, 'subscription_active_info', {
           date: this.formatter.formatDate(subscription.subscription_expires_at, user.timezone || 'UTC')
@@ -1322,6 +1348,7 @@ class CallbackHandlers {
       
       const inlineKeyboard = [
         ...buttonsWithLinks,
+        [{ text: this.localizationService.getText(userLanguage, 'button_family_tariffs'), callback_data: 'pfam' }],
         [{ text: backButton, callback_data: 'premium_subscription' }]
       ];
       

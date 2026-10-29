@@ -286,7 +286,7 @@ describe('SEC-8: remove_member / confirm_remove_member', () => {
     await handlers.handleConfirmRemoveMember(ctx);
 
     expect(world.members.has(MEMBER)).toBe(false);
-    expect(world.notificationService.sendFamilyMemberRemoved).toHaveBeenCalledWith(MEMBER, 'Home');
+    expect(world.notificationService.sendFamilyMemberRemoved).toHaveBeenCalledWith(MEMBER, 'Home', { lostFamilyPremium: false });
     expect(ctx.editMessageText.mock.calls[0][0]).toContain('member');
   });
 });

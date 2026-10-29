@@ -9,6 +9,7 @@ const AUTO_RESET_STATES = [
   'admin_search',
   'admin_broadcast',
   'creating_family',
+  'creating_family_plan',
   'joining_family',
   'adding_family_expense',
   'adding_personal_expense',

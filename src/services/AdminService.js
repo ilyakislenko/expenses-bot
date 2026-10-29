@@ -1,7 +1,7 @@
 const logger = require('../utils/logger');
 
 class AdminService {
-  constructor(userService, expenseRepository, bugReportRepository, donationRepository, premiumTransactionRepository, notificationService, localizationService) {
+  constructor(userService, expenseRepository, bugReportRepository, donationRepository, premiumTransactionRepository, notificationService, localizationService, familyPremiumService = null) {
     this.userService = userService;
     this.expenseRepository = expenseRepository;
     this.bugReportRepository = bugReportRepository;
@@ -9,6 +9,7 @@ class AdminService {
     this.premiumTransactionRepository = premiumTransactionRepository;
     this.notificationService = notificationService;
     this.localizationService = localizationService;
+    this.familyPremiumService = familyPremiumService;
     this.bot = null; // Для прямого доступа к боту
   }
 
@@ -190,7 +191,14 @@ class AdminService {
     logger.info('Admin revoking premium', { adminUserId, targetUserId });
     
     await this.userService.deactivatePremium(targetUserId);
+    // Вместе с премиумом снят и оплаченный им семейный тариф — участники его семьи теряют премиум сразу
+    if (this.familyPremiumService) this.familyPremiumService.planChanged();
     logger.info('Premium revoked successfully', { adminUserId, targetUserId });
+  }
+
+  // Семейный тариф в статистике — отдельно от личных покупок
+  async getFamilyPremiumStats() {
+    return this.familyPremiumService ? this.familyPremiumService.getStats() : null;
   }
 
   // Отправить массовое уведомление всем пользователям

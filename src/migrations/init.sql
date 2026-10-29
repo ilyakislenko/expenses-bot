@@ -815,3 +815,10 @@ CREATE TABLE IF NOT EXISTS subscription_trials (
 COMMENT ON TABLE subscription_trials IS 'Пробные периоды: напоминание за день и в день окончания; end_date NULL — черновик (ждём дату), state — ответ на напоминание';
 COMMENT ON COLUMN subscription_trials.created_on IS 'Локальная дата добавления: в этот день не напоминаем';
 CREATE INDEX IF NOT EXISTS idx_subscription_trials_user ON subscription_trials(user_id, end_date);
+
+-- ==== FAMILY PREMIUM ====
+-- Семейный тариф: до какого момента владелец семьи оплатил премиум для семьи. Как premium_expires_at — TIMESTAMP
+-- без пояса во времени процесса Node. Премиум получают владелец и первые участники его семьи (FAMILY_PREMIUM.MAX_MEMBERS)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS family_premium_expires_at TIMESTAMP NULL;
+COMMENT ON COLUMN users.family_premium_expires_at IS 'Семейный тариф, оплаченный этим пользователем (владельцем семьи): действует до';
+CREATE INDEX IF NOT EXISTS idx_users_family_premium_expires_at ON users(family_premium_expires_at) WHERE family_premium_expires_at IS NOT NULL;

@@ -14,6 +14,14 @@ class AdminHandlers {
     this.referralService = referralService;
   }
 
+  // Семейный тариф отдельной строкой: покупки и звёзды (без возвратов), возвраты, действующие тарифы и сколько
+  // участников (кроме плательщиков) получают премиум от семьи
+  async familyPremiumStatsLine() {
+    const stats = this.adminService.getFamilyPremiumStats ? await this.adminService.getFamilyPremiumStats().catch(() => null) : null;
+    if (!stats) return '';
+    return `👨‍👩‍👧 Семейный тариф: покупок ${stats.purchases} · ${stats.stars} ⭐ · возвратов ${stats.refunded} · действует у ${stats.active_plans} семей · участников с премиумом от семьи ${stats.covered_members}`;
+  }
+
   // Проверка прав администратора
   async checkAdminAccess(ctx) {
     const userId = ctx.from.id;
@@ -107,6 +115,8 @@ class AdminHandlers {
           statsText += `\n\n🎁 Приглашения: ${referrals.invited} · активировали ${referrals.activated} · пригласивших ${referrals.inviters} · выдано ${referrals.days} дн. премиума`;
         }
       }
+      const familyLine = await this.familyPremiumStatsLine();
+      if (familyLine) statsText += `\n\n${familyLine}`;
 
       const keyboard = [
         [{ text: '🔙 Назад', callback_data: 'panel_main' }]
@@ -335,12 +345,14 @@ class AdminHandlers {
     try {
       const premiumStats = await this.adminService.getPremiumStats();
       
-      const premiumText = this.localizationService.getText(userLanguage, 'admin_premium_stats', {
+      let premiumText = this.localizationService.getText(userLanguage, 'admin_premium_stats', {
         totalPremiumUsers: premiumStats.totalPremiumUsers,
         activePremiumUsers: premiumStats.activePremiumUsers,
         totalTransactions: premiumStats.totalTransactions,
         totalRevenue: premiumStats.totalRevenue
       });
+      const familyLine = await this.familyPremiumStatsLine();
+      if (familyLine) premiumText += `\n\n${familyLine}`;
 
       const keyboard = [
         [{ text: '🔙 Назад', callback_data: 'panel_main' }]

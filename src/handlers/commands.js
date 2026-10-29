@@ -5,10 +5,10 @@ const ReferralService = require('../services/ReferralService');
 const { getTimezoneDisplayName } = require('../utils/timezoneCalculator');
 const { summaryHour } = require('../services/DailySummaryService');
 const { localToday, lastDaysPeriod } = require('../utils/period');
-const { PREMIUM_TARIFFS, tariffDiscount, USER_LIMITS, DEFAULT_REMINDER_HOURS } = require('../utils/constants');
+const { PREMIUM_TARIFFS, tariffDiscount, USER_LIMITS, DEFAULT_REMINDER_HOURS, FAMILY_TARIFFS, FAMILY_PREMIUM } = require('../utils/constants');
 
 class CommandHandlers {
-  constructor({ expenseService, userService, premiumService, familyService, localizationService, formatter, stateService, keyboardGenerators, paymentService, incomeService, funnelService, receiptService, referralService = null, voiceService = null, roastService = null }) {
+  constructor({ expenseService, userService, premiumService, familyService, localizationService, formatter, stateService, keyboardGenerators, paymentService, incomeService, funnelService, receiptService, referralService = null, voiceService = null, roastService = null, familyPremiumService = null }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -24,6 +24,7 @@ class CommandHandlers {
     this.referralService = referralService;
     this.voiceService = voiceService;
     this.roastService = roastService; // строка «😈 Злой режим» в настройках
+    this.familyPremiumService = familyPremiumService; // семейный тариф: строки в «Семье» и на экране подписки
   }
 
   async paysupport(ctx) {
@@ -368,6 +369,7 @@ class CommandHandlers {
         let text = t('family_teaser');
         let keyboard = [
           [{ text: t('button_premium'), callback_data: 'premium_subscription' }],
+          [{ text: t('button_family_tariffs'), callback_data: 'pfam' }],
           [{ text: t('button_back'), callback_data: 'back_to_menu' }]
         ];
         if (this.referralService) ({ text, keyboard } = await this.referralService.withUpsell(userId, userLanguage, text, keyboard));
@@ -437,6 +439,11 @@ class CommandHandlers {
           text: this.localizationService.getText(userLanguage, familyMode ? 'family_mode_button_on' : 'family_mode_button_off'),
           callback_data: 'family_mode_toggle'
         }]);
+
+        // Семейный тариф: кто платит и до какого числа; владельцу — кнопка тарифа (оформить или продлить)
+        const planLine = await this.familyPlanLine(userId, userLanguage, isOwner, 'markdown');
+        if (planLine) message += `\n\n${planLine}`;
+        if (isOwner) keyboard.splice(keyboard.length - 1, 0, [{ text: this.localizationService.getText(userLanguage, 'button_family_tariffs'), callback_data: 'pfam' }]);
       } else {
         // Пользователь не в семье
         const familyInfoText = this.localizationService.getText(userLanguage, 'family_info');
@@ -618,14 +625,16 @@ class CommandHandlers {
 
     let message = `${subscriptionTitle}\n\n${statusHeader}\n- ${privileges}\n- ${maxDescriptionLength}`;
       
-      // Добавляем информацию о дате истечения премиума
-      if (limitsInfo.isPremium && limitsInfo.premiumExpiresAt) {
+      // Срок: свой, а премиум от семьи — с тем, кто платит («💎 Премиум от семьи (оплачивает Аня) до 01.12»)
+      if (limitsInfo.isPremium && limitsInfo.personalActive !== false && limitsInfo.premiumExpiresAt) {
         const expiryInfo = this.localizationService.getText(userLanguage, 'premium_expires', {
           date: this.formatter.formatDate(limitsInfo.premiumExpiresAt, userTimezone),
           days: limitsInfo.daysRemaining
         });
         message += `\n\n${expiryInfo}`;
       }
+      const planLine = await this.familyPlanLine(userId, userLanguage, null, 'html');
+      if (planLine) message += `\n\n${planLine}`;
 
       // Подписка с автопродлением: когда следующее списание и как отменить
       const subscription = await this.userService.getActiveRecurringSubscription(userId);
@@ -673,7 +682,9 @@ class CommandHandlers {
       this.recentExpenseCount(userId, timezone).catch(() => 0),
       this.referralService ? this.referralService.getStats(userId).catch(() => null) : null
     ]);
-    const onTrial = !!limitsInfo.isPremium && source === 'trial';
+    // Премиум только от семьи — как оплаченный: без строк пробного периода и «пригласи друга»
+    const familyOnly = !!limitsInfo.familyPremium && !limitsInfo.personalActive;
+    const onTrial = !!limitsInfo.isPremium && source === 'trial' && !familyOnly;
     const paidOrGranted = !!limitsInfo.isPremium && !onTrial;
     const blocks = [];
 
@@ -688,9 +699,11 @@ class CommandHandlers {
     const voice = this.voiceService && this.voiceService.configured
       ? t('premium_benefit_voice', { premium: premium.MAX_VOICE_PER_DAY, free: free.MAX_VOICE_PER_DAY })
       : '';
+    const familyMonth = FAMILY_TARIFFS.MONTH_1;
     blocks.push(t('premium_benefits', {
       receipts,
       voice,
+      family: t('premium_benefit_family', { max: FAMILY_PREMIUM.MAX_MEMBERS, stars: familyMonth.stars }),
       inflationPremium: premium.PLANNING_INFLATION_ITEMS,
       inflationFree: free.PLANNING_INFLATION_ITEMS,
       subsPremium: premium.PLANNING_SUBSCRIPTIONS,
@@ -713,6 +726,34 @@ class CommandHandlers {
   async recentExpenseCount(userId, timezone) {
     const totals = await this.expenseService.getTotals(userId, timezone, lastDaysPeriod(localToday(timezone), 30));
     return totals.count;
+  }
+
+  // Строка семейного тарифа: премиум от чужого тарифа — кто платит и до какого числа; свой оплаченный (владелец) —
+  // до какого числа и сколько мест занято. format: 'html' | 'markdown' (имя плательщика — пользовательский текст)
+  async familyPlanLine(userId, lang, isOwner, format) {
+    if (!this.familyPremiumService) return '';
+    const t = (key, params) => this.localizationService.getText(lang, key, params);
+    const escape = format === 'html'
+      ? (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      : (s) => this.formatter.escapeMarkdown(String(s));
+    try {
+      const timezone = await this.userService.getUserTimezone(userId);
+      const inherited = await this.familyPremiumService.inheritedPlan(userId);
+      if (inherited) {
+        return t('premium_from_family', { payer: escape(inherited.payerName), date: this.formatter.formatDate(inherited.expiresAt, timezone) });
+      }
+      if (isOwner === false) return '';
+      const status = await this.familyPremiumService.getOwnerStatus(userId);
+      if (!status.planActive || !status.isOwner) return '';
+      return t('family_plan_owner_line', {
+        date: this.formatter.formatDate(status.planExpiresAt, timezone),
+        members: status.members,
+        max: FAMILY_PREMIUM.MAX_MEMBERS
+      });
+    } catch (error) {
+      logger.warn('Family plan line not built', { userId, error: error.message });
+      return '';
+    }
   }
 
   // Годовой тариф в пересчёте на месяц: звёзды и цена в основной валюте (как на экране тарифов), скидка — tariffDiscount

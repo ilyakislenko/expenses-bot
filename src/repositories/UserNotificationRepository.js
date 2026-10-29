@@ -7,7 +7,7 @@ class UserNotificationRepository extends BaseRepository {
   // premium_source: 'paid' — были оплаты, 'granted' — выдан админом без оплат, 'trial' — только пробный период.
   async getPremiumLifecycleCandidates(now = new Date()) {
     const query = `
-      SELECT u.id, u.language, u.timezone, u.premium_expires_at,
+      SELECT u.id, u.language, u.timezone, u.premium_expires_at, u.family_premium_expires_at,
              CASE
                WHEN EXISTS (
                  SELECT 1 FROM premium_transactions t

@@ -211,8 +211,9 @@ class UserRepository extends BaseRepository {
     return parseInt(result.rows[0].count, 10);
   }
 
+  // Админ снимает премиум целиком — и оплаченный им семейный тариф
   async deactivatePremium(userId) {
-    const query = 'UPDATE users SET premium = false, premium_expires_at = NULL WHERE id = $1';
+    const query = 'UPDATE users SET premium = false, premium_expires_at = NULL, family_premium_expires_at = NULL WHERE id = $1';
     await this.query(query, [userId]);
   }
 
