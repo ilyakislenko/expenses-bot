@@ -1,6 +1,7 @@
 const { metricsMiddleware, telegramDuplicateCallbacks } = require('./utils/metrics');
 const logger = require('./utils/logger');
 const privateChatOnly = require('./middleware/privateChatOnly');
+const { redact } = require('./utils/bankNotification');
 
 module.exports = function applyBotMiddleware(bot, errorHandler, callbackDeduplicator, securityMiddleware, localizationService = null) {
   // Middleware для метрик
@@ -50,7 +51,8 @@ module.exports = function applyBotMiddleware(bot, errorHandler, callbackDeduplic
     const start = Date.now();
     const user = ctx.from;
     const updateType = ctx.updateType;
-    const text = ctx.message?.text || ctx.callbackQuery?.data || 'non-text';
+    // Текст сообщения — без номеров карт и остатков (пересланные уведомления банка)
+    const text = (ctx.message?.text ? redact(ctx.message.text) : ctx.callbackQuery?.data) || 'non-text';
     
     logger.telegram('Telegram request received', {
       userId: user?.id,

@@ -342,7 +342,8 @@ class ExpenseRepository extends BaseRepository {
   async getExpenseById(userId, expenseId) {
     const query = `
       SELECT e.*, c.name as category_name, c.icon as category_icon,
-             u.username AS user_username, u.first_name AS user_first_name
+             u.username AS user_username, u.first_name AS user_first_name,
+             (SELECT b.source FROM entry_batches b WHERE b.id = e.batch_id) AS batch_source
       FROM expenses e
       LEFT JOIN categories c ON e.category_id = c.id
       LEFT JOIN users u ON u.id = e.user_id

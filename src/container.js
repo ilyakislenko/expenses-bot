@@ -54,6 +54,7 @@ const EntryBatchRepository = require('./repositories/EntryBatchRepository');
 const RoastRepository = require('./repositories/RoastRepository');
 const UserInputStateRepository = require('./repositories/UserInputStateRepository');
 const QuizRepository = require('./repositories/QuizRepository');
+const BankNotificationRepository = require('./repositories/BankNotificationRepository');
 
 // Services
 const ExpenseService = require('./services/ExpenseService');
@@ -91,6 +92,7 @@ const AssistantService = require('./services/AssistantService');
 const { createAssistantProvider } = require('./services/assistant/model');
 const EntryBatchService = require('./services/EntryBatchService');
 const VoiceService = require('./services/VoiceService');
+const BankNotificationService = require('./services/BankNotificationService');
 const RoastService = require('./services/RoastService');
 const { createSttFromEnv } = require('./services/voice/whisper');
 const QuizService = require('./services/QuizService');
@@ -102,6 +104,7 @@ const CallbackHandlers = require('./handlers/callbacks');
 const AdminHandlers = require('./handlers/AdminHandlers');
 const IncomeHandlers = require('./handlers/IncomeHandlers');
 const SavingsHandlers = require('./handlers/SavingsHandlers');
+const BankNotificationHandlers = require('./handlers/BankNotificationHandlers');
 const RecurringExpenseHandlers = require('./handlers/RecurringExpenseHandlers');
 const ExpenseHandlers = require('./handlers/ExpenseHandlers');
 const BudgetHandlers = require('./handlers/BudgetHandlers');
@@ -600,6 +603,34 @@ class Container {
           pendingJobService: this.get('pendingJobService')
         });
 
+      case 'bankNotificationRepository':
+        return new BankNotificationRepository();
+
+      // Уведомления банка: шаблоны, иначе нейросеть «Спроси бота» (assistantProvider — общая очередь с чеками)
+      case 'bankNotificationService':
+        return new BankNotificationService({
+          bankNotificationRepository: this.get('bankNotificationRepository'),
+          entryBatchService: this.get('entryBatchService'),
+          userService: this.get('userService'),
+          premiumService: this.get('premiumService'),
+          validator: this.get('enhancedValidator'),
+          provider: this.get('assistantProvider')
+        });
+
+      case 'bankNotificationHandlers':
+        return new BankNotificationHandlers({
+          bankNotificationService: this.get('bankNotificationService'),
+          multiEntryHandlers: this.get('multiEntryHandlers'),
+          expenseHandlers: this.get('expenseHandlers'),
+          incomeHandlers: this.get('incomeHandlers'),
+          expenseService: this.get('expenseService'),
+          incomeService: this.get('incomeService'),
+          premiumService: this.get('premiumService'),
+          userService: this.get('userService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter')
+        });
+
       case 'currencyUtils':
         return createCurrencyUtils(this.get('currencyRepository'));
 
@@ -863,7 +894,8 @@ class Container {
           assistantHandlers: this.get('assistantHandlers'),
           multiEntryHandlers: this.get('multiEntryHandlers'),
           onboardingHandlers: this.get('onboardingHandlers'),
-          receiptHandlers: this.get('receiptHandlers')
+          receiptHandlers: this.get('receiptHandlers'),
+          bankNotificationHandlers: this.get('bankNotificationHandlers')
         });
 
       case 'callbackHandlers':
@@ -1053,6 +1085,7 @@ class Container {
       referralService: this.get('referralService'),
       assistantHandlers: this.get('assistantHandlers'),
       multiEntryHandlers: this.get('multiEntryHandlers'),
+      bankNotificationHandlers: this.get('bankNotificationHandlers'),
       pendingJobService: this.get('pendingJobService'),
       roastHandlers: this.get('roastHandlers'),
       quizHandlers: this.get('quizHandlers'),

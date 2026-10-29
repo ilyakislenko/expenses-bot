@@ -962,3 +962,42 @@ CREATE INDEX IF NOT EXISTS idx_quiz_prizes_pending ON quiz_prizes(week_key) WHER
 ALTER TABLE users ADD COLUMN IF NOT EXISTS family_premium_expires_at TIMESTAMP NULL;
 COMMENT ON COLUMN users.family_premium_expires_at IS 'Семейный тариф, оплаченный этим пользователем (владельцем семьи): действует до';
 CREATE INDEX IF NOT EXISTS idx_users_family_premium_expires_at ON users(family_premium_expires_at) WHERE family_premium_expires_at IS NOT NULL;
+
+
+-- ==== BANK NOTIFICATIONS ====
+-- Пересланные и вставленные уведомления банка: записи идут партией entry_batches.source = 'bank' (карточка — «🏦 из
+-- уведомления банка»). Текст уведомления, номер карты и остаток не хранятся — только отпечаток для поиска повторов.
+ALTER TABLE entry_batches DROP CONSTRAINT IF EXISTS entry_batches_source_check;
+ALTER TABLE entry_batches ADD CONSTRAINT entry_batches_source_check CHECK (source IN ('text', 'voice', 'bank'));
+
+CREATE TABLE IF NOT EXISTS bank_notifications (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    text_hash CHAR(64) NOT NULL,
+    forward_key CHAR(64) NULL,
+    outcome VARCHAR(12) NOT NULL,
+    parser VARCHAR(8) NOT NULL,
+    bank VARCHAR(20) NULL,
+    amount DECIMAL(12,2) NULL,
+    currency VARCHAR(3) NULL,
+    occurred_at TIMESTAMPTZ NULL,
+    has_time BOOLEAN NOT NULL DEFAULT FALSE,
+    expense_id INTEGER NULL REFERENCES expenses(id) ON DELETE SET NULL,
+    income_id INTEGER NULL REFERENCES incomes(id) ON DELETE SET NULL,
+    local_day DATE NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE bank_notifications DROP CONSTRAINT IF EXISTS bank_notifications_outcome_check;
+ALTER TABLE bank_notifications ADD CONSTRAINT bank_notifications_outcome_check
+    CHECK (outcome IN ('expense', 'income', 'refund', 'transfer', 'cash', 'declined', 'unsupported', 'unparsed'));
+ALTER TABLE bank_notifications DROP CONSTRAINT IF EXISTS bank_notifications_parser_check;
+ALTER TABLE bank_notifications ADD CONSTRAINT bank_notifications_parser_check CHECK (parser IN ('template', 'model', 'none'));
+COMMENT ON TABLE bank_notifications IS 'Обработанные уведомления банка (без текста, карты и остатка): поиск повторов, дневной лимит разбора нейросетью, статистика';
+COMMENT ON COLUMN bank_notifications.text_hash IS 'sha256(user_id | текст без карт и остатков, нижний регистр, без пробелов и знаков)';
+COMMENT ON COLUMN bank_notifications.forward_key IS 'sha256 источника пересылки (отправитель/чат, id сообщения, дата) — то же сообщение, пересланное ещё раз';
+COMMENT ON COLUMN bank_notifications.outcome IS 'expense/income — записано (expense_id/income_id; NULL — запись удалена или отменена); остальное — не записано: возврат, свои счета, наличные, отказ, чужая валюта, не разобрано';
+COMMENT ON COLUMN bank_notifications.parser IS 'template — шаблоны, model — нейросеть, none — не разобрано';
+CREATE INDEX IF NOT EXISTS idx_bank_notifications_user_hash ON bank_notifications(user_id, text_hash);
+CREATE INDEX IF NOT EXISTS idx_bank_notifications_user_forward ON bank_notifications(user_id, forward_key) WHERE forward_key IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_bank_notifications_user_day ON bank_notifications(user_id, local_day);
+CREATE INDEX IF NOT EXISTS idx_bank_notifications_user_occurred ON bank_notifications(user_id, occurred_at) WHERE occurred_at IS NOT NULL;

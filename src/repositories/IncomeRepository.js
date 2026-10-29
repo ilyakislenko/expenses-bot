@@ -43,7 +43,10 @@ class IncomeRepository extends BaseRepository {
   }
 
   async getIncomeById(userId, incomeId) {
-    const result = await this.query('SELECT * FROM incomes WHERE id = $1 AND user_id = $2', [incomeId, userId]);
+    const result = await this.query(`
+      SELECT i.*, (SELECT b.source FROM entry_batches b WHERE b.id = i.batch_id) AS batch_source
+      FROM incomes i WHERE i.id = $1 AND i.user_id = $2
+    `, [incomeId, userId]);
     return result.rows[0];
   }
 

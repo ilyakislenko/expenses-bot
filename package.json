@@ -50,6 +50,7 @@
         "testPathIgnorePatterns": [
             "/node_modules/",
             "<rootDir>/src/__tests__/setup.js",
+            "<rootDir>/src/__tests__/fixtures/",
             "\\.playwright\\.test\\.js$"
         ],
         "collectCoverageFrom": [

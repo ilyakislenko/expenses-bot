@@ -261,6 +261,7 @@ class ExpenseHandlers {
       if (!isOwner) text += ` · 👤 ${this.formatter.escapeMarkdown(expense.user_username || expense.user_first_name || '')}`;
     }
     if (expense.recurring_expense_id) text += `\n🔁 ${this.t(lang, 'expense_recurring_label')}`;
+    if (expense.batch_source === 'bank') text += `\n${this.t(lang, 'bank_record_label')}`;
     if (remembered) text += `\n\n${this.t(lang, 'expense_category_remembered')}`;
     if (note) text += `\n\n${note}`;
 

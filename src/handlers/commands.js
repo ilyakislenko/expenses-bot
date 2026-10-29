@@ -163,6 +163,7 @@ class CommandHandlers {
     const hints = [t('help_message')];
     if (this.receiptService && this.receiptService.configured) hints.push(t('help_receipt'));
     if (this.voiceService && this.voiceService.configured) hints.push(t('help_voice'));
+    hints.push(t('help_bank')); // пересылка уведомлений банка (шаблоны работают всегда, без нейросети)
     hints.push(t('help_edit')); // правка записи, её даты и черновика чека
     hints.push(t('help_assistant'));
     hints.push(t('help_roast'));
