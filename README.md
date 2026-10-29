@@ -23,6 +23,7 @@ around making that useful over months rather than days.
 | **Roast mode** | Opt-in «😈» setting (off / spicy sarcasm / uncensored 18+ with a one-time confirmation), gender-aware phrasing (`{купил\|купила}`-style forms, neutral variants for «rather not say»): after a record the bot appends one roast line with the user's real numbers for the strongest reason — budget crossed (once per budget per period), broken challenge, «safe to spend» exceeded, 80% of a budget, impulse buy (≥ 3× own median), junk food/delivery/booze/smokes/taxi habit; max 3 a day and one per 2 hours, private chats and own records only, variants never repeat back to back; `/roast` «Month roast» with a share button; a line in the weekly summary. 13 languages, templates only, no LLM |
 | **Ask the bot** | Questions in plain words (`? how much did I spend on taxi in September`, `/ask`, example buttons): the local LLM (Ollama, shared queue with receipts) only turns the question into a validated JSON intent, a regex fast path covers frequent phrasings without any model; totals, categories, top/largest, comparisons, daily average, income/balance, savings, budgets are computed by the bot. 5 questions a day free, 100 with premium |
 | **Family** | Shared budgets — invite members, expenses roll up across the family |
+| **Groups** | Shared expenses in a Telegram group (Splitwise-style, privacy mode stays on): «➕ Track shared expenses in this chat», members join with a button (anonymous admins and channels are ignored), `/spent 1200 pizza` / `/s 20 USD taxi` / a reply to the bot, equal split or picked participants / exact amounts, balances with debt simplification and «✅ Settled up», per-group currency, history, undo by the author, «📥 My share → personal»; «🧾 Split a receipt» — a photo with `/split` (or «👥 Split with friends» on a receipt in the private chat) goes through the same recognition pipeline, everyone taps their items (shared items split among those who tapped, tip/service/tax spread proportionally, cents with remainder to the payer), live totals with throttled edits, friends outside the group via `?start=split_<code>`, «Close» turns it into debts; free 30 expenses and 3 receipts a month per group, «🎫 Group pass» 30 days for 99 Stars (any member) or the creator's premium lifts the caps. Personal data never appears in groups |
 | **Money** | Multi-currency with scheduled rate updates; per-user currency |
 | **Time** | Per-user timezone and period start day, so "today" and "this month" are the user's |
 | **Premium** | Trial period, Telegram Stars tariffs and monthly subscription, transaction ledger; subscription screen with grouped benefits, a personal hook from the last 30 days and the yearly per-month price |
@@ -84,7 +85,8 @@ npm test
 ```
 
 Jest suites covering budgets and reports, income and recurring expenses,
-period maths, the premium/payment flows, family rules, timezone maths, the
+period maths, the premium/payment flows, family rules, group ledgers (receipt
+split maths, debt simplification, caps, group permissions), timezone maths, the
 callback deduplicator, security middleware and the DI wiring. Tests never
 touch a real database. `src/__tests__/botE2E.playwright.test.js` is a manual
 Telegram Web pass and is not part of `npm test`.

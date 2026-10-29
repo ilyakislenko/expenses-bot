@@ -479,7 +479,7 @@ class AdminHandlers {
     // Ограничим callback_data до безопасной длины: передаем только индекс найденной транзакции во временном состоянии
     this.stateService.setUserState(adminId, { type: 'admin_refund_confirm', data: { userId: targetUserId, paymentId: payment.chargeId } });
     const kb = [[{ text: '↩️ Вернуть', callback_data: 'panel_refund_exec' }], [{ text: '🔙 Назад', callback_data: `panel_user_${targetUserId}` }]];
-    const kindLabel = payment.kind === 'donation' ? 'пожертвование' : 'премиум';
+    const kindLabel = { donation: 'пожертвование', group_pass: 'пропуск для группы' }[payment.kind] || 'премиум';
     await ctx.reply(`Найдена транзакция (${kindLabel}):\nID: ${payment.id}\nHash: ${payment.chargeId}\nStars: ${payment.stars}\nStatus: ${payment.status}`, { reply_markup: { inline_keyboard: kb } });
   }
 
@@ -498,7 +498,8 @@ class AdminHandlers {
       await this.paymentService.refundStarsPayment(Number(targetUserId), paymentId);
       const result = await this.paymentService.revokeRefundedPayment(paymentId);
       const until = result.type === 'donation' ? 'пожертвование помечено возвращённым'
-        : (result.premiumUntil ? `премиум до ${this.formatter.formatDate(result.premiumUntil)}` : 'премиум снят');
+        : result.type === 'group_pass' ? 'срок пропуска группы уменьшен'
+          : (result.premiumUntil ? `премиум до ${this.formatter.formatDate(result.premiumUntil)}` : 'премиум снят');
       await ctx.answerCbQuery(`✅ Возврат выполнен, ${until}`, { show_alert: true });
     } catch (error) {
       logger.error('Admin refund failed', { targetUserId, paymentId, error: error.message });

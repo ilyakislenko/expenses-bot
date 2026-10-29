@@ -61,7 +61,7 @@ async function startApplication() {
     logger.startup('Monitoring server started successfully');
 
     // 2. Middleware
-    applyBotMiddleware(bot, handlers.errorHandler, handlers.callbackDeduplicator, handlers.securityMiddleware, handlers.localizationService);
+    applyBotMiddleware(bot, handlers.errorHandler, handlers.callbackDeduplicator, handlers.securityMiddleware);
     logger.startup('Bot middleware applied');
 
     // 3. Cron задачи (обновление курсов валют, донаты, напоминалки)
@@ -96,6 +96,9 @@ async function startApplication() {
     handlers.pendingJobService.recoverInterrupted(bot.telegram, {
       receipt: (job) => handlers.receiptHandlers.restoreInterrupted(bot.telegram, job)
     }).catch((error) => logger.error('Interrupted jobs recovery failed', { error: error.message }));
+    // Дележи чеков, отметки которых не успели перерисовать до перезапуска (правки сообщений идут с паузой)
+    handlers.groupHandlers.flushDirtySplits(bot.telegram, bot.botInfo)
+      .catch((error) => logger.error('Receipt splits re-render failed', { error: error.message }));
     running.catch((error) => {
       if (shuttingDown) return;
       logger.error('Bot stopped with error:', { error: error.message, stack: error.stack });

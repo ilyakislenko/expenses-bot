@@ -139,10 +139,12 @@ describe('Telegram file downloads have a timeout and a size cap', () => {
   });
 });
 
-describe('the bot serves private chats only', () => {
+// Групповой режим (общие расходы чата) — отдельно, в groups.test.js; здесь — что личное не попадает в группы
+describe('personal handlers serve private chats only', () => {
   let bot;
   let calls;
   let handled;
+  let groupUpdates;
 
   beforeEach(() => {
     bot = new Telegraf('123:TEST');
@@ -154,7 +156,10 @@ describe('the bot serves private chats only', () => {
       return method === 'sendMessage' ? { message_id: 1 } : true;
     });
     handled = [];
-    bot.use(privateChatOnly({ localizationService }));
+    groupUpdates = [];
+    bot.use(privateChatOnly());
+    // Как в botRoutes: групповой режим забирает апдейты групп, личные обработчики их не получают
+    bot.use((ctx, next) => (ctx.state.groupChat ? groupUpdates.push(ctx.updateType) : next()));
     bot.use((ctx) => { handled.push(ctx.updateType); });
   });
 
@@ -173,57 +178,33 @@ describe('the bot serves private chats only', () => {
     expect(handled).toEqual(['message']);
   });
 
-  test('a command in a group is not handled: one hint with a deep link, then the bot leaves', async () => {
+  test('a command in a group goes to the group mode only, the bot stays in the group', async () => {
     await bot.handleUpdate(message(group, user()));
-    await bot.handleUpdate(message(group, user(6)));
+    await bot.handleUpdate(message(group, user(6), { text: '500 кофе', entities: undefined }));
     expect(handled).toEqual([]);
-    const sent = calls.filter(c => c.method === 'sendMessage');
-    expect(sent).toHaveLength(1);
-    expect(sent[0].payload.chat_id).toBe(group.id);
-    expect(sent[0].payload.text).toContain('https://t.me/ExpBot');
-    expect(calls.filter(c => c.method === 'leaveChat')).toHaveLength(1);
-  });
-
-  test('plain group chatter is ignored silently', async () => {
-    await bot.handleUpdate(message(group, user(), { text: '500 кофе', entities: undefined }));
-    expect(handled).toEqual([]);
+    expect(groupUpdates).toEqual(['message', 'message']);
     expect(calls).toEqual([]);
   });
 
   test('anonymous group admins, Telegram service and sender_chat posts are ignored even in private', async () => {
     await bot.handleUpdate(message(group, { id: 1087968824, is_bot: true, first_name: 'Group' }, { sender_chat: group }));
+    await bot.handleUpdate(message(group, { id: 1087968824, is_bot: true, first_name: 'Group' }));
     await bot.handleUpdate(message({ id: 777000, type: 'private', first_name: 'T' }, { id: 777000, is_bot: false, first_name: 'Telegram' }));
     expect(handled).toEqual([]);
+    expect(groupUpdates).toEqual([]);
     expect(calls).toEqual([]);
-  });
-
-  test('a button under an old group message only shows the clicker an alert', async () => {
-    await bot.handleUpdate({
-      update_id: ++updateId,
-      callback_query: { id: 'cb1', from: user(), chat_instance: 'x', data: 'ov|0', message: { message_id: 3, date: 1, chat: group, from: { id: 999, is_bot: true, first_name: 'B' }, text: 'old' } }
-    });
-    expect(handled).toEqual([]);
-    expect(calls.map(c => c.method)).toEqual(['answerCallbackQuery']);
-    expect(calls[0].payload.show_alert).toBe(true);
   });
 
   test('channel posts are ignored silently', async () => {
     await bot.handleUpdate({ update_id: ++updateId, channel_post: { message_id: 1, date: 1, chat: { id: -1001, type: 'channel', title: 'C' }, sender_chat: { id: -1001, type: 'channel' }, text: '/stats' } });
     expect(handled).toEqual([]);
+    expect(groupUpdates).toEqual([]);
     expect(calls).toEqual([]);
   });
 
   test('pre_checkout_query (no chat) still reaches the payment handler', async () => {
     await bot.handleUpdate({ update_id: ++updateId, pre_checkout_query: { id: 'q', from: user(), currency: 'XTR', total_amount: 1, invoice_payload: '{}' } });
     expect(handled).toEqual(['pre_checkout_query']);
-  });
-
-  test('being added to a group posts the hint and leaves', async () => {
-    await bot.handleUpdate({
-      update_id: ++updateId,
-      my_chat_member: { chat: { id: -555, type: 'group', title: 'g' }, from: user(), date: 1, old_chat_member: { status: 'left', user: bot.botInfo }, new_chat_member: { status: 'member', user: bot.botInfo } }
-    });
-    expect(calls.map(c => c.method)).toEqual(['sendMessage', 'leaveChat']);
   });
 });
 

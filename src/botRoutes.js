@@ -3,6 +3,12 @@ module.exports = function registerBotRoutes(bot, handlers) {
   const ReceiptHandlers = require('./handlers/ReceiptHandlers');
   const { BACK_VIEW_PATTERN } = require('./handlers/ExpenseHandlers');
 
+  // Групповой режим первым: апдейты групп (privateChatOnly ставит ctx.state.groupChat) обрабатывает только он —
+  // общие расходы чата; личные обработчики ниже их не получают никогда
+  const groupHandlers = handlers.groupHandlers;
+  bot.use(groupHandlers.middleware(errorHandler));
+  bot.use((ctx, next) => (ctx.state && ctx.state.groupChat ? undefined : next()));
+
   // Импортируем middleware для автоматической очистки состояний
   const stateCleanupMiddleware = require('./middleware/stateCleanupMiddleware');
 
@@ -15,7 +21,13 @@ module.exports = function registerBotRoutes(bot, handlers) {
 
   // Команды
   // приветствие и главная клавиатура; незаконченный опрос «🧭 Настроим бота под тебя» — продолжить с текущего вопроса
-  bot.command('start', errorHandler((ctx) => handlers.onboardingHandlers.start(ctx)));
+  // /start split_<код> (делёж чека по ссылке) и gpass_<код> (оплата пропуска группы) — без онбординга
+  bot.command('start', errorHandler(async (ctx) => {
+    if (await groupHandlers.handlePrivateStart(ctx)) return;
+    await handlers.onboardingHandlers.start(ctx);
+  }));
+  // Команды группового режима в личке — подсказка, как их использовать в группе
+  bot.command(['spent', 's', 'split', 'balance', 'settle', 'group'], errorHandler((ctx) => groupHandlers.groupOnlyCommand(ctx)));
   bot.command('setup', errorHandler((ctx) => handlers.onboardingHandlers.setup(ctx))); // опрос «🧭 Настроим бота под тебя» заново
   bot.command('help', errorHandler((ctx) => commandHandlers.help(ctx))); // короткая справка
   bot.command('stats', errorHandler((ctx) => expenseHandlers.showOverview(ctx, 0))); // обзор текущего периода
@@ -264,6 +276,12 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^rvxc\|(\d+)$/, errorHandler((ctx) => receiptHandlers.undo(ctx, parseInt(ctx.match[1], 10))));
   bot.action(/^rvd\|([01])$/, errorHandler((ctx) => receiptHandlers.resolveDraft(ctx, ctx.match[1] === '1'))); // черновик: записать / отмена
   bot.action('rvr', errorHandler((ctx) => receiptHandlers.rotateAndRetry(ctx))); // повернуть кадр на 90° и распознать снова
+  // «👥 Разделить с друзьями»: записанный чек (gsr|<id>) или черновик этого сообщения (gsd) → куда делить
+  // (gst|r<id>|<учёт> / gst|d|<учёт>, 0 — «по ссылке»). Делёж, балансы, «рассчитались», «в личные» — и в личке
+  bot.action(/^gsr\|(\d+)$/, errorHandler((ctx) => groupHandlers.showSplitTargets(ctx, `r${ctx.match[1]}`)));
+  bot.action('gsd', errorHandler((ctx) => groupHandlers.showSplitTargets(ctx, 'd')));
+  bot.action(/^gst\|(d|r\d+)\|(\d+)$/, errorHandler((ctx) => groupHandlers.startPrivateSplit(ctx, ctx.match[1], Number(ctx.match[2]))));
+  for (const [pattern, handler] of groupHandlers.sharedRoutes()) bot.action(pattern, errorHandler(handler));
   // Правка черновика до записи: страница (rdp), строка (rdl) → ✏️ (rde), 🏷 (rdc → rds), 🗑 (rdx); ➕ строка (rda), 📅 дата (rdt → rdt|день, rdto).
   // Строка — по id (`i<id>`); старые кнопки с номером строки (без `i`) получают lineId = null — «черновик изменился»
   const lineId = (ctx) => (ctx.match[1] ? parseInt(ctx.match[2], 10) : null);
@@ -407,6 +425,12 @@ module.exports = function registerBotRoutes(bot, handlers) {
       return;
     }
     handlers.logger.warn('Pre-checkout rejected', { userId: ctx.from.id, reason: check.reason, payload: ctx.preCheckoutQuery.invoice_payload });
+    // Пропуск группы покупает и тот, кто ботом лично не пользуется: язык Telegram, любой отказ — «открой пропуск заново»
+    if (check.type === 'group_pass') {
+      const lang = await groupHandlers.langOf(ctx.from);
+      await ctx.answerPreCheckoutQuery(false, handlers.localizationService.getText(lang, 'grp_pass_outdated'));
+      return;
+    }
     const userLanguage = await handlers.userService.getUserLanguage(ctx.from.id);
     const textKey = preCheckoutRejectionKeys[check.reason] || 'payment_outdated';
     await ctx.answerPreCheckoutQuery(false, handlers.localizationService.getText(userLanguage, textKey));
@@ -434,6 +458,9 @@ module.exports = function registerBotRoutes(bot, handlers) {
       // Для донатов показываем сообщение о благодарности
       const donationSuccessText = handlers.localizationService.getText(userLanguage, 'donation_success');
       await ctx.reply(donationSuccessText, { parse_mode: 'Markdown' });
+    } else if (result.type === 'group_pass') {
+      // «🎫 Пропуск для группы»: покупателю и в группу (повторная доставка того же платежа — молча)
+      await groupHandlers.passPaid(ctx, result);
     } else if (result.type === 'premium_subscription') {
       if (result.status === 'duplicate') return; // повторная доставка того же платежа
       if (result.isRenewal) {

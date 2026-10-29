@@ -158,6 +158,7 @@ class CommandHandlers {
     if (this.receiptService && this.receiptService.configured) hints.push(t('help_receipt'));
     if (this.voiceService && this.voiceService.configured) hints.push(t('help_voice'));
     hints.push(t('help_edit')); // правка записи, её даты и черновика чека
+    hints.push(t('help_groups')); // общие расходы в группе и делёж чека с друзьями
     hints.push(t('help_assistant'));
     hints.push(t('help_roast'));
     hints.push(t('help_setup'));

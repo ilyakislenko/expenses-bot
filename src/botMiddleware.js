@@ -2,12 +2,13 @@ const { metricsMiddleware, telegramDuplicateCallbacks } = require('./utils/metri
 const logger = require('./utils/logger');
 const privateChatOnly = require('./middleware/privateChatOnly');
 
-module.exports = function applyBotMiddleware(bot, errorHandler, callbackDeduplicator, securityMiddleware, localizationService = null) {
+module.exports = function applyBotMiddleware(bot, errorHandler, callbackDeduplicator, securityMiddleware) {
   // Middleware для метрик
   bot.use(metricsMiddleware());
 
-  // Только личные чаты: группы, каналы и служебные отправители отсекаются до лимитов, проверок и БД
-  bot.use(privateChatOnly({ localizationService: localizationService || securityMiddleware?.localizationService }));
+  // Личное — только в личке: каналы и служебные отправители отсекаются до лимитов, проверок и БД, апдейты групп
+  // помечаются для группового режима (общие расходы чата, botRoutes → GroupHandlers)
+  bot.use(privateChatOnly());
 
   // Security middleware (rate limiting + validation)
   if (securityMiddleware) {

@@ -123,6 +123,7 @@ describe('time| input validation (SEC-1 / PLT-1)', () => {
         expenseHandlers: any(),
         budgetHandlers: any(),
         exportHandlers: any(),
+        groupHandlers: { middleware: () => (ctx, next) => next(), sharedRoutes: () => [], handlePrivateStart: async () => false },
         stateService: new StateService(),
         localizationService,
         userService: { getUserLanguage: jest.fn().mockResolvedValue('en') }

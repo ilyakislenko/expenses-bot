@@ -843,7 +843,7 @@ describe('ReceiptHandlers background recognition', () => {
     const [, , , text, extra] = ctx.telegram.editMessageText.mock.calls.pop();
     expect(text).toContain(t('receipt_low_confidence', { total: '100 ₽'.replace(' ', '\u00a0') }));
     expect(text).toContain(t('receipt_photo_tips'));
-    expect(extra.reply_markup.inline_keyboard.flat().map(b => b.callback_data)).toEqual(['rdl|i1', 'rda', 'rdt', 'rvd|1', 'rvr', 'rvd|0']);
+    expect(extra.reply_markup.inline_keyboard.flat().map(b => b.callback_data)).toEqual(['rdl|i1', 'rda', 'rdt', 'rvd|1', 'gsd', 'rvr', 'rvd|0']);
     // Показанный черновик засчитан в месячный лимит; при записи он заменит свою попытку (attemptId)
     expect(receiptService.attempts).toEqual([{ userId: 7, messageId: 101, outcome: 'draft' }]);
     expect(receiptService.rows.get('7:101').receipt.attemptId).toBe(1);
@@ -1440,7 +1440,7 @@ describe('small receipt with one or two lines', () => {
     expect(receiptService.record).not.toHaveBeenCalled();
     const [, , , text, extra] = ctx.telegram.editMessageText.mock.calls.pop();
     expect(text).toContain(`${t('receipt_photo_tips')}\n${t('receipt_small_photo_tip')}`);
-    expect(extra.reply_markup.inline_keyboard.flat().map(b => b.callback_data).filter(data => !data.startsWith('rdl|'))).toEqual(['rda', 'rdt', 'rvd|1', 'rvr', 'rvd|0']);
+    expect(extra.reply_markup.inline_keyboard.flat().map(b => b.callback_data).filter(data => !data.startsWith('rdl|'))).toEqual(['rda', 'rdt', 'rvd|1', 'gsd', 'rvr', 'rvd|0']);
 
     const callbackCtx = { ...ctx, callbackQuery: { message: { message_id: 101 } }, answerCbQuery: jest.fn(async () => true), editMessageText: jest.fn(async () => true) };
     await handlers.rotateAndRetry(callbackCtx);

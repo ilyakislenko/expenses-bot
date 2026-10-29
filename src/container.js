@@ -41,6 +41,7 @@ const UserNotificationRepository = require('./repositories/UserNotificationRepos
 const BudgetRepository = require('./repositories/BudgetRepository');
 const ImportRepository = require('./repositories/ImportRepository');
 const ReceiptRepository = require('./repositories/ReceiptRepository');
+const GroupRepository = require('./repositories/GroupRepository');
 const PendingJobRepository = require('./repositories/PendingJobRepository');
 const PendingJobService = require('./services/PendingJobService');
 const PlanningRepository = require('./repositories/PlanningRepository');
@@ -72,6 +73,7 @@ const DailySummaryService = require('./services/DailySummaryService');
 const WeeklyInsightService = require('./services/WeeklyInsightService');
 const ImportService = require('./services/ImportService');
 const ReceiptService = require('./services/ReceiptService');
+const GroupService = require('./services/GroupService');
 const PlanningService = require('./services/PlanningService');
 const SubscriptionAlertService = require('./services/SubscriptionAlertService');
 const AchievementService = require('./services/AchievementService');
@@ -97,6 +99,7 @@ const BudgetHandlers = require('./handlers/BudgetHandlers');
 const ExportHandlers = require('./handlers/ExportHandlers');
 const ImportHandlers = require('./handlers/ImportHandlers');
 const ReceiptHandlers = require('./handlers/ReceiptHandlers');
+const GroupHandlers = require('./handlers/GroupHandlers');
 const PlanningHandlers = require('./handlers/PlanningHandlers');
 const SubscriptionHandlers = require('./handlers/SubscriptionHandlers');
 const AchievementHandlers = require('./handlers/AchievementHandlers');
@@ -197,6 +200,31 @@ class Container {
 
       case 'receiptRepository':
         return new ReceiptRepository();
+
+      // Групповой режим: общие расходы чатов, делёж чеков, «🎫 Пропуск для группы»
+      case 'groupRepository':
+        return new GroupRepository();
+
+      case 'groupService':
+        return new GroupService({
+          groupRepository: this.get('groupRepository'),
+          userService: this.get('userService'),
+          premiumService: this.get('premiumService'),
+          currencyUtils: this.get('currencyUtils'),
+          expenseService: this.get('expenseService')
+        });
+
+      case 'groupHandlers':
+        return new GroupHandlers({
+          groupService: this.get('groupService'),
+          userService: this.get('userService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter'),
+          validator: this.get('enhancedValidator'),
+          receiptService: this.get('receiptService'),
+          receiptHandlers: this.get('receiptHandlers'),
+          paymentService: this.get('paymentService')
+        });
 
       // Фоновые распознавания (чек, голос) с сообщением-статусом: после перезапуска — «прервалось»
       case 'pendingJobService':
@@ -627,6 +655,7 @@ class Container {
           this.get('premiumTransactionRepository'),
           this.get('userRepository')
         );
+        paymentService.setGroupService(this.get('groupService'));
         // Устанавливаем бота позже, когда он будет создан
         if (this.instances.has('bot')) {
           paymentService.setBot(this.get('bot'));
@@ -921,6 +950,8 @@ class Container {
       exportHandlers: this.get('exportHandlers'),
       importHandlers: this.get('importHandlers'),
       receiptHandlers: this.get('receiptHandlers'),
+      groupHandlers: this.get('groupHandlers'),
+      groupService: this.get('groupService'),
       referralHandlers: this.get('referralHandlers'),
       referralService: this.get('referralService'),
       assistantHandlers: this.get('assistantHandlers'),

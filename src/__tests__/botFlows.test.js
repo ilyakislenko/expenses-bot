@@ -148,7 +148,7 @@ describe('CommandHandlers flows', () => {
 
       const [text, extra] = ctx.reply.mock.calls[0];
       // без распознавания чеков: справка, строка про вопросы боту и «Разнос месяца»
-      expect(text).toBe(`${t('en', 'help_message')}\n\n${t('en', 'help_edit')}\n\n${t('en', 'help_assistant')}\n\n${t('en', 'help_roast')}\n\n${t('en', 'help_setup')}`);
+      expect(text).toBe(`${t('en', 'help_message')}\n\n${t('en', 'help_edit')}\n\n${t('en', 'help_groups')}\n\n${t('en', 'help_assistant')}\n\n${t('en', 'help_roast')}\n\n${t('en', 'help_setup')}`);
       expect(buttons(extra.reply_markup.inline_keyboard).map((b) => b.callback_data))
         .toEqual(['bug_report', 'back_to_menu']);
     });
@@ -159,7 +159,7 @@ describe('CommandHandlers flows', () => {
       await handlers.help(ctx);
 
       expect(ctx.answerCbQuery).toHaveBeenCalled();
-      expect(ctx.editMessageText).toHaveBeenCalledWith(`${t('en', 'help_message')}\n\n${t('en', 'help_edit')}\n\n${t('en', 'help_assistant')}\n\n${t('en', 'help_roast')}\n\n${t('en', 'help_setup')}`, expect.any(Object));
+      expect(ctx.editMessageText).toHaveBeenCalledWith(`${t('en', 'help_message')}\n\n${t('en', 'help_edit')}\n\n${t('en', 'help_groups')}\n\n${t('en', 'help_assistant')}\n\n${t('en', 'help_roast')}\n\n${t('en', 'help_setup')}`, expect.any(Object));
       expect(ctx.reply).not.toHaveBeenCalled();
     });
   });
