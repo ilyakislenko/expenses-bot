@@ -307,6 +307,10 @@ class AssistantService {
     if (intent.type === 'budget_status') return { ...base, currency: context.currency, ...(await this.budgets(context)) };
     if (intent.type === 'subscriptions') return { ...base, currency: context.currency, ...(await this.subscriptions(context)) };
     if (intent.type === 'debt_status') return { ...base, currency: context.currency, ...(await this.debts(context)) };
+    if (intent.type === 'forecast') {
+      const forecast = this.planningService ? await this.planningService.getForecast(context.userId) : { mode: 'none' };
+      return { ...base, ...forecast, currency: forecast.currency || context.currency };
+    }
 
     if (intent.type === 'compare_periods') {
       const periods = comparisonPeriods(intent.period, intent.compareTo, periodContext);

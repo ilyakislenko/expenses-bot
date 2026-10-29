@@ -221,6 +221,14 @@ describe('assistant fast path', () => {
       confident: true, period: { kind: 'named_month', month: 9 }, compareTo: { kind: 'named_month', month: 8 }
     });
   });
+
+  test('«хватит ли до зарплаты» is a forecast, not income; budget and income questions keep their type', () => {
+    for (const q of ['хватит ли мне денег до зарплаты', 'дотяну ли до зарплаты', 'сколько у меня останется к концу месяца', 'will I have enough money until payday']) {
+      expect([q, parse(q)]).toMatchObject([q, { confident: true, type: 'forecast', period: null }]);
+    }
+    expect(parse('сколько я заработал в сентябре')).toMatchObject({ type: 'income_total' });
+    expect(parse('сколько осталось в бюджете')).toMatchObject({ type: 'budget_status' });
+  });
 });
 
 describe('assistant text helpers', () => {
@@ -388,6 +396,33 @@ describe('assistant answer composition', () => {
         expect([lang, key, markdownBalanced(locale[key])]).toEqual([lang, key, true]);
       }
     }
+  });
+});
+
+describe('assistant forecast', () => {
+  const { computeForecast } = require('../utils/planning');
+  const composer = new AnswerComposer({ localizationService: localization, formatter, lang: 'ru' });
+  const intent = check({ type: 'forecast' }).intent;
+  const base = { intent, mode: 'income', currency: 'RUB', until: '2026-10-31', days: 4, daily: 2500, reserved: 35000, deficit: 0 };
+
+  test('today counts at least what is already spent, the rest of the days at the usual pace', () => {
+    expect(computeForecast({ free: 10000, days: 4, spentToday: 3000, paceTotal: 28000, paceDays: 28 })).toEqual({ pace: 1000, need: 6000, rest: 4000 });
+    expect(computeForecast({ free: 10000, days: 4, spentToday: 200, paceTotal: 28000, paceDays: 28 }).need).toBe(4000);
+    expect(computeForecast({ free: 10000, days: 4, paceTotal: 6000, paceDays: 6 })).toEqual({ pace: null, need: null, rest: null });
+  });
+
+  test('enough, short, no history and no income or budget read as different answers with a planning button', () => {
+    const enough = composer.compose({ ...base, free: 10000, pace: 1000, rest: 6000 });
+    expect(sp(enough.text)).toContain('31.10');
+    expect(sp(enough.text)).toContain('останется ≈ *6 000 ₽*');
+    expect(enough.keyboard[0][0].callback_data).toBe('pl');
+    const short = sp(composer.compose({ ...base, free: 2000, pace: 1000, rest: -2000 }).text);
+    expect(short).toContain('не хватит ≈ *2 000 ₽*');
+    expect(short).toContain('не больше 2 500 ₽ в день');
+    expect(sp(composer.compose({ ...base, free: 2000, pace: null, rest: null }).text)).toContain('мало истории');
+    const none = composer.compose({ intent, mode: 'none', currency: 'RUB' });
+    expect(none.text).toContain('нужен доход или бюджет');
+    for (const text of [enough.text, short]) expect(markdownBalanced(text)).toBe(true);
   });
 });
 

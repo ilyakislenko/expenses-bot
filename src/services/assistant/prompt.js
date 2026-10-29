@@ -19,6 +19,7 @@ JSON keys:
   count_records — how many expenses or how many times,
   subscriptions — subscriptions (streaming, music, gym) and how much they cost,
   debt_status — debts, loans, credit cards, mortgage, how much I owe,
+  forecast — will my money last until payday or the end of the month, how much will I spend or have left by then,
   unknown — anything else (not about the user's own money).
 "period": the period the question is about, or null if not mentioned:
   {"kind":"day","offset":0} today, offset -1 yesterday;
@@ -65,6 +66,8 @@ const EXAMPLES = [
   ['en', 'am I within my budget?', { type: 'budget_status' }],
   ['ru', 'сколько я должен по ипотеке', { type: 'debt_status' }],
   ['en', 'how much do I pay for subscriptions', { type: 'subscriptions' }],
+  ['ru', 'хватит ли мне денег до зарплаты', { type: 'forecast' }],
+  ['en', 'how much will I have left by the end of the month', { type: 'forecast' }],
   ['ru', 'сколько я потратил с понедельника', { type: 'spend_total', period: { kind: 'custom', from: '2026-10-12', to: '2026-10-15' } }],
   ['ru', 'какая завтра погода', { type: 'unknown' }]
 ];

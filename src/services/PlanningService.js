@@ -4,7 +4,7 @@ const { addDays, customPeriod, parseYmd, ymd } = require('../utils/period');
 const { commaDecimal } = require('../utils/savingsView');
 const {
   PACE_EMOJI, SCAN_DAYS, PAYDAY_SCAN_DAYS, INFLATION_WINDOW_DAYS,
-  daysBetween, expectedIncome, computeAllowance, nextIncomeDate, normalizeMerchant, detectSubscriptions, detectPaydays,
+  daysBetween, expectedIncome, computeAllowance, computeForecast, nextIncomeDate, normalizeMerchant, detectSubscriptions, detectPaydays,
   paydayDates, monthlyDates, debtDates, subscriptionDates, buildCalendar, computeInflation, isKnownSubscription, shortHash
 } = require('../utils/planning');
 const { subRef } = require('../utils/subscriptionAlerts');
@@ -16,6 +16,7 @@ const BILL_REMINDER_HOUR = 9; // утреннее напоминание о пл
 const CALENDAR_DAYS = 30;
 const RESERVE_MAX_DAYS = 31; // резерв на платежи после конца периода — до следующего дохода, но не дальше месяца
 const SUBS_NUDGE_NAMES = 3; // в строке о найденных подписках — столько названий, остальные — «и ещё N»
+const FORECAST_PACE_DAYS = 28; // темп трат для прогноза — за последние 4 недели
 
 function localDateHour(timezone, now) {
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -195,9 +196,33 @@ class PlanningService {
       bills, debts: debtsTotal, savings, budgetBills, budgetDebts
     });
     return {
-      ...result, currency, today, period, daysLeft, outlook, budget, nextIncome, reserveUntil,
+      ...result, currency, timezone, today, period, daysLeft, outlook, budget, nextIncome, reserveUntil,
       spentBefore, bills, budgetBills, billsList, debtsTotal, budgetDebts, debtsProrated,
       savings: result.mode === 'income' ? savings : 0
+    };
+  }
+
+  // Прогноз «хватит ли до конца периода» («🤖 Спроси бота»): «Можно потратить» против обычного темпа трат за
+  // последние FORECAST_PACE_DAYS дней (без авто-записей регулярных — они уже в резерве платежей). Темп считается с
+  // первого дня с тратами в этом окне: у нового пользователя — по его дням, а не по 28
+  async getForecast(userId) {
+    const allowance = await this.getAllowance(userId);
+    if (allowance.mode === 'none') return { mode: 'none' };
+    const { currency, timezone, today, period } = allowance;
+    const convert = this.converter(currency);
+    const rows = await this.planningRepository.getPaceSpend(userId, timezone, addDays(today, -FORECAST_PACE_DAYS), today);
+    let paceTotal = 0;
+    let firstDay = null;
+    for (const row of rows) {
+      paceTotal += await convert(row.total, row.currency);
+      if (row.first_day && (!firstDay || row.first_day < firstDay)) firstDay = row.first_day;
+    }
+    const paceDays = firstDay ? daysBetween(firstDay, today) : 0;
+    const forecast = computeForecast({ free: allowance.free, days: allowance.days, spentToday: allowance.spentToday, paceTotal, paceDays });
+    return {
+      // daily — свободное поровну на оставшиеся дни (без потолка «Можно сегодня»: в прогнозе важна вся сумма)
+      mode: allowance.mode, currency, until: period.last || addDays(period.end, -1), days: allowance.days, free: allowance.free, daily: allowance.rawDaily,
+      reserved: allowance.bills + allowance.debtsTotal + allowance.savings, deficit: allowance.deficit, ...forecast
     };
   }
 

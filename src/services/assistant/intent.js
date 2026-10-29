@@ -11,7 +11,7 @@ const { normalizeText, plainWords, matchCategory, mentionsCategory } = require('
 
 const TYPES = [
   'spend_total', 'spend_by_category', 'top_expenses', 'largest_purchase', 'compare_periods', 'average_daily',
-  'income_total', 'balance', 'savings_status', 'budget_status', 'count_records', 'subscriptions', 'debt_status'
+  'income_total', 'balance', 'savings_status', 'budget_status', 'count_records', 'subscriptions', 'debt_status', 'forecast'
 ];
 const TYPE_ALIASES = {
   total: 'spend_total', spend: 'spend_total', spent: 'spend_total', spending: 'spend_total', expenses: 'spend_total',
@@ -21,10 +21,11 @@ const TYPE_ALIASES = {
   average: 'average_daily', avg_daily: 'average_daily', income: 'income_total', incomes: 'income_total',
   savings: 'savings_status', budget: 'budget_status', budgets: 'budget_status', count: 'count_records',
   subscription: 'subscriptions', subscriptions_status: 'subscriptions', debt: 'debt_status', debts: 'debt_status',
-  loans: 'debt_status', debt_total: 'debt_status'
+  loans: 'debt_status', debt_total: 'debt_status', prediction: 'forecast', projection: 'forecast', enough: 'forecast'
 };
-// Без периода: накопления и долги — на сейчас, бюджеты — всегда текущий период, подписки — найденные по истории
-const NO_PERIOD_TYPES = new Set(['savings_status', 'budget_status', 'subscriptions', 'debt_status']);
+// Без периода: накопления и долги — на сейчас, бюджеты — всегда текущий период, подписки — найденные по истории,
+// прогноз — до конца текущего периода
+const NO_PERIOD_TYPES = new Set(['savings_status', 'budget_status', 'subscriptions', 'debt_status', 'forecast']);
 // Фильтры по категориям и описанию имеют смысл только у трат
 const EXPENSE_TYPES = new Set(['spend_total', 'spend_by_category', 'top_expenses', 'largest_purchase', 'compare_periods', 'average_daily', 'count_records']);
 

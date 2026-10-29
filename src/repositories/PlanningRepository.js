@@ -62,6 +62,21 @@ class PlanningRepository extends BaseRepository {
     return result.rows;
   }
 
+  // Обычные траты (без авто-записей регулярных) с from по день до today, по валютам, и первый такой день —
+  // темп трат для прогноза «хватит ли до конца периода»
+  async getPaceSpend(userId, timezone, from, today) {
+    const result = await this.query(`
+      SELECT currency, SUM(amount)::float AS total, MIN((created_at_utc AT TIME ZONE $2)::date)::text AS first_day
+      FROM expenses
+      WHERE user_id = $1
+        AND recurring_expense_id IS NULL
+        AND (created_at_utc AT TIME ZONE $2) >= $3::date
+        AND (created_at_utc AT TIME ZONE $2) < $4::date
+      GROUP BY currency
+    `, [userId, timezone, from, today]);
+    return result.rows;
+  }
+
   async getDebts(userId) {
     const result = await this.query(`
       SELECT id, name, balance::float AS balance, currency, monthly_payment::float AS monthly_payment, due_day

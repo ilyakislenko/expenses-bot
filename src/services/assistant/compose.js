@@ -229,15 +229,31 @@ class AnswerComposer {
     return lines;
   }
 
+  // «🔮 Прогноз до 31.10»: свободно после платежей, обычный темп и хватит ли его до конца периода
+  compose_forecast(result) {
+    if (result.mode === 'none') return [`*${this.t('ai_title_forecast_none')}*`, this.t('ai_forecast_none')];
+    const { currency } = result;
+    const lines = [`*${this.t('ai_title_forecast', { date: shortDate(result.until) })}*`];
+    if (result.deficit > 0) lines.push(this.t('ai_forecast_deficit', { amount: this.money(result.deficit, currency) }));
+    else lines.push(this.t('ai_forecast_free', { amount: this.money(result.free, currency), daily: this.money(result.daily, currency), days: result.days }));
+    if (result.reserved > 0) lines.push(this.t('ai_forecast_reserved', { amount: this.money(result.reserved, currency) }));
+    lines.push('');
+    if (result.pace === null) lines.push(this.t('ai_forecast_no_history'));
+    else if (result.rest >= 0) lines.push(this.t('ai_forecast_enough', { pace: this.money(result.pace, currency), amount: this.money(result.rest, currency) }));
+    else lines.push(this.t('ai_forecast_short', { pace: this.money(result.pace, currency), amount: this.money(-result.rest, currency), daily: this.money(result.daily, currency) }));
+    return lines;
+  }
+
   // Кнопка на экран с подробностями, если такой есть, и «🤖 Ещё вопрос»
   keyboard(result) {
     const { intent } = result;
     const spec = intent.period;
     const rows = [];
     const button = (key, callback) => rows.push([{ text: this.t(key), callback_data: callback }]);
-    const expenseType = !['income_total', 'balance', 'savings_status', 'budget_status'].includes(intent.type);
+    const expenseType = !['income_total', 'balance', 'savings_status', 'budget_status', 'forecast'].includes(intent.type);
     if (intent.type === 'savings_status' || intent.type === 'debt_status') button('ai_button_savings', 'sv');
     else if (intent.type === 'subscriptions') button('ai_button_subscriptions', 'pls');
+    else if (intent.type === 'forecast') button('ai_button_planning', 'pl');
     else if (intent.type === 'budget_status') {
       if (result.locked) button('button_premium', 'premium_subscription');
       else button('ai_button_budgets', 'bg_menu');

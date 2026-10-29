@@ -121,6 +121,20 @@ function computeAllowance({
   };
 }
 
+// Прогноз «хватит ли до конца периода»: свободные деньги из computeAllowance (free — после платежей, долгов и
+// накоплений; сегодняшние траты в нём ещё не вычтены) против обычного темпа трат без регулярных платежей.
+// paceTotal — такие траты за paceDays последних полных дней (до сегодня); меньше FORECAST_MIN_DAYS дней истории —
+// темп не считаем (pace: null). Сегодня уйдёт не меньше уже потраченного (spentToday), дальше — по темпу.
+// rest > 0 — останется, rest < 0 — не хватит
+const FORECAST_MIN_DAYS = 7;
+function computeForecast({ free, days, spentToday = 0, paceTotal = 0, paceDays = 0 }) {
+  const left = Math.max(1, Math.floor(days || 1));
+  if (!(paceDays >= FORECAST_MIN_DAYS)) return { pace: null, need: null, rest: null };
+  const pace = paceTotal / paceDays;
+  const need = Math.max(pace, spentToday) + pace * (left - 1);
+  return { pace, need, rest: free - need };
+}
+
 // Дата следующего ожидаемого дохода (по регулярным выплатам streams) не раньше today, до until; null — неизвестна
 function nextIncomeDate(streams, today, until) {
   const dates = paydayDates(streams, today, until).map(item => item.date).sort();
@@ -587,6 +601,8 @@ module.exports = {
   nextMonthlyDate,
   monthlyDates,
   expectedIncome,
+  computeForecast,
+  FORECAST_MIN_DAYS,
   ALLOWANCE_CAP,
   computeAllowance,
   nextIncomeDate,
