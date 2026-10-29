@@ -11,6 +11,20 @@ const { MAX_RECORD_AGE_DAYS } = require('../utils/recordDate');
 const DRAFT_TTL_DAYS = 7; // черновик чека и кадр для «повернуть» (receipt_drafts)
 const DRAFT_TAKE_STALE_SECONDS = 300; // захват черновика под запись, после которого его можно взять снова (сбой записи)
 
+// QR кассового чека (receipt/qr.js) точнее модели: итог, дата и время — из него, валюта — рубли (QR есть только на
+// российских чеках). Модель не прочитала фото, а QR прочитан, — одна строка на итог (qrOnly: черновик — название и
+// категорию поправит пользователь)
+function withQr(raw, qr, itemName) {
+  const fromQr = { is_receipt: true, total: qr.total, date: qr.date, time: qr.time, currency: 'RUB' };
+  if (raw && typeof raw === 'object' && !Array.isArray(raw) && Array.isArray(raw.items) && raw.items.length) {
+    return { raw: { ...raw, ...fromQr }, qrOnly: false };
+  }
+  const merchant = raw && typeof raw === 'object' && typeof raw.merchant === 'string' ? raw.merchant : null;
+  return {
+    raw: { ...fromQr, merchant, discount: null, items: [{ name: itemName, quantity: 1, price: qr.total, amount: qr.total, category: null }] },
+    qrOnly: true
+  };
+}
 // Повторять с поворотом: ответ не разобран (в том числе битый JSON) или цифрам нельзя верить. Не повторяем, если чек с
 // текстом-«командой» (поворот его не исправит, а локальная модель занята минуты) или прочитан явно правильно ориентированным:
 // три строки и больше, а сумма строк в пределах 3% от итога — сомнения только в отдельных строках, поворот их не улучшит,
@@ -121,16 +135,36 @@ class ReceiptService {
     };
   }
 
-  // Распознаёт фото. Ошибки — ReceiptError (receipt/errors.js). onStatus({ position, local }) — очередь и начало работы слота
-  async recognize(userId, { image, mimeType, lang, currency, timezone, onStatus }) {
+  // Распознаёт фото. Ошибки — ReceiptError (receipt/errors.js). onStatus({ position, local }) — очередь и начало работы слота.
+  // qr — данные QR кассового чека с этого фото (receipt/qr.js) или null
+  async recognize(userId, { image, mimeType, lang, currency, timezone, onStatus, qr = null }) {
     const { labels, fallbackLabel, fallbackCategoryId, choices } = await this.categoryChoices(userId, lang);
     const today = localNow(timezone).date;
     const prompt = buildPrompt({ categories: labels, fallbackCategory: fallbackLabel, defaultCurrency: currency, today });
     const started = Date.now();
-    const raw = await this.provider.recognize({ image, mimeType, prompt, onStatus, owner: userId });
-    let receipt = normalizeReceipt(raw, { categories: choices, fallbackCategoryId, defaultCurrency: currency, supportedCurrencies: SUPPORTED_CURRENCIES });
+    let raw = null;
+    try {
+      raw = await this.provider.recognize({ image, mimeType, prompt, onStatus, owner: userId });
+    } catch (error) {
+      // Модель фото не разобрала (или в кадре только QR), а QR прочитан — чек из одного QR, иначе ошибка как раньше
+      if (!qr || !(error instanceof ReceiptError) || !['unreadable', 'not_receipt'].includes(error.code)) throw error;
+    }
+    const qrItem = qr ? this.localizationService.getText(lang, 'receipt_qr_item') : null;
+    const normalize = (value) => normalizeReceipt(value, { categories: choices, fallbackCategoryId, defaultCurrency: currency, supportedCurrencies: SUPPORTED_CURRENCIES });
+    let qrOnly = false;
+    if (qr) ({ raw, qrOnly } = withQr(raw, qr, qrItem));
+    let receipt;
+    try {
+      receipt = normalize(raw);
+    } catch (error) {
+      // Строки модели негодны (нет сумм, пересказ примера), а QR прочитан — чек из одного QR
+      if (!qr || qrOnly || !(error instanceof ReceiptError) || !['unreadable', 'not_receipt'].includes(error.code)) throw error;
+      ({ raw, qrOnly } = withQr(null, qr, qrItem));
+      receipt = normalize(raw);
+    }
+    if (qr) receipt = { ...receipt, lowConfidence: receipt.lowConfidence || qrOnly, checks: { ...receipt.checks, qr: true, ...(qrOnly ? { qrOnly: true } : {}) } };
     // «1 января этого года» — то, что модель пишет вместо непрочитанной даты (знает из запроса только год): дата не прочитана
-    if (receipt.date === `${today.slice(0, 4)}-01-01`) receipt = { ...receipt, date: null, time: null, checks: { ...receipt.checks, guessedDate: true } };
+    else if (receipt.date === `${today.slice(0, 4)}-01-01`) receipt = { ...receipt, date: null, time: null, checks: { ...receipt.checks, guessedDate: true } };
     logger.info('Receipt recognized', {
       userId, items: receipt.items.length, mismatch: receipt.mismatch, lowConfidence: receipt.lowConfidence, checks: receipt.checks, ms: Date.now() - started
     });
@@ -154,13 +188,16 @@ class ReceiptService {
   // (его поворачивает кнопка «повернуть на 90°»), turn — на сколько градусов он повёрнут относительно подготовленного
   // (0 или 180); small — чек мелкий в кадре, lowResolution — к тому же сжатое фото
   async recognizePhoto(userId, { image, mimeType, lang, currency, timezone, onStatus, onRetry, prepared = false, retry = true, small = false, lowResolution = false }) {
+    // QR ищется в том же кадре параллельно с подготовкой (в подготовленном кадре чек обрезан и QR может пропасть)
+    const qrTask = runImageTask('qr', image).then(result => result.qr || null).catch(() => null);
     let prep = { image, mimeType, info: { prepared: true, reused: true, small, lowResolution } };
     if (!prepared) {
       prep = await runImageTask('prepare', image, { mimeType });
       logger.info('Receipt image prepared', { userId, ...prep.info });
     }
     const isSmall = Boolean(prep.info.small);
-    const options = { lang, currency, timezone, onStatus };
+    const qr = await qrTask;
+    const options = { lang, currency, timezone, onStatus, qr };
     const run = async (frame, frameType, turn) => ({ ...distrustSparse(await this.attempt(userId, { ...options, image: frame, mimeType: frameType }), isSmall), image: frame, mimeType: frameType, turn });
     let best = await run(prep.image, prep.mimeType, 0);
     let attempts = 1;

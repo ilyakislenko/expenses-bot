@@ -3,17 +3,19 @@
 const path = require('path');
 const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
 const { prepareReceiptImage, rotateJpeg } = require('./imagePrep');
+const { readFiscalQr } = require('./qr');
 
 const TASKS = {
   prepare: (buffer, options) => prepareReceiptImage(buffer, options),
-  rotate: (buffer, options) => ({ image: rotateJpeg(buffer, options.degrees) })
+  rotate: (buffer, options) => ({ image: rotateJpeg(buffer, options.degrees) }),
+  qr: (buffer) => ({ qr: readFiscalQr(buffer) })
 };
 
 function runInline(task, buffer, options) {
   return TASKS[task](buffer, options);
 }
 
-// task: 'prepare' → { image, mimeType, info }; 'rotate' ({ degrees }) → { image }
+// task: 'prepare' → { image, mimeType, info }; 'rotate' ({ degrees }) → { image }; 'qr' → { qr } (receipt/qr.js)
 function runImageTask(task, buffer, options = {}) {
   return new Promise((resolve, reject) => {
     let worker;
@@ -31,7 +33,7 @@ function runImageTask(task, buffer, options = {}) {
     worker.once('message', (message) => {
       settled = true;
       if (message.error) reject(new Error(message.error));
-      else resolve({ ...message.result, image: Buffer.from(message.result.image) });
+      else resolve(message.result.image ? { ...message.result, image: Buffer.from(message.result.image) } : message.result);
     });
     worker.once('error', (error) => {
       if (settled) return;

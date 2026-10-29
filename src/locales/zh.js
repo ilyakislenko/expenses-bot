@@ -1188,6 +1188,7 @@ module.exports = {
   receipt_line_limit: "小票已有 {max} 行 — 无法再添加。",
   receipt_rotate_edited: "✏️ 你已手动修改过这份草稿 — 旋转会清除修改。请记录它，或取消后重新发送照片。",
   help_edit: "✏️ 记错了？在 📅 今天、概览或小票里点记录的编号 — 可以修改金额、类别和 📅 日期。小票草稿在记录前也能修改。",
+  receipt_qr_item: "小票购物",
   ai_title_forecast: "🔮 截至{date}的预测",
   ai_title_forecast_none: "🔮 预测",
   ai_forecast_none: "预测需要收入或预算：记录一笔收入（“+50000 工资”）或设置预算，我就能告诉你钱是否够用到月底。",

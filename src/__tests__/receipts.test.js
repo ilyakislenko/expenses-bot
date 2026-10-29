@@ -204,6 +204,38 @@ describe('ReceiptService', () => {
     ]);
     expect(data.localAt).toBeNull();
   });
+
+  describe('QR of a Russian fiscal receipt', () => {
+    const { parseFiscalQr } = require('../services/receipt/qr');
+    const QR = parseFiscalQr('t=20261029T1842&s=1042.92&fn=7281440500123456&i=12345&fp=3456789012&n=1');
+    const options = { image: Buffer.from('x'), mimeType: 'image/jpeg', lang: 'ru', currency: 'RUB', timezone: 'Europe/Moscow', qr: QR };
+
+    it('reads total, date and time; refunds, foreign codes and impossible values are not a purchase', () => {
+      expect(QR).toMatchObject({ total: 1042.92, date: '2026-10-29', time: '18:42', fn: '7281440500123456' });
+      expect(parseFiscalQr('t=20261029T1842&s=1042.92&fn=7281440500123456&n=2')).toBeNull();
+      expect(parseFiscalQr('https://example.com/?s=100')).toBeNull();
+      expect(parseFiscalQr('t=20261329T1842&s=100&fn=1&n=1')).toBeNull();
+      expect(parseFiscalQr('t=20261029T1842&s=-5&fn=1&n=1')).toBeNull();
+    });
+
+    it('the QR total replaces the model total, so lines that do not add up become a draft', async () => {
+      const { service } = createService({ raw: { is_receipt: true, merchant: 'Магнит', date: '2026-01-01', time: null, total: 1202.91,
+        items: [{ name: 'Молоко', quantity: 1, price: 1202.91, amount: 1202.91, category: 'Еда' }] } });
+      const receipt = await service.recognize(777, options);
+      expect(receipt).toMatchObject({ total: 1042.92, date: '2026-10-29', time: '18:42', mismatch: true, lowConfidence: true });
+      expect(receipt.checks.qr).toBe(true);
+    });
+
+    it('the model could not read the photo but the QR is readable — one-line draft for the exact total', async () => {
+      const { service, provider } = createService();
+      provider.recognize.mockRejectedValue(new ReceiptError('unreadable'));
+      const receipt = await service.recognize(777, options);
+      expect(receipt.items).toEqual([expect.objectContaining({ name: 'Покупка по чеку', amount: 1042.92 })]);
+      expect(receipt).toMatchObject({ total: 1042.92, lowConfidence: true, checks: expect.objectContaining({ qrOnly: true }) });
+      provider.recognize.mockRejectedValue(new ReceiptError('unavailable'));
+      await expect(service.recognize(777, options)).rejects.toMatchObject({ code: 'unavailable' });
+    });
+  });
 });
 
 describe('providers', () => {
