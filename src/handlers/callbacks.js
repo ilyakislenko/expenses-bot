@@ -5,7 +5,7 @@ const { DEFAULT_REMINDER_HOURS } = require('../utils/constants');
 const hourLabel = (hour) => `${String(hour).padStart(2, '0')}:00`;
 
 class CallbackHandlers {
-  constructor({ expenseService, premiumService, paymentService, familyService, categoryService, localizationService, formatter, stateService, userService, commandHandlers, keyboardGenerators, donationRepository, funnelService, weeklyInsightService, planningService = null, achievementService = null, onboardingHandlers = null, subscriptionAlertService = null, dailyPlanService = null }) {
+  constructor({ expenseService, premiumService, paymentService, familyService, categoryService, localizationService, formatter, stateService, userService, commandHandlers, keyboardGenerators, donationRepository, funnelService, weeklyInsightService, planningService = null, achievementService = null, onboardingHandlers = null, subscriptionAlertService = null, dailyPlanService = null, quizService = null }) {
     this.expenseService = expenseService;
     this.premiumService = premiumService;
     this.paymentService = paymentService;
@@ -25,6 +25,7 @@ class CallbackHandlers {
     this.onboardingHandlers = onboardingHandlers; // опрос «🧭 Настроим бота под тебя»: шаги языка и часового пояса
     this.subscriptionAlertService = subscriptionAlertService; // «🔔 Предупреждать о списании» подписок
     this.dailyPlanService = dailyPlanService; // «☀️ План на день»: строка и кнопка на экране напоминаний
+    this.quizService = quizService; // приглашение в квиз недели по четвергам
   }
 
   async handleToggleReminders(ctx) {
@@ -97,6 +98,11 @@ class CallbackHandlers {
     if (warn) {
       keyboard.push([{ text: warn.enabled ? t('sub_button_warn_on', { days: warnDays }) : t('sub_button_warn_off'), callback_data: 'plwt|s' }]);
     }
+    // Квиз недели: приглашение по четвергам вечером
+    const quizInvites = this.quizService ? await this.quizService.getInvitesEnabled(userId) : null;
+    if (this.quizService) {
+      keyboard.push([{ text: t(quizInvites ? 'quiz_button_invites_on' : 'quiz_button_invites_off_state'), callback_data: 'qzt' }]);
+    }
     keyboard.push([{ text: backText, callback_data: 'back_to_settings' }]);
 
     const list = current.map(h => `${h.toString().padStart(2,'0')}:00`).join(', ');
@@ -108,6 +114,7 @@ class CallbackHandlers {
     if (plan) newText += `\n\n${t('dp_reminders_info')}\n${plan.enabled ? t('dp_settings_on', { time: hourLabel(plan.hour) }) : t('dp_settings_off')}`;
     if (this.planningService) newText += `\n\n${t('pl_bills_info')}\n${t(billsOn ? 'pl_settings_bills_on_line' : 'pl_settings_bills_off_line')}`;
     if (warn) newText += `\n\n${t('sub_settings_reminders_info')}\n${warn.enabled ? t('sub_settings_on_line', { days: warnDays }) : t('sub_settings_off_line')}`;
+    if (this.quizService) newText += `\n\n${t('quiz_settings_info')}\n${t(quizInvites ? 'quiz_settings_on_line' : 'quiz_settings_off_line')}`;
     await ctx.answerCbQuery().catch(() => {});
     await respond(ctx, newText, { reply_markup: { inline_keyboard: keyboard }, parse_mode: 'Markdown' });
   }

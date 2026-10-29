@@ -875,3 +875,82 @@ ALTER TABLE premium_transactions DROP CONSTRAINT IF EXISTS premium_transactions_
 ALTER TABLE premium_transactions ADD CONSTRAINT premium_transactions_transaction_type_check
   CHECK (transaction_type IN ('purchase', 'refund', 'extension', 'activation', 'trial', 'reward'));
 COMMENT ON COLUMN premium_transactions.transaction_type IS 'Тип транзакции: purchase (покупка), refund (возврат), extension (продление), activation (активация), trial (пробный период), reward (дни в награду: монеты, квиз — без оплаты)';
+
+
+-- ==== QUIZ ====
+-- «🎲 Угадай свои траты» — квиз недели: 5 вопросов-викторин Telegram о своих тратах (с четверга 19:00 до конца воскресенья
+-- по местному времени), очки — билеты в розыгрыш дней премиума (понедельник 12:00 UTC). Приглашение — по четвергам
+-- вечером, отключается (users.quiz_invites_enabled). Вопросы хранятся в сессии; poll_id → вопрос — в quiz_polls
+-- (ответы poll_answer и закрытие опроса находят вопрос после перезапуска).
+ALTER TABLE users ADD COLUMN IF NOT EXISTS quiz_invites_enabled BOOLEAN NOT NULL DEFAULT TRUE;
+COMMENT ON COLUMN users.quiz_invites_enabled IS 'Приглашение в квиз недели по четвергам вечером (user_notifications quiz_invite); /quiz работает всегда';
+
+CREATE TABLE IF NOT EXISTS quiz_sessions (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    week_key DATE NOT NULL,
+    lang VARCHAR(5) NOT NULL,
+    questions JSONB NOT NULL,
+    total SMALLINT NOT NULL,
+    current_index SMALLINT NOT NULL DEFAULT 0,
+    asked_index SMALLINT NOT NULL DEFAULT -1,
+    asked_at TIMESTAMPTZ NULL,
+    correct_count SMALLINT NOT NULL DEFAULT 0,
+    missed_count SMALLINT NOT NULL DEFAULT 0,
+    missed_streak SMALLINT NOT NULL DEFAULT 0,
+    answers VARCHAR(20) NOT NULL DEFAULT '',
+    score INTEGER NOT NULL DEFAULT 0,
+    status VARCHAR(10) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'paused', 'finished')),
+    started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    finished_at TIMESTAMPTZ NULL,
+    UNIQUE (user_id, week_key)
+);
+COMMENT ON TABLE quiz_sessions IS 'Квиз недели пользователя: вопросы (JSON: kind, text, options, correct, explanation, triviaId), прогресс и очки';
+COMMENT ON COLUMN quiz_sessions.week_key IS 'Понедельник локальной недели, в которую начат квиз';
+COMMENT ON COLUMN quiz_sessions.asked_index IS 'Последний вопрос, отправка которого занята (один отправитель на вопрос)';
+COMMENT ON COLUMN quiz_sessions.answers IS 'По символу на вопрос: c — верно, w — неверно, m — не успел (рисуется на карточке)';
+CREATE INDEX IF NOT EXISTS idx_quiz_sessions_week ON quiz_sessions(week_key, status);
+
+CREATE TABLE IF NOT EXISTS quiz_polls (
+    poll_id VARCHAR(64) PRIMARY KEY,
+    session_id INTEGER NOT NULL REFERENCES quiz_sessions(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL,
+    question_index SMALLINT NOT NULL,
+    message_id BIGINT NULL,
+    correct_option SMALLINT NOT NULL,
+    kind VARCHAR(8) NOT NULL DEFAULT 'poll' CHECK (kind IN ('poll', 'buttons')),
+    deadline TIMESTAMPTZ NOT NULL,
+    status VARCHAR(10) NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'answered', 'missed')),
+    chosen_option SMALLINT NULL,
+    answered_at TIMESTAMPTZ NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (session_id, question_index)
+);
+COMMENT ON TABLE quiz_polls IS 'Отправленные вопросы квиза: poll_id опроса Telegram (или b<сессия>_<вопрос> для кнопок) → сессия, вопрос, срок';
+CREATE INDEX IF NOT EXISTS idx_quiz_polls_open ON quiz_polls(deadline) WHERE status = 'open';
+
+CREATE TABLE IF NOT EXISTS quiz_draws (
+    week_key DATE PRIMARY KEY,
+    seed VARCHAR(64) NOT NULL,
+    participants INTEGER NOT NULL,
+    total_weight INTEGER NOT NULL,
+    digest VARCHAR(64) NOT NULL,
+    winners JSONB NOT NULL,
+    drawn_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+COMMENT ON TABLE quiz_draws IS 'Журнал розыгрыша недели: зерно, число участников, сумма очков, отпечаток списка (sha256 «id:очки»), победители — по ним розыгрыш можно повторить';
+
+CREATE TABLE IF NOT EXISTS quiz_prizes (
+    id SERIAL PRIMARY KEY,
+    week_key DATE NOT NULL,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind VARCHAR(8) NOT NULL CHECK (kind IN ('grand', 'runner', 'perfect')),
+    days SMALLINT NOT NULL,
+    grant_started_at TIMESTAMPTZ NULL,
+    granted_at TIMESTAMPTZ NULL,
+    notified_at TIMESTAMPTZ NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (week_key, user_id, kind)
+);
+COMMENT ON TABLE quiz_prizes IS 'Призы квиза (дни премиума, транзакция reward с prize_id в invoice_payload — выдача ровно один раз)';
+CREATE INDEX IF NOT EXISTS idx_quiz_prizes_pending ON quiz_prizes(week_key) WHERE granted_at IS NULL OR notified_at IS NULL;

@@ -370,6 +370,63 @@ function wrappedCardSvg(data, engine = estimateText()) {
   return svgDoc(W, H, engine, parts.join(''), background);
 }
 
+// ---------- Карточка квиза недели ----------
+
+// data: { title, subtitle, score, scoreLabel, badge?, answers: 'cwm…' (верно / неверно / не успел),
+//         tiles: [{ value, label }] (до 3), footer, link, brand }
+// Сумм и описаний трат здесь нет и быть не должно — карточку пересылают
+const QUIZ_MARK_COLORS = { c: '#3ecf8e', w: '#ff5f6d', m: '#56607a' };
+
+function quizCardSvg(data, engine = estimateText()) {
+  const label = fitted(engine);
+  const W = 1080;
+  const H = 1080;
+  const pad = 72;
+  const inner = W - pad * 2;
+  const parts = [];
+  const background = `<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#14233f"/><stop offset="1" stop-color="#3a1747"/></linearGradient><rect width="${W}" height="${H}" fill="url(#bg)"/>`;
+
+  parts.push(label(pad, 126, data.title, inner, { size: 56, bold: true }));
+  if (data.subtitle) parts.push(label(pad, 178, data.subtitle, inner, { size: 30, color: THEME.muted }));
+
+  // Ответы квадратиками (как в «Вордли»): видно, как прошёл квиз, но не сами вопросы
+  const marks = [...String(data.answers || '')].slice(0, 10);
+  const cell = 92;
+  const gap = 22;
+  const rowWidth = marks.length * cell + Math.max(0, marks.length - 1) * gap;
+  marks.forEach((mark, i) => {
+    const x = (W - rowWidth) / 2 + i * (cell + gap);
+    parts.push(`<rect x="${round(x)}" y="236" width="${cell}" height="${cell}" rx="20" fill="${QUIZ_MARK_COLORS[mark] || QUIZ_MARK_COLORS.m}"/>`);
+  });
+
+  const scoreSize = fitSize(data.score, 200, 80, inner, true, engine.width);
+  parts.push(engine.draw(W / 2, 560, data.score, { size: scoreSize, bold: true, anchor: 'middle' }));
+  if (data.scoreLabel) parts.push(engine.draw(W / 2, 622, fitText(data.scoreLabel, 36, inner, false, engine.width), { size: 36, color: THEME.muted, anchor: 'middle' }));
+  if (data.badge) {
+    const badgeWidth = Math.min(inner, engine.width(data.badge, 32, true) + 64);
+    parts.push(`<rect x="${round((W - badgeWidth) / 2)}" y="652" width="${round(badgeWidth)}" height="56" rx="28" fill="${PALETTE[3]}" fill-opacity="0.2"/>`);
+    parts.push(engine.draw(W / 2, 691, fitText(data.badge, 32, badgeWidth - 48, true, engine.width), { size: 32, bold: true, color: PALETTE[3], anchor: 'middle' }));
+  }
+
+  const tiles = (data.tiles || []).slice(0, 3);
+  if (tiles.length) {
+    const tileGap = 24;
+    const tileW = (inner - tileGap * (tiles.length - 1)) / tiles.length;
+    tiles.forEach((tile, index) => {
+      const x = pad + index * (tileW + tileGap);
+      parts.push(`<rect x="${round(x)}" y="740" width="${round(tileW)}" height="160" rx="24" fill="#ffffff" fill-opacity="0.07"/>`);
+      const size = fitSize(tile.value, 56, 28, tileW - 48, true, engine.width);
+      parts.push(engine.draw(x + 28, 822, tile.value, { size, bold: true }));
+      parts.push(label(x + 28, 868, tile.label, tileW - 48, { size: 24, color: THEME.muted }));
+    });
+  }
+
+  if (data.footer) parts.push(label(pad, H - 96, data.footer, inner, { size: 28 }));
+  if (data.link) parts.push(label(pad, H - 50, data.link, inner, { size: 26, bold: true, color: PALETTE[0] }));
+  else if (data.brand) parts.push(label(pad, H - 50, data.brand, inner, { size: 26, bold: true, color: PALETTE[0] }));
+  return svgDoc(W, H, engine, parts.join(''), background);
+}
+
 module.exports = {
   THEME,
   PALETTE,
@@ -390,5 +447,6 @@ module.exports = {
   donutSlices,
   donutSvg,
   trendSvg,
-  wrappedCardSvg
+  wrappedCardSvg,
+  quizCardSvg
 };

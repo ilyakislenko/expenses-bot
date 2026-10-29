@@ -8,7 +8,7 @@ const { localToday, lastDaysPeriod } = require('../utils/period');
 const { PREMIUM_TARIFFS, tariffDiscount, USER_LIMITS, DEFAULT_REMINDER_HOURS } = require('../utils/constants');
 
 class CommandHandlers {
-  constructor({ expenseService, userService, premiumService, familyService, localizationService, formatter, stateService, keyboardGenerators, paymentService, incomeService, funnelService, receiptService, referralService = null, voiceService = null, roastService = null }) {
+  constructor({ expenseService, userService, premiumService, familyService, localizationService, formatter, stateService, keyboardGenerators, paymentService, incomeService, funnelService, receiptService, referralService = null, voiceService = null, roastService = null, quizHandlers = null }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -24,6 +24,7 @@ class CommandHandlers {
     this.referralService = referralService;
     this.voiceService = voiceService;
     this.roastService = roastService; // строка «😈 Злой режим» в настройках
+    this.quizHandlers = quizHandlers; // `/start quiz` (ссылка с карточки квиза) у вернувшегося — экран квиза
   }
 
   async paysupport(ctx) {
@@ -103,6 +104,10 @@ class CommandHandlers {
       if (!onboarding || !onboarding.answers) return;
     }
 
+    // Ссылка с карточки результата квиза (t.me/<бот>?start=quiz) у того, кто уже пользуется ботом, — сразу квиз
+    if (this.quizHandlers && FunnelService.parseStartSource(ctx.message && ctx.message.text) === 'quiz') {
+      return this.quizHandlers.show(ctx);
+    }
     const userLanguage = await this.userService.getUserLanguage(user.id);
     await ctx.reply(this.localizationService.getText(userLanguage, 'start_returning'), {
       parse_mode: 'Markdown',
@@ -160,6 +165,7 @@ class CommandHandlers {
     hints.push(t('help_edit')); // правка записи, её даты и черновика чека
     hints.push(t('help_assistant'));
     hints.push(t('help_roast'));
+    hints.push(t('help_quiz'));
     hints.push(t('help_setup'));
     const text = hints.join('\n\n');
     await respond(ctx, text, {

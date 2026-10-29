@@ -117,7 +117,11 @@ class AchievementRepository extends BaseRepository {
          (SELECT COUNT(*) FROM savings_pots WHERE user_id = $1 AND kind = 'debt' AND balance = 0)::int AS debts_paid,
          (SELECT COUNT(*) FROM savings_operations WHERE user_id = $1)::int AS savings_ops,
          EXISTS (SELECT 1 FROM family_user WHERE user_id = $1) AS family,
-         (SELECT COUNT(*) FROM user_challenges WHERE user_id = $1 AND status = 'won')::int AS challenges_won`,
+         (SELECT COUNT(*) FROM user_challenges WHERE user_id = $1 AND status = 'won')::int AS challenges_won,
+         -- Квиз недели: пройденные, с идеальным результатом, недели (серия недель — в AchievementService)
+         (SELECT COUNT(*) FROM quiz_sessions WHERE user_id = $1 AND status = 'finished')::int AS quizzes,
+         (SELECT COUNT(*) FROM quiz_sessions WHERE user_id = $1 AND status = 'finished' AND correct_count = total)::int AS quiz_perfect,
+         ARRAY(SELECT to_char(week_key, 'YYYY-MM-DD') FROM quiz_sessions WHERE user_id = $1 AND status = 'finished' ORDER BY week_key) AS quiz_weeks`,
       [userId, timezone]
     );
     const row = result.rows[0];
@@ -136,7 +140,10 @@ class AchievementRepository extends BaseRepository {
       debtsPaid: row.debts_paid,
       savingsOps: row.savings_ops,
       family: row.family,
-      challengesWon: row.challenges_won
+      challengesWon: row.challenges_won,
+      quizzes: row.quizzes || 0,
+      quizPerfect: row.quiz_perfect || 0,
+      quizWeeks: row.quiz_weeks || []
     };
   }
 

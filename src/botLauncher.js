@@ -33,6 +33,8 @@ module.exports = async function launchBot(bot, PORT = process.env.PORT || 3000) 
     logger.startup('Starting bot in polling mode');
   }
 
+  // allowedUpdates не задаём: Telegraf шлёт getUpdates с allowed_updates = [] — все типы, кроме chat_member и реакций,
+  // в том числе poll_answer и poll (ответы и закрытие опросов квиза недели). Свой список сломал бы квиз без них
   let onLaunch;
   const launched = new Promise((resolve) => { onLaunch = resolve; });
   const running = bot.launch(config, onLaunch);

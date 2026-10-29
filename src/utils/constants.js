@@ -97,6 +97,38 @@ const COINS = {
   HISTORY: 10 // строк истории на экране
 };
 
+// «🎲 Угадай свои траты» — квиз недели (QuizService, utils/quiz.js). Окно — по местному времени пользователя:
+// с четверга OPEN_HOUR:00 до конца воскресенья; приглашение — в четверг с INVITE_FROM_HOUR до INVITE_TO_HOUR (не ночью)
+// тем, у кого MIN_RECORDS трат за RECORDS_DAYS дней. QUESTIONS вопросов-викторин Telegram по OPEN_PERIOD_SEC секунд;
+// очки: POINTS_CORRECT за верный ответ, BONUS_FINISH за пройденный до конца квиз, BONUS_PERFECT за все верные.
+// Розыгрыш недели — в понедельник DRAW_HOUR_UTC:00 UTC (окно закрыто во всех поясах): PRIZES среди прошедших квиз,
+// шанс пропорционален очкам; каждому с идеальным результатом — PERFECT_DAYS. Только дни премиума, денег нет.
+const QUIZ = {
+  QUESTIONS: 5,
+  TRIVIA_LANGUAGES: ['ru', 'en'], // финансовые вопросы-загадки есть только на этих языках
+  MAX_OWN_WITH_TRIVIA: 4, // ru/en: не больше 4 вопросов о своих тратах, остальное — загадки
+  OPEN_WEEKDAY: 4, // четверг
+  OPEN_HOUR: 19,
+  INVITE_FROM_HOUR: 19,
+  INVITE_TO_HOUR: 21, // не включительно: приглашение в 19:00–20:59
+  OPEN_PERIOD_SEC: 20,
+  ANSWER_GRACE_MS: 5000, // ответ, пришедший позже срока вопроса + это время, не засчитывается
+  BUTTON_PERIOD_SEC: 25, // запасной вариант кнопками (если опрос не отправить): чуть больше — нет таймера на экране
+  PAUSE_AFTER_MISSED: 2, // столько пропущенных подряд — пауза с кнопкой «Продолжить»
+  POINTS_CORRECT: 10,
+  BONUS_FINISH: 10,
+  BONUS_PERFECT: 20,
+  MIN_RECORDS: 5,
+  RECORDS_DAYS: 28,
+  PRIZES: [{ kind: 'grand', days: 30, count: 1 }, { kind: 'runner', days: 7, count: 3 }],
+  PERFECT_DAYS: 1,
+  DRAW_HOUR_UTC: 12,
+  NOTIFY_FROM_HOUR: 10, // объявление выигрыша — днём по местному времени
+  NOTIFY_TO_HOUR: 21,
+  PERCENTILE_MIN_PLAYERS: 20, // меньше игроков за неделю — сравнение с последними PERCENTILE_WEEKS неделями
+  PERCENTILE_WEEKS: 4
+};
+
 // Константы для тарифов премиум подписки. Скидки не хранятся: их считает tariffDiscount от месячной цены.
 const PREMIUM_TARIFFS = {
   MONTH_1: {
@@ -178,6 +210,7 @@ function generateMoreMenu(localizationService, userLanguage, isAdmin = false) {
   const t = (key) => localizationService.getText(userLanguage, key);
   const keyboard = [
     [{ text: t('button_ai'), callback_data: 'ai' }],
+    [{ text: t('button_quiz'), callback_data: 'qz' }],
     [{ text: t('button_planning'), callback_data: 'pl' }, { text: t('button_savings'), callback_data: 'sv' }],
     [{ text: t('button_achievements'), callback_data: 'ach' }, { text: t('button_invite'), callback_data: 'ref' }],
     [{ text: t('button_family'), callback_data: 'family' }, { text: t('premium_subscription_title'), callback_data: 'premium_subscription' }],
@@ -324,6 +357,7 @@ module.exports = {
   REFERRAL,
   DAILY_PLAN,
   COINS,
+  QUIZ,
   ROAST,
   generateMainMenuKeyboard,
   generateMoreMenu,

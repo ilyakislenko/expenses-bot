@@ -58,7 +58,8 @@ function stateCleanupMiddleware(handlers) {
       }
     }
 
-    if (userId && ctx.updateType !== 'message') {
+    // Ответ на опрос квиза (poll_answer) — не кнопка навигации: ожидаемый ввод и правка записи остаются
+    if (userId && ctx.updateType !== 'message' && ctx.updateType !== 'poll_answer') {
       stateService.dropExpiredInput(userId);
       if (ctx.callbackQuery?.data !== 'cancel_edit') stateService.deleteUserEditState(userId);
 
