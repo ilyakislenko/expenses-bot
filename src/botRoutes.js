@@ -42,6 +42,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.command('recurring', errorHandler((ctx) => recurringExpenseHandlers.showMenu(ctx))); // ежемесячные регулярные траты
   bot.command('savings', errorHandler((ctx) => savingsHandlers.showMenu(ctx))); // накопления, цели, прогноз
   bot.command('achievements', errorHandler((ctx) => achievementHandlers.show(ctx))); // уровень, серия, достижения, челленджи
+  bot.command('coins', errorHandler((ctx) => handlers.coinHandlers.show(ctx))); // «🪙 Монеты»: баланс, обмен на дни премиума
   bot.command('invite', errorHandler((ctx) => handlers.referralHandlers.showInvite(ctx))); // пригласить друга
   bot.command('ask', errorHandler((ctx) => assistantHandlers.handleCommand(ctx))); // вопрос боту о своих тратах
   bot.command('roast', errorHandler((ctx) => handlers.roastHandlers.showMonth(ctx))); // «😈 Разнос месяца»
@@ -205,6 +206,15 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^achwi\|(-?\d+)$/, errorHandler((ctx) => handlers.chartHandlers.shareWrapped(ctx, parseInt(ctx.match[1], 10)))); // карточка итогов картинкой
   // Устаревшие или неизвестные кнопки раздела — экран достижений
   bot.action(/^ach/, errorHandler((ctx) => achievementHandlers.show(ctx)));
+  // «🪙 Монеты»: экран, подтверждение обмена cnb|<дни>, обмен cnc|<дни>
+  bot.action('coins', errorHandler((ctx) => handlers.coinHandlers.show(ctx)));
+  bot.action(/^cnb\|(\d{1,2})$/, errorHandler((ctx) => handlers.coinHandlers.confirm(ctx)));
+  bot.action(/^cnc\|(\d{1,2})$/, errorHandler((ctx) => handlers.coinHandlers.redeem(ctx)));
+  // «☀️ План на день»: настройка (dpo), вкл/выкл (dpt), час (dph|<час>), «Показать сейчас» (dpn)
+  bot.action('dpo', errorHandler((ctx) => handlers.dailyPlanHandlers.show(ctx)));
+  bot.action('dpt', errorHandler((ctx) => handlers.dailyPlanHandlers.toggle(ctx)));
+  bot.action(/^dph\|(\d{1,2})$/, errorHandler((ctx) => handlers.dailyPlanHandlers.setHour(ctx)));
+  bot.action('dpn', errorHandler((ctx) => handlers.dailyPlanHandlers.preview(ctx)));
   // «🤖 Спроси бота»: примеры (кнопка = вопрос), свой вопрос текстом (ai_in:q)
   bot.action('ai', errorHandler((ctx) => assistantHandlers.showExamples(ctx)));
   bot.action(/^ai\|([1-6])$/, errorHandler((ctx) => assistantHandlers.askExample(ctx)));

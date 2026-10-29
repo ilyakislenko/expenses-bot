@@ -7,6 +7,16 @@ module.exports = {
   },
 
   spicy: {
+    morning_good: [
+      "Limite de hoje: {daily}. Não é desafio, é um pedido.",
+      "O plano está pronto. Difícil é não fingir que ele não existe.",
+      "Ontem, dentro do plano. A carteira espera uma reprise."
+    ],
+    morning_bad: [
+      "Ontem, {over} acima do plano. Hoje é dia de redenção.",
+      "O plano perdeu ontem. Revanche hoje, sem delivery.",
+      "Ontem a carteira emagreceu mais que o plano. Hoje, com calma."
+    ],
     budget_over: [
       'E lá se foi {budget}: {spent} para um limite de {limit}. Estourou em {over}. Pelo visto o limite era só uma sugestão.',
       '«{desc}» por {amount}, e {budget} morreu oficialmente. Um minuto de silêncio, por favor.',
@@ -144,6 +154,16 @@ module.exports = {
   },
 
   savage: {
+    morning_good: [
+      "Limite de hoje: {daily}. Torrar tudo até o almoço não é a meta, porra.",
+      "Ontem, dentro do plano. Caralho, continua assim.",
+      "Plano pronto. Não faz merda, só não gasta a mais."
+    ],
+    morning_bad: [
+      "Ontem, {over} acima do plano. Que merda, hoje é modo economia.",
+      "Ontem o plano foi pro caralho. Hoje não, beleza?",
+      "Ontem passou do plano. Freia, porra."
+    ],
     budget_over: [
       'Mandou bem, {gênio|gênia}: {budget} foi pro caralho. {spent} para um limite de {limit}, {over} a mais. Satisfeito{|a}?',
       '«{desc}» por {amount}, e {budget} foi pra merda. {over} a mais. Palmas, porra.',

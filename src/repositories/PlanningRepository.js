@@ -124,7 +124,7 @@ class PlanningRepository extends BaseRepository {
 
   async getBillReminderCandidates() {
     const result = await this.query(
-      'SELECT id, language, timezone FROM users WHERE id > 0 AND bill_reminders_enabled = TRUE',
+      'SELECT id, language, timezone, daily_plan_enabled FROM users WHERE id > 0 AND bill_reminders_enabled = TRUE',
       []
     );
     return result.rows;

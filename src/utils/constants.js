@@ -77,6 +77,26 @@ const REFERRAL = {
   UPSELL_INTERVAL_DAYS: 7
 };
 
+// «☀️ План на день»: утром в выбранный локальный час (только утро — ночью не будим), по умолчанию в 8:00
+const DAILY_PLAN = {
+  DEFAULT_HOUR: 8,
+  HOURS: [6, 7, 8, 9, 10, 11]
+};
+
+// «🪙 Монеты»: за привычку, а не за деньги. Значок — XP / XP_PER_COIN монет (XP не меняется). Обмен — только на дни
+// премиума и не больше MONTHLY_DAYS_CAP дней за локальный месяц: активный пользователь копит ~3 дня в месяц,
+// подписку это не заменяет. Одинаково для всех (премиум тоже копит)
+const COINS = {
+  DAY: 1, // день с записями (трата, доход, «Сегодня без трат»)
+  STREAK_WEEK: 5, // каждые 7 дней серии подряд
+  PLAN_KEPT: 2, // вчера уложился в «Можно сегодня» из утреннего плана
+  CHALLENGE_WON: 10,
+  XP_PER_COIN: 5,
+  SHOP: [{ days: 1, price: 30 }, { days: 7, price: 180 }],
+  MONTHLY_DAYS_CAP: 7,
+  HISTORY: 10 // строк истории на экране
+};
+
 // Константы для тарифов премиум подписки. Скидки не хранятся: их считает tariffDiscount от месячной цены.
 const PREMIUM_TARIFFS = {
   MONTH_1: {
@@ -302,6 +322,8 @@ module.exports = {
   TRIAL_PERIOD,
   DEFAULT_REMINDER_HOURS,
   REFERRAL,
+  DAILY_PLAN,
+  COINS,
   ROAST,
   generateMainMenuKeyboard,
   generateMoreMenu,

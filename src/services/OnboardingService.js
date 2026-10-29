@@ -5,11 +5,12 @@ const rules = require('../utils/onboarding');
 // существующие настройки (валюта, начало периода, бюджет, напоминания, сводки, злой режим).
 // Каждый ответ сразу меняет настройку — «Пропустить всё» и брошенный опрос сохраняют уже отвеченное.
 class OnboardingService {
-  constructor({ userService, budgetService, planningService = null, achievementService = null, premiumService, funnelService, now = () => new Date() }) {
+  constructor({ userService, budgetService, planningService = null, achievementService = null, dailyPlanService = null, premiumService, funnelService, now = () => new Date() }) {
     this.userService = userService;
     this.budgetService = budgetService;
     this.planningService = planningService;
     this.achievementService = achievementService;
+    this.dailyPlanService = dailyPlanService; // «☀️ План на день» в «что присылать»
     this.premiumService = premiumService;
     this.funnelService = funnelService;
     this.now = now;
@@ -170,17 +171,19 @@ class OnboardingService {
 
   // Текущие значения того, что можно присылать
   async currentNotify(userId) {
-    const [settings, month, bills] = await Promise.all([
+    const [settings, month, bills, plan] = await Promise.all([
       this.userService.getReminderSettings(userId),
       this.achievementService ? this.achievementService.isWrappedEnabled(userId) : false,
-      this.planningService ? this.planningService.isBillRemindersEnabled(userId) : false
+      this.planningService ? this.planningService.isBillRemindersEnabled(userId) : false,
+      this.dailyPlanService ? this.dailyPlanService.getSettings(userId).then((s) => s.enabled) : false
     ]);
-    return { daily: !!settings.daily_summary_enabled, weekly: !!settings.weekly_insight_enabled, month: !!month, bills: !!bills };
+    return { plan: !!plan, daily: !!settings.daily_summary_enabled, weekly: !!settings.weekly_insight_enabled, month: !!month, bills: !!bills };
   }
 
-  // Доступные пункты «что присылать» (итоги месяца и платежи — если есть их сервисы)
+  // Доступные пункты «что присылать» (план на день, итоги месяца и платежи — если есть их сервисы)
   notifyOptions() {
-    return rules.NOTIFY.filter((code) => (code === 'month' ? !!this.achievementService : code === 'bills' ? !!this.planningService : true));
+    const available = { plan: !!this.dailyPlanService, month: !!this.achievementService, bills: !!this.planningService };
+    return rules.NOTIFY.filter((code) => available[code] !== false);
   }
 
   async notifySelection(userId, draft) {
@@ -193,6 +196,8 @@ class OnboardingService {
 
   async confirmNotify(userId, draft) {
     const plan = rules.notifyPlan(draft.notify || []);
+    if (this.dailyPlanService) await this.dailyPlanService.setEnabled(userId, plan.plan);
+    else delete plan.plan;
     await this.userService.setDailySummaryEnabled(userId, plan.daily);
     await this.userService.setWeeklyInsightEnabled(userId, plan.weekly);
     if (this.achievementService) await this.achievementService.setWrappedEnabled(userId, plan.month);

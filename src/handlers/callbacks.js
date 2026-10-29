@@ -5,7 +5,7 @@ const { DEFAULT_REMINDER_HOURS } = require('../utils/constants');
 const hourLabel = (hour) => `${String(hour).padStart(2, '0')}:00`;
 
 class CallbackHandlers {
-  constructor({ expenseService, premiumService, paymentService, familyService, categoryService, localizationService, formatter, stateService, userService, commandHandlers, keyboardGenerators, donationRepository, funnelService, weeklyInsightService, planningService = null, achievementService = null, onboardingHandlers = null, subscriptionAlertService = null }) {
+  constructor({ expenseService, premiumService, paymentService, familyService, categoryService, localizationService, formatter, stateService, userService, commandHandlers, keyboardGenerators, donationRepository, funnelService, weeklyInsightService, planningService = null, achievementService = null, onboardingHandlers = null, subscriptionAlertService = null, dailyPlanService = null }) {
     this.expenseService = expenseService;
     this.premiumService = premiumService;
     this.paymentService = paymentService;
@@ -24,6 +24,7 @@ class CallbackHandlers {
     this.achievementService = achievementService;
     this.onboardingHandlers = onboardingHandlers; // опрос «🧭 Настроим бота под тебя»: шаги языка и часового пояса
     this.subscriptionAlertService = subscriptionAlertService; // «🔔 Предупреждать о списании» подписок
+    this.dailyPlanService = dailyPlanService; // «☀️ План на день»: строка и кнопка на экране напоминаний
   }
 
   async handleToggleReminders(ctx) {
@@ -70,6 +71,11 @@ class CallbackHandlers {
       { text: saveText, callback_data: 'save_reminder_hours' },
       { text: clearText, callback_data: 'clear_reminder_hours' }
     ]);
+    // «☀️ План на день»: вкл/выкл и час — на своём экране (dpo)
+    const plan = this.dailyPlanService ? await this.dailyPlanService.getSettings(userId) : null;
+    if (plan) {
+      keyboard.push([{ text: plan.enabled ? t('dp_button_settings_on', { time: hourLabel(plan.hour) }) : t('dp_button_settings_off'), callback_data: 'dpo' }]);
+    }
     // Ежедневная сводка: вкл/выкл и её час (выбор часа — на отдельном экране)
     keyboard.push([
       { text: t(settings.daily_summary_enabled ? 'button_daily_summary_on' : 'button_daily_summary_off'), callback_data: 'toggle_daily_summary' },
@@ -99,6 +105,7 @@ class CallbackHandlers {
       : t('settings_daily_summary_off_line');
     const weeklyLine = t(settings.weekly_insight_enabled ? 'settings_weekly_insight_on_line' : 'settings_weekly_insight_off_line');
     let newText = `🔔 *${t('reminders_title')}*\n\n${t('reminders_info')}\n\n${t('reminder_hours_info')} ${list || '-'}\n\n${t('daily_summary_info')}\n${summaryLine}\n\n${t('weekly_insight_info')}\n${weeklyLine}`;
+    if (plan) newText += `\n\n${t('dp_reminders_info')}\n${plan.enabled ? t('dp_settings_on', { time: hourLabel(plan.hour) }) : t('dp_settings_off')}`;
     if (this.planningService) newText += `\n\n${t('pl_bills_info')}\n${t(billsOn ? 'pl_settings_bills_on_line' : 'pl_settings_bills_off_line')}`;
     if (warn) newText += `\n\n${t('sub_settings_reminders_info')}\n${warn.enabled ? t('sub_settings_on_line', { days: warnDays }) : t('sub_settings_off_line')}`;
     await ctx.answerCbQuery().catch(() => {});

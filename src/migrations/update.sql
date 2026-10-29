@@ -237,7 +237,7 @@ COMMENT ON COLUMN users.premium_activated_at IS 'Дата первой акти�
 CREATE TABLE IF NOT EXISTS premium_transactions (
     id SERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
-               transaction_type VARCHAR(20) NOT NULL CHECK (transaction_type IN ('purchase', 'refund', 'extension', 'activation', 'trial')),
+               transaction_type VARCHAR(20) NOT NULL CHECK (transaction_type IN ('purchase', 'refund', 'extension', 'activation', 'trial', 'reward')),
     tariff_duration INTEGER NOT NULL, -- количество дней
     stars_amount INTEGER NOT NULL, -- количество звезд
     usd_amount DECIMAL(10,2) NOT NULL, -- сумма в USD
@@ -276,7 +276,7 @@ BEGIN
     -- Добавляем новый constraint с поддержкой 'trial'
     ALTER TABLE premium_transactions 
     ADD CONSTRAINT premium_transactions_transaction_type_check 
-    CHECK (transaction_type IN ('purchase', 'refund', 'extension', 'activation', 'trial'));
+    CHECK (transaction_type IN ('purchase', 'refund', 'extension', 'activation', 'trial', 'reward'));
 END $$;
 
 -- Add comments for premium transactions table
@@ -1000,3 +1000,63 @@ CREATE TABLE IF NOT EXISTS subscription_trials (
 COMMENT ON TABLE subscription_trials IS 'Пробные периоды: напоминание за день и в день окончания; end_date NULL — черновик (ждём дату), state — ответ на напоминание';
 COMMENT ON COLUMN subscription_trials.created_on IS 'Локальная дата добавления: в этот день не напоминаем';
 CREATE INDEX IF NOT EXISTS idx_subscription_trials_user ON subscription_trials(user_id, end_date);
+
+-- ==== DAILY PLAN ====
+-- «☀️ План на день» утром (users.daily_plan_*; daily_plans — какой план отправлен на локальный день: отметка «уже
+-- отправлено» и сравнение вечером / на следующее утро) и «🪙 Монеты» (coin_ledger — каждое начисление и списание с
+-- ключом идемпотентности, user_coins — баланс). Дни премиума в награду — premium_transactions.transaction_type 'reward'.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'daily_plan_enabled') THEN
+    ALTER TABLE users ADD COLUMN daily_plan_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+    -- Один раз: тем, кто уже получает сводку дня, план тоже включён (потом пользователь решает сам)
+    UPDATE users SET daily_plan_enabled = TRUE WHERE daily_summary_enabled = TRUE;
+  END IF;
+END $$;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_plan_hour SMALLINT NULL;
+COMMENT ON COLUMN users.daily_plan_enabled IS '«☀️ План на день» по утрам';
+COMMENT ON COLUMN users.daily_plan_hour IS 'Локальный час плана на день (6–11), NULL — 8:00';
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'users_daily_plan_hour_check') THEN
+    ALTER TABLE users ADD CONSTRAINT users_daily_plan_hour_check CHECK (daily_plan_hour IS NULL OR daily_plan_hour BETWEEN 5 AND 11);
+  END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS daily_plans (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    day DATE NOT NULL,
+    daily DECIMAL(14,2) NOT NULL,
+    deficit DECIMAL(14,2) NOT NULL DEFAULT 0,
+    currency VARCHAR(3) NOT NULL,
+    sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, day)
+);
+COMMENT ON TABLE daily_plans IS 'Утренний план на локальный день: сколько можно потратить (daily) в основной валюте; строка ставится до отправки — второй раз за день план не уходит';
+
+CREATE TABLE IF NOT EXISTS user_coins (
+    user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    balance INTEGER NOT NULL DEFAULT 0 CHECK (balance >= 0),
+    earned_total INTEGER NOT NULL DEFAULT 0,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+COMMENT ON TABLE user_coins IS '🪙 Баланс монет (сумма coin_ledger); строка блокируется при обмене — параллельные обмены не уводят в минус';
+
+CREATE TABLE IF NOT EXISTS coin_ledger (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    amount INTEGER NOT NULL,
+    reason VARCHAR(20) NOT NULL,
+    ref_key VARCHAR(100) NOT NULL,
+    days SMALLINT NULL,
+    month CHAR(7) NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (user_id, ref_key)
+);
+COMMENT ON TABLE coin_ledger IS '🪙 Начисления (amount > 0) и обмены на дни премиума (reason redeem, amount < 0, days, month — локальный месяц для лимита); ref_key — ключ идемпотентности';
+CREATE INDEX IF NOT EXISTS idx_coin_ledger_user_created ON coin_ledger(user_id, created_at DESC);
+
+ALTER TABLE premium_transactions DROP CONSTRAINT IF EXISTS premium_transactions_transaction_type_check;
+ALTER TABLE premium_transactions ADD CONSTRAINT premium_transactions_transaction_type_check
+  CHECK (transaction_type IN ('purchase', 'refund', 'extension', 'activation', 'trial', 'reward'));
+COMMENT ON COLUMN premium_transactions.transaction_type IS 'Тип транзакции: purchase (покупка), refund (возврат), extension (продление), activation (активация), trial (пробный период), reward (дни в награду: монеты, квиз — без оплаты)';

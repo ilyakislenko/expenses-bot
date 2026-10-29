@@ -10,6 +10,16 @@ module.exports = {
 
   // 🌶 Kinoyali: so‘kinishsiz istehzo
   spicy: {
+    morning_good: [
+      "Bugungi limit {daily}. Bu sinov emas, iltimos.",
+      "Reja tayyor. Eng qiyini — uni yo‘qdek ko‘rmaslik.",
+      "Kecha rejada qolindi. Hamyon takrorini kutyapti."
+    ],
+    morning_bad: [
+      "Kecha rejadan {over} ortiq. Bugun tuzatish kuni.",
+      "Reja kecha yutqazdi. Revansh bugun, yetkazib berishsiz.",
+      "Kecha hamyon rejadan ko‘proq ozdi. Bugun sekinroq."
+    ],
     // {budget} {limit} {spent} {over} {percent} {amount} {desc} {days_left}
     budget_over: [
       '{budget} tugadi: {limit} limitga {spent} sarflading. Oshiqcha: {over}. Limit shunchaki maslahat ekan-da.',
@@ -173,6 +183,16 @@ module.exports = {
 
   // 🔥 Senzurasiz: qo‘pol, lekin nishon — xarajatlar
   savage: {
+    morning_good: [
+      "Bugungi limit {daily}. Tushgacha hammasini sovurish maqsad emas, oshna.",
+      "Kecha rejada qolindi. Voy-bo‘, shunday davom et.",
+      "Reja tayyor. Ahmoqlik qilma, ortiqcha sarflama."
+    ],
+    morning_bad: [
+      "Kecha rejadan {over} ortiq. Ey, bugun tejash rejimi.",
+      "Kecha rejani unutding. Bugun bunday qilma.",
+      "Kecha rejadan oshib ketding. Tormozni bos, oshna."
+    ],
     budget_over: [
       'Barakalla, dahoyim, {budget} pachaq bo‘ldi: {limit} limitga {spent}. Oshiqcha {over}. Endi xursandmisan?',
       '«{desc}» uchun {amount} va {budget} jin ursin, tamom. Oshiqcha {over}. Sekin qarsak, ahmoq.',

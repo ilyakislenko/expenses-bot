@@ -269,7 +269,7 @@ class UserService {
       
       // Записываем транзакцию, если предоставлены данные
       if (transactionData) {
-        let transactionType = isNewActivation ? 'activation' : 'extension';
+        let transactionType = transactionData.transaction_type || (isNewActivation ? 'activation' : 'extension');
         
         // Определяем тип транзакции на основе данных
         if (transactionData.invoice_payload) {
@@ -315,6 +315,15 @@ class UserService {
       });
       throw error;
     }
+  }
+
+  // Премиум-дни в награду (монеты, квиз): как activatePremium — к действующему сроку, истёкший — от сейчас.
+  // Транзакция 'reward' без оплаты: в выручку и «оплачен» не попадает, источник премиума — «выдан»
+  async grantRewardDays(userId, days, source, meta = {}) {
+    return this.activatePremium(userId, days, {
+      transaction_type: 'reward', stars: 0, usd: 0, rub: 0, telegram_payment_id: null,
+      invoice_payload: JSON.stringify({ type: source, user_id: userId, tariff: days, stars: 0, ...meta })
+    });
   }
 
   async isPremiumActive(userId) {
