@@ -193,6 +193,7 @@ class ImportHandlers {
     add(skipped.duplicates, 'import_skip_duplicates');
     add(skipped.manual, 'import_skip_manual');
     add(skipped.transfers, 'import_skip_transfers');
+    add(skipped.own, 'import_skip_own');
     add(skipped.failed, 'import_skip_failed');
     add(skipped.currency, 'import_skip_currency');
     add(skipped.invalid, 'import_skip_invalid');

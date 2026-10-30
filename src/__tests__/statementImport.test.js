@@ -376,15 +376,47 @@ describe('ImportService', () => {
       ]
     });
     const session = await service.prepare(777, parsed(ops));
-    expect(importRepository.getRecordedAmounts).toHaveBeenCalledWith(777, 'Europe/Moscow', '2024-03-01', '2024-03-03');
+    expect(importRepository.getRecordedAmounts).toHaveBeenCalledWith(777, 'Europe/Moscow', '2024-02-27', '2024-03-06');
     expect(session.operations.map(op => op.status)).toEqual(['new', 'new', 'new', 'manual', 'duplicate', 'manual']);
     expect(session.operations.slice(0, 3).map(op => op.categoryId)).toEqual([50, 1, 6]);
 
     const summary = await service.summarize(session, 'RUB');
     expect(summary.expenses).toEqual({ count: 3, byCurrency: [{ currency: 'RUB', total: 670 }] });
-    expect(summary.skipped).toEqual({ duplicates: 1, manual: 2, failed: 1, currency: 2, invalid: 0, transfers: 0 });
+    expect(summary.skipped).toEqual({ duplicates: 1, manual: 2, own: 0, failed: 1, currency: 2, invalid: 0, transfers: 0 });
     expect(summary.topCategories.map(category => category.name)).toEqual(['Еда', 'Кофейни', 'Другое']);
     expect(summary.period).toEqual({ from: '2024-03-01', to: '2024-03-03' });
+  });
+
+  it('a transfer between own accounts (Sber «VKLAD-KARTA») is never income or expense, whatever the transfers choice', async () => {
+    const { makeOperation } = require('../utils/statement/common');
+    const own = makeOperation({ date: '2026-10-29 18:26:00', signedAmount: 2000, currency: 'RUB', description: 'SBERBANK ONL@IN VKLAD-KARTA', bankCategory: 'Прочие операции', isTransfer: false });
+    const shop = makeOperation({ date: '2026-10-29 18:41:00', signedAmount: -766.21, currency: 'RUB', description: 'Lenta 099 Tomsk RUS', bankCategory: 'Супермаркеты', isTransfer: false });
+    const { service, importRepository } = createService();
+    const session = await service.prepare(777, parsed([own, shop]));
+    expect(session.operations.map(op => op.status)).toEqual(['own', 'new']);
+    session.includeTransfers = true;
+    expect((await service.summarize(session, 'RUB')).skipped.own).toBe(1);
+    await service.commit(777, session);
+    const [, , , expenses, incomes] = importRepository.createImport.mock.calls[0];
+    expect(incomes).toEqual([]);
+    expect(expenses.map(op => op.description)).toEqual(['Lenta 099 Tomsk RUS']);
+  });
+
+  it('a receipt recorded by hand with the receipt date matches the bank operation up to 3 days apart — only amounts with kopecks', async () => {
+    const ops = [
+      expense({ description: 'YARCHE_P_QR', amount: 716.74, date: '2026-10-29 13:57:00' }),
+      expense({ description: 'TRANSPORT', amount: 38, date: '2026-10-26 12:47:00' }),
+      expense({ description: 'SPAR', amount: 1042.92, date: '2026-10-27 18:37:00' })
+    ];
+    const { service } = createService({
+      recorded: [
+        { kind: 'expense', day: '2026-10-26', amount: '716.74', currency: 'RUB' },
+        { kind: 'expense', day: '2026-10-25', amount: '38.00', currency: 'RUB' },
+        { kind: 'expense', day: '2026-10-21', amount: '1042.92', currency: 'RUB' }
+      ]
+    });
+    const session = await service.prepare(777, parsed(ops));
+    expect(session.operations.map(op => op.status)).toEqual(['manual', 'new', 'new']);
   });
 
   it('writes transfers only when the user chose to count them', async () => {

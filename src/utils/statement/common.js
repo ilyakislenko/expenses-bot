@@ -164,6 +164,14 @@ function isTransferDescription(description) {
   return !!description && TRANSFER_DESCRIPTION.test(description.trim());
 }
 
+// Перевод между своими счетами (вклад ↔ карта, счёт ↔ карта, копилка): не доход и не трата — не записывается никогда,
+// при любом выборе по переводам. Сбер подписывает его «Прочие операции» + «SBERBANK ONL@IN VKLAD-KARTA»
+const OWN_ACCOUNT = /(VKLAD-?KARTA|KARTA-?VKLAD|SCHET-?KARTA|KARTA-?SCHET|между\s+(?:своими\s+)?сч[её]тами|между\s+своими|с\s+вклада|на\s+вклад|со\s+вклада|с\s+накопительного|на\s+накопительный|с\s+копилки|в\s+копилку|Kaspi\s+Депозит|between\s+(?:own|my)\s+accounts|from\s+savings|to\s+savings)/i;
+
+function isOwnTransferText(...texts) {
+  return texts.some(text => !!text && OWN_ACCOUNT.test(text));
+}
+
 function cleanDescription(text) {
   const s = String(text || '').replace(/\s+/g, ' ').trim();
   return s.length > DESCRIPTION_MAX ? `${s.slice(0, DESCRIPTION_MAX - 1).trimEnd()}…` : s;
@@ -182,8 +190,10 @@ function makeOperation({ date, signedAmount, kind = null, currency, description,
     description: desc,
     bankCategory: cleanDescription(bankCategory),
     mcc: String(mcc || '').trim(),
-    isTransfer: isTransfer !== undefined ? isTransfer : (isTransferLabel(bankCategory) || isTransferDescription(desc))
+    isTransfer: isTransfer !== undefined ? isTransfer : (isTransferLabel(bankCategory) || isTransferDescription(desc)),
+    isOwnTransfer: isOwnTransferText(desc, bankCategory)
   };
+  if (op.isOwnTransfer) op.isTransfer = true;
   if (altAmount && altCurrency && Math.abs(altAmount) > 0) {
     op.altAmount = Math.abs(altAmount);
     op.altCurrency = altCurrency;
@@ -202,6 +212,7 @@ module.exports = {
   normalizeCurrency,
   isTransferLabel,
   isTransferDescription,
+  isOwnTransferText,
   cleanDescription,
   makeOperation
 };

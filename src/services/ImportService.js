@@ -1,10 +1,15 @@
 const crypto = require('crypto');
 const logger = require('../utils/logger');
 const { mapBankCategory } = require('../utils/statement');
+const { addDays } = require('../utils/period');
 
 const SESSION_TTL_MS = 30 * 60 * 1000;
 const MAX_SESSIONS_PER_USER = 5;
 const TOP_CATEGORIES = 3;
+// Ручная запись (чек с датой с чека) и та же операция в банке (днём списания) — до 3 дней разницы; только для сумм с
+// копейками: круглые (38 ₽ проезда каждый день) по соседним дням совпали бы с чужой операцией
+const MATCH_SHIFT_DAYS = 3;
+const shiftDay = (day, delta) => addDays(day, delta);
 
 function normalizeText(text) {
   return String(text || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
@@ -30,7 +35,8 @@ function assignHashes(operations) {
 
 // Операции, совпавшие с уже записанными (та же сумма и валюта в тот же локальный день), пропускаются: запись не из
 // импорта — 'manual' («уже записаны вручную»), из другого импорта — 'duplicate' («уже импортированы»; например, свой
-// же экспорт CSV, присланный обратно). Каждая запись закрывает одну операцию. recorded: [{ kind, day, amount, currency, import_hash }]
+// же экспорт CSV, присланный обратно). Каждая запись закрывает одну операцию. Вторым проходом сумма с копейками ищется
+// и в соседних днях (±MATCH_SHIFT_DAYS, ближние первыми). recorded: [{ kind, day, amount, currency, import_hash }]
 function markRecorded(operations, recorded) {
   const pool = new Map();
   const keyOf = (kind, day, amount, currency) => `${kind}|${day}|${Number(amount).toFixed(2)}|${currency}`;
@@ -39,17 +45,32 @@ function markRecorded(operations, recorded) {
     if (!pool.has(key)) pool.set(key, []);
     pool.get(key).push(row.import_hash ? 'duplicate' : 'manual');
   }
-  for (const op of operations) {
-    if (op.status !== 'new') continue;
-    const day = op.date.slice(0, 10);
-    const candidates = [[op.amount, op.currency]];
-    if (op.altAmount && op.altCurrency) candidates.push([op.altAmount, op.altCurrency]);
+  const candidatesOf = (op) => {
+    const list = [[op.amount, op.currency]];
+    if (op.altAmount && op.altCurrency) list.push([op.altAmount, op.altCurrency]);
+    return list;
+  };
+  const take = (op, day, candidates) => {
     for (const [amount, currency] of candidates) {
       const matches = pool.get(keyOf(op.kind, day, amount, currency));
       if (matches && matches.length) {
         op.status = matches.shift();
-        break;
+        return true;
       }
+    }
+    return false;
+  };
+  for (const op of operations) {
+    if (op.status === 'new') take(op, op.date.slice(0, 10), candidatesOf(op));
+  }
+  const SHIFTS = [];
+  for (let d = 1; d <= MATCH_SHIFT_DAYS; d++) SHIFTS.push(-d, d);
+  for (const op of operations) {
+    if (op.status !== 'new') continue;
+    const candidates = candidatesOf(op).filter(([amount]) => Math.round(Number(amount) * 100) % 100 !== 0);
+    if (!candidates.length) continue;
+    for (const shift of SHIFTS) {
+      if (take(op, shiftDay(op.date.slice(0, 10), shift), candidates)) break;
     }
   }
   return operations;
@@ -127,12 +148,14 @@ class ImportService {
     const timezone = await this.userService.getUserTimezone(userId);
     const operations = assignHashes(parsed.operations.map(op => ({ ...op, description: stripFormulaGuard(op.description) })));
     const existing = await this.importRepository.findExistingHashes(userId, operations.map(op => op.hash));
-    for (const op of operations) op.status = existing.has(op.hash) ? 'duplicate' : 'new';
+    // Переводы между своими счетами (вклад ↔ карта) — 'own': не записываются при любом выборе по переводам
+    for (const op of operations) op.status = existing.has(op.hash) ? 'duplicate' : (op.isOwnTransfer ? 'own' : 'new');
 
     const fresh = operations.filter(op => op.status === 'new');
     if (fresh.length) {
       const days = fresh.map(op => op.date.slice(0, 10)).sort();
-      const recorded = await this.importRepository.getRecordedAmounts(userId, timezone, days[0], days[days.length - 1]);
+      // ±MATCH_SHIFT_DAYS: чек, записанный вручную с датой с чека, а в банке — днём списания
+      const recorded = await this.importRepository.getRecordedAmounts(userId, timezone, shiftDay(days[0], -MATCH_SHIFT_DAYS), shiftDay(days[days.length - 1], MATCH_SHIFT_DAYS));
       // Записи, которые уже закрыли операции этого файла по отпечатку, другие операции не закрывают
       markRecorded(fresh, recorded.filter(row => !row.import_hash || !existing.has(row.import_hash)));
     }
@@ -204,6 +227,7 @@ class ImportService {
       skipped: {
         duplicates: session.operations.filter(op => op.status === 'duplicate').length,
         manual: session.operations.filter(op => op.status === 'manual').length,
+        own: session.operations.filter(op => op.status === 'own').length,
         failed: session.skipped.failed,
         currency: session.skipped.currency,
         invalid: session.skipped.invalid,
