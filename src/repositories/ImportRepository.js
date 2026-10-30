@@ -19,7 +19,8 @@ class ImportRepository extends BaseRepository {
 
   // Записи за локальные дни [startDay, endDay]: kind, день, сумма, валюта и import_hash (NULL — записано не импортом).
   // Импортированные тоже: выписка, уже импортированная из другого файла (например, свой же экспорт CSV, где время без
-  // секунд и описание с «'»), даёт другой отпечаток, но ту же операцию
+  // секунд и описание с «'»), даёт другой отпечаток, но ту же операцию. Ещё итоги чеков и списков из нескольких записей
+  // (текст, голос): банк показывает покупку одной суммой, а бот записал её строками
   async getRecordedAmounts(userId, timezone, startDay, endDay) {
     const query = `
       SELECT 'expense' AS kind, to_char(created_at_utc AT TIME ZONE $2, 'YYYY-MM-DD') AS day, amount::text AS amount, currency, import_hash
@@ -27,6 +28,19 @@ class ImportRepository extends BaseRepository {
       WHERE user_id = $1
         AND created_at_utc >= ($3::date::timestamp AT TIME ZONE $2)
         AND created_at_utc < (($4::date + 1)::timestamp AT TIME ZONE $2)
+      UNION ALL
+      -- У чека — напечатанный итог (строки модели могут разойтись с ним на копейку), у списка — сумма записей
+      SELECT 'expense', to_char(MIN(e.created_at_utc) AT TIME ZONE $2, 'YYYY-MM-DD'),
+             COALESCE(MAX(r.printed_total), SUM(e.amount))::numeric(14,2)::text, e.currency, NULL
+      FROM expenses e
+      LEFT JOIN entry_batches b ON b.id = e.batch_id
+      LEFT JOIN receipts r ON r.id = e.receipt_id
+      WHERE e.user_id = $1 AND e.import_id IS NULL
+        AND (e.receipt_id IS NOT NULL OR (e.batch_id IS NOT NULL AND b.source IN ('text', 'voice')))
+        AND e.created_at_utc >= ($3::date::timestamp AT TIME ZONE $2)
+        AND e.created_at_utc < (($4::date + 1)::timestamp AT TIME ZONE $2)
+      GROUP BY COALESCE('r' || e.receipt_id, 'b' || e.batch_id), e.currency
+      HAVING COUNT(*) > 1
       UNION ALL
       SELECT 'income' AS kind, to_char(created_at_utc AT TIME ZONE $2, 'YYYY-MM-DD') AS day, amount::text AS amount, currency, import_hash
       FROM incomes
