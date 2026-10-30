@@ -419,6 +419,13 @@ describe('ImportService', () => {
     expect(session.operations.map(op => op.status)).toEqual(['manual', 'new', 'new']);
   });
 
+  it('a payment recorded by hand without the bank fee matches the bank operation that includes it', async () => {
+    const ops = [expense({ description: 'YandexBank_C2A G. MOSKVA RUS В сумму операции включена комиссия 200,00 руб.', amount: 27035, date: '2026-10-27 09:06:00', isTransfer: true })];
+    const { service } = createService({ recorded: [{ kind: 'expense', day: '2026-10-27', amount: '26835.00', currency: 'RUB' }] });
+    const session = await service.prepare(777, parsed(ops));
+    expect(session.operations[0].status).toBe('manual');
+  });
+
   it('writes transfers only when the user chose to count them', async () => {
     const ops = [
       expense({ description: 'Магнит', bankCategory: 'Супермаркеты' }),

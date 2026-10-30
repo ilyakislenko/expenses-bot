@@ -45,9 +45,14 @@ function markRecorded(operations, recorded) {
     if (!pool.has(key)) pool.set(key, []);
     pool.get(key).push(row.import_hash ? 'duplicate' : 'manual');
   }
+  // Кроме суммы операции — сумма без комиссии банка («В сумму операции включена комиссия 200,00 руб.»): вручную
+  // записывают то, что заплатили получателю
   const candidatesOf = (op) => {
     const list = [[op.amount, op.currency]];
     if (op.altAmount && op.altCurrency) list.push([op.altAmount, op.altCurrency]);
+    const fee = /комисси\p{L}*\s+(\d[\d\s\u00a0]*[.,]\d{2})/iu.exec(op.description || '');
+    const net = fee ? Math.round((op.amount - Number(fee[1].replace(/[\s\u00a0]/g, '').replace(',', '.'))) * 100) / 100 : 0;
+    if (net > 0) list.push([net, op.currency]);
     return list;
   };
   const take = (op, day, candidates) => {
