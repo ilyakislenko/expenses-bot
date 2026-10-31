@@ -1125,3 +1125,14 @@ CREATE TABLE IF NOT EXISTS group_passes (
     refunded_at TIMESTAMPTZ NULL
 );
 COMMENT ON TABLE group_passes IS 'Покупки «🎫 Пропуск для группы» (Stars, payload type group_pass); повторная доставка платежа — UNIQUE telegram_payment_id';
+
+-- ==== TAX REFUND ====
+CREATE TABLE IF NOT EXISTS tax_refund_marks (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expense_id INT NOT NULL REFERENCES expenses(id) ON DELETE CASCADE,
+    kind VARCHAR(16) NOT NULL CHECK (kind IN ('none', 'medical', 'education', 'sport', 'insurance')),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, expense_id)
+);
+COMMENT ON TABLE tax_refund_marks IS '«💡 Верни 13%»: правка пользователя — трата для вычета этого вида (kind) или не для вычета (none); нет строки — вид угадан по описанию и категории';
+CREATE INDEX IF NOT EXISTS idx_tax_refund_marks_expense ON tax_refund_marks(expense_id);

@@ -57,7 +57,7 @@ async function sendReminders({ userService, expenseService, notificationService,
   return sent;
 }
 
-function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, recurringExpenseService, premiumLifecycleService, reportService, dailySummaryService, weeklyInsightService, planningService, achievementService, subscriptionAlertService, dailyPlanService = null, quizService = null, supportedCurrencies = currencyConfig.SUPPORTED_CURRENCIES) {
+function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, recurringExpenseService, premiumLifecycleService, reportService, dailySummaryService, weeklyInsightService, planningService, achievementService, subscriptionAlertService, dailyPlanService = null, quizService = null, taxRefundService = null, supportedCurrencies = currencyConfig.SUPPORTED_CURRENCIES) {
   // Проверяем, нужно ли обновлять курсы при запуске
   (async () => {
     try {
@@ -248,6 +248,19 @@ function setupBotCron(cron, currencyUtils, donationRepository, userService, expe
         if (drawn + granted + announced > 0) console.log(`Квиз недели: розыгрышей ${drawn}, призов выдано ${granted}, объявлено ${announced}`);
       } catch (err) {
         console.error('Ошибка розыгрыша квиза недели:', err);
+      }
+    });
+  }
+
+  if (taxRefundService) {
+    // «💡 Верни 13%»: в январе — сколько можно вернуть за прошлый год (днём по местному времени, по разу за год, премиум).
+    // В :40 — не в одну минуту с другими рассылками
+    cron.schedule('40 * * * *', async () => {
+      try {
+        const sent = await taxRefundService.processDue();
+        if (sent > 0) console.log(`Верни 13%: напоминаний ${sent}`);
+      } catch (err) {
+        console.error('Ошибка напоминаний «Верни 13%»:', err);
       }
     });
   }

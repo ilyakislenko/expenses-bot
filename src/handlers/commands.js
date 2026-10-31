@@ -6,6 +6,7 @@ const { getTimezoneDisplayName } = require('../utils/timezoneCalculator');
 const { summaryHour } = require('../services/DailySummaryService');
 const { localToday, lastDaysPeriod } = require('../utils/period');
 const { PREMIUM_TARIFFS, tariffDiscount, USER_LIMITS, DEFAULT_REMINDER_HOURS, FAMILY_TARIFFS, FAMILY_PREMIUM } = require('../utils/constants');
+const { isTaxRefundAvailable } = require('../utils/taxRefund');
 
 class CommandHandlers {
   constructor({ expenseService, userService, premiumService, familyService, localizationService, formatter, stateService, keyboardGenerators, paymentService, incomeService, funnelService, receiptService, referralService = null, voiceService = null, roastService = null, quizHandlers = null, familyPremiumService = null }) {
@@ -158,6 +159,7 @@ class CommandHandlers {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
     const t = (key) => this.localizationService.getText(userLanguage, key);
+    const taxRefund = isTaxRefundAvailable(userLanguage, await this.userService.getUserCurrency(userId));
     if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
     // Подсказки про фото чека и голосовые — только если распознавание настроено; вопросы боту работают всегда (частые — без нейросети)
     const hints = [t('help_message')];
@@ -169,6 +171,7 @@ class CommandHandlers {
     hints.push(t('help_assistant'));
     hints.push(t('help_roast'));
     hints.push(t('help_quiz'));
+    if (taxRefund) hints.push(t('tax_help'));
     hints.push(t('help_setup'));
     const text = hints.join('\n\n');
     await respond(ctx, text, {
@@ -782,15 +785,16 @@ class CommandHandlers {
     });
   }
 
-  // «☰ Ещё»: редкие разделы (семья, подписка, экспорт, настройки, справка, админка)
+  // «☰ Ещё»: редкие разделы (семья, подписка, экспорт, настройки, справка, админка); «💡 Верни 13%» — ru + RUB
   async mainMenu(ctx) {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
     const isAdmin = await this.userService.isUserAdmin(userId);
+    const taxRefund = isTaxRefundAvailable(userLanguage, await this.userService.getUserCurrency(userId));
     if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
     await respond(ctx, this.localizationService.getText(userLanguage, 'more_menu_title'), {
       parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: this.keyboardGenerators.generateMoreMenu(userLanguage, isAdmin) }
+      reply_markup: { inline_keyboard: this.keyboardGenerators.generateMoreMenu(userLanguage, isAdmin, { taxRefund }) }
     });
   }
 }

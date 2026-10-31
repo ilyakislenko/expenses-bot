@@ -2,7 +2,7 @@ const { LEGACY_MENU_BUTTON_KEYS } = require('../utils/constants');
 const AssistantHandlers = require('./AssistantHandlers');
 
 class MessageHandlers {
-constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, donationRepository, bugReportRepository, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, savingsHandlers, planningHandlers, assistantHandlers, multiEntryHandlers, onboardingHandlers = null, receiptHandlers = null, subscriptionHandlers = null, bankNotificationHandlers = null }) {
+constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, donationRepository, bugReportRepository, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, savingsHandlers, planningHandlers, assistantHandlers, multiEntryHandlers, onboardingHandlers = null, receiptHandlers = null, subscriptionHandlers = null, bankNotificationHandlers = null, taxRefundHandlers = null }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -30,6 +30,7 @@ constructor({ expenseService, userService, premiumService, familyService, catego
     this.receiptHandlers = receiptHandlers; // ввод строки/даты черновика чека и даты записанного чека
     this.subscriptionHandlers = subscriptionHandlers; // пробный период: название и цена, дата окончания
     this.bankNotificationHandlers = bankNotificationHandlers; // пересланные и вставленные уведомления банка
+    this.taxRefundHandlers = taxRefundHandlers; // «💡 Верни 13%»: слово для поиска траты, которую добавить в расчёт
   }
 
   async handleExpense(ctx) {
@@ -177,6 +178,10 @@ constructor({ expenseService, userService, premiumService, familyService, catego
 
         if (typeof userState === 'string' && userState.startsWith('sub_in:') && this.subscriptionHandlers) {
           return await this.subscriptionHandlers.handleInput(ctx, text, userLanguage, userState);
+        }
+
+        if (typeof userState === 'string' && userState.startsWith('tax_in:') && this.taxRefundHandlers) {
+          return await this.taxRefundHandlers.handleInput(ctx, text, userLanguage, userState);
         }
 
         if (typeof userState === 'string' && userState.startsWith('ai_in:')) {

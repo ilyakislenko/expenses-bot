@@ -10,6 +10,7 @@ const { buildMessages } = require('./assistant/prompt');
 const { resolvePeriod, comparisonPeriods, elapsedDays } = require('./assistant/periods');
 const { searchStem, expandTerms, matchCategory, mentionsCategory, stemPhrase } = require('./assistant/text');
 const { AnswerComposer } = require('./assistant/compose');
+const { isTaxRefundAvailable } = require('../utils/taxRefund');
 
 // Сколько вопрос может ждать нейросеть вместе с очередью. Вопросы встают в очереди перед чеками (receipt/chain.js),
 // но идущий чек не прерывается — дольше не ждём: честно отвечаем «нейросеть занята» с местом в очереди
@@ -35,7 +36,7 @@ function found(result) {
 }
 
 class AssistantService {
-  constructor({ assistantRepository, provider, expenseService, incomeService, savingsService, budgetService, planningService = null, premiumService, localizationService, formatter, currencyUtils, modelDeadlineMs = MODEL_DEADLINE_MS }) {
+  constructor({ assistantRepository, provider, expenseService, incomeService, savingsService, budgetService, planningService = null, premiumService, localizationService, formatter, currencyUtils, taxRefundService = null, modelDeadlineMs = MODEL_DEADLINE_MS }) {
     this.assistantRepository = assistantRepository;
     this.provider = provider;
     this.expenseService = expenseService;
@@ -48,6 +49,7 @@ class AssistantService {
     this.formatter = formatter;
     this.currencyUtils = currencyUtils;
     this.modelDeadlineMs = modelDeadlineMs;
+    this.taxRefundService = taxRefundService;
   }
 
   get premiumLimit() {
@@ -307,6 +309,7 @@ class AssistantService {
     if (intent.type === 'budget_status') return { ...base, currency: context.currency, ...(await this.budgets(context)) };
     if (intent.type === 'subscriptions') return { ...base, currency: context.currency, ...(await this.subscriptions(context)) };
     if (intent.type === 'debt_status') return { ...base, currency: context.currency, ...(await this.debts(context)) };
+    if (intent.type === 'tax_refund') return { ...base, currency: context.currency, ...(await this.taxRefund(intent, context)) };
     if (intent.type === 'forecast') {
       const forecast = this.planningService ? await this.planningService.getForecast(context.userId) : { mode: 'none' };
       return { ...base, ...forecast, currency: forecast.currency || context.currency };
@@ -415,6 +418,20 @@ class AssistantService {
     const named = all.filter(debt => stemPhrase(debt.name).split(' ').some(w => asked.has(w)));
     const debts = named.length ? named : all;
     return { debts, total: debts.reduce((sum, debt) => sum + debt.amount, 0), all: all.length };
+  }
+
+  // «💡 Верни 13%» за год из вопроса (без года — текущий; за пределами окна вычетов — ближайший год окна): строки итога
+  // те же, что на экране раздела. Не рубли — taxUnavailable
+  async taxRefund(intent, context) {
+    if (!this.taxRefundService || !isTaxRefundAvailable(context.lang, context.currency)) return { taxUnavailable: true };
+    const currentYear = Number(context.today.slice(0, 4));
+    const spec = intent.period;
+    const asked = spec.kind === 'month' && spec.offset === 0
+      ? currentYear
+      : Number(resolvePeriod(spec, { today: context.today, startDay: context.startDay }).start.slice(0, 4));
+    const year = this.taxRefundService.clampYear(asked, currentYear);
+    const summary = await this.taxRefundService.summary(context.userId, year, { timezone: context.timezone, currentYear });
+    return { year, count: summary.count, lines: this.taxRefundService.summaryLines(summary) };
   }
 
   async budgets(context) {

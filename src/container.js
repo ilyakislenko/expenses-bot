@@ -53,6 +53,7 @@ const ReferralRepository = require('./repositories/ReferralRepository');
 const AssistantRepository = require('./repositories/AssistantRepository');
 const EntryBatchRepository = require('./repositories/EntryBatchRepository');
 const RoastRepository = require('./repositories/RoastRepository');
+const TaxRefundRepository = require('./repositories/TaxRefundRepository');
 const UserInputStateRepository = require('./repositories/UserInputStateRepository');
 const QuizRepository = require('./repositories/QuizRepository');
 const BankNotificationRepository = require('./repositories/BankNotificationRepository');
@@ -97,6 +98,7 @@ const EntryBatchService = require('./services/EntryBatchService');
 const VoiceService = require('./services/VoiceService');
 const BankNotificationService = require('./services/BankNotificationService');
 const RoastService = require('./services/RoastService');
+const TaxRefundService = require('./services/TaxRefundService');
 const { createSttFromEnv } = require('./services/voice/whisper');
 const QuizService = require('./services/QuizService');
 
@@ -125,6 +127,7 @@ const ReferralHandlers = require('./handlers/ReferralHandlers');
 const AssistantHandlers = require('./handlers/AssistantHandlers');
 const MultiEntryHandlers = require('./handlers/MultiEntryHandlers');
 const RoastHandlers = require('./handlers/RoastHandlers');
+const TaxRefundHandlers = require('./handlers/TaxRefundHandlers');
 const OnboardingHandlers = require('./handlers/OnboardingHandlers');
 const OnboardingService = require('./services/OnboardingService');
 const QuizHandlers = require('./handlers/QuizHandlers');
@@ -535,7 +538,8 @@ class Container {
           premiumService: this.get('premiumService'),
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
-          currencyUtils: this.get('currencyUtils')
+          currencyUtils: this.get('currencyUtils'),
+          taxRefundService: this.get('taxRefundService')
         });
 
       case 'assistantHandlers':
@@ -569,6 +573,33 @@ class Container {
           roastService: this.get('roastService'),
           userService: this.get('userService'),
           localizationService: this.get('localizationService')
+        });
+
+      case 'taxRefundRepository':
+        return new TaxRefundRepository();
+
+      // «💡 Верни 13%»: траты для налогового вычета, налог с процентов по вкладам, январское напоминание (ru + RUB)
+      case 'taxRefundService':
+        return new TaxRefundService({
+          taxRefundRepository: this.get('taxRefundRepository'),
+          savingsRepository: this.get('savingsRepository'),
+          userService: this.get('userService'),
+          premiumService: this.get('premiumService'),
+          userNotificationRepository: this.get('userNotificationRepository'),
+          notificationService: this.get('notificationService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter')
+        });
+
+      case 'taxRefundHandlers':
+        return new TaxRefundHandlers({
+          taxRefundService: this.get('taxRefundService'),
+          premiumService: this.get('premiumService'),
+          userService: this.get('userService'),
+          localizationService: this.get('localizationService'),
+          formatter: this.get('formatter'),
+          stateService: this.get('stateService'),
+          referralService: this.get('referralService')
         });
 
       case 'onboardingService':
@@ -935,7 +966,8 @@ class Container {
           multiEntryHandlers: this.get('multiEntryHandlers'),
           onboardingHandlers: this.get('onboardingHandlers'),
           receiptHandlers: this.get('receiptHandlers'),
-          bankNotificationHandlers: this.get('bankNotificationHandlers')
+          bankNotificationHandlers: this.get('bankNotificationHandlers'),
+          taxRefundHandlers: this.get('taxRefundHandlers')
         });
 
       case 'callbackHandlers':
@@ -1086,7 +1118,7 @@ class Container {
       case 'keyboardGenerators':
         return {
           generateMainMenuKeyboard: (userLanguage, quickExpense = null) => generateMainMenuKeyboard(this.get('localizationService'), userLanguage, quickExpense),
-          generateMoreMenu: (userLanguage, isAdmin = false) => generateMoreMenu(this.get('localizationService'), userLanguage, isAdmin),
+          generateMoreMenu: (userLanguage, isAdmin = false, options = {}) => generateMoreMenu(this.get('localizationService'), userLanguage, isAdmin, options),
           generateCurrencyKeyboard: (userLanguage) => generateCurrencyKeyboard(this.get('localizationService'), userLanguage),
           generateSettingsKeyboard: (userLanguage) => generateSettingsKeyboard(this.get('localizationService'), userLanguage),
           generateTimeKeyboard: (userLanguage) => generateTimeKeyboard(this.get('localizationService'), userLanguage)
@@ -1133,6 +1165,8 @@ class Container {
       roastHandlers: this.get('roastHandlers'),
       quizHandlers: this.get('quizHandlers'),
       quizService: this.get('quizService'),
+      taxRefundHandlers: this.get('taxRefundHandlers'),
+      taxRefundService: this.get('taxRefundService'),
       onboardingHandlers: this.get('onboardingHandlers'),
       savingsHandlers: this.get('savingsHandlers'),
       planningHandlers: this.get('planningHandlers'),

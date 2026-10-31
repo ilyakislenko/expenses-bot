@@ -257,12 +257,15 @@ const LEGACY_MENU_BUTTON_KEYS = [
   'button_admin'
 ];
 
-// Меню «☰ Ещё» (inline): длинные подписи (импорт, приглашение) — в паре с короткими
-function generateMoreMenu(localizationService, userLanguage, isAdmin = false) {
+// Меню «☰ Ещё» (inline): длинные подписи (импорт, приглашение) — в паре с короткими.
+// taxRefund — «💡 Верни 13%» рядом с квизом (только русский язык и рубли, см. utils/taxRefund)
+function generateMoreMenu(localizationService, userLanguage, isAdmin = false, { taxRefund = false } = {}) {
   const t = (key) => localizationService.getText(userLanguage, key);
+  const quizRow = [{ text: t('button_quiz'), callback_data: 'qz' }];
+  if (taxRefund) quizRow.push({ text: t('tax_button'), callback_data: 'tax' });
   const keyboard = [
     [{ text: t('button_ai'), callback_data: 'ai' }, { text: t('button_tags'), callback_data: 'tags' }],
-    [{ text: t('button_quiz'), callback_data: 'qz' }],
+    quizRow,
     [{ text: t('button_planning'), callback_data: 'pl' }, { text: t('button_savings'), callback_data: 'sv' }],
     [{ text: t('button_achievements'), callback_data: 'ach' }, { text: t('button_invite'), callback_data: 'ref' }],
     [{ text: t('button_family'), callback_data: 'family' }, { text: t('premium_subscription_title'), callback_data: 'premium_subscription' }],

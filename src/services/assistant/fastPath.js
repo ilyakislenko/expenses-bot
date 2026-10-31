@@ -246,6 +246,9 @@ const TYPES = [
     `how\\s+much\\s+will\\s+i\\s+(?:spend|have\\s+left)${EN_TO_END}`,
     `can\\s+i\\s+make\\s+it${EN_TO_END}`
   ].join('|'))],
+  // «Верни 13%» (только ru): «сколько я могу вернуть налога», «вычет за лечение», «ндфл с вкладов». Раньше «получил»
+  // дохода и «заплатил» трат: «сколько налога я получу назад» — не доход
+  ['tax_refund', word('(?:налогов\\p{L}*\\s+)?вычет\\p{L}*|ндфл|налог\\p{L}*|верн\\p{L}*\\s+13\\s*%|13\\s*%')],
   ['subscriptions', word('подписк\\p{L}*|subscriptions?')],
   ['debt_status', word(`(?:${SKOLKO}\\s+)?(?:я\\s+)?(?:ещ[её]\\s+)?(?:должен|должна|задолжал\\p{L}*)|долг\\p{L}*|кредит\\p{L}*|ипотек\\p{L}*|займ\\p{L}*|рассрочк\\p{L}*|debts?|owe|loans?|mortgage|credit\\s+cards?`)],
   ['compare_periods', word('сравни\\p{L}*|сравнение|по\\s+сравнению\\s+с|compare\\p{L}*|comparison|vs|versus|насколько\\s+(?:больше|меньше)|больше\\s+чем|меньше\\s+чем|more\\s+than|less\\s+than')],
@@ -327,8 +330,9 @@ function trimNoise(phrase) {
   return words.join(' ');
 }
 
-// today — локальная дата пользователя 'YYYY-MM-DD'
-function parseFastPath(question, { today }) {
+// today — локальная дата пользователя 'YYYY-MM-DD'; lang — язык пользователя: tax_refund понимается только на ru.
+// Ответ tax_refund не зависит от остальных слов вопроса («за лечение», «могу») — он уверенный и с ними
+function parseFastPath(question, { today, lang = null }) {
   let text = cleanQuestion(question);
   if (!text) return null;
 
@@ -356,6 +360,7 @@ function parseFastPath(question, { today }) {
   let type = null;
   let limit = null;
   for (const [candidate, regex, defaults = {}] of TYPES) {
+    if (candidate === 'tax_refund' && lang !== 'ru') continue;
     const found = take(text, regex);
     if (!found) continue;
     type = candidate;
@@ -423,7 +428,7 @@ function parseFastPath(question, { today }) {
   const words = leftover ? leftover.split(' ').filter(w => !TIME_HINT.test(w)) : [];
   return {
     // Разобран целиком — модель не нужна
-    confident: !!type && !leftover && !tooLong && !unresolvedTime,
+    confident: !!type && (!leftover || type === 'tax_refund') && !tooLong && !unresolvedTime,
     unresolvedTime,
     words,
     intent: {

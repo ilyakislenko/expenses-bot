@@ -247,6 +247,15 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^rstgs\|(m|f|x)\|(off|spicy|savage|-)\|(s|m|o)$/, errorHandler((ctx) => handlers.roastHandlers.setGender(ctx)));
   bot.action(/^rsty\|(s|m|o)$/, errorHandler((ctx) => handlers.roastHandlers.confirmAdult(ctx)));
   bot.action('rsm', errorHandler((ctx) => handlers.roastHandlers.showMonth(ctx)));
+  // «💡 Верни 13%» (ru + RUB): итог года (tax, tax|<год>), «Как вернуть» (taxh), список — премиум (taxl|<год>|<стр>),
+  // убрать/вернуть (taxt|<год>|<стр>|<id>), «➕ Добавить» (taxa → слово текстом, tax_in:<год>) → трата (taxp) → вид (taxk)
+  bot.action(/^tax(?:\|(\d{4}))?$/, errorHandler((ctx) => handlers.taxRefundHandlers.show(ctx)));
+  bot.action(/^taxh\|(\d{4})$/, errorHandler((ctx) => handlers.taxRefundHandlers.showHow(ctx)));
+  bot.action(/^taxl\|(\d{4})\|(\d{1,4})$/, errorHandler((ctx) => handlers.taxRefundHandlers.showList(ctx)));
+  bot.action(/^taxt\|(\d{4})\|(\d{1,4})\|(\d{1,12})$/, errorHandler((ctx) => handlers.taxRefundHandlers.toggle(ctx)));
+  bot.action(/^taxa\|(\d{4})$/, errorHandler((ctx) => handlers.taxRefundHandlers.startAdd(ctx)));
+  bot.action(/^taxp\|(\d{4})\|(\d{1,12})$/, errorHandler((ctx) => handlers.taxRefundHandlers.pickExpense(ctx)));
+  bot.action(/^taxk\|(\d{4})\|(\d{1,12})\|([mesi])$/, errorHandler((ctx) => handlers.taxRefundHandlers.addToKind(ctx)));
   // «🎲 Угадай свои траты»: экран (qz), играть / продолжить (qz|go), правила (qzr), приглашения вкл/выкл (qzo|s — экран,
   // qzo|i — под приглашением, qzt — «🔔 Напоминания»), ответ кнопкой, если опрос не отправить (qza|<сессия>|<вопрос>|<вариант>)
   bot.action('qz', errorHandler((ctx) => handlers.quizHandlers.show(ctx)));

@@ -81,7 +81,8 @@ async function startApplication() {
       handlers.achievementService,
       handlers.subscriptionAlertService,
       handlers.dailyPlanService,
-      handlers.quizService
+      handlers.quizService,
+      handlers.taxRefundService
     );
     logger.startup('Cron jobs configured');
 

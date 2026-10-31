@@ -244,6 +244,12 @@ class AnswerComposer {
     return lines;
   }
 
+  // «💡 Верни 13%» за год: строки итога готовит TaxRefundService (только ru)
+  compose_tax_refund(result) {
+    if (result.taxUnavailable) return [this.t('tax_unavailable')];
+    return [this.t('tax_title', { year: result.year }), '', ...result.lines];
+  }
+
   // Кнопка на экран с подробностями, если такой есть, и «🤖 Ещё вопрос»
   keyboard(result) {
     const { intent } = result;
@@ -251,7 +257,9 @@ class AnswerComposer {
     const rows = [];
     const button = (key, callback) => rows.push([{ text: this.t(key), callback_data: callback }]);
     const expenseType = !['income_total', 'balance', 'savings_status', 'budget_status', 'forecast'].includes(intent.type);
-    if (intent.type === 'savings_status' || intent.type === 'debt_status') button('ai_button_savings', 'sv');
+    if (intent.type === 'tax_refund') {
+      if (!result.taxUnavailable) button('tax_button_open', `tax|${result.year}`);
+    } else if (intent.type === 'savings_status' || intent.type === 'debt_status') button('ai_button_savings', 'sv');
     else if (intent.type === 'subscriptions') button('ai_button_subscriptions', 'pls');
     else if (intent.type === 'forecast') button('ai_button_planning', 'pl');
     else if (intent.type === 'budget_status') {

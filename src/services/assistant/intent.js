@@ -9,9 +9,11 @@ const { parseYmd, daysInMonth, ymd } = require('../../utils/period');
 const { ALL_TIME_START } = require('./periods');
 const { normalizeText, plainWords, matchCategory, mentionsCategory } = require('./text');
 
+// tax_refund — «💡 Верни 13%»: только для русского языка (тексты раздела есть только в ru), период задаёт год
 const TYPES = [
   'spend_total', 'spend_by_category', 'top_expenses', 'largest_purchase', 'compare_periods', 'average_daily',
-  'income_total', 'balance', 'savings_status', 'budget_status', 'count_records', 'subscriptions', 'debt_status', 'forecast'
+  'income_total', 'balance', 'savings_status', 'budget_status', 'count_records', 'subscriptions', 'debt_status', 'forecast',
+  'tax_refund'
 ];
 const TYPE_ALIASES = {
   total: 'spend_total', spend: 'spend_total', spent: 'spend_total', spending: 'spend_total', expenses: 'spend_total',
@@ -156,14 +158,14 @@ function cleanTerm(value) {
   return term;
 }
 
-// raw — объект из модели/быстрого разбора; context: { categories, today, question }.
+// raw — объект из модели/быстрого разбора; context: { categories, today, question, lang }.
 // { ok: true, intent, defaultedPeriod } | { ok: false, reason: 'unknown' | 'future' }. defaultedPeriod — период не
 // задан (или не разобран) и взят по умолчанию: этот месяц
-function normalizeIntent(raw, { categories = [], today, question = null }) {
+function normalizeIntent(raw, { categories = [], today, question = null, lang = null }) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ok: false, reason: 'unknown' };
   let type = normalizeText(raw.type).replace(/[\s-]+/g, '_');
   type = TYPE_ALIASES[type] || type;
-  if (!TYPES.includes(type)) return { ok: false, reason: 'unknown' };
+  if (!TYPES.includes(type) || (type === 'tax_refund' && lang !== 'ru')) return { ok: false, reason: 'unknown' };
 
   let period = null;
   let compareTo = null;
