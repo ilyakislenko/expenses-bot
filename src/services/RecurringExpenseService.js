@@ -4,7 +4,8 @@ const { ymd, parseYmd, addMonths, clampDay, localToday } = require('../utils/per
 
 const MAX_RECURRING_PER_USER = 20;
 
-// Даты — строки 'YYYY-MM-DD' в локальном дне пользователя
+// Даты — строки 'YYYY-MM-DD' в локальном дне пользователя. lastChargedMonth может быть и будущим месяцем (оплачено
+// заранее, payAhead) — тогда следующая запись в месяце после него
 function nextChargeDate(dayOfMonth, lastChargedMonth, today) {
   const t = parseYmd(today);
   const thisMonth = ymd(t.y, t.m, 1);
@@ -14,8 +15,16 @@ function nextChargeDate(dayOfMonth, lastChargedMonth, today) {
     // Просроченная (например, бот был недоступен) спишется при ближайшем запуске — то есть сегодня
     return due >= t.d ? ymd(t.y, t.m, due) : today;
   }
-  const next = addMonths(t.y, t.m, 1);
+  const base = parseYmd(lastChargedMonth > thisMonth ? lastChargedMonth : thisMonth);
+  const next = addMonths(base.y, base.m, 1);
   return ymd(next.y, next.m, clampDay(next.y, next.m, dayOfMonth));
+}
+
+const monthOf = (date) => `${date.slice(0, 7)}-01`;
+function previousMonth(month) {
+  const { y, m } = parseYmd(month);
+  const prev = addMonths(y, m, -1);
+  return ymd(prev.y, prev.m, 1);
 }
 
 class RecurringExpenseService {
@@ -94,6 +103,35 @@ class RecurringExpenseService {
 
   async delete(userId, recurringId) {
     return this.recurringExpenseRepository.deleteById(userId, recurringId);
+  }
+
+  // «✅ Уже оплатил»: ближайшее списание оплачено заранее — трата записывается сейчас, месяц этого списания отмечается
+  // оплаченным (cron его пропустит), следующая запись — через месяц. Повторное нажатие той же кнопки ничего не
+  // записывает (условие на месяц в chargeForMonth). { status: 'ok', expense, month, paidDate, nextChargeDate, warnings }
+  // | { status: 'duplicate' } | { status: 'missing' }
+  async payAhead(userId, recurringId, expectedMonth = null) {
+    const row = await this.recurringExpenseRepository.getById(userId, recurringId);
+    if (!row) return { status: 'missing' };
+    const timezone = await this.userRepository.getUserTimezone(userId);
+    const today = localToday(timezone);
+    const paidDate = nextChargeDate(row.day_of_month, row.last_charged_month, today);
+    const month = monthOf(paidDate);
+    // Кнопка со старой карточки (тот месяц уже оплачен или записан) — не оплачиваем молча следующий
+    if (expectedMonth && expectedMonth !== month) return { status: 'duplicate' };
+    const expense = await this.recurringExpenseRepository.chargeForMonth({ ...row, user_id: userId }, month);
+    if (!expense) return { status: 'duplicate' };
+    expensesTotal.inc({ currency: row.currency });
+    expensesAmountTotal.inc({ currency: row.currency }, Number(row.amount));
+    logger.info('Recurring expense paid ahead', { userId, recurringId, expenseId: expense.id, month });
+    const warnings = await this.budgetService.checkAfterExpense(userId, row.category_name || 'Другое');
+    return { status: 'ok', expense, month, paidDate, nextChargeDate: nextChargeDate(row.day_of_month, month, today), warnings };
+  }
+
+  // Отмена «Уже оплатил»: трата удаляется, месяц снова ждёт списания. false — уже отменено или запись удалена
+  async undoPayAhead(userId, recurringId, month, expenseId) {
+    const undone = await this.recurringExpenseRepository.undoCharge(userId, recurringId, month, previousMonth(month), expenseId);
+    if (undone) logger.info('Recurring pay-ahead undone', { userId, recurringId, month, expenseId });
+    return undone;
   }
 
   // Cron: записывает все регулярные траты, у которых наступило число списания

@@ -53,7 +53,7 @@ class RecurringExpenseRepository extends BaseRepository {
 
   async getById(userId, recurringId) {
     const query = `
-      SELECT r.id, r.amount, r.currency, r.description, r.day_of_month,
+      SELECT r.id, r.amount, r.currency, r.description, r.day_of_month, r.category_id,
              to_char(r.last_charged_month, 'YYYY-MM-DD') AS last_charged_month,
              c.name AS category_name, c.icon AS category_icon
       FROM recurring_expenses r
@@ -63,6 +63,24 @@ class RecurringExpenseRepository extends BaseRepository {
     const result = await this.query(query, [recurringId, userId]);
     return result.rows[0];
   }
+
+  // Отмена записи за месяц (оплачено заранее по ошибке): удаляет трату этой регулярной и возвращает отметку на прошлый
+  // месяц, если отмечен всё ещё этот. false — трата уже удалена или чужая
+  async undoCharge(userId, recurringId, month, previousMonth, expenseId) {
+    return this.transaction(async (client) => {
+      const deleted = await client.query(
+        'DELETE FROM expenses WHERE id = $1 AND user_id = $2 AND recurring_expense_id = $3 RETURNING id',
+        [expenseId, userId, recurringId]
+      );
+      if (!deleted.rowCount) return false;
+      await client.query(
+        'UPDATE recurring_expenses SET last_charged_month = $3::date WHERE id = $1 AND user_id = $2 AND last_charged_month = $4::date',
+        [recurringId, userId, previousMonth, month]
+      );
+      return true;
+    });
+  }
+
   async countByUser(userId) {
     const result = await this.query('SELECT COUNT(*)::int AS count FROM recurring_expenses WHERE user_id = $1', [userId]);
     return result.rows[0].count;

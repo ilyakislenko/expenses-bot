@@ -96,6 +96,8 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('recurring_menu', errorHandler((ctx) => recurringExpenseHandlers.showMenu(ctx)));
   bot.action('recurring_add', errorHandler((ctx) => recurringExpenseHandlers.startAdd(ctx)));
   bot.action(/^rc\|(\d+)$/, errorHandler((ctx) => recurringExpenseHandlers.showCard(ctx)));
+  bot.action(/^rpa\|(\d+)\|(\d{6})$/, errorHandler((ctx) => recurringExpenseHandlers.payAhead(ctx))); // «✅ Уже оплатил»
+  bot.action(/^rpx\|(\d+)\|(\d{6})\|(\d+)$/, errorHandler((ctx) => recurringExpenseHandlers.undoPayAhead(ctx)));
   bot.action(/^recurring_category\|(\d+)$/, errorHandler((ctx) => recurringExpenseHandlers.handleCategorySelection(ctx)));
   bot.action(/^recurring_delete\|(\d+)$/, errorHandler((ctx) => recurringExpenseHandlers.delete(ctx)));
 

@@ -64,24 +64,33 @@ class RecurringExpenseHandlers {
     await this.render(ctx, text, keyboard);
   }
 
-  // callback: rc|<id>
-  async showCard(ctx) {
+  // callback: rc|<id>. notice — строка над карточкой, topRows — кнопки над обычными (после «Уже оплатил»);
+  // answered — на нажатие уже ответили (alert)
+  async showCard(ctx, { recurringId = null, notice = null, topRows = [], answered = false } = {}) {
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
-    await ctx.answerCbQuery().catch(() => {});
-    const item = await this.recurringExpenseService.get(userId, parseInt(ctx.match[1], 10));
+    if (!answered) await ctx.answerCbQuery().catch(() => {});
+    const item = await this.recurringExpenseService.get(userId, recurringId || parseInt(ctx.match[1], 10));
     const backRow = [{ text: this.t(lang, 'button_back'), callback_data: 'recurring_menu' }];
     if (!item) {
       return this.render(ctx, this.t(lang, 'recurring_not_found'), [backRow]);
     }
-    const lines = [this.t(lang, 'recurring_item', {
+    const lines = [];
+    if (notice) lines.push(notice, '');
+    lines.push(this.t(lang, 'recurring_item', {
       icon: item.category_icon || '🔁',
       description: this.formatter.escapeMarkdown(item.description),
       amount: this.formatter.formatAmount(Number(item.amount), item.currency),
       day: item.day_of_month,
       next: this.formatter.formatLocalDate(item.nextChargeDate)
-    })];
-    const keyboard = [];
+    }));
+    const keyboard = [...topRows];
+    // «✅ Уже оплатил»: ближайшее списание оплачено заранее — записать сейчас (месяц списания — в кнопке: старая
+    // карточка не оплатит молча следующий месяц)
+    keyboard.push([{
+      text: this.t(lang, 'button_recurring_paid_ahead', { date: this.formatter.formatLocalDate(item.nextChargeDate).slice(0, 5) }),
+      callback_data: `rpa|${item.id}|${item.nextChargeDate.slice(0, 7).replace('-', '')}`
+    }]);
     // Предупреждение о списании — только у регулярных-подписок (аренду и кредит напоминают «Платежи утром»)
     if (this.subscriptionAlertService) {
       const status = await this.subscriptionAlertService.recurringStatus(userId, item.id);
@@ -96,6 +105,43 @@ class RecurringExpenseHandlers {
     }
     keyboard.push([{ text: this.t(lang, 'button_delete_record'), callback_data: `recurring_delete|${item.id}` }], backRow);
     await this.render(ctx, lines.join('\n'), keyboard);
+  }
+
+  // rpa|<id>|<YYYYMM> — «✅ Уже оплатил»: трата сейчас, месяц списания отмечен; кнопка отмены над карточкой
+  async payAhead(ctx) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    const recurringId = parseInt(ctx.match[1], 10);
+    const expected = `${ctx.match[2].slice(0, 4)}-${ctx.match[2].slice(4)}-01`;
+    const result = await this.recurringExpenseService.payAhead(userId, recurringId, expected);
+    if (result.status !== 'ok') {
+      await ctx.answerCbQuery(this.t(lang, result.status === 'missing' ? 'recurring_not_found' : 'recurring_paid_already'), { show_alert: true }).catch(() => {});
+      return this.showCard(ctx, { recurringId, answered: true });
+    }
+    await ctx.answerCbQuery(this.t(lang, 'recurring_paid_alert')).catch(() => {});
+    const amount = this.formatter.formatAmount(Number(result.expense.amount), result.expense.currency);
+    let notice = this.t(lang, 'recurring_paid_ahead', {
+      amount, date: this.formatter.formatLocalDate(result.paidDate), next: this.formatter.formatLocalDate(result.nextChargeDate)
+    });
+    if (result.warnings.length) notice += `\n${result.warnings.map(w => this.budgetService.warningText(lang, w)).join('\n')}`;
+    const month = result.month.slice(0, 7).replace('-', '');
+    return this.showCard(ctx, {
+      recurringId,
+      notice,
+      answered: true,
+      topRows: [[{ text: this.t(lang, 'button_recurring_paid_undo'), callback_data: `rpx|${recurringId}|${month}|${result.expense.id}` }]]
+    });
+  }
+
+  // rpx|<id>|<YYYYMM>|<expenseId> — отмена «Уже оплатил»: трата удаляется, списание снова ждёт своего числа
+  async undoPayAhead(ctx) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    const recurringId = parseInt(ctx.match[1], 10);
+    const month = `${ctx.match[2].slice(0, 4)}-${ctx.match[2].slice(4)}-01`;
+    const undone = await this.recurringExpenseService.undoPayAhead(userId, recurringId, month, parseInt(ctx.match[3], 10));
+    await ctx.answerCbQuery(this.t(lang, undone ? 'recurring_paid_undone' : 'recurring_paid_undo_gone')).catch(() => {});
+    return this.showCard(ctx, { recurringId, answered: true, notice: undone ? this.t(lang, 'recurring_paid_undone') : null });
   }
 
   async startAdd(ctx) {

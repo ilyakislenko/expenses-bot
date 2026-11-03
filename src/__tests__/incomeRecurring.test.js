@@ -31,6 +31,42 @@ describe('RecurringExpenseService.nextChargeDate', () => {
   });
 });
 
+describe('«✅ Уже оплатил» — a recurring payment paid ahead of its day', () => {
+  const { nextChargeDate } = RecurringExpenseService;
+  // Интернет 5-го: сегодня 29.10, за октябрь уже записано — ближайшее списание 05.11
+  const row = { id: 3, amount: '800.00', currency: 'RUB', description: 'интернет', day_of_month: 5, category_id: 7, category_name: 'Дом', last_charged_month: '2026-10-01' };
+  function service({ charged = true } = {}) {
+    const repository = {
+      getById: jest.fn(async () => row),
+      chargeForMonth: jest.fn(async (recurring, month) => (charged ? { id: 77, amount: recurring.amount, currency: recurring.currency, month } : null)),
+      undoCharge: jest.fn(async () => true)
+    };
+    const s = new RecurringExpenseService(repository, { getUserTimezone: async () => 'UTC' }, {}, {}, {}, { checkAfterExpense: jest.fn(async () => []) });
+    return { s, repository };
+  }
+
+  test('a month marked paid ahead moves the next record past it', () => {
+    expect(nextChargeDate(5, '2026-11-01', '2026-10-29')).toBe('2026-12-05');
+    expect(nextChargeDate(5, '2026-11-01', '2026-11-03')).toBe('2026-12-05');
+  });
+
+  test('records now for the month of the nearest charge; a card from before that payment does not pay the next month', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-10-29T10:00:00Z'));
+    try {
+      const { s, repository } = service();
+      const result = await s.payAhead(9, 3, '2026-11-01');
+      expect(repository.chargeForMonth).toHaveBeenCalledWith(expect.objectContaining({ id: 3, user_id: 9, amount: '800.00' }), '2026-11-01');
+      expect(result).toMatchObject({ status: 'ok', month: '2026-11-01', paidDate: '2026-11-05', nextChargeDate: '2026-12-05' });
+      expect(await s.payAhead(9, 3, '2026-10-01')).toEqual({ status: 'duplicate' });
+      expect(await service({ charged: false }).s.payAhead(9, 3, '2026-11-01')).toEqual({ status: 'duplicate' });
+      await s.undoPayAhead(9, 3, '2026-11-01', 77);
+      expect(repository.undoCharge).toHaveBeenCalledWith(9, 3, '2026-11-01', '2026-10-01', 77);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
+
 describe('EnhancedValidator.parseMoneyInput', () => {
   const validator = new EnhancedValidator();
   const income = { maxAmount: 9999999999, maxDescriptionLength: 80, requireDescription: false };
