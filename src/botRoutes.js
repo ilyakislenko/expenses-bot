@@ -103,12 +103,12 @@ module.exports = function registerBotRoutes(bot, handlers) {
 
   const back = `(${BACK_VIEW_PATTERN})`;
   bot.action(/^ov\|(-?\d+)$/, errorHandler((ctx) => expenseHandlers.showOverview(ctx, parseInt(ctx.match[1], 10))));
+  bot.action(/^ovb\|(-?\d+)$/, errorHandler((ctx) => expenseHandlers.showOverview(ctx, parseInt(ctx.match[1], 10), { replace: true }))); // «Назад к обзору» с текстового экрана
   bot.action(/^oc\|(\d+)\|(-?\d+)\|(\d+)$/, errorHandler((ctx) => expenseHandlers.showCategoryList(ctx, parseInt(ctx.match[1], 10), parseInt(ctx.match[2], 10), parseInt(ctx.match[3], 10))));
   // Графики картинками: кольцо по категориям, столбики за 6 периодов (всего / по категории)
   bot.action(/^chp\|(-?\d+)$/, errorHandler((ctx) => handlers.chartHandlers.showDonut(ctx, parseInt(ctx.match[1], 10))));
   bot.action(/^cht\|(-?\d+)$/, errorHandler((ctx) => handlers.chartHandlers.showTrend(ctx, parseInt(ctx.match[1], 10))));
   bot.action(/^chc\|(\d+)\|(-?\d+)$/, errorHandler((ctx) => handlers.chartHandlers.showTrend(ctx, parseInt(ctx.match[2], 10), parseInt(ctx.match[1], 10))));
-  bot.action(/^chl\|(-?\d+)$/, errorHandler((ctx) => handlers.chartHandlers.showPlanFact(ctx, parseInt(ctx.match[1], 10)))); // «📉 Лимит и факт»
   bot.action(/^dy\|(-?\d+)\|(\d+)$/, errorHandler((ctx) => expenseHandlers.showDay(ctx, parseInt(ctx.match[1], 10), parseInt(ctx.match[2], 10))));
   bot.action(/^fd\|(\d+)$/, errorHandler((ctx) => expenseHandlers.showFamilyDay(ctx, parseInt(ctx.match[1], 10))));
   bot.action(new RegExp(`^ex\\|(\\d+)\\|${back}$`), errorHandler((ctx) => expenseHandlers.handleOpenCard(ctx)));

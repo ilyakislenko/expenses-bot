@@ -1188,7 +1188,6 @@ module.exports = {
   receipt_line_limit: "小票已有 {max} 行 — 无法再添加。",
   receipt_rotate_edited: "✏️ 你已手动修改过这份草稿 — 旋转会清除修改。请记录它，或取消后重新发送照片。",
   help_edit: "✏️ 记错了？在 📅 今天、概览或小票里点记录的编号 — 可以修改金额、类别和 📅 日期。小票草稿在记录前也能修改。",
-  button_chart_planfact: "📉 限额与实际",
   chart_planfact_title: "按天的限额与实际",
   chart_planfact_actual: "已花",
   chart_planfact_limit: "限额",

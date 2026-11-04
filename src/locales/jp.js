@@ -1187,7 +1187,6 @@ module.exports = {
   receipt_line_limit: "レシートにはもう{max}行あるので、これ以上追加できないよ。",
   receipt_rotate_edited: "✏️ この下書きはもう手で直してあるよ — 回転すると修正が消えちゃう。記録するか、取り消して写真を送り直してね。",
   help_edit: "✏️ 間違えた？ 📅 今日、概要、レシートで記録の番号をタップ — 金額、カテゴリ、📅 日付を変えられるよ。レシートの下書きも記録前に直せるよ。",
-  button_chart_planfact: "📉 上限と実績",
   chart_planfact_title: "日別の上限と実績",
   chart_planfact_actual: "支出",
   chart_planfact_limit: "上限",

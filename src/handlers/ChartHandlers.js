@@ -98,28 +98,6 @@ class ChartHandlers {
     await respondPhoto(ctx, chart.png, { caption: chart.caption, parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
   }
 
-  // chl|<offset> — «Лимит и факт»: траты нарастающим итогом против бюджета по дням. Текущий период бесплатно,
-  // прошлые — премиум (как кольцо)
-  async showPlanFact(ctx, offset = 0) {
-    const userId = ctx.from.id;
-    const lang = await this.userService.getUserLanguage(userId);
-    const safeOffset = Math.min(0, offset);
-    if (safeOffset < 0 && !(await this.premiumService.isPremiumUser(userId))) return this.teaser(ctx, lang);
-    const chart = await this.render(() => this.chartService.planFact(userId, lang, safeOffset, { botUsername: this.botUsername(ctx) }));
-    if (!chart) return this.unavailable(ctx, lang);
-    const keyboard = [
-      this.navRow(lang, safeOffset, o => `chl|${o}`),
-      [
-        { text: this.t(lang, 'button_chart_categories'), callback_data: `chp|${safeOffset}` },
-        { text: this.t(lang, 'button_chart_trend'), callback_data: `cht|${safeOffset}` }
-      ],
-      [{ text: this.t(lang, 'button_back_to_overview'), callback_data: `ov|${safeOffset}` }]
-    ];
-    await ctx.answerCbQuery().catch(() => {});
-    if (!chart.png) return respond(ctx, chart.text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
-    await respondPhoto(ctx, chart.png, { caption: chart.caption, parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
-  }
-
   // achwi|<offset> — карточка «Итоги месяца» отдельным сообщением: её пересылают друзьям. Бесплатно.
   // В подписи — только ссылка на бота; на картинке нет описаний трат и названий целей
   async shareWrapped(ctx, offset = -1) {

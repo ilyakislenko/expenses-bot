@@ -29,7 +29,7 @@ class BudgetHandlers {
     let text = this.t(lang, 'budgets_teaser');
     let keyboard = [
       [{ text: this.t(lang, 'button_premium'), callback_data: 'premium_subscription' }],
-      [{ text: this.t(lang, 'button_back_to_overview'), callback_data: 'ov|0' }]
+      [{ text: this.t(lang, 'button_back_to_overview'), callback_data: 'ovb|0' }]
     ];
     if (this.referralService) ({ text, keyboard } = await this.referralService.withUpsell(ctx.from.id, lang, text, keyboard));
     await respond(ctx, text, {
@@ -78,7 +78,7 @@ class BudgetHandlers {
       { text: this.t(lang, 'button_budget_total'), callback_data: 'bg_add|total' },
       { text: this.t(lang, 'button_budget_category'), callback_data: 'bg_cat' }
     ]);
-    keyboard.push([{ text: this.t(lang, 'button_back_to_overview'), callback_data: 'ov|0' }]);
+    keyboard.push([{ text: this.t(lang, 'button_back_to_overview'), callback_data: 'ovb|0' }]);
     await respond(ctx, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
   }
 

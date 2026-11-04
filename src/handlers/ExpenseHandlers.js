@@ -1,10 +1,13 @@
 const respond = require('../utils/respond');
+const respondPhoto = require('../utils/respondPhoto');
+const logger = require('../utils/logger');
 const { localToday } = require('../utils/period');
 const { packDate, unpackDate, checkRecordDate, parseRecordDate, localDateOf, datePickerKeyboard, DATE_ERROR_KEYS } = require('../utils/recordDate');
 const { parseEntries } = require('../utils/multiEntry');
 
 const PAGE_SIZE = 10;
 const INCOME_HINT_DAYS = 14; // подсказку про доходы видят только новые пользователи
+const CAPTION_MAX = 1024; // подпись к картинке в Telegram; обзор длиннее — текстом, без графика
 
 // Экран, на который возвращается карточка записи. Кодируется в callback_data через точку:
 //   d.<offset>.<page>              — записи за день
@@ -624,7 +627,10 @@ class ExpenseHandlers {
     await respond(ctx, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
   }
 
-  async showOverview(ctx, offset = 0) {
+  // ov|<offset> — обзор периода; ovb|<offset> — он же с экрана категории / итогов / бюджетов (replace: тот текстовый
+  // экран удаляется). Обзор — картинка «потрачено и лимит по дням» с текстом в подписи; не нарисовать или текст длиннее
+  // подписи — текстом, как раньше
+  async showOverview(ctx, offset = 0, { replace = false } = {}) {
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
     if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
@@ -703,14 +709,29 @@ class ExpenseHandlers {
         { text: this.t(lang, 'button_chart'), callback_data: `chp|${offset}` },
         { text: this.t(lang, 'button_chart_trend'), callback_data: `cht|${offset}` }
       ]);
-      keyboard.push([{ text: this.t(lang, 'button_chart_planfact'), callback_data: `chl|${offset}` }]);
     }
     keyboard.push([
       { text: this.t(lang, 'button_budgets'), callback_data: 'bg_menu' },
       { text: this.t(lang, 'button_report'), callback_data: `rp|${offset}` }
     ]);
 
-    await respond(ctx, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
+    const extra = { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } };
+    const png = totals.count && text.length <= CAPTION_MAX ? await this.overviewChart(ctx, userId, lang, offset) : null;
+    if (png) return respondPhoto(ctx, png, { caption: text, ...extra, replace });
+    await respond(ctx, text, extra);
+  }
+
+  // Картинка обзора: траты нарастающим итогом по дням и линия общего бюджета (ChartService.planFact). Ошибка рисования
+  // обзор не роняет — null, обзор текстом
+  async overviewChart(ctx, userId, lang, offset) {
+    if (!this.chartService || !this.chartService.available) return null;
+    try {
+      const chart = await this.chartService.planFact(userId, lang, offset, { botUsername: (ctx.botInfo && ctx.botInfo.username) || null });
+      return chart && chart.png ? chart.png : null;
+    } catch (error) {
+      logger.warn('Overview chart not rendered', { userId, error: error.message });
+      return null;
+    }
   }
 
   // callback: rp|<offset> — итоги периода (полные с премиумом, краткие без)
@@ -722,7 +743,7 @@ class ExpenseHandlers {
     const { text } = await this.reportService.buildReport(userId, offset, lang, { full: isPremium });
     const keyboard = [];
     if (!isPremium) keyboard.push([{ text: this.t(lang, 'button_premium'), callback_data: 'premium_subscription' }]);
-    keyboard.push([{ text: this.t(lang, 'button_back_to_overview'), callback_data: `ov|${offset}` }]);
+    keyboard.push([{ text: this.t(lang, 'button_back_to_overview'), callback_data: `ovb|${offset}` }]);
     await respond(ctx, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
   }
 
@@ -754,7 +775,7 @@ class ExpenseHandlers {
     if (this.chartService && this.chartService.available) {
       keyboard.push([{ text: this.t(lang, 'button_chart_trend'), callback_data: `chc|${categoryId}|${offset}` }]);
     }
-    keyboard.push([{ text: this.t(lang, 'button_back_to_overview'), callback_data: `ov|${offset}` }]);
+    keyboard.push([{ text: this.t(lang, 'button_back_to_overview'), callback_data: `ovb|${offset}` }]);
     await respond(ctx, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
   }
 
