@@ -703,6 +703,7 @@ class ExpenseHandlers {
         { text: this.t(lang, 'button_chart'), callback_data: `chp|${offset}` },
         { text: this.t(lang, 'button_chart_trend'), callback_data: `cht|${offset}` }
       ]);
+      keyboard.push([{ text: this.t(lang, 'button_chart_planfact'), callback_data: `chl|${offset}` }]);
     }
     keyboard.push([
       { text: this.t(lang, 'button_budgets'), callback_data: 'bg_menu' },

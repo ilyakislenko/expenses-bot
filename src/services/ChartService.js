@@ -1,4 +1,4 @@
-const { customPeriod } = require('../utils/period');
+const { customPeriod, addDays } = require('../utils/period');
 const { compactAmount, commaDecimal } = require('../utils/savingsView');
 const charts = require('../utils/charts');
 
@@ -13,12 +13,13 @@ const INTL_LOCALES = { jp: 'ja', kz: 'kk' };
 // раскладка — utils/charts.js, растеризация — ChartRenderer. Если картинку не нарисовать (нет рендера или
 // шрифта для языка интерфейса) — png: null, обработчик отвечает текстом.
 class ChartService {
-  constructor({ expenseService, reportService, localizationService, formatter, chartRenderer }) {
+  constructor({ expenseService, reportService, localizationService, formatter, chartRenderer, budgetService = null }) {
     this.expenseService = expenseService;
     this.reportService = reportService;
     this.localizationService = localizationService;
     this.formatter = formatter;
     this.renderer = chartRenderer;
+    this.budgetService = budgetService; // общий бюджет — линия лимита на «Лимит и факт»
   }
 
   get available() {
@@ -167,6 +168,67 @@ class ChartService {
       subtitle: range, emptyText: this.t(lang, 'chart_empty'), brand: this.brand(botUsername), averageLabel, bars, average
     }, this.renderer.createText());
     return { png: await this.render(svg, IMAGE_WIDTH.trend), caption, text };
+  }
+
+  // 📉 «Лимит и факт»: траты нарастающим итогом по дням периода против общего бюджета, разложенного поровну на дни.
+  // Бюджета нет — только факт и подсказка. → { png, caption, text } (png: null — текстом)
+  async planFact(userId, lang, offset, { botUsername } = {}) {
+    const { timezone, currency, today, period } = await this.expenseService.getPeriodContext(userId, 'month', offset);
+    const [rows, statuses] = await Promise.all([
+      this.expenseService.getExpenses(userId, timezone, period),
+      this.budgetService ? this.budgetService.getStatus(userId, { timezone, currency, period }) : []
+    ]);
+    const total = statuses.find(b => b.category_name === null);
+    const limit = total ? total.limit : null;
+
+    const days = [];
+    for (let day = period.start; day < period.end; day = addDays(day, 1)) days.push(day);
+    const lastIndex = offset === 0 ? Math.max(0, days.indexOf(today)) : days.length - 1;
+    const localDay = new Intl.DateTimeFormat('en-CA', { timeZone: timezone || 'UTC', year: 'numeric', month: '2-digit', day: '2-digit' });
+    const byDay = new Map(); // день → [{ currency, total }]
+    for (const row of rows) {
+      const day = localDay.format(new Date(row.created_at_utc));
+      const list = byDay.get(day) || [];
+      const entry = list.find(item => item.currency === row.currency);
+      if (entry) entry.total += Number(row.amount);
+      else list.push({ currency: row.currency, total: Number(row.amount) });
+      byDay.set(day, list);
+    }
+    const actual = [];
+    let running = 0;
+    for (let i = 0; i <= lastIndex; i++) {
+      const list = byDay.get(days[i]);
+      if (list) running += await this.formatter.sumInCurrency(list, currency);
+      actual.push(running);
+    }
+    const planToDate = limit ? (limit / days.length) * (lastIndex + 1) : null;
+    const range = this.formatter.formatPeriodRange(period);
+    const title = this.t(lang, 'chart_planfact_title');
+    const actualLabel = this.t(lang, 'chart_planfact_actual');
+    const limitLabel = this.t(lang, 'chart_planfact_limit');
+    const shortDay = (day) => `${day.slice(8, 10)}.${day.slice(5, 7)}`;
+
+    // Подпись и текстовый вариант: факт, лимит к сегодня (к концу периода), разница
+    const lines = [`📉 *${title}*`, range, '', this.t(lang, 'chart_planfact_spent', { amount: this.money(running, currency) })];
+    if (limit) {
+      lines.push(this.t(lang, 'chart_planfact_plan', { amount: this.money(Math.round(planToDate), currency), date: shortDay(days[lastIndex]), limit: this.money(limit, currency) }));
+      const diff = running - planToDate;
+      lines.push(this.t(lang, diff > 0 ? 'chart_planfact_over' : 'chart_planfact_under', { amount: this.money(Math.round(Math.abs(diff)), currency) }));
+    } else {
+      lines.push(this.t(lang, 'chart_planfact_no_budget'));
+    }
+    const caption = lines.join('\n');
+
+    const dayLabels = days.map(shortDay);
+    const actualAmount = this.compact(running, currency, lang);
+    const limitAmount = limit ? this.compact(limit, currency, lang) : '';
+    const ui = [title, range, actualLabel, limitLabel, this.t(lang, 'chart_empty'), actualAmount, limitAmount, ...dayLabels];
+    if (!(await this.canRender(ui))) return { png: null, caption, text: caption };
+    const svg = charts.planFactSvg({
+      title, subtitle: range, brand: this.brand(botUsername), emptyText: this.t(lang, 'chart_empty'),
+      dayLabels, actual, limit, actualLabel, limitLabel, actualAmount, limitAmount
+    }, this.renderer.createText());
+    return { png: await this.render(svg, IMAGE_WIDTH.trend), caption, text: caption };
   }
 
   // 🎉 Карточка «Итоги месяца» из AchievementService.buildWrapped().card → PNG или null.

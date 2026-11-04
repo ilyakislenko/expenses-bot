@@ -427,7 +427,78 @@ function quizCardSvg(data, engine = estimateText()) {
   return svgDoc(W, H, engine, parts.join(''), background);
 }
 
+// ---------- Лимит и факт по дням ----------
+
+// Две кривые нарастающим итогом по дням периода: факт (траты с начала периода) и лимит (бюджет поровну на каждый
+// день: к концу периода — весь бюджет). data: { title, subtitle, brand, emptyText, dayLabels: [..N], actual: [..≤N]
+// (нарастающий итог; короче N — период ещё идёт), limit: число | null, actualLabel, limitLabel, actualAmount, limitAmount }
+function planFactSvg(data, engine = estimateText()) {
+  const label = fitted(engine);
+  const W = 1000;
+  const H = 640;
+  const left = 56;
+  const right = W - 150;
+  const chartTop = 200;
+  const chartBottom = 530;
+  const days = data.dayLabels || [];
+  const actual = data.actual || [];
+  const n = Math.max(1, days.length);
+  const parts = [];
+
+  parts.push(label(48, 70, data.title, W - 96, { size: 34, bold: true }));
+  if (data.subtitle) parts.push(label(48, 110, data.subtitle, W - 96, { size: 24, color: THEME.muted }));
+
+  const limit = data.limit > 0 ? data.limit : null;
+  const lastActual = actual.length ? actual[actual.length - 1] : 0;
+  const scaleMax = niceMax(Math.max(lastActual, limit || 0, 1) * 1.08);
+  const x = (index) => round(left + (n === 1 ? 0 : (index / (n - 1)) * (right - left)));
+  const y = (value) => round(chartBottom - (value / scaleMax) * (chartBottom - chartTop));
+
+  // Сетка: 4 горизонтали; подписи дней — первый, последний и до 5 между
+  for (let k = 1; k <= 4; k++) {
+    const gy = round(chartBottom - (k / 4) * (chartBottom - chartTop));
+    parts.push(`<line x1="${left}" y1="${gy}" x2="${right}" y2="${gy}" stroke="${THEME.grid}" stroke-width="1" opacity="0.5"/>`);
+  }
+  parts.push(`<line x1="${left}" y1="${chartBottom}" x2="${right}" y2="${chartBottom}" stroke="${THEME.grid}" stroke-width="2"/>`);
+  const step = Math.max(1, Math.ceil((n - 1) / 6));
+  const ticks = [];
+  for (let i = 0; i < n - 1; i += step) if (n - 1 - i >= step / 2 || i === 0) ticks.push(i);
+  if (n > 1) ticks.push(n - 1);
+  for (const i of ticks) parts.push(label(x(i), chartBottom + 34, days[i] || '', 80, { size: 20, color: THEME.muted, anchor: 'middle' }));
+
+  // Лимит: прямая от доли первого дня до всего бюджета в последний день
+  if (limit) {
+    parts.push(`<line x1="${x(0)}" y1="${y(limit / n)}" x2="${x(n - 1)}" y2="${y(limit)}" stroke="${THEME.average}" stroke-width="4" stroke-dasharray="14 10"/>`);
+    parts.push(label(x(n - 1) + 12, y(limit) + 8, data.limitAmount || '', W - right - 20, { size: 20, bold: true, color: THEME.average }));
+  }
+
+  if (!(lastActual > 0)) {
+    parts.push(label((left + right) / 2, (chartTop + chartBottom) / 2, data.emptyText || '', right - left - 40, { size: 28, color: THEME.muted, anchor: 'middle' }));
+  } else {
+    const points = actual.map((value, index) => `${x(index)},${y(value)}`);
+    const lastX = x(actual.length - 1);
+    parts.push(`<path d="M${x(0)},${chartBottom}L${points.join('L')}L${lastX},${chartBottom}Z" fill="${THEME.current}" opacity="0.14"/>`);
+    parts.push(`<polyline points="${points.join(' ')}" fill="none" stroke="${THEME.current}" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>`);
+    const over = limit && lastActual > (limit / n) * actual.length;
+    parts.push(`<circle cx="${lastX}" cy="${y(lastActual)}" r="8" fill="${over ? '#ff5f6d' : THEME.current}"/>`);
+    const labelX = Math.min(lastX + 14, right + 12);
+    parts.push(label(labelX, y(lastActual) - 12, data.actualAmount || '', W - labelX - 16, { size: 20, bold: true, color: THEME.text, halo: true }));
+  }
+
+  // Легенда над графиком
+  parts.push(`<line x1="48" y1="152" x2="96" y2="152" stroke="${THEME.current}" stroke-width="5" stroke-linecap="round"/>`);
+  parts.push(label(108, 160, data.actualLabel || '', 380, { size: 22, color: THEME.text }));
+  if (limit) {
+    parts.push(`<line x1="500" y1="152" x2="548" y2="152" stroke="${THEME.average}" stroke-width="4" stroke-dasharray="14 10"/>`);
+    parts.push(label(560, 160, data.limitLabel || '', W - 600, { size: 22, color: THEME.average }));
+  }
+
+  if (data.brand) parts.push(engine.draw(W - 48, H - 24, data.brand, { size: 18, color: THEME.muted, anchor: 'end' }));
+  return svgDoc(W, H, engine, parts.join(''));
+}
+
 module.exports = {
+  planFactSvg,
   THEME,
   PALETTE,
   OTHER_COLOR,

@@ -195,7 +195,7 @@ function fakeRenderer() {
   };
 }
 
-function chartService({ categories = [], totals = null, perPeriod = null, startDay = 1, lang = 'ru', renderer = fakeRenderer() } = {}) {
+function chartService({ categories = [], totals = null, perPeriod = null, startDay = 1, lang = 'ru', renderer = fakeRenderer(), expenses = [], budgets = [] } = {}) {
   const rates = { RUB: 1, USD: 100, EUR: 110 };
   const currencyUtils = { convert: async (amount, from, to) => amount * rates[from] / rates[to] };
   const formatter = new Formatter(currencyUtils);
@@ -205,10 +205,12 @@ function chartService({ categories = [], totals = null, perPeriod = null, startD
       return { timezone: 'UTC', currency: 'RUB', startDay, today: '2026-10-28', period: customPeriod('2026-10-28', startDay, offset) };
     }),
     getTotals: jest.fn(async (userId, tz, period) => (perPeriod ? perPeriod(period) : totals) || { byCurrency: [], count: 0 }),
-    getCategoryById: jest.fn(async (userId, id) => (id === 13 ? { id: 13, name: 'Еда', icon: '🍔' } : null))
+    getCategoryById: jest.fn(async (userId, id) => (id === 13 ? { id: 13, name: 'Еда', icon: '🍔' } : null)),
+    getExpenses: jest.fn(async () => expenses)
   };
   const reportService = { categoryBreakdown: jest.fn(async () => categories) };
-  const service = new ChartService({ expenseService, reportService, localizationService: new LocalizationService(), formatter, chartRenderer: renderer });
+  const budgetService = { getStatus: jest.fn(async () => budgets) };
+  const service = new ChartService({ expenseService, reportService, localizationService: new LocalizationService(), formatter, chartRenderer: renderer, budgetService });
   return { service, expenseService, reportService, renderer, lang };
 }
 
@@ -311,6 +313,34 @@ describe('ChartService', () => {
     expect(svg).toContain('Покупки · 14.10');
     expect(svg).toContain('Это примерно 15 × пицца');
     expect(svg).toContain('@ExpensesAssistant_bot');
+  });
+
+  test('limit vs actual: spending accumulates by local day up to today, the limit is the total budget spread over the days', async () => {
+    const { service } = chartService({
+      expenses: [
+        { amount: '1000', currency: 'RUB', created_at_utc: '2026-10-01T10:00:00Z' },
+        { amount: '20', currency: 'USD', created_at_utc: '2026-10-02T23:30:00Z' }, // 2000 ₽
+        { amount: '15000', currency: 'RUB', created_at_utc: '2026-10-28T09:00:00Z' }
+      ],
+      budgets: [{ category_name: null, limit: 31000 }, { category_name: 'Еда', limit: 5000 }]
+    });
+    const chart = await service.planFact(1, 'ru', 0);
+    const sp = (text) => text.replace(/[\u00a0\u202f]/g, ' ');
+    expect(sp(chart.caption)).toContain('Потрачено: *18 000 ₽*');
+    expect(sp(chart.caption)).toContain('По лимиту к 28.10: 28 000 ₽ (на весь период — 31 000 ₽)');
+    expect(sp(chart.caption)).toContain('🟢 В рамках лимита, запас 10 000 ₽');
+    const svg = chart.png.toString();
+    expect(svg.match(/<polyline points="([^"]+)"/)[1].split(' ')).toHaveLength(28); // 01.10 … 28.10, сегодня последний
+    expect(svg).toContain(`stroke="${charts.THEME.average}"`);
+  });
+
+  test('limit vs actual without a total budget: only the actual line and a hint; a past period runs to its end', async () => {
+    const { service } = chartService({ expenses: [{ amount: '500', currency: 'RUB', created_at_utc: '2026-09-05T10:00:00Z' }], budgets: [{ category_name: 'Еда', limit: 5000 }] });
+    const chart = await service.planFact(1, 'ru', -1);
+    expect(chart.caption).toContain('Линия лимита появится');
+    const svg = chart.png.toString();
+    expect(svg.match(/<polyline points="([^"]+)"/)[1].split(' ')).toHaveLength(30);
+    expect(svg).not.toContain(`stroke="${charts.THEME.average}"`);
   });
 });
 

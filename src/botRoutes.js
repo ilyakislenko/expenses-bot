@@ -108,6 +108,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^chp\|(-?\d+)$/, errorHandler((ctx) => handlers.chartHandlers.showDonut(ctx, parseInt(ctx.match[1], 10))));
   bot.action(/^cht\|(-?\d+)$/, errorHandler((ctx) => handlers.chartHandlers.showTrend(ctx, parseInt(ctx.match[1], 10))));
   bot.action(/^chc\|(\d+)\|(-?\d+)$/, errorHandler((ctx) => handlers.chartHandlers.showTrend(ctx, parseInt(ctx.match[2], 10), parseInt(ctx.match[1], 10))));
+  bot.action(/^chl\|(-?\d+)$/, errorHandler((ctx) => handlers.chartHandlers.showPlanFact(ctx, parseInt(ctx.match[1], 10)))); // «📉 Лимит и факт»
   bot.action(/^dy\|(-?\d+)\|(\d+)$/, errorHandler((ctx) => expenseHandlers.showDay(ctx, parseInt(ctx.match[1], 10), parseInt(ctx.match[2], 10))));
   bot.action(/^fd\|(\d+)$/, errorHandler((ctx) => expenseHandlers.showFamilyDay(ctx, parseInt(ctx.match[1], 10))));
   bot.action(new RegExp(`^ex\\|(\\d+)\\|${back}$`), errorHandler((ctx) => expenseHandlers.handleOpenCard(ctx)));
