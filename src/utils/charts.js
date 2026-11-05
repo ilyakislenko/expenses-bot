@@ -432,7 +432,8 @@ function quizCardSvg(data, engine = estimateText()) {
 // Две кривые нарастающим итогом по дням периода: факт (траты с начала периода) и план. data: { title, subtitle, brand,
 // emptyText, dayLabels: [..N], actual: [..≤N] (нарастающий итог; короче N — период ещё идёт), planLine: [..N] | null
 // (план нарастающим итогом), planJumps: [..N] (ступенька дня — регулярные платежи; рисуется вертикально),
-// actualLabel, limitLabel, actualAmount, limitAmount }
+// actualLabel, limitLabel, actualAmount, limitAmount, forecast: { start, values, jumps, end } | null (прогноз
+// нарастающим итогом с дня start до конца; values[0] — сегодняшний факт), forecastLabel, forecastAmount }
 function planFactSvg(data, engine = estimateText()) {
   const label = fitted(engine);
   const W = 1000;
@@ -453,7 +454,9 @@ function planFactSvg(data, engine = estimateText()) {
   const planJumps = data.planJumps || [];
   const planEnd = planLine ? planLine[n - 1] : 0;
   const lastActual = actual.length ? actual[actual.length - 1] : 0;
-  const scaleMax = niceMax(Math.max(lastActual, planEnd, 1) * 1.08);
+  const forecast = data.forecast && Array.isArray(data.forecast.values) && data.forecast.start + data.forecast.values.length === n && lastActual > 0 ? data.forecast : null;
+  const forecastEnd = forecast ? forecast.end : 0;
+  const scaleMax = niceMax(Math.max(lastActual, planEnd, forecastEnd, 1) * 1.08);
   const x = (index) => round(left + (n === 1 ? 0 : (index / (n - 1)) * (right - left)));
   const y = (value) => round(chartBottom - (value / scaleMax) * (chartBottom - chartTop));
 
@@ -494,12 +497,32 @@ function planFactSvg(data, engine = estimateText()) {
     parts.push(label(labelX, y(lastActual) - 12, data.actualAmount || '', W - labelX - 16, { size: 20, bold: true, color: THEME.text, halo: true }));
   }
 
+  // Прогноз при нынешнем темпе: точками от сегодняшней точки факта, будущие регулярные — ступеньками
+  if (forecast) {
+    const points = [];
+    forecast.values.forEach((value, k) => {
+      const index = forecast.start + k;
+      const jump = forecast.jumps[k] || 0;
+      if (jump > 0) points.push(`${x(index)},${y(value - jump)}`);
+      points.push(`${x(index)},${y(value)}`);
+    });
+    parts.push(`<polyline points="${points.join(' ')}" fill="none" stroke="${THEME.current}" stroke-width="4" stroke-dasharray="3 9" stroke-linecap="round" stroke-linejoin="round"/>`);
+    // Подписи концов не налезают друг на друга: прогноз выше плана — его подпись выше, ниже — ниже
+    let labelY = y(forecastEnd) + 8;
+    if (planLine && Math.abs(y(forecastEnd) - y(planEnd)) < 28) labelY = forecastEnd >= planEnd ? y(planEnd) - 20 : y(planEnd) + 36;
+    parts.push(label(x(n - 1) + 12, labelY, data.forecastAmount || '', W - right - 20, { size: 20, bold: true, color: THEME.current }));
+  }
+
   // Легенда над графиком
   parts.push(`<line x1="48" y1="152" x2="96" y2="152" stroke="${THEME.current}" stroke-width="5" stroke-linecap="round"/>`);
-  parts.push(label(108, 160, data.actualLabel || '', 380, { size: 22, color: THEME.text }));
+  parts.push(label(108, 160, data.actualLabel || '', 240, { size: 22, color: THEME.text }));
   if (planLine) {
-    parts.push(`<line x1="500" y1="152" x2="548" y2="152" stroke="${THEME.average}" stroke-width="4" stroke-dasharray="14 10"/>`);
-    parts.push(label(560, 160, data.limitLabel || '', W - 600, { size: 22, color: THEME.average }));
+    parts.push(`<line x1="370" y1="152" x2="418" y2="152" stroke="${THEME.average}" stroke-width="4" stroke-dasharray="14 10"/>`);
+    parts.push(label(430, 160, data.limitLabel || '', 230, { size: 22, color: THEME.average }));
+  }
+  if (forecast) {
+    parts.push(`<line x1="680" y1="152" x2="728" y2="152" stroke="${THEME.current}" stroke-width="4" stroke-dasharray="3 9" stroke-linecap="round"/>`);
+    parts.push(label(740, 160, data.forecastLabel || '', W - 788, { size: 22, color: THEME.current }));
   }
 
   if (data.brand) parts.push(engine.draw(W - 48, H - 24, data.brand, { size: 18, color: THEME.muted, anchor: 'end' }));

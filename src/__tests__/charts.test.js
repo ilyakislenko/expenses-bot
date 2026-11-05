@@ -332,12 +332,30 @@ describe('ChartService', () => {
     });
     const chart = await service.planFact(1, 'ru', 0);
     const sp = (text) => text.replace(/[\u00a0\u202f]/g, ' ');
-    // (31 000 − 10 000 − 3 100) / 31 дней × 28 + аренда 10 000 = 26 168; потрачено 16 000
-    expect(sp(chart.summary)).toBe('📉 План к 28.10: 26 168 ₽ · 🟢 запас 10 168 ₽\n🔁 В плане регулярные платежи месяца: 13 100 ₽ — в свои дни');
+    // (31 000 − 10 000 − 3 100) / 31 дней × 28 + аренда 10 000 = 26 168; потрачено 16 000.
+    // Прогноз: обычные траты 01–27.10 — 3 000 / 27 дней ≈ 111 в день; сегодня уже 3 000 (больше темпа) → 16 000,
+    // ещё 3 дня по 111 и 3 100 регулярных 30.10 = 19 433
+    expect(sp(chart.summary)).toBe([
+      '📉 План к 28.10: 26 168 ₽ · 🟢 запас 10 168 ₽',
+      '🔮 Прогноз на 31.10 при таком темпе: 19 433 ₽ · 🟢 останется 11 567 ₽',
+      '🔁 В плане регулярные платежи месяца: 13 100 ₽ — в свои дни'
+    ].join('\n'));
     const lines = [...chart.png.toString().matchAll(/<polyline points="([^"]+)"/g)].map(match => match[1].split(' '));
     expect(lines[0]).toHaveLength(31 + 2); // план: каждый день и вертикальные ступеньки 10.10 и 30.10
     expect(lines[0][9].split(',')[0]).toBe(lines[0][10].split(',')[0]); // ступенька — тот же x
     expect(lines[1]).toHaveLength(28); // факт: 01.10 … 28.10, сегодня последний
+    expect(lines[2]).toHaveLength(4 + 1); // прогноз: от сегодняшней точки факта до 31.10, ступенька 30.10
+    expect(lines[2][0]).toBe(lines[1][27]);
+  });
+
+  test('forecast at the current pace: without a budget — just the amount; above the budget — by how much', async () => {
+    const expenses = [{ amount: '2700', currency: 'RUB', created_at_utc: '2026-10-01T10:00:00Z' }]; // 100 ₽ в день за 27 дней
+    const sp = (text) => text.replace(/[\u00a0\u202f]/g, ' ');
+    // Сегодня 28.10 трат нет — день по темпу всё равно идёт в прогноз: 2 700 + 4 × 100
+    const free = await chartService({ expenses }).service.planFact(1, 'ru', 0);
+    expect(sp(free.summary)).toBe('🔮 Прогноз на 31.10 при таком темпе: 3 100 ₽');
+    const tight = await chartService({ expenses, budgets: [{ category_name: null, limit: 3000 }] }).service.planFact(1, 'ru', 0);
+    expect(sp(tight.summary.split('\n')[1])).toBe('🔮 Прогноз на 31.10 при таком темпе: 3 100 ₽ · 🔴 сверх бюджета 100 ₽');
   });
 
   test('plan vs actual without a total budget: only the actual line, no summary; a past period runs to its end', async () => {
