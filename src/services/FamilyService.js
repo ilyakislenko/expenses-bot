@@ -452,52 +452,6 @@ class FamilyService {
     }
   }
 
-  async getFamilyStats(familyId, period = 'month', userTimezone = 'UTC') {
-    try {
-      const total = await this.expenseRepository.getFamilyTotalExpenses(familyId, period, userTimezone);
-      const byCategory = await this.expenseRepository.getFamilyExpensesByCategory(familyId, period, userTimezone);
-      const expenses = await this.familyRepository.getFamilyExpenses(familyId, 50);
-
-      logger.debug('Family service: family stats retrieved', {
-        familyId,
-        period,
-        total,
-        categoriesCount: byCategory.length,
-        expensesCount: expenses.length
-      });
-
-      return { total, byCategory, expenses };
-    } catch (error) {
-      logger.error('Family service: failed to get family stats', {
-        familyId,
-        period,
-        error: error.message
-      });
-      throw error;
-    }
-  }
-
-  async getFamilyDailyStats(familyId, userTimezone = 'UTC') {
-    try {
-      const expenses = await this.expenseRepository.getFamilyDailyExpenses(familyId, userTimezone);
-      const total = await this.expenseRepository.getFamilyTotalExpenses(familyId, 'day', userTimezone);
-
-      logger.debug('Family service: family daily stats retrieved', {
-        familyId,
-        total,
-        expensesCount: expenses.length
-      });
-
-      return { total, expenses };
-    } catch (error) {
-      logger.error('Family service: failed to get family daily stats', {
-        familyId,
-        error: error.message
-      });
-      throw error;
-    }
-  }
-
   async getActiveInvitations(familyId) {
     try {
       await this.familyInvitationRepository.expireOldInvitations();

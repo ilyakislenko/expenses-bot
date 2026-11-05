@@ -1,5 +1,3 @@
-const periodsConfig = require('../config/periods');
-
 class Formatter {
   constructor(currencyUtils) {
     this.currencyUtils = currencyUtils;
@@ -73,68 +71,6 @@ class Formatter {
     const [sy, sm, sd] = period.start.split('-');
     const [ly, lm, ld] = period.last.split('-');
     return sy === ly ? `${sd}.${sm} – ${ld}.${lm}.${ly}` : `${sd}.${sm}.${sy} – ${ld}.${lm}.${ly}`;
-  }
-
-  async formatStats(total, categoryStats, userCurrency = 'RUB', period = periodsConfig.LABELS.month, localizationService = null, userLanguage = 'ru') {
-    const periodLabel = period || 'месяц';
-    
-    // Определяем заголовок в зависимости от периода
-    let title;
-    if (period === 'день' || period === 'day') {
-      title = localizationService ? 
-        localizationService.getText(userLanguage, 'daily_stats') : 
-        '📊 *Статистика за день*';
-    } else {
-      title = localizationService ? 
-        localizationService.getText(userLanguage, 'monthly_stats') : 
-        '📊 *Статистика за месяц*';
-    }
-    
-    let message = `${title}\n\n`;
-    let totalInUserCurrency = 0;
-    if (Array.isArray(total.byCurrency)) {
-      let sum = 0;
-      for (const {currency, total: amount} of total.byCurrency) {
-        const converted = await this.currencyUtils.convert(Number(amount), currency, userCurrency);
-        sum += converted;
-      }
-      totalInUserCurrency = sum;
-      const totalSpentText = localizationService ? 
-        localizationService.getText(userLanguage, 'total_spent', { amount: this.formatAmount(sum, userCurrency) }) : 
-        `💰 Всего потрачено: *${this.formatAmount(sum, userCurrency)}*`;
-      message += `${totalSpentText}\n`;
-    } else {
-      totalInUserCurrency = await this.currencyUtils.convert(Number(total.total), total.currency || 'RUB', userCurrency);
-      const totalSpentText = localizationService ? 
-        localizationService.getText(userLanguage, 'total_spent', { amount: this.formatAmount(totalInUserCurrency, userCurrency) }) : 
-        `💰 Всего потрачено: *${this.formatAmount(totalInUserCurrency, userCurrency)}*`;
-      message += `${totalSpentText}\n`;
-    }
-    
-    const recordsCountText = localizationService ? 
-      localizationService.getText(userLanguage, 'records_count', { count: total.count }) : 
-      `📝 Количество записей: ${total.count}`;
-    message += `${recordsCountText}\n\n`;
-    if (categoryStats.length > 0) {
-      const catMap = new Map();
-      for (const cat of categoryStats) {
-        const key = `${cat.icon}||${cat.name}`;
-        const prev = catMap.get(key) || 0;
-        const catTotal = await this.currencyUtils.convert(Number(cat.total), cat.currency || 'RUB', userCurrency);
-        catMap.set(key, prev + catTotal);
-      }
-      const byCategoriesText = localizationService ? 
-        localizationService.getText(userLanguage, 'by_categories') : 
-        '*По категориям:*';
-      message += `${byCategoriesText}\n`;
-      for (const [key, sum] of catMap.entries()) {
-        const [icon, name] = key.split('||');
-        const translatedName = this.escapeMarkdown(this.translateCategoryName(name, localizationService, userLanguage));
-        const percentage = totalInUserCurrency > 0 ? (sum / totalInUserCurrency * 100).toFixed(1) : 0;
-        message += `${icon} ${translatedName}: ${this.formatAmount(sum, userCurrency)} (${percentage}%)\n`;
-      }
-    }
-    return message;
   }
 
   // Экранирование пользовательского текста для parse_mode: 'Markdown'

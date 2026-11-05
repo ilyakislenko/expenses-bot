@@ -55,9 +55,9 @@ class ReportService {
   }
 
   // Категории за период в основной валюте, по убыванию: [{ id, name, icon, total, regular }]
-  // regular — из total авто-записи регулярных трат
-  async categoryBreakdown(userId, timezone, period, currency) {
-    const rows = await this.expenseService.getCategoryTotals(userId, timezone, period);
+  // regular — из total авто-записи регулярных трат; owner — id пользователя или { familyId } (ExpenseService.getTotals)
+  async categoryBreakdown(owner, timezone, period, currency) {
+    const rows = await this.expenseService.getCategoryTotals(owner, timezone, period);
     const byName = new Map();
     for (const row of rows) {
       const converted = await this.currencyUtils.convert(Number(row.total), row.currency, currency);

@@ -110,7 +110,13 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^cht\|(-?\d+)$/, errorHandler((ctx) => handlers.chartHandlers.showTrend(ctx, parseInt(ctx.match[1], 10))));
   bot.action(/^chc\|(\d+)\|(-?\d+)$/, errorHandler((ctx) => handlers.chartHandlers.showTrend(ctx, parseInt(ctx.match[2], 10), parseInt(ctx.match[1], 10))));
   bot.action(/^dy\|(-?\d+)\|(\d+)$/, errorHandler((ctx) => expenseHandlers.showDay(ctx, parseInt(ctx.match[1], 10), parseInt(ctx.match[2], 10))));
-  bot.action(/^fd\|(\d+)$/, errorHandler((ctx) => expenseHandlers.showFamilyDay(ctx, parseInt(ctx.match[1], 10))));
+  // Те же экраны по семейным записям всех участников (см. ExpenseHandlers «Свои записи и семья»); fd|<page> — старые
+  // кнопки «Семья: записи за сегодня»
+  bot.action(/^fdy\|(-?\d+)\|(\d+)$/, errorHandler((ctx) => expenseHandlers.showDay(ctx, parseInt(ctx.match[1], 10), parseInt(ctx.match[2], 10), { family: true })));
+  bot.action(/^fd\|(\d+)$/, errorHandler((ctx) => expenseHandlers.showDay(ctx, 0, parseInt(ctx.match[1], 10), { family: true })));
+  bot.action(/^fov\|(-?\d+)$/, errorHandler((ctx) => expenseHandlers.showOverview(ctx, parseInt(ctx.match[1], 10), { family: true })));
+  bot.action(/^fovb\|(-?\d+)$/, errorHandler((ctx) => expenseHandlers.showOverview(ctx, parseInt(ctx.match[1], 10), { family: true, replace: true })));
+  bot.action(/^foc\|(\d+)\|(-?\d+)\|(\d+)$/, errorHandler((ctx) => expenseHandlers.showCategoryList(ctx, parseInt(ctx.match[1], 10), parseInt(ctx.match[2], 10), parseInt(ctx.match[3], 10), { family: true })));
   bot.action(new RegExp(`^ex\\|(\\d+)\\|${back}$`), errorHandler((ctx) => expenseHandlers.handleOpenCard(ctx)));
   bot.action(new RegExp(`^xd\\|(\\d+)\\|${back}$`), errorHandler((ctx) => expenseHandlers.handleDelete(ctx)));
   bot.action(new RegExp(`^xc\\|(\\d+)\\|${back}$`), errorHandler((ctx) => expenseHandlers.handleChooseCategory(ctx)));
@@ -419,10 +425,10 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('family_invite', errorHandler((ctx) => callbackHandlers.handleFamilyInvite(ctx)));
   bot.action('family_active_invitations', errorHandler((ctx) => callbackHandlers.handleFamilyActiveInvitations(ctx)));
   bot.action('family_members', errorHandler((ctx) => callbackHandlers.handleFamilyMembers(ctx)));
-  bot.action('family_stats', errorHandler((ctx) => callbackHandlers.handleFamilyStats(ctx)));
+  bot.action('family_stats', errorHandler((ctx) => expenseHandlers.showOverview(ctx, 0, { family: true, replace: true }))); // из текстового меню семьи
   bot.action(/^remove_member\|(\d+)$/, errorHandler((ctx) => callbackHandlers.handleRemoveMember(ctx)));
   bot.action(/^confirm_remove_member\|(\d+)$/, errorHandler((ctx) => callbackHandlers.handleConfirmRemoveMember(ctx)));
-  bot.action('family_daily_history', errorHandler((ctx) => expenseHandlers.showFamilyDay(ctx, 0)));
+  bot.action('family_daily_history', errorHandler((ctx) => expenseHandlers.showDay(ctx, 0, 0, { family: true })));
   bot.action('family_export', errorHandler((ctx) => callbackHandlers.handleFamilyExport(ctx)));
   bot.action('family_add_expense', errorHandler((ctx) => callbackHandlers.handleFamilyAddExpense(ctx)));
   bot.action('family_mode_toggle', errorHandler(async (ctx) => {

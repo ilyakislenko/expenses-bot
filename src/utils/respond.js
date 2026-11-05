@@ -2,7 +2,7 @@
 // Если отредактировать нельзя (например, это документ или сообщение удалено) — отправляем новое.
 // Обзор месяца и графики — картинки (respondPhoto): текст из них не отредактировать, поэтому новое сообщение, а старая
 // картинка-экран удаляется, чтобы переход «обзор → категория» не оставлял её в чате
-const SCREEN_PHOTO_CALLBACK = /^(ov|chp|cht|chc)\|/;
+const SCREEN_PHOTO_CALLBACK = /^(ov|fov|chp|cht|chc)\|/;
 
 function isScreenPhoto(message) {
   if (!message || !message.photo) return false;

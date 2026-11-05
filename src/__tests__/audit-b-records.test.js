@@ -103,18 +103,6 @@ describe('CSV export (REC-6, REC-7, Q5)', () => {
   });
 });
 
-describe('Markdown in statistics and category screen (TG-1, TG-2)', () => {
-  test('family statistics escape custom category names', async () => {
-    const formatter = new Formatter(identityRates);
-    const text = await formatter.formatStats(
-      { byCurrency: [{ currency: 'RUB', total: 12 }], count: 1 },
-      [{ icon: '📦', name: 'kids_stuff*', total: 12, currency: 'RUB' }],
-      'RUB', 'month', localizationService, 'ru'
-    );
-    expect(text).toContain('kids\\_stuff\\*');
-  });
-});
-
 // Обработчики трат с заглушками сервисов; черновики — в настоящем StateService
 function buildExpenseFlow({ stateService = new StateService(), categories, familyMode = false, premium = false, family = null } = {}) {
   let nextMessageId = 100;
@@ -403,7 +391,7 @@ describe('category ownership (REC-11, SEC-13, PLT-16)', () => {
     handlers.showOverview = jest.fn();
     const ctx = { from: { id: 1 }, callbackQuery: { data: 'oc|99|0|0' }, answerCbQuery: jest.fn(async () => true) };
     await handlers.showCategoryList(ctx, 99, 0, 0);
-    expect(handlers.showOverview).toHaveBeenCalledWith(ctx, 0);
+    expect(handlers.showOverview).toHaveBeenCalledWith(ctx, 0, { family: false });
   });
 
   test('category title keeps the name outside of bold', async () => {

@@ -207,9 +207,6 @@ Commands: /stats /history /income /recurring /export /settings /menu`,
   expense_update_error: 'Error: entry not found or not updated.',
   
   // Statistics
-  monthly_stats: '💰 *Expenses for current month*',
-  daily_stats: '💰 *Expenses for today*',
-  total_spent: 'Spent: *{amount}*',
   records_count: 'Records: {count}',
   no_expenses_period: 'No expenses for this period.',
   
@@ -1020,7 +1017,6 @@ Now all your expenses will be correctly displayed in your local time.`,
   button_prev_day: '◀️ Previous day',
   button_next_day: 'Next day ▶️',
   list_tap_number: 'Tap a number to open the record.',
-  family_today_title: 'Family: today\'s records',
 
   // Record card
   button_undo: '↩️ Undo',
@@ -1207,6 +1203,10 @@ Now all your expenses will be correctly displayed in your local time.`,
   receipt_line_limit: "The receipt already has {max} lines — no more can be added.",
   receipt_rotate_edited: "✏️ You've already fixed this draft by hand — rotating would wipe your edits. Record it, or cancel and send the photo again.",
   help_edit: "✏️ Made a mistake? Tap the record's number in 📅 Today, the overview or a receipt — change the amount, category and 📅 date. A receipt draft can be fixed before recording too.",
+  family_scope_title: "Family · {title}",
+  button_scope_family: "👨‍👩‍👧‍👦 Family",
+  button_scope_personal: "👤 Only mine",
+  overview_by_members: "Who spent how much:",
   chart_planfact_forecast_label: "forecast",
   chart_planfact_forecast: "🔮 Forecast for {date} at this pace: {amount}",
   chart_planfact_forecast_left: "🔮 Forecast for {date} at this pace: {amount} · 🟢 {left} left",

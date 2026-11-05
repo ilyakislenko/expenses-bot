@@ -17,6 +17,16 @@ class CategoryRepository extends BaseRepository {
     );
     return result.rows[0];
   }
+
+  // Системная категория или категория участника семьи — для семейного списка категории
+  async getFamilyCategoryById(familyId, categoryId) {
+    const result = await this.query(
+      'SELECT * FROM categories WHERE id = $1 AND (user_id = 0 OR user_id IN (SELECT user_id FROM family_user WHERE family_id = $2))',
+      [categoryId, familyId]
+    );
+    return result.rows[0];
+  }
+
   async getCategories(userId) {
     // Получаем только системные категории (user_id = 0)
     const query = `

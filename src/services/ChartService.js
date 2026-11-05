@@ -176,13 +176,15 @@ class ChartService {
   // поровну на дни. Так скачок факта в день аренды не выглядит перерасходом. Прогноз (текущий период, со 2-го дня):
   // обычные траты прошедших дней (без сегодня и без регулярных) в среднем за день — до конца периода, будущие
   // регулярные — ступеньками. → { png, summary } — summary: строки «план к сегодня · запас / сверх», «прогноз на конец»
-  // и «регулярные в плане» для текста обзора (null — нечего сказать); png: null — не нарисовать
-  async planFact(userId, lang, offset, { botUsername } = {}) {
+  // и «регулярные в плане» для текста обзора (null — нечего сказать); png: null — не нарисовать.
+  // familyId — семейные траты всех участников: бюджеты и регулярные траты личные, поэтому без плана и ступенек — только
+  // траты и прогноз по темпу
+  async planFact(userId, lang, offset, { botUsername, familyId = null } = {}) {
     const { timezone, currency, today, period } = await this.expenseService.getPeriodContext(userId, 'month', offset);
     const [rows, statuses, recurring] = await Promise.all([
-      this.expenseService.getExpenses(userId, timezone, period),
-      this.budgetService ? this.budgetService.getStatus(userId, { timezone, currency, period }) : [],
-      this.recurringExpenseService && offset === 0 ? this.recurringExpenseService.list(userId) : []
+      this.expenseService.getExpenses(familyId ? { familyId } : userId, timezone, period),
+      this.budgetService && !familyId ? this.budgetService.getStatus(userId, { timezone, currency, period }) : [],
+      this.recurringExpenseService && !familyId && offset === 0 ? this.recurringExpenseService.list(userId) : []
     ]);
     const total = statuses.find(b => b.category_name === null);
     const limit = total ? total.limit : null;

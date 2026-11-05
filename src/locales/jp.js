@@ -212,9 +212,6 @@ module.exports = {
     expense_update_error: 'エラー: 記録が見つからないか、更新されませんでした。',
     
     // 統計
-    monthly_stats: '💰 *今月の支出*',
-    daily_stats: '💰 *今日の支出*',
-    total_spent: '支出合計: *{amount}*',
     records_count: '記録数: {count}',
     no_expenses_period: 'この期間の支出はありません。',
     by_categories: 'カテゴリー別:',
@@ -1009,7 +1006,6 @@ module.exports = {
   button_prev_day: '◀️ 前日',
   button_next_day: '翌日 ▶️',
   list_tap_number: '番号をタップして記録を開きます。',
-  family_today_title: '家族: 今日の記録',
   button_undo: '↩️ 取り消し',
   button_delete_record: '🗑 削除',
   button_change_category: '🏷 カテゴリ',
@@ -1187,6 +1183,10 @@ module.exports = {
   receipt_line_limit: "レシートにはもう{max}行あるので、これ以上追加できないよ。",
   receipt_rotate_edited: "✏️ この下書きはもう手で直してあるよ — 回転すると修正が消えちゃう。記録するか、取り消して写真を送り直してね。",
   help_edit: "✏️ 間違えた？ 📅 今日、概要、レシートで記録の番号をタップ — 金額、カテゴリ、📅 日付を変えられるよ。レシートの下書きも記録前に直せるよ。",
+  family_scope_title: "家族 · {title}",
+  button_scope_family: "👨‍👩‍👧‍👦 家族",
+  button_scope_personal: "👤 自分のみ",
+  overview_by_members: "誰がいくら：",
   chart_planfact_forecast_label: "予測",
   chart_planfact_forecast: "🔮 このペースでの{date}の予測：{amount}",
   chart_planfact_forecast_left: "🔮 このペースでの{date}の予測：{amount} · 🟢 残り{left}",

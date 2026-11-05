@@ -213,9 +213,6 @@ module.exports = {
   expense_update_error: 'Ошибка: запись не найдена или не обновлена.',
   
   // Статистика
-  monthly_stats: '💰 *Расходы за текущий месяц*',
-  daily_stats: '💰 *Расходы за сегодня*',
-  total_spent: 'Потрачено: *{amount}*',
   records_count: 'Записей: {count}',
   no_expenses_period: 'Нет трат за этот период.',
   
@@ -1022,7 +1019,6 @@ module.exports = {
   button_prev_day: '◀️ Предыдущий день',
   button_next_day: 'Следующий день ▶️',
   list_tap_number: 'Нажми номер, чтобы открыть запись.',
-  family_today_title: 'Семья: записи за сегодня',
 
   // Карточка записи
   button_undo: '↩️ Отменить',
@@ -1209,6 +1205,10 @@ module.exports = {
   receipt_line_limit: "В чеке уже {max} строк — больше не добавить.",
   receipt_rotate_edited: "✏️ Черновик уже исправлен вручную — поворот стёр бы правки. Запиши его или отмени и пришли фото заново.",
   help_edit: "✏️ Ошибся? Нажми номер записи в 📅 Сегодня, в обзоре или в чеке — поменяешь сумму, категорию и 📅 дату. Черновик чека тоже можно поправить до записи.",
+  family_scope_title: "Семья · {title}",
+  button_scope_family: "👨‍👩‍👧‍👦 Семья",
+  button_scope_personal: "👤 Только мои",
+  overview_by_members: "Кто сколько:",
   chart_planfact_forecast_label: "прогноз",
   chart_planfact_forecast: "🔮 Прогноз на {date} при таком темпе: {amount}",
   chart_planfact_forecast_left: "🔮 Прогноз на {date} при таком темпе: {amount} · 🟢 останется {left}",

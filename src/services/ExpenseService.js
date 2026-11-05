@@ -32,22 +32,33 @@ class ExpenseService {
     return { timezone, currency, startDay, today, period };
   }
 
+  // owner — id пользователя (его записи, в том числе его семейные) или { familyId } (семейные записи всех участников)
   // { byCurrency: [{ currency, total }], count }
-  async getTotals(userId, timezone, period) {
-    return this.expenseRepository.getTotalsBetween(userId, timezone, period.start, period.end);
+  async getTotals(owner, timezone, period) {
+    return this.expenseRepository.getTotalsBetween(owner, timezone, period.start, period.end);
   }
 
-  async getCategoryTotals(userId, timezone, period) {
-    return this.expenseRepository.getCategoryTotalsBetween(userId, timezone, period.start, period.end);
+  async getCategoryTotals(owner, timezone, period) {
+    return this.expenseRepository.getCategoryTotalsBetween(owner, timezone, period.start, period.end);
   }
 
-  async getExpenses(userId, timezone, period, categoryName = null) {
-    return this.expenseRepository.getExpensesBetween(userId, timezone, period.start, period.end, categoryName);
+  async getExpenses(owner, timezone, period, categoryName = null) {
+    return this.expenseRepository.getExpensesBetween(owner, timezone, period.start, period.end, categoryName);
+  }
+
+  // Семейные траты периода по участникам: [{ user_id, username, first_name, currency, total }]
+  async getMemberTotals(familyId, timezone, period) {
+    return this.expenseRepository.getMemberTotalsBetween(familyId, timezone, period.start, period.end);
   }
 
   // Только системная или своя категория — чужие пользовательские категории не раскрываем
   async getCategoryById(userId, categoryId) {
     return this.categoryRepository.getAvailableCategoryById(userId, categoryId);
+  }
+
+  // Для семейного списка: системная или категория участника семьи
+  async getFamilyCategoryById(familyId, categoryId) {
+    return this.categoryRepository.getFamilyCategoryById(familyId, categoryId);
   }
 
   // Категория, в которую пользователь последний раз записывал трату с таким же описанием (теги «#отпуск» не в счёт),
@@ -235,18 +246,6 @@ class ExpenseService {
       });
       throw error;
     }
-  }
-
-  async getFamilyMonthlyStats(familyId, userTimezone = 'UTC') {
-    const total = await this.expenseRepository.getFamilyTotalExpenses(familyId, 'month', userTimezone);
-    const byCategory = await this.expenseRepository.getFamilyExpensesByCategory(familyId, 'month', userTimezone);
-    return { total, byCategory };
-  }
-
-  async getFamilyDailyStats(familyId, userTimezone = 'UTC') {
-    const expenses = await this.expenseRepository.getFamilyDailyExpenses(familyId, userTimezone);
-    const total = await this.expenseRepository.getFamilyTotalExpenses(familyId, 'day', userTimezone);
-    return { total, expenses };
   }
 
   async getFamilyExpenses(familyId, limit = 50) {

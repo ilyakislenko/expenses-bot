@@ -212,9 +212,6 @@ module.exports = {
     expense_update_error: 'შეცდომა: ჩანაწერი ვერ მოიძებნა ან განახლდა.',
     
     // სტატისტიკა
-    monthly_stats: '💰 *ამ თვის ხარჯები*',
-    daily_stats: '💰 *დღევანდელი ხარჯები*',
-    total_spent: 'სულ: *{amount}*',
     records_count: 'ჩანაწერების რაოდენობა: {count}',
     no_expenses_period: 'ამ პერიოდში ხარჯი არ დაფიქსირებულა.',
     
@@ -1009,7 +1006,6 @@ module.exports = {
   button_prev_day: '◀️ წინა დღე',
   button_next_day: 'შემდეგი დღე ▶️',
   list_tap_number: 'შეეხეთ ნომერს ჩანაწერის გასახსნელად.',
-  family_today_title: 'ოჯახი: დღევანდელი ჩანაწერები',
   button_undo: '↩️ გაუქმება',
   button_delete_record: '🗑 წაშლა',
   button_change_category: '🏷 კატეგორია',
@@ -1186,6 +1182,10 @@ module.exports = {
   receipt_line_limit: "ჩეკში უკვე {max} სტრიქონია — მეტს ვერ დაამატებ.",
   receipt_rotate_edited: "✏️ ეს მონახაზი უკვე ხელით გაასწორე — შემობრუნება შესწორებებს წაშლიდა. ჩაწერე, ან გააუქმე და ფოტო ხელახლა გამომიგზავნე.",
   help_edit: "✏️ შეცდი? დააჭირე ჩანაწერის ნომერს 📅 დღეს-ში, მიმოხილვაში ან ჩეკში — შეცვლი თანხას, კატეგორიას და 📅 თარიღს. ჩეკის მონახაზიც შეიძლება ჩაწერამდე გასწორდეს.",
+  family_scope_title: "ოჯახი · {title}",
+  button_scope_family: "👨‍👩‍👧‍👦 ოჯახი",
+  button_scope_personal: "👤 მხოლოდ ჩემი",
+  overview_by_members: "ვინ რამდენი:",
   chart_planfact_forecast_label: "პროგნოზი",
   chart_planfact_forecast: "🔮 პროგნოზი {date}-ისთვის ამ ტემპით: {amount}",
   chart_planfact_forecast_left: "🔮 პროგნოზი {date}-ისთვის ამ ტემპით: {amount} · 🟢 დარჩება {left}",

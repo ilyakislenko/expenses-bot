@@ -1,7 +1,14 @@
 const BaseRepository = require('./BaseRepository');
-const periodsConfig = require('../config/periods');
 const currencyConfig = require('../config/currencies');
 const { TAG_SQL_PATTERN } = require('../utils/tags');
+
+// Чьи записи за период: id пользователя — его записи (в том числе его семейные), { familyId } — семейные записи всех
+// участников семьи. → условие на $1 и значение для $1
+function ownerFilter(owner) {
+  return owner && typeof owner === 'object'
+    ? { sql: 'e.family_id = $1', value: owner.familyId }
+    : { sql: 'e.user_id = $1', value: owner };
+}
 
 class ExpenseRepository extends BaseRepository {
   async addExpense(userId, amount, description, categoryId, currency = currencyConfig.BASE_CURRENCY, userTimezone = 'UTC', familyId = null) {
@@ -27,55 +34,74 @@ class ExpenseRepository extends BaseRepository {
     return result.rows;
   }
 
-  // Периоды — локальные даты пользователя [start, end) в формате 'YYYY-MM-DD' (см. utils/period)
-  async getTotalsBetween(userId, userTimezone, start, end) {
+  // Периоды — локальные даты пользователя [start, end) в формате 'YYYY-MM-DD' (см. utils/period); owner — см. ownerFilter
+  async getTotalsBetween(owner, userTimezone, start, end) {
+    const filter = ownerFilter(owner);
     const query = `
-      SELECT currency, SUM(amount)::float AS total, COUNT(*)::int AS count
-      FROM expenses
-      WHERE user_id = $1
-        AND (created_at_utc AT TIME ZONE $2) >= $3::date
-        AND (created_at_utc AT TIME ZONE $2) < $4::date
-      GROUP BY currency
-      ORDER BY currency
+      SELECT e.currency, SUM(e.amount)::float AS total, COUNT(*)::int AS count
+      FROM expenses e
+      WHERE ${filter.sql}
+        AND (e.created_at_utc AT TIME ZONE $2) >= $3::date
+        AND (e.created_at_utc AT TIME ZONE $2) < $4::date
+      GROUP BY e.currency
+      ORDER BY e.currency
     `;
-    const result = await this.query(query, [userId, userTimezone, start, end]);
+    const result = await this.query(query, [filter.value, userTimezone, start, end]);
     return {
       byCurrency: result.rows.map(row => ({ currency: row.currency, total: parseFloat(row.total) })),
       count: result.rows.reduce((sum, row) => sum + row.count, 0)
     };
   }
 
-  // Категории объединяются по имени (системная и пользовательская с одним именем — одна строка).
-  // regular — из них авто-записи регулярных трат (аренда и т.п.)
-  async getCategoryTotalsBetween(userId, userTimezone, start, end) {
+  // Категории объединяются по имени (системная и пользовательская с одним именем — одна строка; в семье — и категории
+  // разных участников). regular — из них авто-записи регулярных трат (аренда и т.п.)
+  async getCategoryTotalsBetween(owner, userTimezone, start, end) {
+    const filter = ownerFilter(owner);
     const query = `
       SELECT MIN(c.id) AS category_id, c.name, MIN(c.icon) AS icon, e.currency,
              SUM(e.amount)::float AS total, COUNT(*)::int AS count,
              COALESCE(SUM(e.amount) FILTER (WHERE e.recurring_expense_id IS NOT NULL), 0)::float AS regular
       FROM expenses e
       JOIN categories c ON e.category_id = c.id
-      WHERE e.user_id = $1
+      WHERE ${filter.sql}
         AND (e.created_at_utc AT TIME ZONE $2) >= $3::date
         AND (e.created_at_utc AT TIME ZONE $2) < $4::date
       GROUP BY c.name, e.currency
     `;
-    const result = await this.query(query, [userId, userTimezone, start, end]);
+    const result = await this.query(query, [filter.value, userTimezone, start, end]);
     return result.rows;
   }
 
-  // categoryName = null — все категории
-  async getExpensesBetween(userId, userTimezone, start, end, categoryName = null) {
+  // categoryName = null — все категории. username / first_name — кто записал (в семейном списке)
+  async getExpensesBetween(owner, userTimezone, start, end, categoryName = null) {
+    const filter = ownerFilter(owner);
     const query = `
-      SELECT e.*, c.name AS category_name, c.icon AS category_icon
+      SELECT e.*, c.name AS category_name, c.icon AS category_icon, u.username, u.first_name
       FROM expenses e
       LEFT JOIN categories c ON e.category_id = c.id
-      WHERE e.user_id = $1
+      LEFT JOIN users u ON e.user_id = u.id
+      WHERE ${filter.sql}
         AND (e.created_at_utc AT TIME ZONE $2) >= $3::date
         AND (e.created_at_utc AT TIME ZONE $2) < $4::date
         AND ($5::text IS NULL OR c.name = $5)
       ORDER BY e.created_at_utc ASC
     `;
-    const result = await this.query(query, [userId, userTimezone, start, end, categoryName]);
+    const result = await this.query(query, [filter.value, userTimezone, start, end, categoryName]);
+    return result.rows;
+  }
+
+  // Семейные траты за период по участникам и валютам: кто сколько потратил
+  async getMemberTotalsBetween(familyId, userTimezone, start, end) {
+    const query = `
+      SELECT e.user_id, u.username, u.first_name, e.currency, SUM(e.amount)::float AS total
+      FROM expenses e
+      LEFT JOIN users u ON e.user_id = u.id
+      WHERE e.family_id = $1
+        AND (e.created_at_utc AT TIME ZONE $2) >= $3::date
+        AND (e.created_at_utc AT TIME ZONE $2) < $4::date
+      GROUP BY e.user_id, u.username, u.first_name, e.currency
+    `;
+    const result = await this.query(query, [familyId, userTimezone, start, end]);
     return result.rows;
   }
 
@@ -220,99 +246,6 @@ class ExpenseRepository extends BaseRepository {
       LIMIT $2
     `;
     const result = await this.query(query, [familyId, limit]);
-    return result.rows;
-  }
-
-  async getFamilyDailyExpenses(familyId, userTimezone = 'UTC') {
-    const query = `
-      SELECT e.*, c.name as category_name, c.icon as category_icon, u.username, u.first_name
-      FROM expenses e
-      LEFT JOIN categories c ON e.category_id = c.id
-      JOIN users u ON e.user_id = u.id
-      WHERE e.family_id = $1
-      AND e.created_at_utc >= (DATE_TRUNC('day', (NOW() AT TIME ZONE $2)) AT TIME ZONE $2)
-      AND e.created_at_utc < (DATE_TRUNC('day', (NOW() AT TIME ZONE $2)) + interval '1 day') AT TIME ZONE $2
-      ORDER BY e.created_at_utc ASC
-    `;
-    const result = await this.query(query, [familyId, userTimezone]);
-    return result.rows;
-  }
-
-  async getFamilyTotalExpenses(familyId, period = periodsConfig.MONTH, userTimezone = 'UTC') {
-    let dateFilter;
-    switch (period) {
-      case periodsConfig.DAY:
-        dateFilter = "created_at_utc >= (DATE_TRUNC('day', (NOW() AT TIME ZONE $2)) AT TIME ZONE $2) AND created_at_utc < (DATE_TRUNC('day', (NOW() AT TIME ZONE $2)) + interval '1 day') AT TIME ZONE $2";
-        break;
-      case periodsConfig.WEEK:
-        dateFilter = "created_at_utc >= (DATE_TRUNC('week', (NOW() AT TIME ZONE $2)) AT TIME ZONE $2) AND created_at_utc < (DATE_TRUNC('week', (NOW() AT TIME ZONE $2)) + interval '1 week') AT TIME ZONE $2";
-        break;
-      case periodsConfig.MONTH:
-      default:
-        dateFilter = "created_at_utc >= (DATE_TRUNC('month', (NOW() AT TIME ZONE $2)) AT TIME ZONE $2) AND created_at_utc < (DATE_TRUNC('month', (NOW() AT TIME ZONE $2)) + interval '1 month') AT TIME ZONE $2";
-    }
-
-    // Get totals by currency
-    const byCurrencyQuery = `
-      SELECT currency, SUM(amount) as total
-      FROM expenses
-      WHERE family_id = $1 AND ${dateFilter}
-      GROUP BY currency
-    `;
-    const byCurrencyResult = await this.query(byCurrencyQuery, [familyId, userTimezone]);
-    const byCurrency = byCurrencyResult.rows.map(row => ({
-      currency: row.currency,
-      total: parseFloat(row.total)
-    }));
-
-    // Get total count
-    const countQuery = `
-      SELECT COUNT(*) as count
-      FROM expenses
-      WHERE family_id = $1 AND ${dateFilter}
-    `;
-    const countResult = await this.query(countQuery, [familyId, userTimezone]);
-    const count = parseInt(countResult.rows[0].count, 10);
-
-    // For compatibility: total and currency (if only one currency)
-    let total = 0;
-    let currency = null;
-    if (byCurrency.length === 1) {
-      total = byCurrency[0].total;
-      currency = byCurrency[0].currency;
-    }
-
-    return { byCurrency, count, total, currency };
-  }
-
-  async getFamilyExpensesByCategory(familyId, period = periodsConfig.MONTH, userTimezone = 'UTC') {
-    let dateFilter;
-    switch (period) {
-      case periodsConfig.DAY:
-        dateFilter = "e.created_at_utc >= (DATE_TRUNC('day', (NOW() AT TIME ZONE $2)) AT TIME ZONE $2) AND e.created_at_utc < (DATE_TRUNC('day', (NOW() AT TIME ZONE $2)) + interval '1 day') AT TIME ZONE $2";
-        break;
-      case periodsConfig.WEEK:
-        dateFilter = "e.created_at_utc >= (DATE_TRUNC('week', (NOW() AT TIME ZONE $2)) AT TIME ZONE $2) AND e.created_at_utc < (DATE_TRUNC('week', (NOW() AT TIME ZONE $2)) + interval '1 week') AT TIME ZONE $2";
-        break;
-      case periodsConfig.MONTH:
-      default:
-        dateFilter = "e.created_at_utc >= (DATE_TRUNC('month', (NOW() AT TIME ZONE $2)) AT TIME ZONE $2) AND e.created_at_utc < (DATE_TRUNC('month', (NOW() AT TIME ZONE $2)) + interval '1 month') AT TIME ZONE $2";
-    }
-
-    const query = `
-      SELECT 
-        c.name,
-        c.icon,
-        e.currency,
-        SUM(e.amount) as total,
-        COUNT(e.id) as count
-      FROM expenses e
-      LEFT JOIN categories c ON e.category_id = c.id
-      WHERE e.family_id = $1 AND ${dateFilter}
-      GROUP BY c.id, c.name, c.icon, e.currency
-      ORDER BY total DESC
-    `;
-    const result = await this.query(query, [familyId, userTimezone]);
     return result.rows;
   }
 

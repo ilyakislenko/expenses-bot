@@ -212,9 +212,6 @@ module.exports = {
     expense_update_error: 'त्रुटि: प्रविष्टि नहीं मिली या अपडेट नहीं हुई।',
     
     // आँकड़े
-    monthly_stats: '💰 *इस महीने के खर्च*',
-    daily_stats: '💰 *आज के खर्च*',
-    total_spent: 'कुल खर्च: *{amount}*',
     records_count: 'प्रविष्टियाँ: {count}',
     no_expenses_period: 'इस अवधि के लिए कोई खर्च नहीं।',
     
@@ -1012,7 +1009,6 @@ module.exports = {
   button_prev_day: '◀️ पिछला दिन',
   button_next_day: 'अगला दिन ▶️',
   list_tap_number: 'रिकॉर्ड खोलने के लिए नंबर दबाएँ।',
-  family_today_title: 'परिवार: आज के रिकॉर्ड',
   button_undo: '↩️ पूर्ववत',
   button_delete_record: '🗑 हटाएँ',
   button_change_category: '🏷 श्रेणी',
@@ -1190,6 +1186,10 @@ module.exports = {
   receipt_line_limit: "रसीद में पहले से {max} लाइनें हैं — और नहीं जोड़ सकते।",
   receipt_rotate_edited: "✏️ तुमने यह ड्राफ़्ट हाथ से ठीक किया है — घुमाने से बदलाव मिट जाएँगे। इसे सेव करो, या रद्द करके फ़ोटो फिर भेजो।",
   help_edit: "✏️ गलती हुई? 📅 आज, ओवरव्यू या रसीद में एंट्री का नंबर दबाओ — रकम, कैटेगरी और 📅 तारीख बदल सकते हो। रसीद का ड्राफ़्ट भी सेव करने से पहले ठीक हो सकता है।",
+  family_scope_title: "परिवार · {title}",
+  button_scope_family: "👨‍👩‍👧‍👦 परिवार",
+  button_scope_personal: "👤 सिर्फ़ मेरे",
+  overview_by_members: "किसने कितना:",
   chart_planfact_forecast_label: "अनुमान",
   chart_planfact_forecast: "🔮 इसी रफ़्तार से {date} तक अनुमान: {amount}",
   chart_planfact_forecast_left: "🔮 इसी रफ़्तार से {date} तक अनुमान: {amount} · 🟢 {left} बचेंगे",

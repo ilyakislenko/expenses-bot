@@ -212,9 +212,6 @@ module.exports = {
     expense_update_error: '错误：记录未找到或未更新。',
     
     // 统计
-    monthly_stats: '💰 *本月支出*',
-    daily_stats: '💰 *今日支出*',
-    total_spent: '已花费: *{amount}*',
     records_count: '记录数: {count}',
     no_expenses_period: '该时间段内无支出。',
     by_categories: '按类别:',
@@ -1010,7 +1007,6 @@ module.exports = {
   button_prev_day: '◀️ 前一天',
   button_next_day: '后一天 ▶️',
   list_tap_number: '点击编号打开记录。',
-  family_today_title: '家庭：今日记录',
   button_undo: '↩️ 撤销',
   button_delete_record: '🗑 删除',
   button_change_category: '🏷 类别',
@@ -1188,6 +1184,10 @@ module.exports = {
   receipt_line_limit: "小票已有 {max} 行 — 无法再添加。",
   receipt_rotate_edited: "✏️ 你已手动修改过这份草稿 — 旋转会清除修改。请记录它，或取消后重新发送照片。",
   help_edit: "✏️ 记错了？在 📅 今天、概览或小票里点记录的编号 — 可以修改金额、类别和 📅 日期。小票草稿在记录前也能修改。",
+  family_scope_title: "家庭 · {title}",
+  button_scope_family: "👨‍👩‍👧‍👦 家庭",
+  button_scope_personal: "👤 仅我的",
+  overview_by_members: "谁花了多少：",
   chart_planfact_forecast_label: "预测",
   chart_planfact_forecast: "🔮 按此速度{date}的预测：{amount}",
   chart_planfact_forecast_left: "🔮 按此速度{date}的预测：{amount} · 🟢 还剩{left}",

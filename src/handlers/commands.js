@@ -505,58 +505,6 @@ class CommandHandlers {
     await ctx.reply(notice, { reply_markup: await this.mainKeyboardMarkup(userId, userLanguage) });
   }
 
-  async familyStats(ctx) {
-    try {
-      const userId = ctx.from.id;
-      const userLanguage = await this.userService.getUserLanguage(userId);
-      const userCurrency = await this.userService.getUserCurrency(userId);
-      
-      // Проверяем премиум статус
-      const isPremium = await this.premiumService.isPremiumUser(userId);
-      if (!isPremium) {
-        const premiumRequiredText = this.localizationService.getText(userLanguage, 'premium_required');
-        await ctx.reply(premiumRequiredText, { parse_mode: 'Markdown' });
-        return;
-      }
-      
-      // Получаем информацию о семье пользователя
-      const userFamily = await this.familyService.getUserFamily(userId);
-      if (!userFamily) {
-        const notFamilyMemberText = this.localizationService.getText(userLanguage, 'not_family_member');
-        await ctx.reply(notFamilyMemberText, { parse_mode: 'Markdown' });
-        return;
-      }
-      
-      // Получаем статистику семьи
-      const userTimezone = await this.userService.getUserTimezone(userId);
-      const stats = await this.familyService.getFamilyStats(userFamily.id, 'month', userTimezone);
-      
-      // Формируем сообщение
-
-      
-      // Используем formatter для правильного отображения валют
-      const message = await this.formatter.formatStats(stats.total, stats.byCategory, userCurrency, 'месяц', this.localizationService, userLanguage);
-      
-      // Добавляем заголовок для семейной статистики
-      const familyStatsMessage = `${message}`;
-      
-      const backText = this.localizationService.getText(userLanguage, 'button_back');
-      await respond(ctx, familyStatsMessage, {
-        parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: backText, callback_data: 'family_menu' }]
-          ]
-        }
-      });
-    } catch (error) {
-      console.error('Error in familyStats command:', error);
-      const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
-      const errorText = this.localizationService.getText(userLanguage, 'error');
-      await ctx.reply(errorText);
-    }
-  }
-
   async familyExport(ctx) {
     try {
       const userId = ctx.from.id;

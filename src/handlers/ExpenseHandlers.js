@@ -12,17 +12,19 @@ const CAPTION_MAX = 1024; // подпись к картинке в Telegram; о�
 // Экран, на который возвращается карточка записи. Кодируется в callback_data через точку:
 //   d.<offset>.<page>              — записи за день
 //   c.<categoryId>.<offset>.<page> — записи категории за период
-//   f.<page>                       — семейные записи за сегодня
+//   f.<offset>.<page>              — семейные записи за день (f.<page> — со старых кнопок, сегодня)
+//   g.<categoryId>.<offset>.<page> — семейные записи категории за период
 //   r.<receiptId>.<page>           — позиции распознанного чека (ReceiptHandlers)
 //   v.<batchId>                    — сводка нескольких записей из одного сообщения/голосового (MultiEntryHandlers)
 //   n                              — свежее подтверждение "Расход добавлен" (без кнопки "Назад")
-const BACK_VIEW_PATTERN = 'n|d\\.-?\\d+\\.\\d+|c\\.\\d+\\.-?\\d+\\.\\d+|f\\.\\d+|r\\.\\d+\\.\\d+|v\\.\\d+';
+const BACK_VIEW_PATTERN = 'n|d\\.-?\\d+\\.\\d+|c\\.\\d+\\.-?\\d+\\.\\d+|f\\.-?\\d+\\.\\d+|f\\.\\d+|g\\.\\d+\\.-?\\d+\\.\\d+|r\\.\\d+\\.\\d+|v\\.\\d+';
 
 function backCallback(back) {
   const [kind, ...args] = back.split('.');
   if (kind === 'd') return `dy|${args[0]}|${args[1]}`;
   if (kind === 'c') return `oc|${args[0]}|${args[1]}|${args[2]}`;
-  if (kind === 'f') return `fd|${args[0]}`;
+  if (kind === 'f') return args.length === 1 ? `fdy|0|${args[0]}` : `fdy|${args[0]}|${args[1]}`;
+  if (kind === 'g') return `foc|${args[0]}|${args[1]}|${args[2]}`;
   if (kind === 'r') return `rv|${args[0]}|${args[1]}`;
   if (kind === 'v') return `vcb|${args[0]}`;
   return null;
@@ -550,8 +552,58 @@ class ExpenseHandlers {
     const [kind, ...args] = back.split('.').map((v, i) => (i === 0 ? v : parseInt(v, 10)));
     if (kind === 'd') return this.showDay(ctx, args[0], args[1]);
     if (kind === 'c') return this.showCategoryList(ctx, args[0], args[1], args[2]);
+    if (kind === 'f') return args.length === 1 ? this.showDay(ctx, 0, args[0], { family: true }) : this.showDay(ctx, args[0], args[1], { family: true });
+    if (kind === 'g') return this.showCategoryList(ctx, args[0], args[1], args[2], { family: true });
     if (this.backViews[kind]) return this.backViews[kind](ctx, args);
-    if (kind === 'f') return this.showFamilyDay(ctx, args[0]);
+  }
+
+  // ========================================
+  // СВОИ ЗАПИСИ И СЕМЬЯ
+  // ========================================
+
+  // «Сегодня», обзор периода и записи категории — одни и те же экраны для своих записей и для семьи (семейные записи
+  // всех участников, с автором). Семья видна премиуму-участнику семьи: на своём экране тогда кнопка «👨‍👩‍👧‍👦 Семья»,
+  // на семейном — «👤 Только мои» и «Меню семьи». Личное (бюджеты, доходы, «Можно сегодня», регулярные, графики
+  // категорий) — только на своих экранах
+  async viewerFamily(userId, isPremium = null) {
+    if (!this.familyService) return null;
+    const premium = isPremium === null ? await this.premiumService.isPremiumUser(userId) : isPremium;
+    return premium ? this.familyService.getUserFamily(userId) : null;
+  }
+
+  // Семейный экран без премиума или без семьи: объяснение и «Назад» в меню семьи
+  async familyUnavailable(ctx, userId, lang) {
+    const isPremium = await this.premiumService.isPremiumUser(userId);
+    const backRow = [{ text: this.t(lang, 'button_back'), callback_data: 'family_menu' }];
+    return respond(ctx, this.t(lang, isPremium ? 'not_family_member' : 'premium_required'), { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [backRow] } });
+  }
+
+  // Переключатель вида под экраном; personal / familyView — callback того же экрана в своём и семейном виде
+  scopeRow(lang, family, isFamilyView, { personal, familyView }) {
+    if (!family) return null;
+    if (isFamilyView) {
+      return [{ text: this.t(lang, 'button_scope_personal'), callback_data: personal }, { text: this.t(lang, 'family_menu'), callback_data: 'family_menu' }];
+    }
+    return [{ text: this.t(lang, 'button_scope_family'), callback_data: familyView }];
+  }
+
+  // Заголовок: свой — «📅 *Сегодня, 06.11*», семейный — «👨‍👩‍👧‍👦 *Семья · Сегодня, 06.11*»
+  screenTitle(lang, icon, title, isFamilyView) {
+    return isFamilyView ? `👨‍👩‍👧‍👦 *${this.t(lang, 'family_scope_title', { title })}*` : `${icon} *${title}*`;
+  }
+
+  // Семейные траты периода по участникам в основной валюте, по убыванию: [{ name, total }]
+  async memberBreakdown(familyId, timezone, period, currency) {
+    const rows = await this.expenseService.getMemberTotals(familyId, timezone, period);
+    const byMember = new Map();
+    for (const row of rows) {
+      const entry = byMember.get(row.user_id) || { name: row.username || row.first_name || '', byCurrency: [] };
+      entry.byCurrency.push({ currency: row.currency, total: Number(row.total) });
+      byMember.set(row.user_id, entry);
+    }
+    const members = [];
+    for (const entry of byMember.values()) members.push({ name: entry.name, total: await this.formatter.sumInCurrency(entry.byCurrency, currency) });
+    return members.sort((a, b) => b.total - a.total);
   }
 
   // ========================================
@@ -592,20 +644,24 @@ class ExpenseHandlers {
     return { lines, keyboard };
   }
 
-  async showDay(ctx, offset = 0, page = 0) {
+  // dy|<offset>|<page> — свои записи за день; fdy|<offset>|<page> (family) — семейные записи всех участников, с автором
+  async showDay(ctx, offset = 0, page = 0, { family: familyView = false } = {}) {
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
     if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
+    const family = await this.viewerFamily(userId);
+    if (familyView && !family) return this.familyUnavailable(ctx, userId, lang);
+    const route = familyView ? 'fdy' : 'dy';
     const { timezone, currency, period } = await this.expenseService.getPeriodContext(userId, 'day', offset);
-    const expenses = await this.expenseService.getExpenses(userId, timezone, period);
+    const expenses = await this.expenseService.getExpenses(familyView ? { familyId: family.id } : userId, timezone, period);
 
     const date = this.formatter.formatLocalDate(period.start);
     const titleKey = offset === 0 ? 'day_title_today' : offset === -1 ? 'day_title_yesterday' : 'day_title';
-    let text = `📅 *${this.t(lang, titleKey, { date })}*\n\n`;
+    let text = `${this.screenTitle(lang, '📅', this.t(lang, titleKey, { date }), familyView)}\n\n`;
     const { lines, keyboard } = this.renderList(expenses, {
-      page, timezone, lang, withDate: false, withAuthor: false,
-      backFor: p => `d.${offset}.${p}`,
-      pageCallback: p => `dy|${offset}|${p}`
+      page, timezone, lang, withDate: false, withAuthor: familyView,
+      backFor: p => `${familyView ? 'f' : 'd'}.${offset}.${p}`,
+      pageCallback: p => `${route}|${offset}|${p}`
     });
 
     if (!expenses.length) {
@@ -617,36 +673,43 @@ class ExpenseHandlers {
       text += lines.join('\n');
       text += `\n\n${this.t(lang, 'list_tap_number')}`;
     }
-    const allowanceLine = offset === 0 && this.planningService ? await this.planningService.allowanceLine(userId, lang) : null;
+    const allowanceLine = !familyView && offset === 0 && this.planningService ? await this.planningService.allowanceLine(userId, lang) : null;
     if (allowanceLine) text += `\n\n${allowanceLine}`;
 
-    const nav = [{ text: this.t(lang, 'button_prev_day'), callback_data: `dy|${offset - 1}|0` }];
-    if (offset < 0) nav.push({ text: this.t(lang, 'button_next_day'), callback_data: `dy|${offset + 1}|0` });
+    const nav = [{ text: this.t(lang, 'button_prev_day'), callback_data: `${route}|${offset - 1}|0` }];
+    if (offset < 0) nav.push({ text: this.t(lang, 'button_next_day'), callback_data: `${route}|${offset + 1}|0` });
     if (allowanceLine) nav.push({ text: this.t(lang, 'pl_button_allowance'), callback_data: 'pla' });
     keyboard.push(nav);
+    const scope = this.scopeRow(lang, family, familyView, { personal: `dy|${offset}|0`, familyView: `fdy|${offset}|0` });
+    if (scope) keyboard.push(scope);
     await respond(ctx, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
   }
 
   // ov|<offset> — обзор периода; ovb|<offset> — он же с экрана категории / итогов / бюджетов (replace: тот текстовый
-  // экран удаляется). Обзор — картинка «потрачено и лимит по дням» с текстом в подписи; не нарисовать или текст длиннее
+  // экран удаляется). fov|<offset> / fovb|<offset> (family) — тот же обзор по семейным записям всех участников, с
+  // «Кто сколько». Обзор — картинка «потрачено и план по дням» с текстом в подписи; не нарисовать или текст длиннее
   // подписи — текстом, как раньше
-  async showOverview(ctx, offset = 0, { replace = false } = {}) {
+  async showOverview(ctx, offset = 0, { replace = false, family: familyView = false } = {}) {
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
     if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
+    const isPremium = await this.premiumService.isPremiumUser(userId);
+    const family = await this.viewerFamily(userId, isPremium);
+    if (familyView && !family) return this.familyUnavailable(ctx, userId, lang);
+    const owner = familyView ? { familyId: family.id } : userId;
     const { timezone, currency, today, period } = await this.expenseService.getPeriodContext(userId, 'month', offset);
-    const [totals, categories, incomeTotals, isPremium] = await Promise.all([
-      this.expenseService.getTotals(userId, timezone, period),
-      this.reportService.categoryBreakdown(userId, timezone, period, currency),
-      this.incomeService.getTotals(userId, timezone, period),
-      this.premiumService.isPremiumUser(userId)
+    const [totals, categories, incomeTotals, members] = await Promise.all([
+      this.expenseService.getTotals(owner, timezone, period),
+      this.reportService.categoryBreakdown(owner, timezone, period, currency),
+      familyView ? null : this.incomeService.getTotals(userId, timezone, period),
+      familyView ? this.memberBreakdown(family.id, timezone, period, currency) : []
     ]);
-    // Бюджеты показываем для текущего периода
-    const budgets = offset === 0 && isPremium ? await this.budgetService.getStatus(userId, { timezone, currency, period }) : [];
+    // Бюджеты — личные и для текущего периода
+    const budgets = !familyView && offset === 0 && isPremium ? await this.budgetService.getStatus(userId, { timezone, currency, period }) : [];
     const budgetFor = (name) => budgets.find(b => b.category_name === name);
-    const chart = totals.count ? await this.overviewChart(ctx, userId, lang, offset) : null;
+    const chart = totals.count ? await this.overviewChart(ctx, userId, lang, offset, familyView ? family.id : null) : null;
 
-    let text = `📊 *${this.t(lang, 'overview_title', { range: this.formatter.formatPeriodRange(period) })}*\n\n`;
+    let text = `${this.screenTitle(lang, '📊', this.t(lang, 'overview_title', { range: this.formatter.formatPeriodRange(period) }), familyView)}\n\n`;
     if (totals.count) {
       const spent = await this.formatter.sumInCurrency(totals.byCurrency, currency);
       text += this.t(lang, 'overview_spent', { amount: this.formatter.formatAmount(spent, currency), count: totals.count });
@@ -657,13 +720,25 @@ class ExpenseHandlers {
     if (totalBudget) {
       text += `\n🎯 ${this.formatter.progressBar(totalBudget.ratio)} ${Math.round(totalBudget.ratio * 100)}% · ${this.t(lang, 'overview_budget_of', { amount: this.formatter.formatAmount(totalBudget.limit, currency) })}`;
     }
-    // План к сегодня с регулярными платежами и запас / перерасход — те же цифры, что на картинке
+    // План к сегодня с регулярными платежами и запас / перерасход, прогноз — те же цифры, что на картинке
     if (chart && chart.summary) text += `\n${chart.summary}`;
-    const incomeSummary = await this.formatter.formatIncomeSummary(incomeTotals, totals, currency, this.localizationService, lang);
-    if (incomeSummary) text += `\n${incomeSummary}`;
-    if (offset === 0 && this.planningService) {
-      const allowanceLine = await this.planningService.allowanceLine(userId, lang, { hintForNew: false });
-      if (allowanceLine) text += `\n${allowanceLine}`;
+    if (!familyView) {
+      const incomeSummary = await this.formatter.formatIncomeSummary(incomeTotals, totals, currency, this.localizationService, lang);
+      if (incomeSummary) text += `\n${incomeSummary}`;
+      if (offset === 0 && this.planningService) {
+        const allowanceLine = await this.planningService.allowanceLine(userId, lang, { hintForNew: false });
+        if (allowanceLine) text += `\n${allowanceLine}`;
+      }
+    }
+
+    // Семья: кто сколько потратил (в основной валюте, по убыванию)
+    const memberSum = members.reduce((sum, m) => sum + m.total, 0);
+    if (members.length) {
+      text += `\n\n*${this.t(lang, 'overview_by_members')}*\n`;
+      text += members.map(m => {
+        const percentage = memberSum > 0 ? (m.total / memberSum * 100).toFixed(0) : 0;
+        return `👤 ${this.formatter.escapeMarkdown(m.name)}: ${this.formatter.formatAmount(m.total, currency)} (${percentage}%)`;
+      }).join('\n');
     }
 
     // Категории: суммы в основной валюте, по убыванию; у категорий с бюджетом — лимит (процент от лимита — в «🎯 Бюджеты»)
@@ -680,7 +755,7 @@ class ExpenseHandlers {
       }).join('\n');
     }
 
-    if (offset === 0) {
+    if (!familyView && offset === 0) {
       const upcoming = (await this.recurringExpenseService.list(userId))
         .filter(item => item.nextChargeDate >= today && item.nextChargeDate < period.end);
       if (upcoming.length) {
@@ -697,26 +772,31 @@ class ExpenseHandlers {
       }
     }
 
+    const route = familyView ? 'fov' : 'ov';
     const keyboard = [];
     for (let i = 0; i < categories.length; i += 2) {
       keyboard.push(categories.slice(i, i + 2).map(c => ({
         text: `${c.icon} ${this.formatter.translateCategoryName(c.name, this.localizationService, lang)}`,
-        callback_data: `oc|${c.id}|${offset}|0`
+        callback_data: `${familyView ? 'foc' : 'oc'}|${c.id}|${offset}|0`
       })));
     }
-    const nav = [{ text: this.t(lang, 'button_prev_period'), callback_data: `ov|${offset - 1}` }];
-    if (offset < 0) nav.push({ text: this.t(lang, 'button_next_period'), callback_data: `ov|${offset + 1}` });
+    const nav = [{ text: this.t(lang, 'button_prev_period'), callback_data: `${route}|${offset - 1}` }];
+    if (offset < 0) nav.push({ text: this.t(lang, 'button_next_period'), callback_data: `${route}|${offset + 1}` });
     keyboard.push(nav);
-    if (this.chartService && this.chartService.available) {
+    if (!familyView) {
+      if (this.chartService && this.chartService.available) {
+        keyboard.push([
+          { text: this.t(lang, 'button_chart'), callback_data: `chp|${offset}` },
+          { text: this.t(lang, 'button_chart_trend'), callback_data: `cht|${offset}` }
+        ]);
+      }
       keyboard.push([
-        { text: this.t(lang, 'button_chart'), callback_data: `chp|${offset}` },
-        { text: this.t(lang, 'button_chart_trend'), callback_data: `cht|${offset}` }
+        { text: this.t(lang, 'button_budgets'), callback_data: 'bg_menu' },
+        { text: this.t(lang, 'button_report'), callback_data: `rp|${offset}` }
       ]);
     }
-    keyboard.push([
-      { text: this.t(lang, 'button_budgets'), callback_data: 'bg_menu' },
-      { text: this.t(lang, 'button_report'), callback_data: `rp|${offset}` }
-    ]);
+    const scope = this.scopeRow(lang, family, familyView, { personal: `ov|${offset}`, familyView: `fov|${offset}` });
+    if (scope) keyboard.push(scope);
 
     const extra = { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } };
     const png = chart && chart.png && text.length <= CAPTION_MAX ? chart.png : null;
@@ -725,11 +805,11 @@ class ExpenseHandlers {
   }
 
   // Картинка обзора: траты нарастающим итогом по дням и план (ChartService.planFact) → { png, summary } | null.
-  // Ошибка рисования обзор не роняет — null, обзор текстом
-  async overviewChart(ctx, userId, lang, offset) {
+  // familyId — по семейным записям. Ошибка рисования обзор не роняет — null, обзор текстом
+  async overviewChart(ctx, userId, lang, offset, familyId = null) {
     if (!this.chartService || !this.chartService.available) return null;
     try {
-      return await this.chartService.planFact(userId, lang, offset, { botUsername: (ctx.botInfo && ctx.botInfo.username) || null });
+      return await this.chartService.planFact(userId, lang, offset, { botUsername: (ctx.botInfo && ctx.botInfo.username) || null, familyId });
     } catch (error) {
       logger.warn('Overview chart not rendered', { userId, error: error.message });
       return null;
@@ -749,22 +829,27 @@ class ExpenseHandlers {
     await respond(ctx, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
   }
 
-  async showCategoryList(ctx, categoryId, offset = 0, page = 0) {
+  // oc|<categoryId>|<offset>|<page> — свои записи категории за период; foc|… (family) — семейные, с автором
+  async showCategoryList(ctx, categoryId, offset = 0, page = 0, { family: familyView = false } = {}) {
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
     if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
-    const category = await this.expenseService.getCategoryById(userId, categoryId);
-    if (!category) return this.showOverview(ctx, offset);
+    const family = familyView ? await this.viewerFamily(userId) : null;
+    if (familyView && !family) return this.familyUnavailable(ctx, userId, lang);
+    const category = familyView
+      ? await this.expenseService.getFamilyCategoryById(family.id, categoryId)
+      : await this.expenseService.getCategoryById(userId, categoryId);
+    if (!category) return this.showOverview(ctx, offset, { family: familyView });
 
     const { timezone, currency, period } = await this.expenseService.getPeriodContext(userId, 'month', offset);
-    const expenses = await this.expenseService.getExpenses(userId, timezone, period, category.name);
+    const expenses = await this.expenseService.getExpenses(familyView ? { familyId: family.id } : userId, timezone, period, category.name);
 
     // Имя — пользовательский текст: экранируем и не кладём внутрь *жирного* (там экранирование не работает)
-    let text = `${category.icon} ${this.categoryName(category.name, lang)} · *${this.formatter.formatPeriodRange(period)}*\n\n`;
+    let text = `${familyView ? '👨‍👩‍👧‍👦 ' : ''}${category.icon} ${this.categoryName(category.name, lang)} · *${this.formatter.formatPeriodRange(period)}*\n\n`;
     const { lines, keyboard } = this.renderList(expenses, {
-      page, timezone, lang, withDate: true, withAuthor: false,
-      backFor: p => `c.${categoryId}.${offset}.${p}`,
-      pageCallback: p => `oc|${categoryId}|${offset}|${p}`
+      page, timezone, lang, withDate: true, withAuthor: familyView,
+      backFor: p => `${familyView ? 'g' : 'c'}.${categoryId}.${offset}.${p}`,
+      pageCallback: p => `${familyView ? 'foc' : 'oc'}|${categoryId}|${offset}|${p}`
     });
     if (!expenses.length) {
       text += this.t(lang, 'no_expenses_period');
@@ -774,49 +859,10 @@ class ExpenseHandlers {
       text += lines.join('\n');
       text += `\n\n${this.t(lang, 'list_tap_number')}`;
     }
-    if (this.chartService && this.chartService.available) {
+    if (!familyView && this.chartService && this.chartService.available) {
       keyboard.push([{ text: this.t(lang, 'button_chart_trend'), callback_data: `chc|${categoryId}|${offset}` }]);
     }
-    keyboard.push([{ text: this.t(lang, 'button_back_to_overview'), callback_data: `ovb|${offset}` }]);
-    await respond(ctx, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
-  }
-
-  async showFamilyDay(ctx, page = 0) {
-    const userId = ctx.from.id;
-    const lang = await this.userService.getUserLanguage(userId);
-    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
-    const backRow = [{ text: this.t(lang, 'button_back'), callback_data: 'family_menu' }];
-
-    const isPremium = await this.premiumService.isPremiumUser(userId);
-    if (!isPremium) {
-      return respond(ctx, this.t(lang, 'premium_required'), { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [backRow] } });
-    }
-    const family = await this.familyService.getUserFamily(userId);
-    if (!family) {
-      return respond(ctx, this.t(lang, 'not_family_member'), { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [backRow] } });
-    }
-
-    const [timezone, currency] = await Promise.all([
-      this.userService.getUserTimezone(userId),
-      this.userService.getUserCurrency(userId)
-    ]);
-    const { expenses } = await this.familyService.getFamilyDailyStats(family.id, timezone);
-
-    let text = `👨‍👩‍👧‍👦 *${this.t(lang, 'family_today_title')}*\n\n`;
-    const { lines, keyboard } = this.renderList(expenses, {
-      page, timezone, lang, withDate: false, withAuthor: true,
-      backFor: p => `f.${p}`,
-      pageCallback: p => `fd|${p}`
-    });
-    if (!expenses.length) {
-      text += this.t(lang, 'no_expenses_period');
-    } else {
-      const spent = await this.formatter.sumInCurrency(groupByCurrency(expenses), currency);
-      text += `${this.t(lang, 'overview_spent', { amount: this.formatter.formatAmount(spent, currency), count: expenses.length })}\n\n`;
-      text += lines.join('\n');
-      text += `\n\n${this.t(lang, 'list_tap_number')}`;
-    }
-    keyboard.push(backRow);
+    keyboard.push([{ text: this.t(lang, 'button_back_to_overview'), callback_data: `${familyView ? 'fovb' : 'ovb'}|${offset}` }]);
     await respond(ctx, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
   }
 }

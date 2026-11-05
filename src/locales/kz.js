@@ -194,9 +194,6 @@ module.exports = {
     expense_update_error: 'Қате: жазба табылмады немесе жаңартылмады.',
     
     // Статистика
-    monthly_stats: '💰 *Ағымдағы айдың шығындары*',
-    daily_stats: '💰 *Бүгінгі шығындар*',
-    total_spent: 'Жалпы шығын: *{amount}*',
     records_count: 'Жазбалар саны: {count}',
     no_expenses_period: 'Бұл кезеңде шығындар жоқ.',
     by_categories: 'Санаттар бойынша:',
@@ -990,7 +987,6 @@ module.exports = {
   button_prev_day: '◀️ Алдыңғы күн',
   button_next_day: 'Келесі күн ▶️',
   list_tap_number: 'Жазбаны ашу үшін нөмірді басыңыз.',
-  family_today_title: 'Отбасы: бүгінгі жазбалар',
   button_undo: '↩️ Болдырмау',
   button_delete_record: '🗑 Жою',
   button_change_category: '🏷 Санат',
@@ -1167,6 +1163,10 @@ module.exports = {
   receipt_line_limit: "Чекте {max} жол бар — бұдан артық қосылмайды.",
   receipt_rotate_edited: "✏️ Бұл жобаны қолмен түзеттің — бұру түзетулерді өшіріп жібереді. Оны жаз немесе бас тартып, фотоны қайта жібер.",
   help_edit: "✏️ Қателестің бе? 📅 Бүгін, шолу немесе чектегі жазба нөмірін бас — соманы, санатты және 📅 күнін өзгертуге болады. Чек жобасын да жазбас бұрын түзетуге болады.",
+  family_scope_title: "Отбасы · {title}",
+  button_scope_family: "👨‍👩‍👧‍👦 Отбасы",
+  button_scope_personal: "👤 Тек менікі",
+  overview_by_members: "Кім қанша:",
   chart_planfact_forecast_label: "болжам",
   chart_planfact_forecast: "🔮 Осы қарқынмен {date} болжамы: {amount}",
   chart_planfact_forecast_left: "🔮 Осы қарқынмен {date} болжамы: {amount} · 🟢 {left} қалады",
