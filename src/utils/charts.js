@@ -429,9 +429,10 @@ function quizCardSvg(data, engine = estimateText()) {
 
 // ---------- Лимит и факт по дням ----------
 
-// Две кривые нарастающим итогом по дням периода: факт (траты с начала периода) и лимит (бюджет поровну на каждый
-// день: к концу периода — весь бюджет). data: { title, subtitle, brand, emptyText, dayLabels: [..N], actual: [..≤N]
-// (нарастающий итог; короче N — период ещё идёт), limit: число | null, actualLabel, limitLabel, actualAmount, limitAmount }
+// Две кривые нарастающим итогом по дням периода: факт (траты с начала периода) и план. data: { title, subtitle, brand,
+// emptyText, dayLabels: [..N], actual: [..≤N] (нарастающий итог; короче N — период ещё идёт), planLine: [..N] | null
+// (план нарастающим итогом), planJumps: [..N] (ступенька дня — регулярные платежи; рисуется вертикально),
+// actualLabel, limitLabel, actualAmount, limitAmount }
 function planFactSvg(data, engine = estimateText()) {
   const label = fitted(engine);
   const W = 1000;
@@ -448,9 +449,11 @@ function planFactSvg(data, engine = estimateText()) {
   parts.push(label(48, 70, data.title, W - 96, { size: 34, bold: true }));
   if (data.subtitle) parts.push(label(48, 110, data.subtitle, W - 96, { size: 24, color: THEME.muted }));
 
-  const limit = data.limit > 0 ? data.limit : null;
+  const planLine = Array.isArray(data.planLine) && data.planLine.length === n ? data.planLine : null;
+  const planJumps = data.planJumps || [];
+  const planEnd = planLine ? planLine[n - 1] : 0;
   const lastActual = actual.length ? actual[actual.length - 1] : 0;
-  const scaleMax = niceMax(Math.max(lastActual, limit || 0, 1) * 1.08);
+  const scaleMax = niceMax(Math.max(lastActual, planEnd, 1) * 1.08);
   const x = (index) => round(left + (n === 1 ? 0 : (index / (n - 1)) * (right - left)));
   const y = (value) => round(chartBottom - (value / scaleMax) * (chartBottom - chartTop));
 
@@ -466,10 +469,16 @@ function planFactSvg(data, engine = estimateText()) {
   if (n > 1) ticks.push(n - 1);
   for (const i of ticks) parts.push(label(x(i), chartBottom + 34, days[i] || '', 80, { size: 20, color: THEME.muted, anchor: 'middle' }));
 
-  // Лимит: прямая от доли первого дня до всего бюджета в последний день
-  if (limit) {
-    parts.push(`<line x1="${x(0)}" y1="${y(limit / n)}" x2="${x(n - 1)}" y2="${y(limit)}" stroke="${THEME.average}" stroke-width="4" stroke-dasharray="14 10"/>`);
-    parts.push(label(x(n - 1) + 12, y(limit) + 8, data.limitAmount || '', W - right - 20, { size: 20, bold: true, color: THEME.average }));
+  // План: доля дня наклонно, регулярный платёж — вертикальной ступенькой в свой день
+  if (planLine) {
+    const points = [];
+    planLine.forEach((value, index) => {
+      const jump = planJumps[index] || 0;
+      if (jump > 0) points.push(`${x(index)},${y(value - jump)}`);
+      points.push(`${x(index)},${y(value)}`);
+    });
+    parts.push(`<polyline points="${points.join(' ')}" fill="none" stroke="${THEME.average}" stroke-width="4" stroke-dasharray="14 10" stroke-linejoin="round"/>`);
+    parts.push(label(x(n - 1) + 12, y(planEnd) + 8, data.limitAmount || '', W - right - 20, { size: 20, bold: true, color: THEME.average }));
   }
 
   if (!(lastActual > 0)) {
@@ -479,7 +488,7 @@ function planFactSvg(data, engine = estimateText()) {
     const lastX = x(actual.length - 1);
     parts.push(`<path d="M${x(0)},${chartBottom}L${points.join('L')}L${lastX},${chartBottom}Z" fill="${THEME.current}" opacity="0.14"/>`);
     parts.push(`<polyline points="${points.join(' ')}" fill="none" stroke="${THEME.current}" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>`);
-    const over = limit && lastActual > (limit / n) * actual.length;
+    const over = planLine && lastActual > planLine[actual.length - 1];
     parts.push(`<circle cx="${lastX}" cy="${y(lastActual)}" r="8" fill="${over ? '#ff5f6d' : THEME.current}"/>`);
     const labelX = Math.min(lastX + 14, right + 12);
     parts.push(label(labelX, y(lastActual) - 12, data.actualAmount || '', W - labelX - 16, { size: 20, bold: true, color: THEME.text, halo: true }));
@@ -488,7 +497,7 @@ function planFactSvg(data, engine = estimateText()) {
   // Легенда над графиком
   parts.push(`<line x1="48" y1="152" x2="96" y2="152" stroke="${THEME.current}" stroke-width="5" stroke-linecap="round"/>`);
   parts.push(label(108, 160, data.actualLabel || '', 380, { size: 22, color: THEME.text }));
-  if (limit) {
+  if (planLine) {
     parts.push(`<line x1="500" y1="152" x2="548" y2="152" stroke="${THEME.average}" stroke-width="4" stroke-dasharray="14 10"/>`);
     parts.push(label(560, 160, data.limitLabel || '', W - 600, { size: 22, color: THEME.average }));
   }

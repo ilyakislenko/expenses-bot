@@ -195,7 +195,7 @@ function fakeRenderer() {
   };
 }
 
-function chartService({ categories = [], totals = null, perPeriod = null, startDay = 1, lang = 'ru', renderer = fakeRenderer(), expenses = [], budgets = [] } = {}) {
+function chartService({ categories = [], totals = null, perPeriod = null, startDay = 1, lang = 'ru', renderer = fakeRenderer(), expenses = [], budgets = [], recurring = [] } = {}) {
   const rates = { RUB: 1, USD: 100, EUR: 110 };
   const currencyUtils = { convert: async (amount, from, to) => amount * rates[from] / rates[to] };
   const formatter = new Formatter(currencyUtils);
@@ -210,7 +210,8 @@ function chartService({ categories = [], totals = null, perPeriod = null, startD
   };
   const reportService = { categoryBreakdown: jest.fn(async () => categories) };
   const budgetService = { getStatus: jest.fn(async () => budgets) };
-  const service = new ChartService({ expenseService, reportService, localizationService: new LocalizationService(), formatter, chartRenderer: renderer, budgetService });
+  const recurringExpenseService = { list: jest.fn(async () => recurring) };
+  const service = new ChartService({ expenseService, reportService, localizationService: new LocalizationService(), formatter, chartRenderer: renderer, budgetService, recurringExpenseService });
   return { service, expenseService, reportService, renderer, lang };
 }
 
@@ -315,31 +316,38 @@ describe('ChartService', () => {
     expect(svg).toContain('@ExpensesAssistant_bot');
   });
 
-  test('limit vs actual: spending accumulates by local day up to today, the limit is the total budget spread over the days', async () => {
+  test('plan vs actual: recurring payments are steps on their days, the rest of the budget is spread evenly', async () => {
     const { service } = chartService({
       expenses: [
         { amount: '1000', currency: 'RUB', created_at_utc: '2026-10-01T10:00:00Z' },
         { amount: '20', currency: 'USD', created_at_utc: '2026-10-02T23:30:00Z' }, // 2000 ₽
-        { amount: '15000', currency: 'RUB', created_at_utc: '2026-10-28T09:00:00Z' }
+        { amount: '10000', currency: 'RUB', created_at_utc: '2026-10-10T09:00:00Z', recurring_expense_id: 4 }, // аренда списана
+        { amount: '3000', currency: 'RUB', created_at_utc: '2026-10-28T09:00:00Z' }
       ],
-      budgets: [{ category_name: null, limit: 31000 }, { category_name: 'Еда', limit: 5000 }]
+      budgets: [{ category_name: null, limit: 31000 }, { category_name: 'Еда', limit: 5000 }],
+      recurring: [
+        { amount: '3100', currency: 'RUB', nextChargeDate: '2026-10-30' }, // ещё спишется в этом периоде
+        { amount: '500', currency: 'RUB', nextChargeDate: '2026-11-05' } // в следующем — не в плане
+      ]
     });
     const chart = await service.planFact(1, 'ru', 0);
     const sp = (text) => text.replace(/[\u00a0\u202f]/g, ' ');
-    expect(sp(chart.caption)).toContain('Потрачено: *18 000 ₽*');
-    expect(sp(chart.caption)).toContain('По лимиту к 28.10: 28 000 ₽ (на весь период — 31 000 ₽)');
-    expect(sp(chart.caption)).toContain('🟢 В рамках лимита, запас 10 000 ₽');
-    const svg = chart.png.toString();
-    expect(svg.match(/<polyline points="([^"]+)"/)[1].split(' ')).toHaveLength(28); // 01.10 … 28.10, сегодня последний
-    expect(svg).toContain(`stroke="${charts.THEME.average}"`);
+    // (31 000 − 10 000 − 3 100) / 31 дней × 28 + аренда 10 000 = 26 168; потрачено 16 000
+    expect(sp(chart.summary)).toBe('📉 План к 28.10: 26 168 ₽ · 🟢 запас 10 168 ₽\n🔁 В плане регулярные платежи месяца: 13 100 ₽ — в свои дни');
+    const lines = [...chart.png.toString().matchAll(/<polyline points="([^"]+)"/g)].map(match => match[1].split(' '));
+    expect(lines[0]).toHaveLength(31 + 2); // план: каждый день и вертикальные ступеньки 10.10 и 30.10
+    expect(lines[0][9].split(',')[0]).toBe(lines[0][10].split(',')[0]); // ступенька — тот же x
+    expect(lines[1]).toHaveLength(28); // факт: 01.10 … 28.10, сегодня последний
   });
 
-  test('limit vs actual without a total budget: only the actual line and a hint; a past period runs to its end', async () => {
+  test('plan vs actual without a total budget: only the actual line, no summary; a past period runs to its end', async () => {
     const { service } = chartService({ expenses: [{ amount: '500', currency: 'RUB', created_at_utc: '2026-09-05T10:00:00Z' }], budgets: [{ category_name: 'Еда', limit: 5000 }] });
     const chart = await service.planFact(1, 'ru', -1);
-    expect(chart.caption).toContain('Линия лимита появится');
+    expect(chart.summary).toBeNull();
     const svg = chart.png.toString();
-    expect(svg.match(/<polyline points="([^"]+)"/)[1].split(' ')).toHaveLength(30);
+    const lines = [...svg.matchAll(/<polyline points="([^"]+)"/g)];
+    expect(lines).toHaveLength(1);
+    expect(lines[0][1].split(' ')).toHaveLength(30);
     expect(svg).not.toContain(`stroke="${charts.THEME.average}"`);
   });
 });

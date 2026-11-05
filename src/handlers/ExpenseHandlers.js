@@ -644,6 +644,7 @@ class ExpenseHandlers {
     // Бюджеты показываем для текущего периода
     const budgets = offset === 0 && isPremium ? await this.budgetService.getStatus(userId, { timezone, currency, period }) : [];
     const budgetFor = (name) => budgets.find(b => b.category_name === name);
+    const chart = totals.count ? await this.overviewChart(ctx, userId, lang, offset) : null;
 
     let text = `📊 *${this.t(lang, 'overview_title', { range: this.formatter.formatPeriodRange(period) })}*\n\n`;
     if (totals.count) {
@@ -656,6 +657,8 @@ class ExpenseHandlers {
     if (totalBudget) {
       text += `\n🎯 ${this.formatter.progressBar(totalBudget.ratio)} ${Math.round(totalBudget.ratio * 100)}% · ${this.t(lang, 'overview_budget_of', { amount: this.formatter.formatAmount(totalBudget.limit, currency) })}`;
     }
+    // План к сегодня с регулярными платежами и запас / перерасход — те же цифры, что на картинке
+    if (chart && chart.summary) text += `\n${chart.summary}`;
     const incomeSummary = await this.formatter.formatIncomeSummary(incomeTotals, totals, currency, this.localizationService, lang);
     if (incomeSummary) text += `\n${incomeSummary}`;
     if (offset === 0 && this.planningService) {
@@ -716,18 +719,17 @@ class ExpenseHandlers {
     ]);
 
     const extra = { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } };
-    const png = totals.count && text.length <= CAPTION_MAX ? await this.overviewChart(ctx, userId, lang, offset) : null;
+    const png = chart && chart.png && text.length <= CAPTION_MAX ? chart.png : null;
     if (png) return respondPhoto(ctx, png, { caption: text, ...extra, replace });
     await respond(ctx, text, extra);
   }
 
-  // Картинка обзора: траты нарастающим итогом по дням и линия общего бюджета (ChartService.planFact). Ошибка рисования
-  // обзор не роняет — null, обзор текстом
+  // Картинка обзора: траты нарастающим итогом по дням и план (ChartService.planFact) → { png, summary } | null.
+  // Ошибка рисования обзор не роняет — null, обзор текстом
   async overviewChart(ctx, userId, lang, offset) {
     if (!this.chartService || !this.chartService.available) return null;
     try {
-      const chart = await this.chartService.planFact(userId, lang, offset, { botUsername: (ctx.botInfo && ctx.botInfo.username) || null });
-      return chart && chart.png ? chart.png : null;
+      return await this.chartService.planFact(userId, lang, offset, { botUsername: (ctx.botInfo && ctx.botInfo.username) || null });
     } catch (error) {
       logger.warn('Overview chart not rendered', { userId, error: error.message });
       return null;

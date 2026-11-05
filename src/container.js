@@ -366,7 +366,8 @@ class Container {
           localizationService: this.get('localizationService'),
           formatter: this.get('formatter'),
           chartRenderer: this.get('chartRenderer'),
-          budgetService: this.get('budgetService')
+          budgetService: this.get('budgetService'),
+          recurringExpenseService: this.get('recurringExpenseService')
         });
 
       case 'chartHandlers':
