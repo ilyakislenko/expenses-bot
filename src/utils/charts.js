@@ -427,13 +427,14 @@ function quizCardSvg(data, engine = estimateText()) {
   return svgDoc(W, H, engine, parts.join(''), background);
 }
 
-// ---------- Лимит и факт по дням ----------
+// ---------- План и факт по дням ----------
 
-// Две кривые нарастающим итогом по дням периода: факт (траты с начала периода) и план. data: { title, subtitle, brand,
+// Кривые нарастающим итогом по дням периода: факт (траты с начала периода), план и прогноз. data: { title, subtitle, brand,
 // emptyText, dayLabels: [..N], actual: [..≤N] (нарастающий итог; короче N — период ещё идёт), planLine: [..N] | null
-// (план нарастающим итогом), planJumps: [..N] (ступенька дня — регулярные платежи; рисуется вертикально),
-// actualLabel, limitLabel, actualAmount, limitAmount, forecast: { start, values, jumps, end } | null (прогноз
-// нарастающим итогом с дня start до конца; values[0] — сегодняшний факт), forecastLabel, forecastAmount }
+// (план нарастающим итогом), planJumps: [..N] (ступенька дня — регулярные платежи; рисуется вертикально), over
+// (траты выше плана по прожитым дням — точка факта красная), actualLabel, limitLabel, actualAmount, limitAmount,
+// forecast: { start, values, jumps, end } | null (прогноз нарастающим итогом с дня start до конца; values[0] —
+// сегодняшний факт), forecastLabel, forecastAmount }
 function planFactSvg(data, engine = estimateText()) {
   const label = fitted(engine);
   const W = 1000;
@@ -491,7 +492,7 @@ function planFactSvg(data, engine = estimateText()) {
     const lastX = x(actual.length - 1);
     parts.push(`<path d="M${x(0)},${chartBottom}L${points.join('L')}L${lastX},${chartBottom}Z" fill="${THEME.current}" opacity="0.14"/>`);
     parts.push(`<polyline points="${points.join(' ')}" fill="none" stroke="${THEME.current}" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>`);
-    const over = planLine && lastActual > planLine[actual.length - 1];
+    const over = Boolean(planLine && data.over);
     parts.push(`<circle cx="${lastX}" cy="${y(lastActual)}" r="8" fill="${over ? '#ff5f6d' : THEME.current}"/>`);
     const labelX = Math.min(lastX + 14, right + 12);
     parts.push(label(labelX, y(lastActual) - 12, data.actualAmount || '', W - labelX - 16, { size: 20, bold: true, color: THEME.text, halo: true }));

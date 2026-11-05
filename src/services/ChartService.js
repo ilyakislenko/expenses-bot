@@ -250,11 +250,16 @@ class ChartService {
 
     const shortDay = (day) => `${day.slice(8, 10)}.${day.slice(5, 7)}`;
     const lines = [];
-    if (planLine) {
-      const planToDate = planLine[lastIndex];
+    // План к дате — только по прожитым дням: в текущем периоде на конец вчера (сегодняшняя доля ещё не прожита, в
+    // запас не идёт) плюс регулярные, уже списанные сегодня; траты — все, с сегодняшними. Первый день — строки нет
+    const closedIndex = offset === 0 ? lastIndex - 1 : lastIndex;
+    let over = false;
+    if (planLine && closedIndex >= 0) {
+      const planToDate = planLine[closedIndex] + (offset === 0 ? chargedByDay.get(today) || 0 : 0);
       const diff = running - planToDate;
-      lines.push(this.t(lang, diff > 0 ? 'chart_planfact_over' : 'chart_planfact_under', {
-        date: shortDay(days[lastIndex]),
+      over = diff > 0;
+      lines.push(this.t(lang, over ? 'chart_planfact_over' : 'chart_planfact_under', {
+        date: shortDay(days[closedIndex]),
         plan: this.money(Math.round(planToDate), currency),
         amount: this.money(Math.round(Math.abs(diff)), currency)
       }));
@@ -283,7 +288,7 @@ class ChartService {
     if (!(await this.canRender(ui))) return { png: null, summary };
     const svg = charts.planFactSvg({
       title, subtitle: range, brand: this.brand(botUsername), emptyText: this.t(lang, 'chart_empty'),
-      dayLabels, actual, planLine, planJumps, forecast, actualLabel, limitLabel, forecastLabel, actualAmount, limitAmount, forecastAmount
+      dayLabels, actual, planLine, planJumps, forecast, over, actualLabel, limitLabel, forecastLabel, actualAmount, limitAmount, forecastAmount
     }, this.renderer.createText());
     return { png: await this.render(svg, IMAGE_WIDTH.trend), summary };
   }
