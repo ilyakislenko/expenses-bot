@@ -34,10 +34,10 @@ class PlanningRepository extends BaseRepository {
     return result.rows;
   }
 
-  // Доходы с локальной даты since — среднее за прошлые периоды и даты зарплаты
+  // Доходы с локальной даты since — среднее за прошлые периоды и даты зарплаты; imported — из выписки
   async getIncomeRowsSince(userId, timezone, since) {
     const result = await this.query(`
-      SELECT ${LOCAL_DATE} AS date, description, amount::float AS amount, currency
+      SELECT ${LOCAL_DATE} AS date, description, amount::float AS amount, currency, import_id IS NOT NULL AS imported
       FROM incomes
       WHERE user_id = $1 AND (created_at_utc AT TIME ZONE $2) >= $3::date
       ORDER BY created_at_utc

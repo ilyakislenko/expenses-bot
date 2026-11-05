@@ -381,6 +381,14 @@ const PAYDAY_SCAN_DAYS = 100;
 const PAYDAY_DAY_TOLERANCE = 5;
 const PAYDAY_LATE_DAYS = 5; // опоздала больше — считаем пропущенной, ждём в следующем месяце
 
+// Входящие из выписки — в основном переводы от людей, возвраты покупок, пополнения через банкомат: на ожидаемый доход
+// они не опора. Из выписки в план идёт только похожее на зарплату; записанное самим пользователем — всегда
+const IMPORTED_SALARY_PATTERN = /зарплат|заработн|аванс|преми|отпускн|стипенд|пенси|salary|payroll|wage|gehalt|salaire|salario|salário|maaş/i;
+
+function isPlannedIncome(row) {
+  return !row.imported || IMPORTED_SALARY_PATTERN.test(String(row.description || ''));
+}
+
 // Регулярные доходы (зарплата, аванс): одно описание, примерно одно число месяца (±5 дней), в ≥ 2 разных месяцах
 // за последние ~3 месяца. rows: [{ date, description, amount }] (сумма — в основной валюте)
 function detectPaydays(rows, { today }) {
@@ -614,6 +622,7 @@ module.exports = {
   isKnownSubscription,
   isHabitCategory,
   detectPaydays,
+  isPlannedIncome,
   nextPayday,
   paydayDates,
   recurringDates,

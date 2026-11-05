@@ -4,7 +4,7 @@ const { addDays, customPeriod, parseYmd, ymd } = require('../utils/period');
 const { commaDecimal } = require('../utils/savingsView');
 const {
   PACE_EMOJI, SCAN_DAYS, PAYDAY_SCAN_DAYS, INFLATION_WINDOW_DAYS,
-  daysBetween, expectedIncome, computeAllowance, computeForecast, nextIncomeDate, normalizeMerchant, detectSubscriptions, detectPaydays,
+  daysBetween, expectedIncome, computeAllowance, computeForecast, nextIncomeDate, normalizeMerchant, detectSubscriptions, detectPaydays, isPlannedIncome,
   paydayDates, monthlyDates, debtDates, subscriptionDates, buildCalendar, computeInflation, isKnownSubscription, shortHash
 } = require('../utils/planning');
 const { subRef } = require('../utils/subscriptionAlerts');
@@ -72,10 +72,11 @@ class PlanningService {
   // ========================================
 
   // Записанный доход текущего периода, ожидаемые выплаты до конца периода (по истории: зарплата, аванс),
-  // средний доход прошлых периодов и итог — ожидаемый доход (null — о доходах ничего не известно)
+  // средний доход прошлых периодов и итог — ожидаемый доход (null — о доходах ничего не известно). Входящие из выписки,
+  // кроме зарплаты, не учитываются (isPlannedIncome)
   async incomeOutlook(userId, { today, startDay, period, timezone, currency }, convert) {
     const since = [customPeriod(today, startDay, -AVERAGE_PERIODS).start, addDays(today, -PAYDAY_SCAN_DAYS)].sort()[0];
-    const raw = await this.planningRepository.getIncomeRowsSince(userId, timezone, since);
+    const raw = (await this.planningRepository.getIncomeRowsSince(userId, timezone, since)).filter(isPlannedIncome);
     const rows = await Promise.all(raw.map(async row => ({ ...row, amount: await convert(row.amount, row.currency) })));
     const sumIn = (start, end) => rows.filter(r => r.date >= start && r.date < end).reduce((sum, r) => sum + r.amount, 0);
     const countIn = (start, end) => rows.filter(r => r.date >= start && r.date < end).length;

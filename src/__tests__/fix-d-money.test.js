@@ -90,6 +90,34 @@ describe('allowance: the total budget limits it even with income', () => {
   });
 });
 
+describe('allowance: incoming money from a bank statement is not expected income', () => {
+  test('transfers, refunds and ATM deposits from a statement are ignored; own records and imported salary count', async () => {
+    const imported = (date, description, amount) => ({ date, description, amount, currency: 'RUB', imported: true });
+    const { service } = planningService({
+      today: '2026-11-05',
+      split: [{ currency: 'RUB', before: 10000, bills_today: 0, today: 0 }],
+      incomeRows: [
+        imported('2026-08-19', 'SBOL', 3000), imported('2026-09-19', 'SBOL', 3500), imported('2026-10-16', 'SBOL', 300),
+        imported('2026-09-12', 'Озон Банк (Ozon)', 2750), imported('2026-10-02', 'ATM 60019802 TOMSK RUS', 30000),
+        { date: '2026-10-26', description: 'работа', amount: 300000, currency: 'RUB', imported: false }
+      ],
+      budgets: [{ category_name: null, limit: 150000 }]
+    });
+    const a = await service.getAllowance(777);
+    // Доход — только своя запись за октябрь; «зарплат» SBOL 19-го нет; лимит — от бюджета: (150 000 − 10 000) / 26
+    expect(a.outlook).toMatchObject({ income: 300000, averagePeriods: 1, streams: [] });
+    expect(a).toMatchObject({ limitedBy: 'budget', daysLeft: 26, daily: 5384 });
+
+    const { service: withSalary } = planningService({
+      today: '2026-11-05',
+      split: [{ currency: 'RUB', before: 0, bills_today: 0, today: 0 }],
+      incomeRows: [imported('2026-09-24', 'Заработная плата', 85000), imported('2026-10-24', 'Заработная плата', 85000), imported('2026-10-20', 'Перевод от К. Илья', 4000)]
+    });
+    const salaried = await withSalary.getAllowance(777);
+    expect(salaried.outlook).toMatchObject({ average: 85000, streams: [expect.objectContaining({ day: 24, amount: 85000 })] });
+  });
+});
+
 describe('allowance: reserve until the next income and a cap on growth', () => {
   test('next expected income date from the payday streams', () => {
     const streams = [{ day: 5, lastDate: '2026-10-05', amount: 195000 }, { day: 20, lastDate: '2026-10-20', amount: 50000 }];
