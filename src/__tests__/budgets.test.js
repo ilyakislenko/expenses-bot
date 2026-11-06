@@ -11,7 +11,7 @@ function makeService({ premium = true, spentByCategory, totalSpent, budgets }) {
     getCategoryTotals: async () => Object.entries(spentByCategory()).map(([name, total]) => ({ name, currency: 'RUB', total }))
   };
   const service = new BudgetService(
-    { getByUser: async () => budgets },
+    { getByOwner: async () => budgets },
     expenseService,
     { markSent: async (userId, kind, ref) => (sent.has(`${kind}:${ref}`) ? false : (sent.add(`${kind}:${ref}`), true)) },
     { isPremiumUser: async () => premium },
@@ -82,6 +82,42 @@ describe('BudgetService.checkAfterExpense', () => {
       budgets: [{ id: 1, category_name: 'Еда', amount: 10000, currency: 'RUB' }]
     });
     expect(await service.checkAfterExpense(1, 'Еда')).toEqual([]);
+  });
+});
+
+describe('BudgetService: the family ceiling', () => {
+  function familyService({ familyMode = true, premium = true, family = { id: 7 } } = {}) {
+    const byOwner = { personal: [{ id: 1, category_name: null, amount: 50000, currency: 'RUB' }], family: [{ id: 2, category_name: null, amount: 150000, currency: 'RUB', family_id: 7 }] };
+    const repo = {
+      getByOwner: jest.fn(async (owner) => (typeof owner === 'object' ? byOwner.family : byOwner.personal)),
+      upsert: jest.fn(async () => ({ id: 3 }))
+    };
+    const expenseService = {
+      getTotals: jest.fn(async (owner) => ({ byCurrency: [{ currency: 'RUB', total: typeof owner === 'object' ? 12609 : 800 }] })),
+      getCategoryTotals: jest.fn(async () => [])
+    };
+    const service = new BudgetService(repo, expenseService, {}, { isPremiumUser: async () => premium }, { convert: async (a) => a }, { getText: (l, k) => k }, new Formatter({ convert: async (a) => a }),
+      { getUserFamily: async () => family }, { getUserById: async () => ({ family_mode: familyMode }) });
+    return { service, repo, expenseService };
+  }
+  const period = { timezone: 'UTC', currency: 'RUB', period: { start: '2026-11-01', end: '2026-12-01' } };
+
+  test('«all expenses to family»: the budget is the family one, counted on every member\'s spending, and new budgets go there', async () => {
+    const { service, repo, expenseService } = familyService();
+    expect(await service.scopeFor(1)).toEqual({ familyId: 7 });
+    const [total] = await service.getStatus(1, period);
+    expect(total).toMatchObject({ id: 2, limit: 150000, spent: 12609 });
+    expect(expenseService.getTotals).toHaveBeenCalledWith({ familyId: 7 }, 'UTC', period.period);
+    await service.setBudget(1, null, 160000, 'RUB');
+    expect(repo.upsert).toHaveBeenCalledWith({ familyId: 7 }, 1, null, 160000, 'RUB');
+  });
+
+  test('without family mode, premium or a family — own budget and own spending', async () => {
+    for (const options of [{ familyMode: false }, { premium: false }, { family: null }]) {
+      const { service } = familyService(options);
+      expect(await service.scopeFor(1)).toBe(1);
+      expect((await service.getStatus(1, period))[0]).toMatchObject({ id: 1, spent: 800 });
+    }
   });
 });
 

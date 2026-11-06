@@ -325,7 +325,11 @@ CREATE TABLE IF NOT EXISTS category_budgets (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 COMMENT ON COLUMN category_budgets.category_name IS 'Имя категории; NULL — общий бюджет на период';
-CREATE UNIQUE INDEX IF NOT EXISTS idx_category_budgets_user_category ON category_budgets(user_id, (COALESCE(category_name, '')));
+-- Семейный бюджет (family_id): общий для всех участников, считается по семейным тратам; user_id — кто завёл
+ALTER TABLE category_budgets ADD COLUMN IF NOT EXISTS family_id INTEGER NULL REFERENCES families(id) ON DELETE CASCADE;
+COMMENT ON COLUMN category_budgets.family_id IS 'Семейный бюджет: общий для участников семьи, траты — семейные (expenses.family_id); NULL — личный';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_category_budgets_user_category ON category_budgets(user_id, (COALESCE(category_name, ''))) WHERE family_id IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_category_budgets_family_category ON category_budgets(family_id, (COALESCE(category_name, ''))) WHERE family_id IS NOT NULL;
 
 -- ========================================
 -- DAILY SUMMARY

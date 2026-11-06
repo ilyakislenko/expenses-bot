@@ -103,14 +103,16 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^rcf\|(\d+)$/, errorHandler((ctx) => recurringExpenseHandlers.toggleFamily(ctx)));
 
   const back = `(${BACK_VIEW_PATTERN})`;
-  bot.action(/^ov\|(-?\d+)$/, errorHandler((ctx) => expenseHandlers.showOverview(ctx, parseInt(ctx.match[1], 10))));
-  bot.action(/^ovb\|(-?\d+)$/, errorHandler((ctx) => expenseHandlers.showOverview(ctx, parseInt(ctx.match[1], 10), { replace: true }))); // «Назад к обзору» с текстового экрана
+  // ov| / dy| — в контуре пользователя (у «все траты в семью» — семейные), с |m — «👤 Только мои»
+  const mineOnly = (ctx, index) => (ctx.match[index] ? { family: false } : {});
+  bot.action(/^ov\|(-?\d+)(\|m)?$/, errorHandler((ctx) => expenseHandlers.showOverview(ctx, parseInt(ctx.match[1], 10), mineOnly(ctx, 2))));
+  bot.action(/^ovb\|(-?\d+)(\|m)?$/, errorHandler((ctx) => expenseHandlers.showOverview(ctx, parseInt(ctx.match[1], 10), { replace: true, ...mineOnly(ctx, 2) }))); // «Назад к обзору» с текстового экрана
   bot.action(/^oc\|(\d+)\|(-?\d+)\|(\d+)$/, errorHandler((ctx) => expenseHandlers.showCategoryList(ctx, parseInt(ctx.match[1], 10), parseInt(ctx.match[2], 10), parseInt(ctx.match[3], 10))));
   // Графики картинками: кольцо по категориям, столбики за 6 периодов (всего / по категории)
   bot.action(/^chp\|(-?\d+)$/, errorHandler((ctx) => handlers.chartHandlers.showDonut(ctx, parseInt(ctx.match[1], 10))));
   bot.action(/^cht\|(-?\d+)$/, errorHandler((ctx) => handlers.chartHandlers.showTrend(ctx, parseInt(ctx.match[1], 10))));
   bot.action(/^chc\|(\d+)\|(-?\d+)$/, errorHandler((ctx) => handlers.chartHandlers.showTrend(ctx, parseInt(ctx.match[2], 10), parseInt(ctx.match[1], 10))));
-  bot.action(/^dy\|(-?\d+)\|(\d+)$/, errorHandler((ctx) => expenseHandlers.showDay(ctx, parseInt(ctx.match[1], 10), parseInt(ctx.match[2], 10))));
+  bot.action(/^dy\|(-?\d+)\|(\d+)(\|m)?$/, errorHandler((ctx) => expenseHandlers.showDay(ctx, parseInt(ctx.match[1], 10), parseInt(ctx.match[2], 10), mineOnly(ctx, 3))));
   // Те же экраны по семейным записям всех участников (см. ExpenseHandlers «Свои записи и семья»); fd|<page> — старые
   // кнопки «Семья: записи за сегодня»
   bot.action(/^fdy\|(-?\d+)\|(\d+)$/, errorHandler((ctx) => expenseHandlers.showDay(ctx, parseInt(ctx.match[1], 10), parseInt(ctx.match[2], 10), { family: true })));

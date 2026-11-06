@@ -61,10 +61,14 @@ class BudgetHandlers {
     if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
 
     const context = await this.expenseService.getPeriodContext(userId, 'month', 0);
+    // Бюджеты контура пользователя: при «все траты в семью» — общие семейные (считаются по тратам всей семьи)
+    const family = typeof (await this.budgetService.scopeFor(userId)) === 'object';
     const statuses = (await this.budgetService.getStatus(userId, context)).map(s => ({ ...s, currency: context.currency }));
 
     let text = notice ? `${notice}\n\n` : '';
-    text += `🎯 *${this.t(lang, 'budgets_title')}* · ${this.formatter.formatPeriodRange(context.period)}\n\n`;
+    const title = family ? `👨‍👩‍👧‍👦 *${this.t(lang, 'family_scope_title', { title: this.t(lang, 'budgets_title') })}*` : `🎯 *${this.t(lang, 'budgets_title')}*`;
+    text += `${title} · ${this.formatter.formatPeriodRange(context.period)}\n\n`;
+    if (family) text += `${this.t(lang, 'budgets_family_hint')}\n\n`;
     const keyboard = [];
     if (!statuses.length) {
       text += this.t(lang, 'budgets_empty');

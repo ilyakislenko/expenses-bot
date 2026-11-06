@@ -1184,6 +1184,8 @@ module.exports = {
   receipt_line_limit: "小票已有 {max} 行 — 无法再添加。",
   receipt_rotate_edited: "✏️ 你已手动修改过这份草稿 — 旋转会清除修改。请记录它，或取消后重新发送照片。",
   help_edit: "✏️ 记错了？在 📅 今天、概览或小票里点记录的编号 — 可以修改金额、类别和 📅 日期。小票草稿在记录前也能修改。",
+  budgets_family_hint: "全家共用：按所有成员的支出计算，任何成员都可修改。",
+  pl_allow_family: "👨‍👩‍👧‍👦 按家庭计算：共同预算、所有成员的支出和家庭定期付款",
   recurring_family_line_on: "👨‍👩‍👧‍👦 家庭付款：扣款记入家庭",
   recurring_family_line_off: "👤 个人付款：扣款只记在你名下",
   button_recurring_make_family: "👨‍👩‍👧‍👦 设为家庭付款",

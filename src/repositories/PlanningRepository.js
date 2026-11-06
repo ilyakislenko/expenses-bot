@@ -45,35 +45,42 @@ class PlanningRepository extends BaseRepository {
     return result.rows;
   }
 
+  // owner — id пользователя (его траты) или { familyId } (семейные траты всех участников): «Можно сегодня» по семье
+  static ownerColumn(owner) {
+    return owner && typeof owner === 'object' ? { sql: 'family_id = $1', value: owner.familyId } : { sql: 'user_id = $1', value: owner };
+  }
+
   // Траты текущего периода по валютам: до сегодня (before), сегодня авто-записи регулярных (billsToday)
   // и сегодня остальные (today)
-  async getSpendSplit(userId, timezone, start, today) {
+  async getSpendSplit(owner, timezone, start, today) {
+    const filter = PlanningRepository.ownerColumn(owner);
     const result = await this.query(`
       SELECT currency,
              COALESCE(SUM(amount) FILTER (WHERE (created_at_utc AT TIME ZONE $2)::date < $4::date), 0)::float AS before,
              COALESCE(SUM(amount) FILTER (WHERE (created_at_utc AT TIME ZONE $2)::date = $4::date AND recurring_expense_id IS NOT NULL), 0)::float AS bills_today,
              COALESCE(SUM(amount) FILTER (WHERE (created_at_utc AT TIME ZONE $2)::date = $4::date AND recurring_expense_id IS NULL), 0)::float AS today
       FROM expenses
-      WHERE user_id = $1
+      WHERE ${filter.sql}
         AND (created_at_utc AT TIME ZONE $2) >= $3::date
         AND (created_at_utc AT TIME ZONE $2) < ($4::date + 1)
       GROUP BY currency
-    `, [userId, timezone, start, today]);
+    `, [filter.value, timezone, start, today]);
     return result.rows;
   }
 
   // Обычные траты (без авто-записей регулярных) с from по день до today, по валютам, и первый такой день —
   // темп трат для прогноза «хватит ли до конца периода»
-  async getPaceSpend(userId, timezone, from, today) {
+  async getPaceSpend(owner, timezone, from, today) {
+    const filter = PlanningRepository.ownerColumn(owner);
     const result = await this.query(`
       SELECT currency, SUM(amount)::float AS total, MIN((created_at_utc AT TIME ZONE $2)::date)::text AS first_day
       FROM expenses
-      WHERE user_id = $1
+      WHERE ${filter.sql}
         AND recurring_expense_id IS NULL
         AND (created_at_utc AT TIME ZONE $2) >= $3::date
         AND (created_at_utc AT TIME ZONE $2) < $4::date
       GROUP BY currency
-    `, [userId, timezone, from, today]);
+    `, [filter.value, timezone, from, today]);
     return result.rows;
   }
 

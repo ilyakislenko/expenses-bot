@@ -314,7 +314,7 @@ class AchievementService {
   }
 
   async budgetFor(userId, snap, challenge) {
-    const budgets = await this.budgetService.budgetRepository.getByUser(userId);
+    const budgets = await this.budgetService.list(userId);
     if (!budgets.some(b => b.category_name === null)) return null;
     const currency = await this.userService.getUserCurrency(userId);
     const statuses = await this.budgetService.getStatus(userId, {
@@ -380,7 +380,7 @@ class AchievementService {
     if (active.length >= limit) return { error: 'limit', limit };
     const { today, period } = await this.expenseService.getPeriodContext(userId, 'month', 0);
     if (kind === 'budget_month') {
-      const budgets = await this.budgetService.budgetRepository.getByUser(userId);
+      const budgets = await this.budgetService.list(userId);
       if (!budgets.some(b => b.category_name === null)) return { error: 'no_budget' };
       return { challenge: await this.achievementRepository.createChallenge(userId, { kind, start: period.start, end: period.end }) };
     }
@@ -524,7 +524,7 @@ class AchievementService {
 
   // Прошлый период закончился в рамках общего бюджета (бюджет был заведён до конца периода, траты были)
   async wasUnderBudget(userId, timezone, currency, period) {
-    const budgets = await this.budgetService.budgetRepository.getByUser(userId);
+    const budgets = await this.budgetService.list(userId);
     const total = budgets.find(b => b.category_name === null);
     if (!total || this.localDay(total.created_at, timezone) > period.last) return false;
     const statuses = await this.budgetService.getStatus(userId, { timezone, currency, period });

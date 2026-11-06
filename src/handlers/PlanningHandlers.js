@@ -117,6 +117,7 @@ class PlanningHandlers {
 
     lines.push('', `*${this.t(lang, 'pl_allow_how')}*`);
     lines.push(this.t(lang, 'pl_allow_period', { range: this.formatter.formatPeriodRange(a.period), days: a.daysLeft }));
+    if (a.family) lines.push(this.t(lang, 'pl_allow_family'));
     if (a.mode === 'income') {
       const o = a.outlook;
       lines.push(this.t(lang, 'pl_allow_income', { amount: money(o.income) }));
@@ -150,7 +151,7 @@ class PlanningHandlers {
       : this.t(lang, 'pl_allow_free_none', { amount: money(a.free) }));
     if (a.capped) lines.push(this.t(lang, 'pl_allow_capped', { amount: money(a.daily) }));
     lines.push('', `_${this.t(lang, 'pl_allow_note')}_`);
-    if (a.mode === 'budget') lines.push('', this.t(lang, 'pl_allow_budget_hint'));
+    if (a.mode === 'budget' && !a.family) lines.push('', this.t(lang, 'pl_allow_budget_hint'));
 
     keyboard.push([{ text: this.t(lang, 'pl_button_calendar'), callback_data: 'plc' }, { text: this.t(lang, 'button_today'), callback_data: 'dy|0|0' }]);
     keyboard.push(this.backRow(lang));

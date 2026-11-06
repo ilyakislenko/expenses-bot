@@ -177,14 +177,21 @@ class ChartService {
   // обычные траты прошедших дней (без сегодня и без регулярных) в среднем за день — до конца периода, будущие
   // регулярные — ступеньками. → { png, summary } — summary: строки «план к сегодня · запас / сверх», «прогноз на конец»
   // и «регулярные в плане» для текста обзора (null — нечего сказать); png: null — не нарисовать.
-  // familyId — семейные траты всех участников: бюджеты личные, поэтому без плана — траты и прогноз по темпу, будущие
-  // семейные регулярные (RecurringExpenseService.listFamily) — ступеньками прогноза
+  // familyId — семейные траты всех участников против семейного бюджета, будущие семейные регулярные
+  // (RecurringExpenseService.listFamily) — ступеньками. Свой график плана не рисует, если бюджет пользователя семейный
+  // (BudgetService.scopeFor): потолок общий, а траты на нём — только свои
   async planFact(userId, lang, offset, { botUsername, familyId = null } = {}) {
     const { timezone, currency, today, period } = await this.expenseService.getPeriodContext(userId, 'month', offset);
     const upcoming = () => (familyId ? this.recurringExpenseService.listFamily(familyId) : this.recurringExpenseService.list(userId));
+    const budgets = async () => {
+      if (!this.budgetService) return [];
+      if (familyId) return this.budgetService.getStatus({ familyId }, { timezone, currency, period });
+      const scope = await this.budgetService.scopeFor(userId);
+      return typeof scope === 'object' ? [] : this.budgetService.getStatus(userId, { timezone, currency, period });
+    };
     const [rows, statuses, recurring] = await Promise.all([
       this.expenseService.getExpenses(familyId ? { familyId } : userId, timezone, period),
-      this.budgetService && !familyId ? this.budgetService.getStatus(userId, { timezone, currency, period }) : [],
+      budgets(),
       this.recurringExpenseService && offset === 0 ? upcoming() : []
     ]);
     const total = statuses.find(b => b.category_name === null);

@@ -345,7 +345,7 @@ describe('PlanningService', () => {
         list: jest.fn().mockResolvedValue([{ description: 'Интернет', amount: '1000.00', currency: 'RUB', day_of_month: 25, nextChargeDate: '2026-10-25' }]),
         create: jest.fn().mockResolvedValue({ id: 50 })
       },
-      budgetService: { getStatus: jest.fn().mockResolvedValue([]) },
+      budgetService: { getStatus: jest.fn().mockResolvedValue([]), scopeFor: jest.fn(async (userId) => userId) },
       premiumService: { isPremiumUser: jest.fn().mockResolvedValue(false) },
       userService: { getUserById: jest.fn().mockResolvedValue({ created_at: new Date() }) },
       userNotificationRepository: { markSent: jest.fn().mockResolvedValue(true) },

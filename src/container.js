@@ -768,7 +768,9 @@ class Container {
           this.get('premiumService'),
           this.get('currencyUtils'),
           this.get('localizationService'),
-          this.get('formatter')
+          this.get('formatter'),
+          this.get('familyRepository'),
+          this.get('userRepository')
         );
 
       case 'reportService':
@@ -937,7 +939,8 @@ class Container {
           voiceService: this.get('voiceService'),
           roastService: this.get('roastService'),
           quizHandlers: this.get('quizHandlers'),
-          familyPremiumService: this.get('familyPremiumService')
+          familyPremiumService: this.get('familyPremiumService'),
+          budgetService: this.get('budgetService')
         });
 
       case 'messageHandlers':

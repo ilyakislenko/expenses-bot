@@ -18,7 +18,7 @@ const rows = [
   { id: 12, amount: '300', currency: 'RUB', category_icon: '🚗', category_name: 'Транспорт', description: 'такси', created_at_utc: '2026-11-05T09:00:00Z', user_id: 2, first_name: 'Света', family_id: 7 }
 ];
 
-function build({ premium = true, family = FAMILY } = {}) {
+function build({ premium = true, family = FAMILY, homeFamily = false, budgets = [] } = {}) {
   const expenseService = {
     getPeriodContext: jest.fn(async (userId, kind) => ({ timezone: 'UTC', currency: 'RUB', today: '2026-11-05', period: kind === 'day' ? DAY : MONTH })),
     getExpenses: jest.fn(async () => rows),
@@ -35,7 +35,7 @@ function build({ premium = true, family = FAMILY } = {}) {
     expenseService,
     reportService: { categoryBreakdown: jest.fn(async () => [{ id: 5, name: 'Еда', icon: '🍕', total: 500 }, { id: 9, name: 'Транспорт', icon: '🚗', total: 300 }]) },
     incomeService: { getTotals: jest.fn(async () => ({ byCurrency: [], count: 0 })) },
-    budgetService: { getStatus: jest.fn(async () => []) },
+    budgetService: { getStatus: jest.fn(async () => budgets), scopeFor: jest.fn(async (userId) => (homeFamily ? { familyId: FAMILY.id } : userId)) },
     recurringExpenseService: {
       list: jest.fn(async () => []),
       listFamily: jest.fn(async () => [
@@ -158,6 +158,43 @@ describe('family and personal screens are the same screens', () => {
     await handlers.showBackView(ctx, 'g.5.-1.0');
     expect(handlers.showDay.mock.calls.map(call => call.slice(1))).toEqual([[-3, 1, { family: true }], [0, 2, { family: true }]]);
     expect(handlers.showCategoryList).toHaveBeenCalledWith(ctx, 5, -1, 0, { family: true });
+  });
+});
+
+describe('«all expenses to family»: the main screens are the family ones', () => {
+  test('overview opens as the family one with the family budget, plan and «Safe to spend»; «Only mine» has no ceiling', async () => {
+    const { handlers, deps } = build({ homeFamily: true, budgets: [{ id: 2, category_name: null, limit: 150000, ratio: 0.08 }] });
+    const ctx = ctxFor('ov|0');
+    await handlers.showOverview(ctx, 0);
+    expect(deps.reportService.categoryBreakdown).toHaveBeenCalledWith({ familyId: 7 }, 'UTC', MONTH, 'RUB');
+    expect(deps.budgetService.getStatus).toHaveBeenCalledWith({ familyId: 7 }, expect.any(Object));
+    const family = screen(ctx);
+    expect(family.text.startsWith('👨‍👩‍👧‍👦')).toBe(true);
+    expect(family.text.replace(/[\u00a0\u202f]/g, ' ')).toContain('150 000 ₽');
+    expect(family.text).toContain('💸 Можно сегодня');
+    expect(family.buttons.slice(-3)).toEqual([['fov|-1'], ['bg_menu'], ['ov|0|m', 'family_menu']]);
+
+    const own = build({ homeFamily: true, budgets: [{ id: 2, category_name: null, limit: 150000, ratio: 0.08 }] });
+    const ownCtx = ctxFor('ov|0|m');
+    await own.handlers.showOverview(ownCtx, 0, { family: false });
+    expect(own.deps.budgetService.getStatus).not.toHaveBeenCalled();
+    const mine = screen(ownCtx);
+    expect(mine.text).not.toContain('💸 Можно сегодня');
+    expect(mine.buttons.slice(-3)).toEqual([['ov|-1|m'], ['rp|0'], ['fov|0']]);
+  });
+
+  test('«Today» opens the family day with «Safe to spend»; own day keeps «Only mine» in its buttons', async () => {
+    const { handlers, deps } = build({ homeFamily: true });
+    const ctx = ctxFor('dy|0|0');
+    await handlers.showDay(ctx, 0, 0);
+    expect(deps.expenseService.getExpenses).toHaveBeenCalledWith({ familyId: 7 }, 'UTC', DAY);
+    expect(screen(ctx).buttons.slice(-2)).toEqual([['fdy|-1|0', 'pla'], ['dy|0|0|m', 'family_menu']]);
+
+    const own = build({ homeFamily: true });
+    const ownCtx = ctxFor('dy|-1|0|m');
+    await own.handlers.showDay(ownCtx, -1, 0, { family: false });
+    expect(own.deps.planningService.allowanceLine).not.toHaveBeenCalled();
+    expect(screen(ownCtx).buttons.slice(-2)).toEqual([['dy|-2|0|m', 'dy|0|0|m'], ['fdy|-1|0']]);
   });
 });
 

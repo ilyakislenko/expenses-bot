@@ -209,7 +209,7 @@ function chartService({ categories = [], totals = null, perPeriod = null, startD
     getExpenses: jest.fn(async () => expenses)
   };
   const reportService = { categoryBreakdown: jest.fn(async () => categories) };
-  const budgetService = { getStatus: jest.fn(async () => budgets) };
+  const budgetService = { getStatus: jest.fn(async () => budgets), scopeFor: jest.fn(async (userId) => userId) };
   const recurringExpenseService = { list: jest.fn(async () => recurring), listFamily: jest.fn(async () => familyRecurring) };
   const service = new ChartService({ expenseService, reportService, localizationService: new LocalizationService(), formatter, chartRenderer: renderer, budgetService, recurringExpenseService });
   return { service, expenseService, reportService, budgetService, recurringExpenseService, renderer, lang };
@@ -363,7 +363,7 @@ describe('ChartService', () => {
     expect(tight.png.toString()).toContain('fill="#ff5f6d"'); // точка факта красная — по тому же плану
   });
 
-  test('family chart: family records, no personal budget; members\' family recurring payments are forecast steps', async () => {
+  test('family chart: family records against the family budget, members\' family recurring payments are steps; own chart of a family budget has no plan', async () => {
     const expenses = [{ amount: '2700', currency: 'RUB', created_at_utc: '2026-10-01T10:00:00Z' }];
     const { service, expenseService, budgetService, recurringExpenseService } = chartService({
       expenses,
@@ -373,11 +373,22 @@ describe('ChartService', () => {
     });
     const chart = await service.planFact(1, 'ru', 0, { familyId: 7 });
     expect(expenseService.getExpenses).toHaveBeenCalledWith({ familyId: 7 }, 'UTC', expect.any(Object));
-    expect(budgetService.getStatus).not.toHaveBeenCalled();
+    expect(budgetService.getStatus).toHaveBeenCalledWith({ familyId: 7 }, expect.any(Object));
     expect(recurringExpenseService.listFamily).toHaveBeenCalledWith(7);
     expect(recurringExpenseService.list).not.toHaveBeenCalled();
-    // 2 700 + 4 дня × 100 + аренда 1 000 30.10
-    expect(chart.summary.replace(/[\u00a0\u202f]/g, ' ')).toBe('🔮 Прогноз на 31.10 при таком темпе: 4 100 ₽');
+    // План: (3 000 − 1 000) / 31 × 27 = 1 742; прогноз: 2 700 + 4 × 100 + аренда 1 000 30.10 = 4 100
+    expect(chart.summary.replace(/[\u00a0\u202f]/g, ' ').split('\n')).toEqual([
+      '📉 План на конец 27.10: 1 742 ₽ · 🔴 сверх плана 958 ₽',
+      '🔮 Прогноз на 31.10 при таком темпе: 4 100 ₽ · 🔴 сверх бюджета 1 100 ₽',
+      '🔁 В плане регулярные платежи месяца: 1 000 ₽ — в свои дни'
+    ]);
+
+    // «👤 Только мои» у семейного контура: потолок общий, а траты свои — плана нет
+    const own = chartService({ expenses, budgets: [{ category_name: null, limit: 3000 }] });
+    own.budgetService.scopeFor.mockResolvedValue({ familyId: 7 });
+    const ownChart = await own.service.planFact(1, 'ru', 0);
+    expect(own.budgetService.getStatus).not.toHaveBeenCalled();
+    expect(ownChart.summary.replace(/[\u00a0\u202f]/g, ' ')).toBe('🔮 Прогноз на 31.10 при таком темпе: 3 100 ₽');
   });
 
   test('plan vs actual without a total budget: only the actual line, no summary; a past period runs to its end', async () => {

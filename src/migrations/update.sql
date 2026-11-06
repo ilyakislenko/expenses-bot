@@ -1325,3 +1325,11 @@ CREATE INDEX IF NOT EXISTS idx_tax_refund_marks_expense ON tax_refund_marks(expe
 -- ==== FAMILY RECURRING ====
 ALTER TABLE recurring_expenses ADD COLUMN IF NOT EXISTS is_family BOOLEAN NOT NULL DEFAULT FALSE;
 COMMENT ON COLUMN recurring_expenses.is_family IS 'Семейный платёж: списания пишутся в семью автора (expenses.family_id), если он в семье; иначе лично';
+
+-- ==== FAMILY BUDGETS ====
+-- Семейный бюджет (family_id): общий для всех участников, считается по семейным тратам; user_id — кто завёл
+ALTER TABLE category_budgets ADD COLUMN IF NOT EXISTS family_id INTEGER NULL REFERENCES families(id) ON DELETE CASCADE;
+COMMENT ON COLUMN category_budgets.family_id IS 'Семейный бюджет: общий для участников семьи, траты — семейные (expenses.family_id); NULL — личный';
+DROP INDEX IF EXISTS idx_category_budgets_user_category;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_category_budgets_user_category ON category_budgets(user_id, (COALESCE(category_name, ''))) WHERE family_id IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_category_budgets_family_category ON category_budgets(family_id, (COALESCE(category_name, ''))) WHERE family_id IS NOT NULL;

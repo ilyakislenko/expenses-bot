@@ -9,7 +9,7 @@ const { PREMIUM_TARIFFS, tariffDiscount, USER_LIMITS, DEFAULT_REMINDER_HOURS, FA
 const { isTaxRefundAvailable } = require('../utils/taxRefund');
 
 class CommandHandlers {
-  constructor({ expenseService, userService, premiumService, familyService, localizationService, formatter, stateService, keyboardGenerators, paymentService, incomeService, funnelService, receiptService, referralService = null, voiceService = null, roastService = null, quizHandlers = null, familyPremiumService = null }) {
+  constructor({ expenseService, userService, premiumService, familyService, localizationService, formatter, stateService, keyboardGenerators, paymentService, incomeService, funnelService, receiptService, referralService = null, voiceService = null, roastService = null, quizHandlers = null, familyPremiumService = null, budgetService = null }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -27,6 +27,7 @@ class CommandHandlers {
     this.roastService = roastService; // строка «😈 Злой режим» в настройках
     this.quizHandlers = quizHandlers; // `/start quiz` (ссылка с карточки квиза) у вернувшегося — экран квиза
     this.familyPremiumService = familyPremiumService; // семейный тариф: строки в «Семье» и на экране подписки
+    this.budgetService = budgetService; // «все траты в семью»: личные бюджеты становятся семейными
   }
 
   async paysupport(ctx) {
@@ -492,12 +493,13 @@ class CommandHandlers {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
     const t = (key, params) => this.localizationService.getText(userLanguage, key, params);
-    if (!(await this.premiumService.isPremiumUser(userId)) || !(await this.familyService.getUserFamily(userId))) {
-      return this.family(ctx);
-    }
+    const family = (await this.premiumService.isPremiumUser(userId)) ? await this.familyService.getUserFamily(userId) : null;
+    if (!family) return this.family(ctx);
     const user = await this.userService.getUserById(userId);
     const enabled = !(user && user.family_mode);
     await this.userService.setFamilyMode(userId, enabled);
+    // Траты теперь семейные — и бюджет (потолок) тоже: личные бюджеты переходят в семью, если у неё таких нет
+    if (enabled && this.budgetService) await this.budgetService.moveToFamily(userId, family.id);
     await this.family(ctx);
     const notice = enabled
       ? t('family_mode_enabled', { personalButton: t('button_personal_expense'), removeButton: t('button_remove_from_family') })

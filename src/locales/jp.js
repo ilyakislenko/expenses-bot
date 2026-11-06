@@ -1183,6 +1183,8 @@ module.exports = {
   receipt_line_limit: "レシートにはもう{max}行あるので、これ以上追加できないよ。",
   receipt_rotate_edited: "✏️ この下書きはもう手で直してあるよ — 回転すると修正が消えちゃう。記録するか、取り消して写真を送り直してね。",
   help_edit: "✏️ 間違えた？ 📅 今日、概要、レシートで記録の番号をタップ — 金額、カテゴリ、📅 日付を変えられるよ。レシートの下書きも記録前に直せるよ。",
+  budgets_family_hint: "家族全員で共有：全員の支出で計算され、誰でも変更できます。",
+  pl_allow_family: "👨‍👩‍👧‍👦 家族で計算：共有予算、全員の支出、家族の定期支払い",
   recurring_family_line_on: "👨‍👩‍👧‍👦 家族の支払い：引き落としは家族に記録",
   recurring_family_line_off: "👤 個人の支払い：引き落としは自分だけ",
   button_recurring_make_family: "👨‍👩‍👧‍👦 家族の支払いにする",

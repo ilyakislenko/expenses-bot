@@ -17,6 +17,8 @@ const CALENDAR_DAYS = 30;
 const RESERVE_MAX_DAYS = 31; // резерв на платежи после конца периода — до следующего дохода, но не дальше месяца
 const SUBS_NUDGE_NAMES = 3; // в строке о найденных подписках — столько названий, остальные — «и ещё N»
 const FORECAST_PACE_DAYS = 28; // темп трат для прогноза — за последние 4 недели
+// Семейное «Можно сегодня» доходы не берёт (доходы личные) — как у пользователя без записанных доходов
+const NO_INCOME = { recorded: 0, upcoming: 0, upcomingList: [], average: null, averagePeriods: 0, streams: [], income: null };
 
 function localDateHour(timezone, now) {
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -119,18 +121,22 @@ class PlanningService {
     }
   }
 
+  // Контур «все траты в семью» (BudgetService.scopeFor → { familyId }): траты, регулярные и бюджет — семейные; доходы,
+  // долги, взнос в накопления и подписки личные, поэтому семейное «Можно сегодня» — от общего семейного бюджета
   async getAllowance(userId) {
     const ctx = await this.expenseService.getPeriodContext(userId, 'month', 0);
     const { timezone, currency, today, period } = ctx;
     const convert = this.converter(currency);
+    const scope = await this.budgetService.scopeFor(userId);
+    const family = typeof scope === 'object';
     const [split, recurring, debts, contribution, outlook, statuses, subscriptions] = await Promise.all([
-      this.planningRepository.getSpendSplit(userId, timezone, period.start, today),
-      this.recurringExpenseService.list(userId),
-      this.planningRepository.getDebts(userId),
-      this.planningRepository.getMonthlyContribution(userId),
-      this.incomeOutlook(userId, ctx, convert),
-      this.budgetService.getStatus(userId, { timezone, currency, period }),
-      this.reservedSubscriptions(userId)
+      this.planningRepository.getSpendSplit(scope, timezone, period.start, today),
+      family ? this.recurringExpenseService.listFamily(scope.familyId) : this.recurringExpenseService.list(userId),
+      family ? [] : this.planningRepository.getDebts(userId),
+      family ? null : this.planningRepository.getMonthlyContribution(userId),
+      family ? NO_INCOME : this.incomeOutlook(userId, ctx, convert),
+      this.budgetService.getStatus(scope, { timezone, currency, period }),
+      family ? [] : this.reservedSubscriptions(userId)
     ]);
 
     let spentBefore = 0;
@@ -198,7 +204,7 @@ class PlanningService {
     });
     return {
       ...result, currency, timezone, today, period, daysLeft, outlook, budget, nextIncome, reserveUntil,
-      spentBefore, bills, budgetBills, billsList, debtsTotal, budgetDebts, debtsProrated,
+      spentBefore, bills, budgetBills, billsList, debtsTotal, budgetDebts, debtsProrated, family,
       savings: result.mode === 'income' ? savings : 0
     };
   }
@@ -211,7 +217,8 @@ class PlanningService {
     if (allowance.mode === 'none') return { mode: 'none' };
     const { currency, timezone, today, period } = allowance;
     const convert = this.converter(currency);
-    const rows = await this.planningRepository.getPaceSpend(userId, timezone, addDays(today, -FORECAST_PACE_DAYS), today);
+    const scope = await this.budgetService.scopeFor(userId);
+    const rows = await this.planningRepository.getPaceSpend(scope, timezone, addDays(today, -FORECAST_PACE_DAYS), today);
     let paceTotal = 0;
     let firstDay = null;
     for (const row of rows) {
@@ -252,12 +259,13 @@ class PlanningService {
   }
 
   // Ручные траты за локальный день (без авто-записей регулярных — они в резерве плана) в основной валюте:
-  // с ними «☀️ План на день» сравнивает «можно сегодня»
+  // с ними «☀️ План на день» сравнивает «можно сегодня»; в контуре семьи — семейные траты
   async spentOnDay(userId, day) {
     const { timezone, currency } = await this.expenseService.getPeriodContext(userId, 'day', 0);
     const convert = this.converter(currency);
+    const scope = await this.budgetService.scopeFor(userId);
     let spent = 0;
-    for (const row of await this.planningRepository.getSpendSplit(userId, timezone, day, day)) {
+    for (const row of await this.planningRepository.getSpendSplit(scope, timezone, day, day)) {
       spent += await convert(row.today, row.currency);
     }
     return spent;

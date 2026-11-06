@@ -8,7 +8,7 @@ function thresholdLevel(ratio) {
 }
 
 class BudgetService {
-  constructor(budgetRepository, expenseService, userNotificationRepository, premiumService, currencyUtils, localizationService, formatter) {
+  constructor(budgetRepository, expenseService, userNotificationRepository, premiumService, currencyUtils, localizationService, formatter, familyRepository = null, userRepository = null) {
     this.budgetRepository = budgetRepository;
     this.expenseService = expenseService;
     this.userNotificationRepository = userNotificationRepository;
@@ -16,30 +16,57 @@ class BudgetService {
     this.currencyUtils = currencyUtils;
     this.localizationService = localizationService;
     this.formatter = formatter;
+    this.familyRepository = familyRepository;
+    this.userRepository = userRepository;
   }
 
-  async list(userId) {
-    return this.budgetRepository.getByUser(userId);
+  // Чьи деньги считает пользователь: «все траты в семью» у премиума-участника семьи — семья ({ familyId }: общий
+  // семейный бюджет, семейные траты всех участников, «Можно сегодня» по семье), иначе свои (userId)
+  async scopeFor(userId) {
+    if (!this.familyRepository || !this.userRepository) return userId;
+    const user = await this.userRepository.getUserById(userId);
+    if (!user || !user.family_mode || !(await this.premiumService.isPremiumUser(userId))) return userId;
+    const family = await this.familyRepository.getUserFamily(userId);
+    return family ? { familyId: family.id } : userId;
   }
 
-  // categoryName = null — общий бюджет на период
+  // owner: { familyId } — бюджеты этой семьи; id пользователя — бюджеты его контура (scopeFor)
+  async resolve(owner) {
+    return owner && typeof owner === 'object' ? owner : this.scopeFor(owner);
+  }
+
+  async list(owner) {
+    return this.budgetRepository.getByOwner(await this.resolve(owner));
+  }
+
+  // categoryName = null — общий бюджет на период; заводится в контуре пользователя (в семье — общий семейный)
   async setBudget(userId, categoryName, amount, currency) {
-    const result = await this.budgetRepository.upsert(userId, categoryName, amount, currency);
-    logger.info('Budget set', { userId, categoryName, amount, currency });
+    const owner = await this.scopeFor(userId);
+    const result = await this.budgetRepository.upsert(owner, userId, categoryName, amount, currency);
+    logger.info('Budget set', { userId, familyId: owner.familyId || null, categoryName, amount, currency });
     return result;
   }
 
   async deleteBudget(userId, budgetId) {
-    return this.budgetRepository.deleteById(userId, budgetId);
+    return this.budgetRepository.deleteById(await this.scopeFor(userId), budgetId);
   }
 
-  // Бюджеты с тратами за период в основной валюте пользователя: { ...budget, spent, limit, ratio }
-  async getStatus(userId, { timezone, currency, period }) {
-    const budgets = await this.budgetRepository.getByUser(userId);
+  // Включили «все траты в семью»: личные бюджеты становятся семейными (если у семьи такого ещё нет)
+  async moveToFamily(userId, familyId) {
+    const moved = await this.budgetRepository.moveToFamily(userId, familyId);
+    if (moved) logger.info('Budgets moved to family', { userId, familyId, moved });
+    return moved;
+  }
+
+  // Бюджеты с тратами за период в основной валюте пользователя: { ...budget, spent, limit, ratio }.
+  // Семейные бюджеты сравниваются с семейными тратами всех участников, личные — со своими
+  async getStatus(owner, { timezone, currency, period }) {
+    const scope = await this.resolve(owner);
+    const budgets = await this.budgetRepository.getByOwner(scope);
     if (!budgets.length) return [];
     const [totals, categoryRows] = await Promise.all([
-      this.expenseService.getTotals(userId, timezone, period),
-      this.expenseService.getCategoryTotals(userId, timezone, period)
+      this.expenseService.getTotals(scope, timezone, period),
+      this.expenseService.getCategoryTotals(scope, timezone, period)
     ]);
     const spentByName = new Map();
     for (const row of categoryRows) {

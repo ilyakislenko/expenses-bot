@@ -32,7 +32,7 @@ function planningService({ today, startDay = 1, split, recurring = [], debts = [
       getPeriodContext: jest.fn().mockResolvedValue({ timezone: 'UTC', currency: 'RUB', startDay, today, period: customPeriod(today, startDay, 0) })
     },
     recurringExpenseService: { list: jest.fn().mockResolvedValue(recurring) },
-    budgetService: { getStatus: jest.fn().mockResolvedValue(budgets) },
+    budgetService: { getStatus: jest.fn().mockResolvedValue(budgets), scopeFor: jest.fn(async (userId) => userId) },
     premiumService: { isPremiumUser: jest.fn().mockResolvedValue(true) },
     userService: { getUserById: jest.fn(), getUserLanguage: jest.fn().mockResolvedValue('ru') },
     userNotificationRepository: { markSent: jest.fn().mockResolvedValue(true) },
@@ -115,6 +115,30 @@ describe('allowance: incoming money from a bank statement is not expected income
     });
     const salaried = await withSalary.getAllowance(777);
     expect(salaried.outlook).toMatchObject({ average: 85000, streams: [expect.objectContaining({ day: 24, amount: 85000 })] });
+  });
+});
+
+describe('allowance: «all expenses to family» counts the family', () => {
+  test('family spending, family recurring and the family budget; personal income, debts and savings stay out', async () => {
+    const { service, deps } = planningService({
+      today: '2026-11-06',
+      split: [{ currency: 'RUB', before: 12609, bills_today: 0, today: 0 }],
+      incomeRows: [{ date: '2026-10-26', description: 'работа', amount: 300000, currency: 'RUB' }],
+      debts: [{ id: 1, name: 'Кредит', balance: 50000, currency: 'RUB', monthly_payment: 5000, due_day: 20 }],
+      budgets: [{ category_name: null, limit: 150000 }]
+    });
+    deps.budgetService.scopeFor.mockResolvedValue({ familyId: 7 });
+    deps.recurringExpenseService.listFamily = jest.fn().mockResolvedValue([{ description: 'аренда', amount: '27000', currency: 'RUB', day_of_month: 10, nextChargeDate: '2026-11-10' }]);
+    const a = await service.getAllowance(777);
+    expect(deps.planningRepository.getSpendSplit).toHaveBeenCalledWith({ familyId: 7 }, 'UTC', '2026-11-01', '2026-11-06');
+    expect(deps.budgetService.getStatus).toHaveBeenCalledWith({ familyId: 7 }, expect.any(Object));
+    expect(deps.recurringExpenseService.list).not.toHaveBeenCalled();
+    expect(deps.planningRepository.getIncomeRowsSince).not.toHaveBeenCalled();
+    // (150 000 − 12 609 − аренда 27 000) / 25 дней = 4 415
+    expect(a).toMatchObject({ family: true, mode: 'budget', debtsTotal: 0, savings: 0, bills: 27000, daily: 4415 });
+    const text = await allowanceScreen(service);
+    expect(text).toContain(localization.getText('ru', 'pl_allow_family'));
+    expect(text).not.toContain(localization.getText('ru', 'pl_allow_budget_hint'));
   });
 });
 
