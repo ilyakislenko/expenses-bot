@@ -308,6 +308,18 @@ class AdminService {
     };
   }
 
+  // Активные пользователи за days суток (UserRepository.getActiveUsers): страница, всего активных и всего пользователей
+  async getActiveUsers(days = 30, page = 1, limit = 20) {
+    const [users, totalUsers] = await Promise.all([
+      this.userService.userRepository.getActiveUsers(days, limit, (page - 1) * limit),
+      this.userService.getUsersCount()
+    ]);
+    // Кнопка со старой страницы, а активных стало меньше — первая страница
+    if (!users.length && page > 1) return this.getActiveUsers(days, 1, limit);
+    const active = users.length ? users[0].total : 0;
+    return { users, active, totalUsers, page, totalPages: Math.max(1, Math.ceil(active / limit)) };
+  }
+
   // Управление админами
   async promoteToAdmin(targetUserId, adminUserId) {
     logger.info('Admin promotion attempt', {

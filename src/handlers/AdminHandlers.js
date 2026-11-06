@@ -2,6 +2,9 @@ const logger = require('../utils/logger');
 const respond = require('../utils/respond');
 const { getTimezoneDisplayName } = require('../utils/timezoneCalculator');
 
+const ACTIVE_PAGE_SIZE = 20; // «🟢 Активные»: строк на странице
+const ACTIVE_DAYS = [7, 30, 90]; // окна активности на кнопках
+
 class AdminHandlers {
   constructor(adminService, userService, localizationService, formatter, stateService, funnelService, paymentService, referralService = null) {
     this.adminService = adminService;
@@ -52,7 +55,8 @@ class AdminHandlers {
         { text: '📈 Воронка', callback_data: 'panel_funnel_30' }
       ],
       [
-        { text: '👥 Пользователи', callback_data: 'panel_users' }
+        { text: '👥 Пользователи', callback_data: 'panel_users' },
+        { text: '🟢 Активные', callback_data: 'panel_active_30_1' }
       ],
       [
         { text: '🐛 Баг-репорты', callback_data: 'panel_bug_reports' },
@@ -239,6 +243,45 @@ class AdminHandlers {
       const errorText = this.localizationService.getText(userLanguage, 'admin_error');
       await ctx.reply(errorText);
     }
+  }
+
+  // panel_active_<days>_<page> — кто сам делал записи (траты, доходы; без авто-записей регулярных и импорта выписок)
+  // за 7 / 30 / 90 дней: свежие сверху, записей и разных дней, последняя запись; номер — карточка пользователя
+  async showActiveUsers(ctx, days = 30, page = 1) {
+    if (!(await this.checkAdminAccess(ctx))) return;
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
+    const data = await this.adminService.getActiveUsers(days, page, ACTIVE_PAGE_SIZE);
+    const timezone = (await this.userService.getUserTimezone(ctx.from.id)) || 'UTC';
+    const share = data.totalUsers ? Math.round(data.active / data.totalUsers * 100) : 0;
+    const lines = [
+      `🟢 *Активные за ${days} дн.:* ${data.active} из ${data.totalUsers} (${share}%)`,
+      '_Сами делали записи: траты и доходы, без авто-записей регулярных и импорта выписок_',
+      ''
+    ];
+    if (!data.users.length) lines.push('Никого.');
+    const first = (data.page - 1) * ACTIVE_PAGE_SIZE;
+    data.users.forEach((user, i) => {
+      const flags = `${user.is_admin ? '👑' : ''}${user.premium ? '⭐' : ''}`;
+      const name = this.formatter.escapeMarkdown(user.first_name || '—');
+      const username = user.username ? ` @${this.formatter.escapeMarkdown(user.username)}` : '';
+      const last = this.formatter.formatShortDateTime(user.last_at, timezone);
+      lines.push(`${first + i + 1}. ${flags ? `${flags} ` : ''}${name}${username} — ${user.records} зап. · ${user.days} дн. · посл. ${last}`);
+    });
+
+    const keyboard = [];
+    for (let i = 0; i < data.users.length; i += 5) {
+      keyboard.push(data.users.slice(i, i + 5).map((user, j) => ({ text: String(first + i + j + 1), callback_data: `panel_user_${user.id}` })));
+    }
+    if (data.totalPages > 1) {
+      keyboard.push([
+        data.page > 1 ? { text: '⬅️', callback_data: `panel_active_${days}_${data.page - 1}` } : { text: ' ', callback_data: 'noop' },
+        { text: `${data.page}/${data.totalPages}`, callback_data: 'noop' },
+        data.page < data.totalPages ? { text: '➡️', callback_data: `panel_active_${days}_${data.page + 1}` } : { text: ' ', callback_data: 'noop' }
+      ]);
+    }
+    keyboard.push(ACTIVE_DAYS.map(d => ({ text: d === days ? `• ${d} дн.` : `${d} дн.`, callback_data: `panel_active_${d}_1` })));
+    keyboard.push([{ text: '🔙 Назад', callback_data: 'panel_main' }]);
+    await respond(ctx, lines.join('\n'), { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
   }
 
   // Показать баг-репорты

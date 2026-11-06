@@ -211,6 +211,38 @@ class UserRepository extends BaseRepository {
     return parseInt(result.rows[0].count, 10);
   }
 
+  // Активные за последние days суток: сами делали записи — траты и доходы, кроме авто-записей регулярных и импорта
+  // выписок. records — записей, days — разных дней (в поясе пользователя), last_at — последняя запись; total — всего
+  // таких пользователей (для страниц). По последней записи, свежие сверху
+  async getActiveUsers(days, limit, offset, now = new Date()) {
+    const query = `
+      WITH records AS (
+        SELECT user_id, created_at_utc FROM expenses
+        WHERE created_at_utc >= NOW() - make_interval(days => $1) AND recurring_expense_id IS NULL AND import_id IS NULL
+        UNION ALL
+        SELECT user_id, created_at_utc FROM incomes
+        WHERE created_at_utc >= NOW() - make_interval(days => $1) AND import_id IS NULL
+      ), active AS (
+        SELECT r.user_id, COUNT(*)::int AS records,
+               COUNT(DISTINCT (r.created_at_utc AT TIME ZONE COALESCE(tz.name, 'UTC'))::date)::int AS days,
+               MAX(r.created_at_utc) AS last_at
+        FROM records r
+        JOIN users u ON u.id = r.user_id
+        LEFT JOIN pg_timezone_names tz ON tz.name = u.timezone
+        GROUP BY r.user_id
+      )
+      SELECT u.id, u.username, u.first_name, u.is_admin, u.language,
+             (u.premium AND u.premium_expires_at > $4) AS premium,
+             a.records, a.days, a.last_at, COUNT(*) OVER ()::int AS total
+      FROM active a
+      JOIN users u ON u.id = a.user_id
+      ORDER BY a.last_at DESC
+      LIMIT $2 OFFSET $3
+    `;
+    const result = await this.query(query, [days, limit, offset, now]);
+    return result.rows;
+  }
+
   // Админ снимает премиум целиком — и оплаченный им семейный тариф
   async deactivatePremium(userId) {
     const query = 'UPDATE users SET premium = false, premium_expires_at = NULL, family_premium_expires_at = NULL WHERE id = $1';

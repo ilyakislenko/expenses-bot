@@ -131,3 +131,34 @@ describe('AdminService.sendBroadcastMessage (TG-5)', () => {
     }
   });
 });
+
+describe('Admin «🟢 Active»', () => {
+  test('who recorded themselves: share of all users, records and days, freshest first; numbers open the user, pages and windows switch', async () => {
+    const users = Array.from({ length: 21 }, (_, i) => ({
+      id: 100 + i, first_name: i === 0 ? 'Илья' : `User${i}`, username: i === 0 ? 'Ilu_saaxd' : null, premium: i === 0, is_admin: i === 0,
+      records: 70 - i, days: 6, last_at: new Date(Date.UTC(2026, 10, 6, 3, 25) - i * 3600000), total: 21
+    }));
+    const repository = { getActiveUsers: jest.fn(async (days, limit, offset) => users.slice(offset, offset + limit)) };
+    const service = new AdminService({ userRepository: repository, getUsersCount: async () => 300 }, {}, {}, {}, {}, {}, {});
+    const handlers = new AdminHandlers({ ...service, isUserAdmin: async () => true, getActiveUsers: service.getActiveUsers.bind(service) },
+      { getUserLanguage: async () => 'ru', getUserTimezone: async () => 'Asia/Bangkok' }, new LocalizationService(), new Formatter({}), {}, {}, {});
+    const ctx = makeCtx({ callback: true });
+    await handlers.showActiveUsers(ctx, 30, 1);
+    expect(repository.getActiveUsers).toHaveBeenCalledWith(30, 20, 0);
+    const [text, extra] = ctx.editMessageText.mock.calls[0];
+    expect(text).toContain('🟢 *Активные за 30 дн.:* 21 из 300 (7%)');
+    expect(text).toContain('1. 👑⭐ Илья @Ilu\\_saaxd — 70 зап. · 6 дн. · посл. 06.11, 10:25');
+    expect(text).toContain('20. User19 — 51 зап.');
+    expect(text).not.toContain('User20');
+    const rows = extra.reply_markup.inline_keyboard.map(row => row.map(b => b.callback_data));
+    expect(rows[0]).toEqual(['panel_user_100', 'panel_user_101', 'panel_user_102', 'panel_user_103', 'panel_user_104']);
+    expect(rows.slice(-3)).toEqual([['noop', 'noop', 'panel_active_30_2'], ['panel_active_7_1', 'panel_active_30_1', 'panel_active_90_1'], ['panel_main']]);
+
+    // Страница со старой кнопки, а активных стало меньше — первая
+    repository.getActiveUsers.mockClear();
+    const late = makeCtx({ callback: true });
+    await handlers.showActiveUsers(late, 30, 5);
+    expect(repository.getActiveUsers.mock.calls.map(call => call[2])).toEqual([80, 0]);
+    expect(late.editMessageText.mock.calls[0][0]).toContain('1. 👑⭐ Илья');
+  });
+});

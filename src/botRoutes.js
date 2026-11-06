@@ -572,6 +572,8 @@ module.exports = function registerBotRoutes(bot, handlers) {
     const page = parseInt(ctx.match[1], 10);
     return adminHandlers.showUsers(ctx, page);
   }));
+  // Активные: сами делали записи за 7 / 30 / 90 дней
+  bot.action(/^panel_active_(7|30|90)_(\d+)$/, errorHandler((ctx) => adminHandlers.showActiveUsers(ctx, parseInt(ctx.match[1], 10), Math.max(1, parseInt(ctx.match[2], 10)))));
 
   // Баг-репорты
   bot.action('panel_bug_reports', errorHandler((ctx) => adminHandlers.showBugReports(ctx)));
