@@ -563,8 +563,8 @@ class ExpenseHandlers {
 
   // «Сегодня», обзор периода и записи категории — одни и те же экраны для своих записей и для семьи (семейные записи
   // всех участников, с автором). Семья видна премиуму-участнику семьи: на своём экране тогда кнопка «👨‍👩‍👧‍👦 Семья»,
-  // на семейном — «👤 Только мои» и «Меню семьи». Личное (бюджеты, доходы, «Можно сегодня», регулярные, графики
-  // категорий) — только на своих экранах
+  // на семейном — «👤 Только мои» и «Меню семьи». Личное (бюджеты, доходы, «Можно сегодня», графики категорий) — только
+  // на своих экранах; «Впереди регулярные» на семейном — регулярные, отмеченные семейными (is_family)
   async viewerFamily(userId, isPremium = null) {
     if (!this.familyService) return null;
     const premium = isPremium === null ? await this.premiumService.isPremiumUser(userId) : isPremium;
@@ -755,17 +755,19 @@ class ExpenseHandlers {
       }).join('\n');
     }
 
-    if (!familyView && offset === 0) {
-      const upcoming = (await this.recurringExpenseService.list(userId))
+    // Впереди регулярные: свои — на своём обзоре, семейные регулярные всех участников (с автором) — на семейном
+    if (offset === 0) {
+      const upcoming = (await (familyView ? this.recurringExpenseService.listFamily(family.id) : this.recurringExpenseService.list(userId)))
         .filter(item => item.nextChargeDate >= today && item.nextChargeDate < period.end);
       if (upcoming.length) {
         text += `\n\n*${this.t(lang, 'overview_upcoming')}*\n`;
         text += upcoming.map(item => {
           const [, m, d] = item.nextChargeDate.split('-');
-          return `🔁 ${this.formatter.escapeMarkdown(this.formatter.shorten(item.description))} — ${this.formatter.formatAmount(Number(item.amount), item.currency)} · ${d}.${m}`;
+          const author = familyView ? ` · 👤 ${this.formatter.escapeMarkdown(item.username || item.first_name || '')}` : '';
+          return `🔁 ${this.formatter.escapeMarkdown(this.formatter.shorten(item.description))} — ${this.formatter.formatAmount(Number(item.amount), item.currency)} · ${d}.${m}${author}`;
         }).join('\n');
       }
-      if (!incomeTotals.count) {
+      if (!familyView && !incomeTotals.count) {
         const user = await this.userService.getUserById(userId);
         const ageDays = user?.created_at ? (Date.now() - new Date(user.created_at).getTime()) / 86400000 : Infinity;
         if (ageDays < INCOME_HINT_DAYS) text += `\n\n${this.t(lang, 'overview_income_hint')}`;

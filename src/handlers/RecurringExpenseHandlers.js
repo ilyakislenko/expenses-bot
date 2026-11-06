@@ -6,7 +6,7 @@ const MAX_RECURRING_AMOUNT = 99999999; // expenses.amount DECIMAL(10,2)
 const LIST_DESCRIPTION_LENGTH = 40; // строки списка: 20 позиций с полными описаниями не влезут в сообщение
 
 class RecurringExpenseHandlers {
-  constructor({ recurringExpenseService, expenseService, userService, premiumService, localizationService, formatter, stateService, validator, budgetService, subscriptionAlertService = null }) {
+  constructor({ recurringExpenseService, expenseService, userService, premiumService, localizationService, formatter, stateService, validator, budgetService, subscriptionAlertService = null, familyService = null }) {
     this.recurringExpenseService = recurringExpenseService;
     this.expenseService = expenseService;
     this.userService = userService;
@@ -17,6 +17,13 @@ class RecurringExpenseHandlers {
     this.validator = validator;
     this.budgetService = budgetService;
     this.subscriptionAlertService = subscriptionAlertService; // «🔔 Предупреждать о списании» в карточке
+    this.familyService = familyService; // «👨‍👩‍👧‍👦 Семейный / 👤 Личный» в карточке
+  }
+
+  // Семья, в которую можно писать списания: премиум-участник семьи; иначе null (переключателя нет)
+  async familyFor(userId) {
+    if (!this.familyService || !(await this.premiumService.isPremiumUser(userId))) return null;
+    return this.familyService.getUserFamily(userId);
   }
 
   t(lang, key, params) {
@@ -84,6 +91,9 @@ class RecurringExpenseHandlers {
       day: item.day_of_month,
       next: this.formatter.formatLocalDate(item.nextChargeDate)
     }));
+    // Семейный платёж — списания в семью (семейный обзор и прогноз), личный — только у себя
+    const family = await this.familyFor(userId);
+    if (family) lines.push('', this.t(lang, item.is_family ? 'recurring_family_line_on' : 'recurring_family_line_off'));
     const keyboard = [...topRows];
     // «✅ Уже оплатил»: ближайшее списание оплачено заранее — записать сейчас (месяц списания — в кнопке: старая
     // карточка не оплатит молча следующий месяц)
@@ -102,6 +112,9 @@ class RecurringExpenseHandlers {
             : status.locked ? this.t(lang, 'sub_recurring_locked', { count: USER_LIMITS.regular.PLANNING_SUBSCRIPTIONS })
               : status.enabled ? this.t(lang, 'sub_card_warn_on', { days }) : this.t(lang, 'sub_card_warn_off'));
       keyboard.push([{ text: this.t(lang, on ? 'sub_button_recurring_off' : 'sub_button_recurring_on'), callback_data: `plwr|${item.id}` }]);
+    }
+    if (family) {
+      keyboard.push([{ text: this.t(lang, item.is_family ? 'button_recurring_make_personal' : 'button_recurring_make_family'), callback_data: `rcf|${item.id}` }]);
     }
     keyboard.push([{ text: this.t(lang, 'button_delete_record'), callback_data: `recurring_delete|${item.id}` }], backRow);
     await this.render(ctx, lines.join('\n'), keyboard);
@@ -131,6 +144,22 @@ class RecurringExpenseHandlers {
       answered: true,
       topRows: [[{ text: this.t(lang, 'button_recurring_paid_undo'), callback_data: `rpx|${recurringId}|${month}|${result.expense.id}` }]]
     });
+  }
+
+  // rcf|<id> — «👨‍👩‍👧‍👦 Сделать семейным» / «👤 Сделать личным»: куда пишутся списания (и записанное за этот месяц)
+  async toggleFamily(ctx) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    const recurringId = parseInt(ctx.match[1], 10);
+    const [item, family] = await Promise.all([this.recurringExpenseService.get(userId, recurringId), this.familyFor(userId)]);
+    if (!item || !family) {
+      await ctx.answerCbQuery(this.t(lang, item ? 'not_family_member' : 'recurring_not_found'), { show_alert: true }).catch(() => {});
+      return this.showCard(ctx, { recurringId, answered: true });
+    }
+    const isFamily = !item.is_family;
+    await this.recurringExpenseService.setFamily(userId, recurringId, isFamily);
+    await ctx.answerCbQuery().catch(() => {});
+    return this.showCard(ctx, { recurringId, answered: true, notice: this.t(lang, isFamily ? 'recurring_family_set_on' : 'recurring_family_set_off') });
   }
 
   // rpx|<id>|<YYYYMM>|<expenseId> — отмена «Уже оплатил»: трата удаляется, списание снова ждёт своего числа
@@ -234,7 +263,10 @@ class RecurringExpenseHandlers {
 
     let created;
     try {
-      created = await this.recurringExpenseService.create(userId, { ...pending, categoryId });
+      // Новая регулярная — по режиму «все траты в семью» (в карточке можно поменять)
+      const family = await this.familyFor(userId);
+      const isFamily = !!family && !!(await this.userService.getUserById(userId))?.family_mode;
+      created = await this.recurringExpenseService.create(userId, { ...pending, categoryId, isFamily });
     } catch (error) {
       if (error.code === 'recurring_limit') {
         return ctx.answerCbQuery(this.t(lang, 'recurring_limit', { max: this.recurringExpenseService.getMaxPerUser() }), { show_alert: true });

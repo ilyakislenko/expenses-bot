@@ -1321,3 +1321,7 @@ CREATE TABLE IF NOT EXISTS tax_refund_marks (
 );
 COMMENT ON TABLE tax_refund_marks IS '«💡 Верни 13%»: правка пользователя — трата для вычета этого вида (kind) или не для вычета (none); нет строки — вид угадан по описанию и категории';
 CREATE INDEX IF NOT EXISTS idx_tax_refund_marks_expense ON tax_refund_marks(expense_id);
+
+-- ==== FAMILY RECURRING ====
+ALTER TABLE recurring_expenses ADD COLUMN IF NOT EXISTS is_family BOOLEAN NOT NULL DEFAULT FALSE;
+COMMENT ON COLUMN recurring_expenses.is_family IS 'Семейный платёж: списания пишутся в семью автора (expenses.family_id), если он в семье; иначе лично';

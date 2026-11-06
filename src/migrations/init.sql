@@ -255,6 +255,8 @@ CREATE TABLE IF NOT EXISTS recurring_expenses (
 
 COMMENT ON COLUMN recurring_expenses.day_of_month IS 'Число месяца списания (1-31), в месяцах короче используется последний день';
 COMMENT ON COLUMN recurring_expenses.last_charged_month IS 'Первый день локального месяца, за который трата уже записана';
+ALTER TABLE recurring_expenses ADD COLUMN IF NOT EXISTS is_family BOOLEAN NOT NULL DEFAULT FALSE;
+COMMENT ON COLUMN recurring_expenses.is_family IS 'Семейный платёж: списания пишутся в семью автора (expenses.family_id), если он в семье; иначе лично';
 
 CREATE INDEX IF NOT EXISTS idx_recurring_expenses_user_id ON recurring_expenses(user_id);
 

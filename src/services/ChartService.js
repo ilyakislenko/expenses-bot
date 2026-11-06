@@ -177,14 +177,15 @@ class ChartService {
   // обычные траты прошедших дней (без сегодня и без регулярных) в среднем за день — до конца периода, будущие
   // регулярные — ступеньками. → { png, summary } — summary: строки «план к сегодня · запас / сверх», «прогноз на конец»
   // и «регулярные в плане» для текста обзора (null — нечего сказать); png: null — не нарисовать.
-  // familyId — семейные траты всех участников: бюджеты и регулярные траты личные, поэтому без плана и ступенек — только
-  // траты и прогноз по темпу
+  // familyId — семейные траты всех участников: бюджеты личные, поэтому без плана — траты и прогноз по темпу, будущие
+  // семейные регулярные (RecurringExpenseService.listFamily) — ступеньками прогноза
   async planFact(userId, lang, offset, { botUsername, familyId = null } = {}) {
     const { timezone, currency, today, period } = await this.expenseService.getPeriodContext(userId, 'month', offset);
+    const upcoming = () => (familyId ? this.recurringExpenseService.listFamily(familyId) : this.recurringExpenseService.list(userId));
     const [rows, statuses, recurring] = await Promise.all([
       this.expenseService.getExpenses(familyId ? { familyId } : userId, timezone, period),
       this.budgetService && !familyId ? this.budgetService.getStatus(userId, { timezone, currency, period }) : [],
-      this.recurringExpenseService && !familyId && offset === 0 ? this.recurringExpenseService.list(userId) : []
+      this.recurringExpenseService && offset === 0 ? upcoming() : []
     ]);
     const total = statuses.find(b => b.category_name === null);
     const limit = total ? total.limit : null;

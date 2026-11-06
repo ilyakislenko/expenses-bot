@@ -43,8 +43,8 @@ class RecurringExpenseService {
 
   // Создаёт регулярную трату. Если число списания в этом месяце уже прошло — первое списание в следующем месяце;
   // если оно сегодня — трата записывается сразу. paidThisMonth — за этот месяц уже заплачено (найденная подписка,
-  // списание которой уже есть в тратах): первое списание — в следующем месяце.
-  async create(userId, { amount, currency, description, dayOfMonth, categoryId, paidThisMonth = false }) {
+  // списание которой уже есть в тратах): первое списание — в следующем месяце. isFamily — списания пишутся в семью
+  async create(userId, { amount, currency, description, dayOfMonth, categoryId, paidThisMonth = false, isFamily = false }) {
     const count = await this.recurringExpenseRepository.countByUser(userId);
     if (count >= MAX_RECURRING_PER_USER) {
       const error = new Error('recurring_limit');
@@ -60,7 +60,7 @@ class RecurringExpenseService {
     const lastChargedMonth = paidThisMonth || clampDay(t.y, t.m, dayOfMonth) < t.d ? thisMonth : null;
 
     const { id } = await this.recurringExpenseRepository.create(userId, {
-      amount, currency: resolvedCurrency, categoryId, description, dayOfMonth, lastChargedMonth
+      amount, currency: resolvedCurrency, categoryId, description, dayOfMonth, lastChargedMonth, isFamily
     });
     logger.info('Recurring expense created', { userId, recurringId: id, amount, currency: resolvedCurrency, dayOfMonth });
 
@@ -99,6 +99,21 @@ class RecurringExpenseService {
     if (!row) return null;
     const timezone = await this.userRepository.getUserTimezone(userId);
     return { ...row, nextChargeDate: nextChargeDate(row.day_of_month, row.last_charged_month, localToday(timezone)) };
+  }
+
+  // Семейные регулярные траты всех участников семьи с датой следующей записи (в поясе автора)
+  async listFamily(familyId) {
+    const rows = await this.recurringExpenseRepository.getFamilyRecurring(familyId);
+    return rows.map(row => ({ ...row, nextChargeDate: nextChargeDate(row.day_of_month, row.last_charged_month, localToday(row.timezone)) }));
+  }
+
+  // «👨‍👩‍👧‍👦 Семейный / 👤 Личный»: куда пишутся списания; записанное за текущий месяц переносится туда же.
+  // false — регулярной нет
+  async setFamily(userId, recurringId, isFamily) {
+    const timezone = await this.userRepository.getUserTimezone(userId);
+    const changed = await this.recurringExpenseRepository.setFamily(userId, recurringId, isFamily, timezone, monthOf(localToday(timezone)));
+    if (changed) logger.info('Recurring expense family flag changed', { userId, recurringId, isFamily });
+    return changed;
   }
 
   async delete(userId, recurringId) {

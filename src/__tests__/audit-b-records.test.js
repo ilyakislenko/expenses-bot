@@ -483,7 +483,7 @@ describe('recurring expense charged on creation checks the budget (REC-10)', () 
     const handlers = new RecurringExpenseHandlers({
       recurringExpenseService: { create: async () => created, getMaxPerUser: () => 20 },
       expenseService: { getCategories: async () => [{ id: 3, name: 'Жильё', icon: '🏠' }] },
-      userService: { getUserLanguage: async () => 'ru' },
+      userService: { getUserLanguage: async () => 'ru', getUserById: async () => ({ family_mode: false }) },
       localizationService,
       formatter: new Formatter(identityRates),
       stateService,

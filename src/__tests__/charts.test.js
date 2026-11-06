@@ -195,7 +195,7 @@ function fakeRenderer() {
   };
 }
 
-function chartService({ categories = [], totals = null, perPeriod = null, startDay = 1, lang = 'ru', renderer = fakeRenderer(), expenses = [], budgets = [], recurring = [] } = {}) {
+function chartService({ categories = [], totals = null, perPeriod = null, startDay = 1, lang = 'ru', renderer = fakeRenderer(), expenses = [], budgets = [], recurring = [], familyRecurring = [] } = {}) {
   const rates = { RUB: 1, USD: 100, EUR: 110 };
   const currencyUtils = { convert: async (amount, from, to) => amount * rates[from] / rates[to] };
   const formatter = new Formatter(currencyUtils);
@@ -210,9 +210,9 @@ function chartService({ categories = [], totals = null, perPeriod = null, startD
   };
   const reportService = { categoryBreakdown: jest.fn(async () => categories) };
   const budgetService = { getStatus: jest.fn(async () => budgets) };
-  const recurringExpenseService = { list: jest.fn(async () => recurring) };
+  const recurringExpenseService = { list: jest.fn(async () => recurring), listFamily: jest.fn(async () => familyRecurring) };
   const service = new ChartService({ expenseService, reportService, localizationService: new LocalizationService(), formatter, chartRenderer: renderer, budgetService, recurringExpenseService });
-  return { service, expenseService, reportService, renderer, lang };
+  return { service, expenseService, reportService, budgetService, recurringExpenseService, renderer, lang };
 }
 
 describe('ChartService', () => {
@@ -361,6 +361,23 @@ describe('ChartService', () => {
       '🔮 Прогноз на 31.10 при таком темпе: 3 100 ₽ · 🔴 сверх бюджета 100 ₽'
     ]);
     expect(tight.png.toString()).toContain('fill="#ff5f6d"'); // точка факта красная — по тому же плану
+  });
+
+  test('family chart: family records, no personal budget; members\' family recurring payments are forecast steps', async () => {
+    const expenses = [{ amount: '2700', currency: 'RUB', created_at_utc: '2026-10-01T10:00:00Z' }];
+    const { service, expenseService, budgetService, recurringExpenseService } = chartService({
+      expenses,
+      budgets: [{ category_name: null, limit: 3000 }],
+      recurring: [{ amount: '9999', currency: 'RUB', nextChargeDate: '2026-10-29' }], // личная — не в семейном прогнозе
+      familyRecurring: [{ amount: '1000', currency: 'RUB', nextChargeDate: '2026-10-30' }]
+    });
+    const chart = await service.planFact(1, 'ru', 0, { familyId: 7 });
+    expect(expenseService.getExpenses).toHaveBeenCalledWith({ familyId: 7 }, 'UTC', expect.any(Object));
+    expect(budgetService.getStatus).not.toHaveBeenCalled();
+    expect(recurringExpenseService.listFamily).toHaveBeenCalledWith(7);
+    expect(recurringExpenseService.list).not.toHaveBeenCalled();
+    // 2 700 + 4 дня × 100 + аренда 1 000 30.10
+    expect(chart.summary.replace(/[\u00a0\u202f]/g, ' ')).toBe('🔮 Прогноз на 31.10 при таком темпе: 4 100 ₽');
   });
 
   test('plan vs actual without a total budget: only the actual line, no summary; a past period runs to its end', async () => {

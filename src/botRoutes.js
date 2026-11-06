@@ -100,6 +100,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^rpx\|(\d+)\|(\d{6})\|(\d+)$/, errorHandler((ctx) => recurringExpenseHandlers.undoPayAhead(ctx)));
   bot.action(/^recurring_category\|(\d+)$/, errorHandler((ctx) => recurringExpenseHandlers.handleCategorySelection(ctx)));
   bot.action(/^recurring_delete\|(\d+)$/, errorHandler((ctx) => recurringExpenseHandlers.delete(ctx)));
+  bot.action(/^rcf\|(\d+)$/, errorHandler((ctx) => recurringExpenseHandlers.toggleFamily(ctx)));
 
   const back = `(${BACK_VIEW_PATTERN})`;
   bot.action(/^ov\|(-?\d+)$/, errorHandler((ctx) => expenseHandlers.showOverview(ctx, parseInt(ctx.match[1], 10))));

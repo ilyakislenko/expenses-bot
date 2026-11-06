@@ -1088,7 +1088,8 @@ class Container {
           stateService: this.get('stateService'),
           validator: this.get('enhancedValidator'),
           budgetService: this.get('budgetService'),
-          subscriptionAlertService: this.get('subscriptionAlertService')
+          subscriptionAlertService: this.get('subscriptionAlertService'),
+          familyService: this.get('familyService')
         });
 
       case 'bot':

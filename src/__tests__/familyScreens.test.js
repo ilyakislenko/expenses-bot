@@ -2,7 +2,9 @@
 // всех участников за тот же пользовательский период, листается так же и показывает, кто потратил. Без БД: сервисы — моки.
 const Formatter = require('../utils/formatter');
 const LocalizationService = require('../services/LocalizationService');
+const StateService = require('../services/StateService');
 const ExpenseHandlers = require('../handlers/ExpenseHandlers');
+const RecurringExpenseHandlers = require('../handlers/RecurringExpenseHandlers');
 
 const localizationService = new LocalizationService();
 const t = (key, params) => localizationService.getText('ru', key, params);
@@ -34,7 +36,13 @@ function build({ premium = true, family = FAMILY } = {}) {
     reportService: { categoryBreakdown: jest.fn(async () => [{ id: 5, name: 'Еда', icon: '🍕', total: 500 }, { id: 9, name: 'Транспорт', icon: '🚗', total: 300 }]) },
     incomeService: { getTotals: jest.fn(async () => ({ byCurrency: [], count: 0 })) },
     budgetService: { getStatus: jest.fn(async () => []) },
-    recurringExpenseService: { list: jest.fn(async () => []) },
+    recurringExpenseService: {
+      list: jest.fn(async () => []),
+      listFamily: jest.fn(async () => [
+        { description: 'аренда', amount: '20000', currency: 'RUB', nextChargeDate: '2026-11-10', first_name: 'Света' },
+        { description: 'интернет', amount: '800', currency: 'RUB', nextChargeDate: '2026-12-05', username: 'ilya' } // уже в следующем периоде
+      ])
+    },
     planningService: { allowanceLine: jest.fn(async () => '💸 Можно сегодня: 3 603 ₽') },
     premiumService: { isPremiumUser: jest.fn(async () => premium) },
     familyService: { getUserFamily: jest.fn(async () => family) },
@@ -103,6 +111,17 @@ describe('family and personal screens are the same screens', () => {
     ]);
   });
 
+  test('current family overview lists the members\' family recurring payments ahead, with the author', async () => {
+    const { handlers, deps } = build();
+    const ctx = ctxFor('fov|0');
+    await handlers.showOverview(ctx, 0, { family: true });
+    expect(deps.recurringExpenseService.listFamily).toHaveBeenCalledWith(7);
+    expect(deps.recurringExpenseService.list).not.toHaveBeenCalled();
+    const sp = screen(ctx).text.replace(/[\u00a0\u202f]/g, ' ');
+    expect(sp).toContain(`*${t('overview_upcoming')}*\n🔁 аренда — 20 000 ₽ · 10.11 · 👤 Света`);
+    expect(sp).not.toContain('интернет');
+  });
+
   test('family category list: members\' records with the author, back to the family overview', async () => {
     const { handlers, deps } = build();
     const ctx = ctxFor('foc|5|0|0');
@@ -139,5 +158,58 @@ describe('family and personal screens are the same screens', () => {
     await handlers.showBackView(ctx, 'g.5.-1.0');
     expect(handlers.showDay.mock.calls.map(call => call.slice(1))).toEqual([[-3, 1, { family: true }], [0, 2, { family: true }]]);
     expect(handlers.showCategoryList).toHaveBeenCalledWith(ctx, 5, -1, 0, { family: true });
+  });
+});
+
+describe('a recurring payment is family or personal', () => {
+  function recurring({ family = FAMILY, familyMode = false, isFamily = false } = {}) {
+    const item = { id: 5, amount: '20000', currency: 'RUB', description: 'аренда', day_of_month: 10, is_family: isFamily, nextChargeDate: '2026-11-10' };
+    const service = {
+      get: jest.fn(async () => item),
+      setFamily: jest.fn(async () => true),
+      create: jest.fn(async () => ({ id: 6, currency: 'RUB', chargedNow: false, budgetWarnings: [], nextChargeDate: '2026-11-10' })),
+      getMaxPerUser: () => 20
+    };
+    const stateService = new StateService();
+    const handlers = new RecurringExpenseHandlers({
+      recurringExpenseService: service,
+      expenseService: { getCategories: async () => [{ id: 3, name: 'Жильё', icon: '🏠' }] },
+      userService: { getUserLanguage: async () => 'ru', getUserById: async () => ({ family_mode: familyMode }) },
+      premiumService: { isPremiumUser: async () => true },
+      familyService: { getUserFamily: async () => family },
+      localizationService,
+      formatter: new Formatter(identityRates),
+      stateService
+    });
+    return { handlers, service, stateService };
+  }
+  const cardCtx = (data, match) => ({ ...ctxFor(data), match });
+
+  test('the card says where charges go and switches it; outside a family there is no switch', async () => {
+    const { handlers, service } = recurring();
+    const card = cardCtx('rc|5', ['rc|5', '5']);
+    await handlers.showCard(card);
+    expect(screen(card).text).toContain(t('recurring_family_line_off'));
+    expect(screen(card).buttons.flat()).toContain('rcf|5');
+
+    const toggle = cardCtx('rcf|5', ['rcf|5', '5']);
+    await handlers.toggleFamily(toggle);
+    expect(service.setFamily).toHaveBeenCalledWith(1, 5, true);
+    expect(screen(toggle).text.startsWith(t('recurring_family_set_on'))).toBe(true);
+
+    const alone = recurring({ family: null, isFamily: true });
+    const aloneCard = cardCtx('rc|5', ['rc|5', '5']);
+    await alone.handlers.showCard(aloneCard);
+    expect(screen(aloneCard).text).not.toContain(t('recurring_family_line_on'));
+    expect(screen(aloneCard).buttons.flat()).not.toContain('rcf|5');
+  });
+
+  test('a new recurring payment follows «all expenses to family»', async () => {
+    for (const [familyMode, family, expected] of [[true, FAMILY, true], [false, FAMILY, false], [true, null, false]]) {
+      const { handlers, service, stateService } = recurring({ familyMode, family });
+      stateService.setPendingRecurring(1, { amount: 20000, currency: null, description: 'аренда', dayOfMonth: 10, cardMessageId: 5 });
+      await handlers.handleCategorySelection(cardCtx('recurring_category|3', ['recurring_category|3', '3']));
+      expect(service.create.mock.calls[0][1]).toMatchObject({ categoryId: 3, isFamily: expected });
+    }
   });
 });
