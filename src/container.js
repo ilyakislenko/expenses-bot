@@ -21,6 +21,7 @@ const RateLimiter = require('./utils/rateLimiter');
 const SecurityMiddleware = require('./middleware/securityMiddleware');
 const createErrorHandler = require('./middleware/errorHandler');
 const MonitoringServer = require('./utils/monitoring');
+const MiniAppServer = require('./miniapp/MiniAppServer');
 const CallbackDeduplicator = require('./utils/callbackDeduplicator');
 
 // Repositories
@@ -1078,7 +1079,8 @@ class Container {
           achievementService: this.get('achievementService'),
           referralService: this.get('referralService'),
           savingsScenarioService: this.get('savingsScenarioService'),
-          chartService: this.get('chartService')
+          chartService: this.get('chartService'),
+          miniAppUrl: process.env.MINIAPP_URL || null
         });
 
       case 'incomeHandlers':
@@ -1131,6 +1133,16 @@ class Container {
 
       case 'monitoringServer':
         return new MonitoringServer(process.env.MONITORING_PORT || 3001);
+
+      // Mini App: только при MINIAPP_PORT (127.0.0.1; наружу — туннель), см. src/miniapp
+      case 'miniAppServer':
+        return new MiniAppServer({
+          port: Number(process.env.MINIAPP_PORT),
+          botToken: process.env.BOT_TOKEN,
+          savingsScenarioService: this.get('savingsScenarioService'),
+          userService: this.get('userService'),
+          localizationService: this.get('localizationService')
+        });
 
       case 'callbackDeduplicator':
         return new CallbackDeduplicator();

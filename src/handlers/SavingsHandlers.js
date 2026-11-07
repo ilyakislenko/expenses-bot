@@ -21,7 +21,7 @@ const QUICK_CURRENCIES = ['USD', 'EUR', 'RUB'];
 // Ввод текстом — состояние sv_in:<операция>:<параметры>, см. handleInput.
 // Откуда вводили взнос в месяц (svm|<origin>): s — главный экран, f — прогноз, o — настройки, g<id> — цель.
 class SavingsHandlers {
-  constructor({ savingsService, userService, premiumService, localizationService, formatter, stateService, validator, achievementService = null, referralService = null, savingsScenarioService = null, chartService = null }) {
+  constructor({ savingsService, userService, premiumService, localizationService, formatter, stateService, validator, achievementService = null, referralService = null, savingsScenarioService = null, chartService = null, miniAppUrl = null }) {
     this.savingsService = savingsService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -33,11 +33,17 @@ class SavingsHandlers {
     this.referralService = referralService;
     this.savingsScenarioService = savingsScenarioService; // «📊 Сценарии на год»
     this.chartService = chartService; // их картинка
+    this.miniAppUrl = miniAppUrl; // Mini App со сценариями (кнопка web_app); null — кнопки нет
     this.wizards = new UpdateWizards();
   }
 
   t(lang, key, params) {
     return this.localizationService.getText(lang, key, params);
+  }
+
+  // «📱 Крутить в приложении» — Mini App со сценариями (ползунки дохода и трат, срок)
+  miniAppRow(lang) {
+    return [{ text: this.t(lang, 'miniapp_button'), web_app: { url: this.miniAppUrl } }];
   }
 
   money(amount, currency) {
@@ -1029,6 +1035,7 @@ class SavingsHandlers {
     const keyboard = [];
     if (state.monthly === null) keyboard.push(this.monthlyButton(lang, 'f'));
     if (this.savingsScenarioService) keyboard.push([{ text: this.t(lang, 'savings_scen_button'), callback_data: 'svfs' }]);
+    if (this.miniAppUrl) keyboard.push(this.miniAppRow(lang));
     keyboard.push([{ text: this.t(lang, 'savings_button_settings'), callback_data: 'svo' }], this.backToSavings(lang));
     await respond(ctx, lines.join('\n'), { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
   }
@@ -1064,7 +1071,7 @@ class SavingsHandlers {
     if (notes.length) lines.push('', ...notes);
 
     const text = lines.join('\n');
-    const extra = { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [back] } };
+    const extra = { parse_mode: 'Markdown', reply_markup: { inline_keyboard: this.miniAppUrl ? [this.miniAppRow(lang), back] : [back] } };
     const png = this.chartService && this.chartService.available && text.length <= 1024
       ? await this.chartService.savingsScenarios(result, lang, { botUsername: (ctx.botInfo && ctx.botInfo.username) || null }).catch(() => null)
       : null;

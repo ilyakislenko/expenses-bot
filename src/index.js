@@ -11,6 +11,7 @@ const SHUTDOWN_TIMEOUT_MS = 15000;
 async function startApplication() {
   let bot = null;
   let monitoringServer = null;
+  let miniAppServer = null;
   let running = null;
   let shuttingDown = false;
   let stateService = null;
@@ -32,6 +33,7 @@ async function startApplication() {
         await running.catch(() => {});
       }
       if (monitoringServer) await monitoringServer.stop();
+      if (miniAppServer) await miniAppServer.stop();
       if (stateService) await stateService.flush();
       await BaseRepository.closePool();
     } catch (error) {
@@ -59,6 +61,11 @@ async function startApplication() {
     // 1. Запускаем сервер мониторинга
     await monitoringServer.start();
     logger.startup('Monitoring server started successfully');
+    // Mini App (сценарии накоплений) — только при MINIAPP_PORT, слушает 127.0.0.1
+    if (process.env.MINIAPP_PORT) {
+      miniAppServer = container.get('miniAppServer');
+      await miniAppServer.start();
+    }
 
     // 2. Middleware
     applyBotMiddleware(bot, handlers.errorHandler, handlers.callbackDeduplicator, handlers.securityMiddleware);

@@ -127,7 +127,8 @@ class SavingsScenarioService {
       const { points } = simulate({ parts: savings.parts, monthly, ...savings.rates, months: HORIZON_MONTHS });
       return { ...variant, monthly, points: points.map(p => p.nominal) };
     }) : [];
-    return { family, currency, today: ctx.today, startDay: ctx.startDay, total: savings.total, income, rates: savings.rates, scenarios };
+    // parts — накопления по частям со ставками: мини-приложение само пересчитывает кривые (utils/savingsForecast)
+    return { family, currency, today: ctx.today, startDay: ctx.startDay, total: savings.total, parts: savings.parts, income, rates: savings.rates, scenarios };
   }
 }
 

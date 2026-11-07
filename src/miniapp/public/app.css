@@ -1,0 +1,31 @@
+:root {
+  --bg: var(--tg-theme-bg-color, #0f1420);
+  --card: var(--tg-theme-secondary-bg-color, #1a2131);
+  --text: var(--tg-theme-text-color, #eef2f8);
+  --muted: var(--tg-theme-hint-color, #8f9aad);
+  --accent: var(--tg-theme-button-color, #4f9dff);
+  --accent-text: var(--tg-theme-button-text-color, #ffffff);
+  --grid: color-mix(in srgb, var(--muted) 30%, transparent);
+  --mine: #3ecf8e;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.4 -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; }
+main { padding: 16px 16px 32px; max-width: 640px; margin: 0 auto; }
+h1 { font-size: 20px; margin: 0 0 4px; }
+.muted { color: var(--muted); }
+.status { color: var(--muted); text-align: center; margin-top: 40vh; }
+.card { background: var(--card); border-radius: 14px; padding: 12px 14px; margin: 12px 0; }
+.result { font-size: 22px; font-weight: 700; }
+.result small { font-size: 14px; font-weight: 400; color: var(--muted); display: block; margin-top: 2px; }
+.delta-up { color: var(--mine); }
+.delta-down { color: #ff5f6d; }
+svg { width: 100%; height: auto; display: block; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; margin-top: 6px; }
+.legend span::before { content: ""; display: inline-block; width: 14px; height: 3px; border-radius: 2px; background: var(--c); vertical-align: middle; margin-right: 6px; }
+.label { display: flex; justify-content: space-between; gap: 8px; margin: 14px 0 6px; }
+.label b { font-weight: 600; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { border: 1px solid var(--grid); background: transparent; color: var(--text); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 14px; }
+.chip.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.reset { margin-top: 16px; width: 100%; border: 0; border-radius: 12px; padding: 10px; background: var(--card); color: var(--accent); font: inherit; }
