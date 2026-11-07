@@ -3,8 +3,10 @@ const currencyConfig = require('../config/currencies');
 const { TAG_SQL_PATTERN } = require('../utils/tags');
 
 // Чьи записи за период: id пользователя — его записи (в том числе его семейные), { familyId } — семейные записи всех
-// участников семьи. → условие на $1 и значение для $1
+// участников семьи, { userIds } — все записи этих пользователей (домохозяйство: личные, семейные, импорт выписок —
+// для сценариев накоплений). → условие на $1 и значение для $1
 function ownerFilter(owner) {
+  if (owner && Array.isArray(owner.userIds)) return { sql: 'e.user_id = ANY($1::bigint[])', value: owner.userIds };
   return owner && typeof owner === 'object'
     ? { sql: 'e.family_id = $1', value: owner.familyId }
     : { sql: 'e.user_id = $1', value: owner };

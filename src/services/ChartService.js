@@ -1,4 +1,5 @@
-const { customPeriod, addDays } = require('../utils/period');
+const { customPeriod } = require('../utils/period');
+const { periodSeries } = require('../utils/periodForecast');
 const { compactAmount, commaDecimal } = require('../utils/savingsView');
 const charts = require('../utils/charts');
 
@@ -197,32 +198,10 @@ class ChartService {
     const total = statuses.find(b => b.category_name === null);
     const limit = total ? total.limit : null;
     const convert = (amount, from) => this.formatter.sumInCurrency([{ currency: from, total: Number(amount) }], currency);
-
-    const days = [];
-    for (let day = period.start; day < period.end; day = addDays(day, 1)) days.push(day);
-    const lastIndex = offset === 0 ? Math.max(0, days.indexOf(today)) : days.length - 1;
-    const localDay = new Intl.DateTimeFormat('en-CA', { timeZone: timezone || 'UTC', year: 'numeric', month: '2-digit', day: '2-digit' });
-    const spentByDay = new Map();
-    const chargedByDay = new Map(); // день → списанные регулярные (ступенька плана; не входят в темп прогноза)
-    const futureByDay = new Map(); // день → регулярные, которые ещё спишутся (ступенька плана и прогноза)
-    const add = (map, day, value) => map.set(day, (map.get(day) || 0) + value);
-    for (const row of rows) {
-      const day = localDay.format(new Date(row.created_at_utc));
-      const value = await convert(row.amount, row.currency);
-      add(spentByDay, day, value);
-      if (row.recurring_expense_id) add(chargedByDay, day, value);
-    }
-    for (const item of recurring) {
-      if (item.nextChargeDate >= today && item.nextChargeDate < period.end) add(futureByDay, item.nextChargeDate, await convert(item.amount, item.currency));
-    }
+    const { days, lastIndex, chargedByDay, futureByDay, actual, running, forecast } = await periodSeries({
+      rows, recurring, period, today, timezone, convert, current: offset === 0
+    });
     const billsOn = (day) => (chargedByDay.get(day) || 0) + (futureByDay.get(day) || 0);
-
-    const actual = [];
-    let running = 0;
-    for (let i = 0; i <= lastIndex; i++) {
-      running += spentByDay.get(days[i]) || 0;
-      actual.push(running);
-    }
     let planLine = null;
     let planJumps = null;
     let bills = 0;
@@ -238,24 +217,6 @@ class ChartService {
         planLine.push(plan);
         planJumps.push(jump);
       }
-    }
-
-    // Прогноз: от сегодняшней точки факта; сегодня — не меньше, чем обычный день по темпу
-    let forecast = null;
-    if (offset === 0 && lastIndex >= 1 && lastIndex < days.length - 1) {
-      let chargedBefore = 0;
-      for (let i = 0; i < lastIndex; i++) chargedBefore += chargedByDay.get(days[i]) || 0;
-      const pace = Math.max(0, actual[lastIndex - 1] - chargedBefore) / lastIndex;
-      let projected = Math.max(running, actual[lastIndex - 1] + pace + (chargedByDay.get(today) || 0)) + (futureByDay.get(today) || 0);
-      const values = [running];
-      const jumps = [0];
-      for (let i = lastIndex + 1; i < days.length; i++) {
-        const jump = futureByDay.get(days[i]) || 0;
-        projected += pace + jump;
-        values.push(projected);
-        jumps.push(jump);
-      }
-      forecast = { start: lastIndex, values, jumps, end: projected };
     }
 
     const shortDay = (day) => `${day.slice(8, 10)}.${day.slice(5, 7)}`;
@@ -301,6 +262,52 @@ class ChartService {
       dayLabels, actual, planLine, planJumps, forecast, over, actualLabel, limitLabel, forecastLabel, actualAmount, limitAmount, forecastAmount
     }, this.renderer.createText());
     return { png: await this.render(svg, IMAGE_WIDTH.trend), summary };
+  }
+
+  // 📊 Сценарии накоплений на год (SavingsScenarioService.build) картинкой → PNG или null (нечего рисовать / нет шрифта).
+  // Кривые: как в среднем — оранжевая, по плану — фиолетовая пунктиром, как в этом месяце — синяя
+  async savingsScenarios(result, lang, { botUsername } = {}) {
+    if (!result.scenarios.length) return null;
+    const { currency } = result;
+    const style = {
+      average: { color: charts.THEME.average, dash: null },
+      plan: { color: charts.PALETTE[4], dash: '14 10' },
+      current: { color: charts.THEME.current, dash: null }
+    };
+    const periods = [];
+    for (let k = 0; k < result.scenarios[0].points.length; k++) periods.push(customPeriod(result.today, result.startDay, k));
+    const monthLabels = this.horizonLabels(periods, lang, result.startDay);
+    const lines = result.scenarios.map(s => ({
+      label: this.t(lang, `savings_scen_leg_${s.key}`), values: s.points, amount: this.compact(s.points[s.points.length - 1], currency, lang), ...style[s.key]
+    }));
+    const title = this.t(lang, 'savings_scen_chart_title');
+    const subtitle = `${monthLabels[0]} – ${monthLabels[monthLabels.length - 1]}`;
+    const nowLabel = this.t(lang, 'savings_scen_leg_now');
+    const nowAmount = this.compact(result.total, currency, lang);
+    if (!(await this.canRender([title, subtitle, nowLabel, nowAmount, ...monthLabels, ...lines.flatMap(l => [l.label, l.amount])]))) return null;
+    const svg = charts.savingsScenariosSvg({ title, subtitle, brand: this.brand(botUsername), monthLabels, nowLabel, nowAmount, lines }, this.renderer.createText());
+    return this.render(svg, IMAGE_WIDTH.trend);
+  }
+
+  // Подписи месяцев на горизонте: «нояб.», год — только у первого, последнего и января («нояб. 26», «янв. 27»);
+  // при периодах не с 1-го — дата начала «25.09»
+  horizonLabels(periods, lang, startDay) {
+    if (startDay !== 1) return this.periodLabels(periods, lang, startDay);
+    const locale = INTL_LOCALES[lang] || lang;
+    const make = (options) => {
+      try {
+        return new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' });
+      } catch (error) {
+        return new Intl.DateTimeFormat('en', { ...options, timeZone: 'UTC' });
+      }
+    };
+    const month = make({ month: 'short' });
+    const year = make({ year: '2-digit' });
+    return periods.map((p, i) => {
+      const date = new Date(`${p.start}T12:00:00Z`);
+      const withYear = i === 0 || i === periods.length - 1 || p.start.slice(5, 7) === '01';
+      return withYear ? `${month.format(date)} ${year.format(date).replace(/\D/g, '')}` : month.format(date);
+    });
   }
 
   // 🎉 Карточка «Итоги месяца» из AchievementService.buildWrapped().card → PNG или null.

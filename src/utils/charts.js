@@ -530,8 +530,74 @@ function planFactSvg(data, engine = estimateText()) {
   return svgDoc(W, H, engine, parts.join(''));
 }
 
+// ---------- Сценарии накоплений ----------
+
+// Накопления по месяцам при разных тратах: кривые от общей точки «сейчас» до горизонта, у конца каждой — сумма.
+// data: { title, subtitle, brand, monthLabels: [..N+1] (0 — сейчас), nowLabel, nowAmount,
+// lines: [{ label, values: [..N+1], color, dash, amount }] }
+function savingsScenariosSvg(data, engine = estimateText()) {
+  const label = fitted(engine);
+  const W = 1000;
+  const H = 640;
+  const left = 56;
+  const right = W - 170;
+  const chartTop = 200;
+  const chartBottom = 530;
+  const months = data.monthLabels || [];
+  const n = Math.max(2, months.length);
+  const lines = (data.lines || []).filter(line => Array.isArray(line.values) && line.values.length === n);
+  const parts = [];
+
+  parts.push(label(48, 70, data.title, W - 96, { size: 34, bold: true }));
+  if (data.subtitle) parts.push(label(48, 110, data.subtitle, W - 96, { size: 24, color: THEME.muted }));
+
+  const all = lines.flatMap(line => line.values);
+  const scaleMax = niceMax(Math.max(1, ...all) * 1.08);
+  const x = (index) => round(left + (index / (n - 1)) * (right - left));
+  const y = (value) => round(chartBottom - (Math.max(0, value) / scaleMax) * (chartBottom - chartTop));
+
+  for (let k = 1; k <= 4; k++) {
+    const gy = round(chartBottom - (k / 4) * (chartBottom - chartTop));
+    parts.push(`<line x1="${left}" y1="${gy}" x2="${right}" y2="${gy}" stroke="${THEME.grid}" stroke-width="1" opacity="0.5"/>`);
+  }
+  parts.push(`<line x1="${left}" y1="${chartBottom}" x2="${right}" y2="${chartBottom}" stroke="${THEME.grid}" stroke-width="2"/>`);
+  const step = Math.max(1, Math.ceil((n - 1) / 6));
+  // Первая подпись — от левого края графика (по центру не влезет), остальные по центру деления
+  for (let i = 0; i < n; i += step) parts.push(label(i === 0 ? left - 8 : x(i), chartBottom + 34, months[i] || '', 110, { size: 20, color: THEME.muted, anchor: i === 0 ? 'start' : 'middle' }));
+  if ((n - 1) % step) parts.push(label(x(n - 1), chartBottom + 34, months[n - 1] || '', 110, { size: 20, color: THEME.muted, anchor: 'middle' }));
+
+  for (const line of lines) {
+    const points = line.values.map((value, index) => `${x(index)},${y(value)}`).join(' ');
+    const dash = line.dash ? ` stroke-dasharray="${line.dash}"` : '';
+    parts.push(`<polyline points="${points}" fill="none" stroke="${line.color}" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"${dash}/>`);
+  }
+  // Подписи концов не налезают: снизу вверх, не ближе 28 px друг к другу
+  const ends = lines.map(line => ({ line, y: y(line.values[n - 1]) + 8 })).sort((a, b) => b.y - a.y);
+  for (let i = 1; i < ends.length; i++) ends[i].y = Math.min(ends[i].y, ends[i - 1].y - 28);
+  for (const end of ends) parts.push(label(x(n - 1) + 12, end.y, end.line.amount || '', W - right - 20, { size: 20, bold: true, color: end.line.color }));
+
+  if (lines.length) {
+    const start = lines[0].values[0];
+    parts.push(`<circle cx="${x(0)}" cy="${y(start)}" r="8" fill="${THEME.text}"/>`);
+    // «сейчас …» под точкой: кривые идут вверх, под ними пусто
+    parts.push(label(x(0) + 4, Math.min(chartBottom - 12, y(start) + 34), `${data.nowLabel || ''} ${data.nowAmount || ''}`.trim(), 300, { size: 20, bold: true, color: THEME.text, halo: true }));
+  }
+
+  // Легенда над графиком: до трёх кривых
+  lines.slice(0, 3).forEach((line, i) => {
+    const lx = 48 + i * 316;
+    const dash = line.dash ? ` stroke-dasharray="${line.dash}"` : '';
+    parts.push(`<line x1="${lx}" y1="152" x2="${lx + 48}" y2="152" stroke="${line.color}" stroke-width="5" stroke-linecap="round"${dash}/>`);
+    parts.push(label(lx + 60, 160, line.label || '', 250, { size: 22, color: line.color }));
+  });
+
+  if (data.brand) parts.push(engine.draw(W - 48, H - 24, data.brand, { size: 18, color: THEME.muted, anchor: 'end' }));
+  return svgDoc(W, H, engine, parts.join(''));
+}
+
 module.exports = {
   planFactSvg,
+  savingsScenariosSvg,
   THEME,
   PALETTE,
   OTHER_COLOR,

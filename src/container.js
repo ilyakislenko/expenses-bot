@@ -70,6 +70,7 @@ const CategoryService = require('./services/CategoryService');
 const AdminService = require('./services/AdminService');
 const IncomeService = require('./services/IncomeService');
 const SavingsService = require('./services/SavingsService');
+const SavingsScenarioService = require('./services/SavingsScenarioService');
 const RecurringExpenseService = require('./services/RecurringExpenseService');
 const FunnelService = require('./services/FunnelService');
 const PremiumLifecycleService = require('./services/PremiumLifecycleService');
@@ -905,6 +906,17 @@ class Container {
           currencyUtils: this.get('currencyUtils')
         });
 
+      case 'savingsScenarioService':
+        return new SavingsScenarioService({
+          savingsService: this.get('savingsService'),
+          expenseService: this.get('expenseService'),
+          budgetService: this.get('budgetService'),
+          recurringExpenseService: this.get('recurringExpenseService'),
+          planningRepository: this.get('planningRepository'),
+          familyRepository: this.get('familyRepository'),
+          currencyUtils: this.get('currencyUtils')
+        });
+
       case 'incomeService':
         return new IncomeService(
           this.get('incomeRepository'),
@@ -1064,7 +1076,9 @@ class Container {
           stateService: this.get('stateService'),
           validator: this.get('enhancedValidator'),
           achievementService: this.get('achievementService'),
-          referralService: this.get('referralService')
+          referralService: this.get('referralService'),
+          savingsScenarioService: this.get('savingsScenarioService'),
+          chartService: this.get('chartService')
         });
 
       case 'incomeHandlers':

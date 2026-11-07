@@ -1,4 +1,5 @@
 const respond = require('../utils/respond');
+const respondPhoto = require('../utils/respondPhoto');
 const { simulate } = require('../utils/savingsForecast');
 const { amortize, projectDebt } = require('../utils/debtForecast');
 const { compactAmount, commaDecimal, currencySymbol, potIcon, updateQueue, UpdateWizards } = require('../utils/savingsView');
@@ -20,7 +21,7 @@ const QUICK_CURRENCIES = ['USD', 'EUR', 'RUB'];
 // Ввод текстом — состояние sv_in:<операция>:<параметры>, см. handleInput.
 // Откуда вводили взнос в месяц (svm|<origin>): s — главный экран, f — прогноз, o — настройки, g<id> — цель.
 class SavingsHandlers {
-  constructor({ savingsService, userService, premiumService, localizationService, formatter, stateService, validator, achievementService = null, referralService = null }) {
+  constructor({ savingsService, userService, premiumService, localizationService, formatter, stateService, validator, achievementService = null, referralService = null, savingsScenarioService = null, chartService = null }) {
     this.savingsService = savingsService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -30,6 +31,8 @@ class SavingsHandlers {
     this.validator = validator;
     this.achievementService = achievementService;
     this.referralService = referralService;
+    this.savingsScenarioService = savingsScenarioService; // «📊 Сценарии на год»
+    this.chartService = chartService; // их картинка
     this.wizards = new UpdateWizards();
   }
 
@@ -1025,8 +1028,48 @@ class SavingsHandlers {
 
     const keyboard = [];
     if (state.monthly === null) keyboard.push(this.monthlyButton(lang, 'f'));
+    if (this.savingsScenarioService) keyboard.push([{ text: this.t(lang, 'savings_scen_button'), callback_data: 'svfs' }]);
     keyboard.push([{ text: this.t(lang, 'savings_button_settings'), callback_data: 'svo' }], this.backToSavings(lang));
     await respond(ctx, lines.join('\n'), { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
+  }
+
+  // callback: svfs — «📊 Сценарии на год»: накопления через 12 месяцев при тратах как в среднем, по плану и как в
+  // этом месяце (SavingsScenarioService) — картинка с текстом в подписи; без дохода — подсказка записать доход
+  async showScenarios(ctx) {
+    const userId = ctx.from.id;
+    const lang = await this.userService.getUserLanguage(userId);
+    await this.answer(ctx);
+    const result = await this.savingsScenarioService.build(userId);
+    const { currency } = result;
+    const back = [{ text: this.t(lang, 'savings_scen_back'), callback_data: 'svf' }];
+    if (!result.income) {
+      return respond(ctx, `${this.t(lang, 'savings_scen_title')}\n\n${this.t(lang, 'savings_scen_no_income')}`, {
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard: [[{ text: this.t(lang, 'button_add_income'), callback_data: 'income_add' }], back] }
+      });
+    }
+    const money = (value) => this.compact(value, currency, lang);
+    const signed = (value) => `${value >= 0 ? '+' : '−'}${money(Math.abs(value))}`;
+    const lines = [this.t(lang, 'savings_scen_title'), ''];
+    lines.push(this.t(lang, 'savings_scen_now', { amount: money(result.total), income: money(result.income.amount), count: result.income.periods }));
+    for (const s of result.scenarios) {
+      lines.push(this.t(lang, `savings_scen_${s.key}`, {
+        spending: money(s.spending), count: s.periods || 0, monthly: signed(s.monthly), result: money(s.points[s.points.length - 1])
+      }));
+    }
+    if (!result.scenarios.length) lines.push(this.t(lang, 'savings_scen_no_spending'));
+    const notes = [];
+    if (result.family) notes.push(this.t(lang, 'savings_scen_family'));
+    if (result.rates.yieldRate > 0 || result.rates.inflationRate > 0 || result.rates.contributionGrowth > 0) notes.push(this.t(lang, 'savings_scen_rates'));
+    if (notes.length) lines.push('', ...notes);
+
+    const text = lines.join('\n');
+    const extra = { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [back] } };
+    const png = this.chartService && this.chartService.available && text.length <= 1024
+      ? await this.chartService.savingsScenarios(result, lang, { botUsername: (ctx.botInfo && ctx.botInfo.username) || null }).catch(() => null)
+      : null;
+    if (png) return respondPhoto(ctx, png, { caption: text, ...extra, replace: true });
+    await respond(ctx, text, extra);
   }
 
   // Сколько останется должен по месяцам 0..months (основная валюта по текущему курсу): каждый долг — по своей

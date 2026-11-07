@@ -183,6 +183,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action(/^svbx\|(\d+)$/, errorHandler((ctx) => savingsHandlers.confirmDeleteDebt(ctx)));
   bot.action(/^svbxc\|(\d+)$/, errorHandler((ctx) => savingsHandlers.deleteDebt(ctx)));
   bot.action('svf', errorHandler((ctx) => savingsHandlers.showForecast(ctx)));
+  bot.action('svfs', errorHandler((ctx) => savingsHandlers.showScenarios(ctx)));
   bot.action('svo', errorHandler((ctx) => savingsHandlers.showSettings(ctx)));
   bot.action(/^svo\|(m|ma|i|y|g)$/, errorHandler((ctx) => savingsHandlers.settingsAction(ctx)));
   // Устаревшие или неизвестные кнопки раздела (старые сообщения) — главный экран накоплений
