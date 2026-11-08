@@ -6,6 +6,9 @@ const STARS_SUBSCRIPTION_PERIOD_SECONDS = 2592000;
 const SUBSCRIPTION_TARIFF_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const INVOICE_LINK_TIMEOUT_MS = 10000;
+// Пожертвование: звёзд и символов письма
+const DONATION_MAX_STARS = 2500;
+const DONATION_MAX_MESSAGE = 500;
 
 // Платёж семейного тарифа (по payload транзакции)
 function isFamilyPayment(transaction) {
@@ -480,6 +483,16 @@ class PaymentService {
       currency: 'XTR',
       prices: [{ label: title, amount: GROUP_PASS.stars }]
     });
+  }
+
+  // Пожертвование (бот — ввод после «💎 Поддержать», приложение — форма): 1–2500 ⭐ и письмо до 500 символов;
+  // прежние ожидающие пожертвования отменяются (их ссылки перестают проходить проверку перед оплатой).
+  // → ожидающее пожертвование или null, если сумма или письмо не подходят. Ссылка — createDonationInvoiceLink
+  async createDonation(userId, stars, message = '') {
+    const note = String(message || '').trim();
+    if (!Number.isInteger(stars) || stars < 1 || stars > DONATION_MAX_STARS || note.length > DONATION_MAX_MESSAGE) return null;
+    await this.donationRepository.cancelUserPendingDonations(userId);
+    return this.donationRepository.createPendingDonation(userId, stars, note || null);
   }
 
   /**

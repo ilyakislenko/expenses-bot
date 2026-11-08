@@ -2,7 +2,7 @@ const { LEGACY_MENU_BUTTON_KEYS } = require('../utils/constants');
 const AssistantHandlers = require('./AssistantHandlers');
 
 class MessageHandlers {
-constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, donationRepository, bugReportRepository, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, savingsHandlers, planningHandlers, assistantHandlers, multiEntryHandlers, onboardingHandlers = null, receiptHandlers = null, subscriptionHandlers = null, bankNotificationHandlers = null, taxRefundHandlers = null }) {
+constructor({ expenseService, userService, premiumService, familyService, categoryService, localizationService, formatter, commandHandlers, stateService, validator, paymentService, adminHandlers, incomeHandlers, recurringExpenseHandlers, expenseHandlers, budgetHandlers, exportHandlers, savingsHandlers, planningHandlers, assistantHandlers, multiEntryHandlers, onboardingHandlers = null, receiptHandlers = null, subscriptionHandlers = null, bankNotificationHandlers = null, taxRefundHandlers = null }) {
     this.expenseService = expenseService;
     this.userService = userService;
     this.premiumService = premiumService;
@@ -14,8 +14,6 @@ constructor({ expenseService, userService, premiumService, familyService, catego
     this.stateService = stateService;
     this.validator = validator;
     this.paymentService = paymentService;
-    this.donationRepository = donationRepository;
-    this.bugReportRepository = bugReportRepository;
     this.adminHandlers = adminHandlers;
     this.incomeHandlers = incomeHandlers;
     this.recurringExpenseHandlers = recurringExpenseHandlers;
@@ -534,15 +532,12 @@ constructor({ expenseService, userService, premiumService, familyService, catego
       if (match) {
         message = (match[2] || match[3] || '').trim();
       }
-      if (!Number.isInteger(stars) || stars < 1 || stars > 2500 || message.length > 500) {
+      // Проверка суммы и письма, отмена прежних ожидающих — общие с приложением: PaymentService.createDonation
+      const donation = Number.isInteger(stars) ? await this.paymentService.createDonation(userId, stars, message) : null;
+      if (!donation) {
         const invalid = this.localizationService.getText(userLanguage, 'donate_invalid');
         return await ctx.reply(invalid);
       }
-      // отменяем все предыдущие pending донаты пользователя
-      await this.donationRepository.cancelUserPendingDonations(userId);
-      
-      // создаём новый pending донат
-      const donation = await this.donationRepository.createPendingDonation(userId, stars, message || null);
       this.stateService.deleteUserState(userId);
 
       const ok = this.localizationService.getText(userLanguage, 'donate_created', { stars });
@@ -666,52 +661,13 @@ constructor({ expenseService, userService, premiumService, familyService, catego
   async handleBugReportInput(ctx, text, userLanguage) {
     try {
       const userId = ctx.from.id;
-      
-      // Дополнительная защита: проверяем количество баг-репортов за последние 10 минут
-      const recentReports = await this.bugReportRepository.getBugReportsByUserId(userId, 5, 0);
-      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
-      const recentCount = recentReports.filter(r => new Date(r.created_at) > tenMinutesAgo).length;
-      
-      if (recentCount >= 3) {
-        const errorText = this.localizationService.getText(userLanguage, 'bug_report_rate_limit');
-        return await ctx.reply(errorText);
+      // Проверки (не чаще 3 за 10 минут, длина, подозрительные шаблоны) — общие с приложением: AdminService
+      const result = await this.adminHandlers.adminService.submitBugReport(userId, text);
+      if (!result.ok) {
+        return await ctx.reply(this.localizationService.getText(userLanguage, `bug_report_${result.error}`, { excess: result.excess }));
       }
-      
-      const reportText = (text || '').trim();
-      
-      // Валидация длины
-      if (!reportText) {
-        const errorText = this.localizationService.getText(userLanguage, 'bug_report_empty');
-        return await ctx.reply(errorText);
-      }
-      
-      if (reportText.length > 1000) {
-        const excess = reportText.length - 1000;
-        const errorText = this.localizationService.getText(userLanguage, 'bug_report_too_long', { excess });
-        return await ctx.reply(errorText);
-      }
-
-      // Проверка на подозрительные паттерны (более мягкая, не блокируем обычные скобки и кавычки)
-      const suspiciousPatterns = [
-        /<\s*script\b[^>]*>/i,        // <script ...>
-        /<\s*\/\s*script\s*>/i,     // </script>
-        /on\w+\s*=/i,                 // inline-обработчики событий в HTML
-        /(javascript:|vbscript:)/i,    // опасные протоколы
-        /(@everyone|@here|@channel)/gi,     // Спам-упоминания
-        /(.)\1{20,}/g                  // Повтор более 20 одинаковых символов подряд
-      ];
-
-      for (const pattern of suspiciousPatterns) {
-        if (pattern.test(reportText)) {
-          const errorText = this.localizationService.getText(userLanguage, 'bug_report_suspicious');
-          return await ctx.reply(errorText);
-        }
-      }
-      
-      // Создаем баг-репорт
-      await this.bugReportRepository.createBugReport(userId, reportText);
       this.stateService.deleteUserState(userId);
-      
+
       const successText = this.localizationService.getText(userLanguage, 'bug_report_success');
       await ctx.reply(successText);
       

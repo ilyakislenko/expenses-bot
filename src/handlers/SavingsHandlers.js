@@ -1,15 +1,16 @@
 const respond = require('../utils/respond');
 const respondPhoto = require('../utils/respondPhoto');
 const { simulate } = require('../utils/savingsForecast');
-const { amortize, projectDebt } = require('../utils/debtForecast');
-const { compactAmount, commaDecimal, currencySymbol, potIcon, updateQueue, UpdateWizards } = require('../utils/savingsView');
+const { amortize, projectDebts } = require('../utils/debtForecast');
+const {
+  compactAmount, commaDecimal, currencySymbol, potIcon, updateQueue, UpdateWizards,
+  cleanPotName, visibleAccounts, ownPots, MAX_SAVINGS_AMOUNT, MAX_NAME_LENGTH, RATE_LIMITS
+} = require('../utils/savingsView');
 const { SUPPORTED_CURRENCIES } = require('../config/currencies');
 const { MAX_DEBTS } = require('../services/SavingsService');
 
-const MAX_SAVINGS_AMOUNT = 9999999999; // savings_pots.balance DECIMAL(14,2) с запасом на пополнения
-const MAX_GOAL_NAME_LENGTH = 60;
+const MAX_GOAL_NAME_LENGTH = MAX_NAME_LENGTH;
 const BUTTON_NAME_LENGTH = 16; // название на кнопке главного экрана — рядом ещё сумма
-const RATE_LIMITS = { i: 300, y: 300, g: 100 }; // проценты годовых: инфляция, доходность, рост взноса
 const RATE_COLUMNS = { i: 'inflation_rate', y: 'yield_rate', g: 'contribution_growth' };
 const FORECAST_HORIZONS = [6, 12, 36, 60, 120];
 const ZERO = /^\s*0+(?:[.,]0+)?\s*$/;
@@ -41,9 +42,9 @@ class SavingsHandlers {
     return this.localizationService.getText(lang, key, params);
   }
 
-  // «📱 Крутить в приложении» — Mini App со сценариями (ползунки дохода и трат, срок)
+  // «📱 Крутить в приложении» — Mini App сразу на экране сценариев (ползунки дохода и трат, срок)
   miniAppRow(lang) {
-    return [{ text: this.t(lang, 'miniapp_button'), web_app: { url: this.miniAppUrl } }];
+    return [{ text: this.t(lang, 'miniapp_button'), web_app: { url: `${this.miniAppUrl.replace(/#.*$/, '')}#/savings/scenarios` } }];
   }
 
   money(amount, currency) {
@@ -123,7 +124,7 @@ class SavingsHandlers {
 
   // Счета на экране: пустая общая копилка при своих счетах не показывается
   visibleAccounts(accounts) {
-    return accounts.filter(a => !(a.kind === 'general' && a.balance === 0 && accounts.length > 1));
+    return visibleAccounts(accounts);
   }
 
   // «3 000 $ ≈ 285 000 ₽ · 16%»
@@ -312,7 +313,7 @@ class SavingsHandlers {
   }
 
   ownPots(state) {
-    return state.pots.filter(p => p.kind !== 'debt' && (p.kind !== 'goal' || p.goal_mode === 'own'));
+    return ownPots(state.pots);
   }
 
   async accountCard(ctx, lang, pot, state, notice) {
@@ -1079,17 +1080,9 @@ class SavingsHandlers {
     await respond(ctx, text, extra);
   }
 
-  // Сколько останется должен по месяцам 0..months (основная валюта по текущему курсу): каждый долг — по своей
-  // ставке и плановому платежу
+  // Сколько останется должен по месяцам 0..months (основная валюта по текущему курсу)
   projectDebts(debts, months) {
-    const total = new Array(months + 1).fill(0);
-    for (const debt of debts) {
-      if (debt.balance <= 0) continue;
-      const fx = debt.balanceMain / debt.balance; // курс валюты долга к основной
-      const points = projectDebt({ balance: debt.balance, rate: debt.yield_rate, payment: debt.monthly_payment, months });
-      points.forEach((owed, k) => { total[k] += owed * fx; });
-    }
-    return total;
+    return projectDebts(debts, months);
   }
 
   // Ставки из настроек одной строкой. Ничего не задано — подсказка, но не если у счетов есть свои ставки
@@ -1476,10 +1469,7 @@ class SavingsHandlers {
 
   // Название счёта, цели или долга: 1..60 символов, без недопустимого содержимого
   parseName(text) {
-    const name = text.trim();
-    if (!name || name.length > MAX_GOAL_NAME_LENGTH) return null;
-    if (!this.validator.validateDescription(name, MAX_GOAL_NAME_LENGTH).isValid) return null;
-    return this.validator.sanitizeText(name, MAX_GOAL_NAME_LENGTH);
+    return cleanPotName(text, this.validator);
   }
 
   // «Наличные», «Вклад 16%», «$ под подушкой», «Крипта USDT»: валюта (код или символ) и ставка «N%» —

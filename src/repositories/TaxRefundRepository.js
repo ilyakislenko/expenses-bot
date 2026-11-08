@@ -3,10 +3,13 @@ const BaseRepository = require('./BaseRepository');
 // «💡 Верни 13%»: рублёвые траты года с категорией и правкой пользователя (tax_refund_marks), правки, кандидаты на
 // январское напоминание. Год — локальные даты пользователя [start, end) строками 'YYYY-MM-DD'.
 class TaxRefundRepository extends BaseRepository {
-  // Траты в рублях за [start, end): { id, amount, description, category_name, local_date, mark }
+  // Траты в рублях за [start, end): { id, amount, description, category_name, local_date, mark } и поля записи для Mini App
+  // (user_id, currency, created_at_utc, category_id, category_icon, family_id, recurring_expense_id, receipt_id, import_id)
   async getExpenses(userId, timezone, start, end) {
     const result = await this.query(`
       SELECT e.id, e.amount::float AS amount, e.description, c.name AS category_name,
+             e.user_id, e.currency, e.created_at_utc, e.category_id, c.icon AS category_icon, e.family_id,
+             e.recurring_expense_id, e.receipt_id, e.import_id,
              to_char(e.created_at_utc AT TIME ZONE $2, 'YYYY-MM-DD') AS local_date, m.kind AS mark
       FROM expenses e
       LEFT JOIN categories c ON c.id = e.category_id
@@ -23,6 +26,8 @@ class TaxRefundRepository extends BaseRepository {
   async getExpense(userId, expenseId, timezone, start, end) {
     const result = await this.query(`
       SELECT e.id, e.amount::float AS amount, e.description, c.name AS category_name,
+             e.user_id, e.currency, e.created_at_utc, e.category_id, c.icon AS category_icon, e.family_id,
+             e.recurring_expense_id, e.receipt_id, e.import_id,
              to_char(e.created_at_utc AT TIME ZONE $3, 'YYYY-MM-DD') AS local_date, m.kind AS mark
       FROM expenses e
       LEFT JOIN categories c ON c.id = e.category_id

@@ -1,0 +1,47 @@
+// Строки экрана «Теги» (/tags). Ключи — xtra_tags_*, error_tags_*
+const keys = ['xtra_tags_title', 'xtra_tags_all_time', 'xtra_tags_by_period', 'xtra_tags_records', 'xtra_tags_empty_title',
+  'xtra_tags_empty_text', 'xtra_tags_period_empty', 'xtra_tags_by_category', 'xtra_tags_records_title', 'error_tags_not_found'];
+
+const T = {
+  ru: ['Теги', 'Всё время', 'По месяцам', 'Записей: {n}', 'Пока нет тегов',
+    'Добавь к описанию траты слово с решёткой — например, «5000 отель #отпуск». Здесь появятся суммы по каждому тегу.',
+    'В этом периоде трат с тегами нет', 'По категориям', 'Записи', 'Такого тега больше нет'],
+  en: ['Tags', 'All time', 'By month', 'Records: {n}', 'No tags yet',
+    'Add a word with a hash to an expense description — for example, “5000 hotel #vacation”. Totals for each tag will show up here.',
+    'No tagged expenses in this period', 'By category', 'Records', 'This tag is gone'],
+  de: ['Tags', 'Gesamter Zeitraum', 'Nach Monaten', 'Einträge: {n}', 'Noch keine Tags',
+    'Füge der Beschreibung einer Ausgabe ein Wort mit Raute hinzu — zum Beispiel „5000 Hotel #urlaub“. Hier erscheinen die Summen je Tag.',
+    'In diesem Zeitraum gibt es keine Ausgaben mit Tags', 'Nach Kategorien', 'Einträge', 'Diesen Tag gibt es nicht mehr'],
+  es: ['Etiquetas', 'Todo el tiempo', 'Por meses', 'Registros: {n}', 'Aún no hay etiquetas',
+    'Añade una palabra con almohadilla a la descripción de un gasto — por ejemplo, «5000 hotel #vacaciones». Aquí verás el total de cada etiqueta.',
+    'No hay gastos con etiquetas en este periodo', 'Por categorías', 'Registros', 'Esta etiqueta ya no existe'],
+  fr: ['Tags', 'Depuis toujours', 'Par mois', 'Entrées : {n}', 'Pas encore de tags',
+    'Ajoute un mot avec un dièse à la description d’une dépense — par exemple « 5000 hôtel #vacances ». Les totaux par tag apparaîtront ici.',
+    'Aucune dépense avec tag sur cette période', 'Par catégorie', 'Entrées', 'Ce tag n’existe plus'],
+  pt: ['Tags', 'Todo o período', 'Por mês', 'Registros: {n}', 'Ainda sem tags',
+    'Adicione uma palavra com cerquilha à descrição de um gasto — por exemplo, “5000 hotel #férias”. Os totais de cada tag aparecerão aqui.',
+    'Nenhum gasto com tag neste período', 'Por categoria', 'Registros', 'Esta tag não existe mais'],
+  tr: ['Etiketler', 'Tüm zamanlar', 'Aylara göre', 'Kayıt: {n}', 'Henüz etiket yok',
+    'Harcama açıklamasına diyezli bir kelime ekle — örneğin “5000 otel #tatil”. Her etiketin toplamı burada görünecek.',
+    'Bu dönemde etiketli harcama yok', 'Kategorilere göre', 'Kayıtlar', 'Bu etiket artık yok'],
+  hi: ['टैग', 'पूरा समय', 'महीने के हिसाब से', 'रिकॉर्ड: {n}', 'अभी कोई टैग नहीं',
+    'खर्च के विवरण में # वाला शब्द जोड़ें — जैसे “5000 होटल #छुट्टी”। यहाँ हर टैग का कुल दिखेगा।',
+    'इस अवधि में टैग वाले खर्च नहीं हैं', 'श्रेणियों के अनुसार', 'रिकॉर्ड', 'यह टैग अब नहीं है'],
+  ka: ['ტეგები', 'მთელი დრო', 'თვეების მიხედვით', 'ჩანაწერი: {n}', 'ტეგები ჯერ არ არის',
+    'ხარჯის აღწერას დაამატე სიტყვა # ნიშნით — მაგალითად, „5000 სასტუმრო #შვებულება“. აქ გამოჩნდება თითოეული ტეგის ჯამი.',
+    'ამ პერიოდში ტეგიანი ხარჯები არ არის', 'კატეგორიების მიხედვით', 'ჩანაწერები', 'ეს ტეგი აღარ არსებობს'],
+  kz: ['Тегтер', 'Барлық уақыт', 'Айлар бойынша', 'Жазба: {n}', 'Әзірге тег жоқ',
+    'Шығын сипаттамасына # белгісі бар сөз қос — мысалы, «5000 қонақүй #демалыс». Мұнда әр тегтің сомасы шығады.',
+    'Бұл кезеңде тегі бар шығын жоқ', 'Санаттар бойынша', 'Жазбалар', 'Бұл тег енді жоқ'],
+  uz: ['Teglar', 'Butun davr', 'Oylar bo‘yicha', 'Yozuvlar: {n}', 'Hozircha teg yo‘q',
+    'Xarajat tavsifiga # belgili so‘z qo‘sh — masalan, «5000 mehmonxona #ta’til». Bu yerda har bir teg bo‘yicha jami chiqadi.',
+    'Bu davrda tegli xarajatlar yo‘q', 'Toifalar bo‘yicha', 'Yozuvlar', 'Bu teg endi yo‘q'],
+  jp: ['タグ', '全期間', '月ごと', '記録: {n}', 'まだタグがありません',
+    '支出の説明に「#」付きの言葉を加えてください — 例：「5000 ホテル #旅行」。タグごとの合計がここに表示されます。',
+    'この期間にタグ付きの支出はありません', 'カテゴリ別', '記録', 'このタグはもうありません'],
+  zh: ['标签', '全部时间', '按月', '记录：{n}', '还没有标签',
+    '在支出描述里加上带 # 的词 —— 例如“5000 酒店 #度假”。这里会显示每个标签的合计。',
+    '这个周期没有带标签的支出', '按类别', '记录', '这个标签已不存在']
+};
+
+module.exports = Object.fromEntries(Object.entries(T).map(([lang, values]) => [lang, Object.fromEntries(keys.map((key, i) => [key, values[i]]))]));

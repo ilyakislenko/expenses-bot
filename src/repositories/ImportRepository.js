@@ -109,6 +109,30 @@ class ImportRepository extends BaseRepository {
     });
   }
 
+  // Партии импорта пользователя, новые первыми: сколько записей осталось и за какие даты (локальные дни по поясу)
+  async listImports(userId, timezone, limit = 50) {
+    const query = `
+      SELECT i.id, i.source, i.created_at,
+             COALESCE(e.count, 0)::int AS expenses, COALESCE(n.count, 0)::int AS incomes,
+             to_char(LEAST(e.first_at, n.first_at) AT TIME ZONE $2, 'YYYY-MM-DD') AS first_day,
+             to_char(GREATEST(e.last_at, n.last_at) AT TIME ZONE $2, 'YYYY-MM-DD') AS last_day
+      FROM imports i
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*) AS count, MIN(created_at_utc) AS first_at, MAX(created_at_utc) AS last_at
+        FROM expenses WHERE import_id = i.id AND user_id = $1
+      ) e ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*) AS count, MIN(created_at_utc) AS first_at, MAX(created_at_utc) AS last_at
+        FROM incomes WHERE import_id = i.id AND user_id = $1
+      ) n ON TRUE
+      WHERE i.user_id = $1
+      ORDER BY i.created_at DESC, i.id DESC
+      LIMIT $3
+    `;
+    const result = await this.query(query, [userId, timezone, limit]);
+    return result.rows;
+  }
+
   // Отмена импорта: удаляются ровно записи этой партии (до самой партии: её удаление обнуляет import_id).
   // null — партии нет (уже отменена или чужая)
   async deleteImport(userId, importId) {

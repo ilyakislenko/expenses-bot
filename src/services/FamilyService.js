@@ -472,6 +472,13 @@ class FamilyService {
     }
   }
 
+  // Ожидающие приглашения этому человеку (их прислали ему в чат кнопками «Принять» / «Отклонить»): просроченные —
+  // в expired, как перед показом приглашений семьи
+  async getPendingInvitations(userId) {
+    await this.familyInvitationRepository.expireOldInvitations();
+    return this.familyInvitationRepository.getPendingInvitationsByInvitee(userId);
+  }
+
   async getAllFamilyExpenses(familyId, limit = 1000) {
     try {
       const expenses = await this.expenseRepository.getFamilyExpenses(familyId, limit);

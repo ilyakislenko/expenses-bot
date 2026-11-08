@@ -1,0 +1,61 @@
+/* Вкладка «Планы» и бюджеты: дополнения к app.css (классы plan-*) */
+
+/* «Можно сегодня» */
+.plan-hero { display: block; width: 100%; text-align: left; border: 0; background: transparent; color: inherit; position: relative; padding-right: 28px; }
+.plan-hero.tappable:active { opacity: .7; }
+.plan-hero-chevron { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); }
+.plan-hero-empty { font-size: 17px; font-weight: 600; margin-top: 4px; line-height: 1.3; }
+.plan-day-bar { margin: 10px 0 8px; height: 8px; border-radius: 4px; }
+.plan-day-bar > span { border-radius: 4px; }
+.plan-hero-line { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; color: var(--hint); font-variant-numeric: tabular-nums; }
+.plan-under-title { margin: -12px 4px 12px; }
+
+/* «Как считаю»: лесенка от дохода к свободным деньгам */
+.plan-flow { padding: 4px 0; }
+.plan-flow-row { display: block; width: 100%; border: 0; background: transparent; color: inherit; text-align: left; padding: 10px 16px; position: relative; }
+.plan-flow-row.tappable { padding-right: 36px; }
+.plan-flow-row.tappable:active { background: color-mix(in srgb, var(--hint) 12%, transparent); }
+.plan-flow-chevron { position: absolute; right: 12px; top: 12px; }
+.plan-flow-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.plan-flow-label { font-size: 15px; }
+.plan-flow-amount { font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.plan-flow-amount.strong { font-weight: 700; font-size: 17px; }
+.plan-flow-note { font-size: 13px; color: var(--hint); margin-top: 2px; }
+.plan-flow-track { position: relative; height: 8px; margin-top: 7px; border-radius: 4px; background: color-mix(in srgb, var(--hint) 12%, transparent); }
+.plan-flow-bar { position: absolute; top: 0; bottom: 0; border-radius: 4px; }
+.plan-flow-bar.start { background: var(--accent); }
+.plan-flow-bar.minus { background: color-mix(in srgb, var(--danger) 70%, transparent); }
+.plan-flow-bar.result { background: var(--good); }
+.plan-flow-bar.result.negative { background: var(--danger); }
+.plan-flow + .row::before { content: ""; position: absolute; top: 0; right: 0; left: 16px; border-top: 0.5px solid var(--separator); }
+
+/* Бюджет: шкала с отметкой «сколько периода прошло» */
+.plan-budget-row { align-items: flex-start; }
+.plan-budget-row .avatar { margin-top: 2px; }
+.plan-budget-row .row-chevron { align-self: center; }
+.plan-budget-foot { display: flex; flex-wrap: wrap; justify-content: space-between; column-gap: 10px; font-size: 13px; color: var(--hint); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.plan-budget-bar { position: relative; overflow: visible; margin: 8px 0 6px; }
+.plan-budget-bar > span { max-width: 100%; }
+.plan-budget-tick { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--text); opacity: .55; }
+.hero .plan-budget-bar { margin: 10px 0 8px; height: 8px; }
+
+/* Число платежа по долгу */
+.plan-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; padding: 4px 0 8px; }
+.plan-day { border: 0; height: 44px; border-radius: 10px; background: var(--surface); color: var(--text); font-size: 16px; font-variant-numeric: tabular-nums; }
+.plan-day.on { background: var(--button); color: var(--button-text); font-weight: 600; }
+.plan-day:active { opacity: .7; }
+.plan-days-note { padding: 0 4px 12px; }
+
+/* Подписки, пробные периоды, «Как отменить» */
+.plan-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
+.plan-hero-date { font-size: 28px; }
+.plan-guide .row-subtitle { white-space: normal; display: block; }
+.plan-notice { background: var(--surface); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 16px; font-size: 15px; }
+.plan-text { font-size: 14px; line-height: 1.4; margin: 0 4px 14px; }
+.plan-note { padding: 0 16px 20px; }
+.plan-top-note { padding-top: 0; }
+.plan-chips { margin-bottom: 10px; }
+.plan-date-input { flex: 1; min-width: 0; border: 0; background: transparent; outline: none; padding: 12px 0; text-align: right; color: var(--text); font: inherit; }
+.plan-field-label { flex: none; min-width: 96px; }
+.plan-wrap .row-subtitle { white-space: normal; display: block; }
+.plan-amount { padding: 14px 16px 10px; }

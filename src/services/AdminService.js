@@ -1,5 +1,16 @@
 const logger = require('../utils/logger');
 
+const BUG_REPORT_MAX_LENGTH = 1000;
+// Без флага g: общий RegExp с g помнит lastIndex между вызовами test()
+const BUG_REPORT_SUSPICIOUS = [
+  /<\s*script\b[^>]*>/i, // <script ...>
+  /<\s*\/\s*script\s*>/i, // </script>
+  /on\w+\s*=/i, // inline-обработчики событий в HTML
+  /(javascript:|vbscript:)/i, // опасные протоколы
+  /(@everyone|@here|@channel)/i, // спам-упоминания
+  /(.)\1{20,}/ // повтор более 20 одинаковых символов подряд
+];
+
 class AdminService {
   constructor(userService, expenseRepository, bugReportRepository, donationRepository, premiumTransactionRepository, notificationService, localizationService, familyPremiumService = null) {
     this.userService = userService;
@@ -90,6 +101,24 @@ class AdminService {
   // Последние баг-репорты: все или только новые (status = 'new')
   async listBugReports(status = null, limit = 10) {
     return this.bugReportRepository.getAllBugReports(limit, 0, status);
+  }
+
+  // Баг-репорт / идея от пользователя (бот — ввод после «🐞 Сообщить об ошибке», приложение — форма справки).
+  // Не больше 3 за 10 минут, 1–1000 символов, без подозрительных шаблонов. → { ok: true } или { ok: false, error, excess }
+  // (error: rate_limit | empty | too_long | suspicious — ключи bug_report_<error> в локалях)
+  async submitBugReport(userId, text, now = new Date()) {
+    const recentReports = await this.bugReportRepository.getBugReportsByUserId(userId, 5, 0);
+    const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000);
+    if (recentReports.filter(r => new Date(r.created_at) > tenMinutesAgo).length >= 3) return { ok: false, error: 'rate_limit' };
+
+    const reportText = String(text || '').trim();
+    if (!reportText) return { ok: false, error: 'empty' };
+    if (reportText.length > BUG_REPORT_MAX_LENGTH) return { ok: false, error: 'too_long', excess: reportText.length - BUG_REPORT_MAX_LENGTH };
+    // Мягкая проверка: обычные скобки и кавычки не блокируем
+    if (BUG_REPORT_SUSPICIOUS.some(pattern => pattern.test(reportText))) return { ok: false, error: 'suspicious' };
+
+    await this.bugReportRepository.createBugReport(userId, reportText);
+    return { ok: true };
   }
 
   // Статистика донатов

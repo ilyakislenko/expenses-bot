@@ -38,7 +38,7 @@ class RecurringExpenseRepository extends BaseRepository {
 
   async getByUser(userId) {
     const query = `
-      SELECT r.id, r.amount, r.currency, r.description, r.day_of_month, r.is_family,
+      SELECT r.id, r.amount, r.currency, r.description, r.day_of_month, r.category_id, r.is_family,
              to_char(r.last_charged_month, 'YYYY-MM-DD') AS last_charged_month,
              c.name AS category_name, c.icon AS category_icon
       FROM recurring_expenses r
@@ -121,6 +121,32 @@ class RecurringExpenseRepository extends BaseRepository {
   async countByUser(userId) {
     const result = await this.query('SELECT COUNT(*)::int AS count FROM recurring_expenses WHERE user_id = $1', [userId]);
     return result.rows[0].count;
+  }
+
+  // Правка регулярной (Mini App): сумма, валюта, описание, число, категория. Отметка записанного месяца не меняется.
+  // undefined — регулярной нет (чужая/удалена)
+  async update(userId, recurringId, { amount, currency, description, dayOfMonth, categoryId }) {
+    const result = await this.query(
+      `UPDATE recurring_expenses SET amount = $3, currency = $4, description = $5, day_of_month = $6, category_id = $7
+       WHERE id = $1 AND user_id = $2
+       RETURNING id`,
+      [recurringId, userId, amount, currency, description, dayOfMonth, categoryId]
+    );
+    return result.rows[0];
+  }
+
+  // «Вернуть» после удаления: строка целиком (из deleteById … RETURNING *) с тем же id и отметкой месяца — списание
+  // за уже записанный месяц не повторится. Колонки — из самой строки БД. undefined — id уже занят
+  async restore(row) {
+    const columns = Object.keys(row);
+    const result = await this.query(
+      `INSERT INTO recurring_expenses (${columns.map(c => `"${c}"`).join(', ')})
+       VALUES (${columns.map((_, i) => `$${i + 1}`).join(', ')})
+       ON CONFLICT (id) DO NOTHING
+       RETURNING id`,
+      columns.map(c => row[c])
+    );
+    return result.rows[0];
   }
 
   async deleteById(userId, recurringId) {

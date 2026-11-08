@@ -1,6 +1,7 @@
 const respond = require('../utils/respond');
 const logger = require('../utils/logger');
-const { lastDaysPeriod, parseDateRange } = require('../utils/period');
+const { parseDateRange } = require('../utils/period');
+const { resolvePeriod, categoriesLine, buildExport } = require('../utils/exportFile');
 
 // Экспорт CSV: выбор периода (локальные даты пользователя) и фильтр по категориям.
 // Фильтр хранится в StateService (exportState.categoryIds, null — все категории)
@@ -29,9 +30,7 @@ class ExportHandlers {
   }
 
   categoriesLine(lang, categories, categoryIds) {
-    if (!categoryIds) return this.t(lang, 'export_categories_all');
-    const names = categories.filter(c => categoryIds.includes(c.id)).map(c => c.name);
-    return this.t(lang, 'export_categories_selected', { categories: names.join(', ') });
+    return categoriesLine((key, params) => this.t(lang, key, params), categories, categoryIds);
   }
 
   // Открытие экспорта заново: фильтр по категориям сбрасывается
@@ -67,20 +66,7 @@ class ExportHandlers {
 
   // xp|day|week|cur|prev|all
   async exportPeriod(ctx, kind) {
-    const userId = ctx.from.id;
-    let period = null;
-    let timezone;
-    if (kind === 'day' || kind === 'week') {
-      const context = await this.expenseService.getPeriodContext(userId, 'day', 0);
-      timezone = context.timezone;
-      period = kind === 'day' ? context.period : lastDaysPeriod(context.today, 7);
-    } else if (kind === 'cur' || kind === 'prev') {
-      const context = await this.expenseService.getPeriodContext(userId, 'month', kind === 'cur' ? 0 : -1);
-      timezone = context.timezone;
-      period = context.period;
-    } else {
-      timezone = await this.userService.getUserTimezone(userId);
-    }
+    const { timezone, period } = await resolvePeriod(this, ctx.from.id, kind);
     await this.sendExport(ctx, timezone, period);
   }
 
@@ -180,31 +166,15 @@ class ExportHandlers {
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
     try {
-      const categoryIds = this.selectedCategoryIds(userId);
-      const [expenses, currency] = await Promise.all([
-        this.expenseService.getExpensesForExport(userId, timezone, period, categoryIds),
-        this.userService.getUserCurrency(userId)
-      ]);
-
-      if (!expenses.length) {
+      const file = await buildExport(this, userId, { timezone, period, categoryIds: this.selectedCategoryIds(userId), lang });
+      if (!file) {
         const text = this.t(lang, 'no_expenses_period');
         if (ctx.callbackQuery) await ctx.answerCbQuery(text, { show_alert: true }).catch(() => {});
         else await ctx.reply(text);
         return;
       }
       if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
-
-      const csv = await this.formatter.formatCSV(expenses, currency, timezone, this.localizationService, lang);
-      const oneDay = period && period.start === period.last;
-      const filename = !period ? 'expenses_all.csv'
-        : oneDay ? `expenses_${period.start}.csv` : `expenses_${period.start}_${period.last}.csv`;
-      const periodLine = !period ? this.t(lang, 'export_period_all')
-        : `📅 ${oneDay ? this.formatter.formatLocalDate(period.start) : this.formatter.formatPeriodRange(period)}`;
-      const captionLines = [this.t(lang, 'export_success'), periodLine];
-      if (categoryIds) captionLines.push(this.categoriesLine(lang, await this.categories(userId, lang), categoryIds));
-      captionLines.push(this.t(lang, 'records_count', { count: expenses.length }));
-
-      await ctx.replyWithDocument({ source: Buffer.from(csv, 'utf-8'), filename }, { caption: captionLines.join('\n') });
+      await ctx.replyWithDocument({ source: file.buffer, filename: file.filename }, { caption: file.caption });
     } catch (error) {
       logger.error('Export failed', { userId, error: error.message });
       await ctx.reply(this.t(lang, 'export_error'));

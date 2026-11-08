@@ -58,9 +58,10 @@ class SavingsRepository extends BaseRepository {
     });
   }
 
-  // fields: name, yield_rate, monthly_payment (null — без процентов / платёж не задан) — только для долгов
+  // fields: name, yield_rate, monthly_payment (null — без процентов / платёж не задан), due_day (число платежа 1–31,
+  // null — не задано) — только для долгов
   async updateDebt(userId, potId, fields) {
-    const allowed = ['name', 'yield_rate', 'monthly_payment'];
+    const allowed = ['name', 'yield_rate', 'monthly_payment', 'due_day'];
     const keys = Object.keys(fields).filter(key => allowed.includes(key));
     if (!keys.length) return null;
     const set = keys.map((key, index) => `${key} = $${index + 3}`).join(', ');

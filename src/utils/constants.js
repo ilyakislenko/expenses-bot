@@ -258,8 +258,9 @@ const LEGACY_MENU_BUTTON_KEYS = [
 ];
 
 // Меню «☰ Ещё» (inline): длинные подписи (импорт, приглашение) — в паре с короткими.
-// taxRefund — «💡 Верни 13%» рядом с квизом (только русский язык и рубли, см. utils/taxRefund)
-function generateMoreMenu(localizationService, userLanguage, isAdmin = false, { taxRefund = false } = {}) {
+// taxRefund — «💡 Верни 13%» рядом с квизом (только русский язык и рубли, см. utils/taxRefund).
+// miniAppUrl — первой строкой «📱 Открыть приложение» (web_app), если Mini App доступна снаружи (MINIAPP_URL)
+function generateMoreMenu(localizationService, userLanguage, isAdmin = false, { taxRefund = false, miniAppUrl = process.env.MINIAPP_URL || null } = {}) {
   const t = (key) => localizationService.getText(userLanguage, key);
   const quizRow = [{ text: t('button_quiz'), callback_data: 'qz' }];
   if (taxRefund) quizRow.push({ text: t('tax_button'), callback_data: 'tax' });
@@ -272,6 +273,7 @@ function generateMoreMenu(localizationService, userLanguage, isAdmin = false, { 
     [{ text: t('button_export'), callback_data: 'export' }, { text: t('button_settings'), callback_data: 'settings' }],
     [{ text: t('button_import'), callback_data: 'import' }, { text: t('button_help'), callback_data: 'help' }]
   ];
+  if (miniAppUrl) keyboard.unshift([{ text: t('miniapp_open'), web_app: { url: miniAppUrl } }]);
   if (isAdmin) {
     keyboard.push([{ text: t('button_admin'), callback_data: 'panel_main' }]);
   }

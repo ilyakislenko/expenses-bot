@@ -1,5 +1,5 @@
 const respond = require('../utils/respond');
-const { extractTags } = require('../utils/tags');
+const { summarizeTags, currencyConverter } = require('../utils/tags');
 
 const MAX_TAGS = 20; // на экране — столько самых крупных тегов
 const MAX_RECENT = 5;
@@ -36,25 +36,8 @@ class TagHandlers {
       this.userService.getUserCurrency(userId),
       this.expenseRepository.getTaggedExpenses(userId)
     ]);
-    const rates = new Map();
-    const convert = async (amount, from) => {
-      if (!from || from === currency) return amount;
-      if (!rates.has(from)) rates.set(from, await this.currencyUtils.convert(1, from, currency));
-      return amount * rates.get(from);
-    };
-    const tags = new Map();
-    for (const row of rows) {
-      const value = await convert(Number(row.amount), row.currency);
-      for (const tag of extractTags(row.description)) {
-        const entry = tags.get(tag) || { total: 0, count: 0, rows: [] };
-        entry.total += value;
-        entry.count += 1;
-        entry.rows.push({ ...row, value });
-        tags.set(tag, entry);
-      }
-    }
-    const sorted = new Map([...tags].sort((a, b) => b[1].total - a[1].total));
-    return { lang, timezone, currency, tags: sorted };
+    const tags = await summarizeTags(rows, currencyConverter(this.currencyUtils, currency));
+    return { lang, timezone, currency, tags };
   }
 
   async show(ctx) {

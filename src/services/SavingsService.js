@@ -312,6 +312,7 @@ class SavingsService {
 }
 
 SavingsService.monthsUntil = monthsUntil;
+SavingsService.MAX_ACCOUNTS = MAX_ACCOUNTS;
 SavingsService.MAX_DEBTS = MAX_DEBTS;
 
 module.exports = SavingsService;

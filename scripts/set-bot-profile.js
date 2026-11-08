@@ -1,7 +1,7 @@
 // Профиль бота в Telegram на всех языках интерфейса: описание (до /start), короткое описание и меню команд
-// (в личке и отдельно в группах).
-// Тексты — в src/locales (bot_description, bot_short_description, command_*).
-// Запускать после изменения этих текстов или списка команд: node scripts/set-bot-profile.js
+// (в личке и отдельно в группах); кнопка меню у поля ввода — Mini App при MINIAPP_URL, иначе меню команд.
+// Тексты — в src/locales (bot_description, bot_short_description, command_*, miniapp_menu).
+// Запускать после изменения этих текстов, списка команд или MINIAPP_URL: node scripts/set-bot-profile.js
 require('dotenv').config();
 const LocalizationService = require('../src/services/LocalizationService');
 
@@ -53,6 +53,13 @@ async function setProfile(localization, lang, languageCode) {
   for (const lang of Object.keys(localization.supportedLanguages)) {
     await setProfile(localization, lang, TELEGRAM_LANGUAGE[lang] || lang);
   }
+  // Кнопка меню у поля ввода: при MINIAPP_URL открывает Mini App (одна подпись на всех — у Telegram она без языка),
+  // без адреса — обычное меню команд
+  const url = process.env.MINIAPP_URL;
+  await call('setChatMenuButton', {
+    menu_button: url ? { type: 'web_app', text: localization.getText(DEFAULT_LANGUAGE, 'miniapp_menu'), web_app: { url } } : { type: 'commands' }
+  });
+  console.log(`menu button: ${url ? 'mini app' : 'commands'}`);
 })().catch((error) => {
   console.error(error.message);
   process.exit(1);

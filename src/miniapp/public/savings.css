@@ -1,0 +1,23 @@
+/* «Копилка»: мелочи поверх app.css — шкала цели в строке, ползунки сценариев, шаг мастера, подсказки в шторках */
+.sav-goal-sub { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.sav-goal-sub .progress { width: 56px; height: 4px; flex: none; }
+.sav-hero-progress { margin-top: 10px; }
+.sav-hero-progress .progress { height: 8px; border-radius: 4px; }
+
+.sav-text { color: var(--hint); font-size: 14px; line-height: 1.4; padding: 12px 16px; }
+.section-body > .sav-text { color: var(--text); }
+.sav-label { color: var(--section-title); font-size: 13px; font-weight: 500; padding: 0 16px 6px; }
+.sav-sheet-hint { color: var(--hint); font-size: 14px; text-align: center; padding: 4px 8px 14px; line-height: 1.4; }
+.sav-sheet-input { font-size: 17px; }
+.sav-currencies { margin-bottom: 12px; max-height: 40vh; overflow-y: auto; }
+
+.sav-sliders { padding-top: 4px; padding-bottom: 4px; }
+.sav-slider { padding: 10px 0; }
+.sav-slider + .sav-slider { border-top: 0.5px solid var(--separator); }
+.sav-slider-head { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; font-variant-numeric: tabular-nums; }
+.sav-range { width: 100%; margin: 10px 0 2px; accent-color: var(--button); height: 28px; }
+.sav-compact .segmented button { font-size: 13px; padding: 7px 4px; }
+
+.sav-step-pot { text-align: center; padding: 8px 0 0; }
+.sav-step-pot .avatar { width: 64px; height: 64px; font-size: 32px; margin: 0 auto 10px; }
+.sav-step-name { font-size: 19px; font-weight: 600; margin-bottom: 2px; }

@@ -106,22 +106,7 @@ class QuizHandlers {
   async rules(ctx) {
     const lang = await this.userService.getUserLanguage(ctx.from.id);
     if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
-    const [grand, runner] = QUIZ.PRIZES;
-    const text = this.t(lang, 'quiz_rules', {
-      hour: QUIZ.OPEN_HOUR,
-      questions: QUIZ.QUESTIONS,
-      seconds: QUIZ.OPEN_PERIOD_SEC,
-      correct: QUIZ.POINTS_CORRECT,
-      finish: QUIZ.BONUS_FINISH,
-      perfect: QUIZ.BONUS_PERFECT,
-      max: QUIZ.QUESTIONS * QUIZ.POINTS_CORRECT + QUIZ.BONUS_FINISH + QUIZ.BONUS_PERFECT,
-      grandDays: grand.days,
-      grandCount: grand.count,
-      runnerDays: runner.days,
-      runnerCount: runner.count,
-      perfectDays: QUIZ.PERFECT_DAYS,
-      drawHour: QUIZ.DRAW_HOUR_UTC
-    });
+    const text = this.t(lang, 'quiz_rules', this.quizService.rulesParams());
     // Экран квиза и приглашение (текст) — правила на их месте; итоги (картинка с подписью) — новым сообщением
     await respond(ctx, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: this.t(lang, 'button_back'), callback_data: 'qz' }]] } });
   }

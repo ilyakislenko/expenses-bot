@@ -78,11 +78,11 @@ class ExpenseService {
     return categories[0];
   }
 
-  // currency = null → основная валюта пользователя
-  async addExpense(userId, { amount, currency = null, description = null, categoryId, familyId = null }) {
+  // currency = null → основная валюта пользователя; createdAt = null → сейчас (другой день — из Mini App)
+  async addExpense(userId, { amount, currency = null, description = null, categoryId, familyId = null, createdAt = null }) {
     try {
       const expenseCurrency = currency || await this.userRepository.getUserCurrency(userId);
-      const expense = await this.expenseRepository.addExpense(userId, amount, description, categoryId, expenseCurrency, null, familyId);
+      const expense = await this.expenseRepository.addExpense(userId, amount, description, categoryId, expenseCurrency, null, familyId, createdAt);
 
       expensesTotal.inc({ currency: expenseCurrency });
       expensesAmountTotal.inc({ currency: expenseCurrency }, amount);
@@ -170,6 +170,18 @@ class ExpenseService {
 
   async deleteExpenseById(userId, expenseId) {
     return this.expenseRepository.deleteExpenseById(userId, expenseId);
+  }
+
+  // Удалённая запись обратно («Вернуть» в Mini App): row — строка, которую вернул deleteExpenseById
+  async restoreExpense(userId, row) {
+    const expense = await this.expenseRepository.restoreExpense(userId, row);
+    if (expense) logger.info('Expense restored', { userId, expenseId: expense.id, previousId: row.id });
+    return expense;
+  }
+
+  // Частота категорий за последние days дней: [{ categoryId, count }] по убыванию (частые — первыми в форме траты)
+  async getCategoryUsage(userId, days = 90) {
+    return this.expenseRepository.getCategoryUsage(userId, new Date(Date.now() - days * 86400000));
   }
 
   async convertToFamilyExpense(userId, expenseId, familyId) {

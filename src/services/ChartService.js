@@ -116,35 +116,49 @@ class ChartService {
     return { png: await this.render(svg, IMAGE_WIDTH.donut), caption, period };
   }
 
-  // 📈 Столбики за 6 периодов, последний — выбранный (offset). categoryId — только эта категория (по имени, как
-  // группирует обзор). → { png, caption, text } (text — текстом, если png: null) или null — категории нет
-  async trend(userId, lang, offset, { categoryId = null, botUsername } = {}) {
+  // Траты по периодам без рисования: count периодов, последний — offset; categoryId — только эта категория (по имени,
+  // как группирует обзор); familyId — семейные траты всех участников (категория — системная или участника семьи).
+  // Текущий незаконченный период в среднюю не входит. → { currency, startDay, category, periods: [{ start, end, last,
+  // offset, value }], average } или null — категории нет
+  async trendData(userId, offset, { categoryId = null, count = TREND_PERIODS, familyId = null } = {}) {
     const { timezone, currency, today, startDay } = await this.expenseService.getPeriodContext(userId, 'month', offset);
+    const owner = familyId ? { familyId } : userId;
     let category = null;
     if (categoryId) {
-      category = await this.expenseService.getCategoryById(userId, categoryId);
+      category = familyId
+        ? await this.expenseService.getFamilyCategoryById(familyId, categoryId)
+        : await this.expenseService.getCategoryById(userId, categoryId);
       if (!category) return null;
     }
     const periods = [];
-    for (let k = offset - TREND_PERIODS + 1; k <= offset; k++) periods.push(customPeriod(today, startDay, k));
+    for (let k = offset - count + 1; k <= offset; k++) periods.push({ ...customPeriod(today, startDay, k), offset: k });
     const values = await Promise.all(periods.map(async (period) => {
       if (category) {
-        const rows = await this.reportService.categoryBreakdown(userId, timezone, period, currency);
+        const rows = await this.reportService.categoryBreakdown(owner, timezone, period, currency);
         const row = rows.find(c => c.name === category.name);
         return row ? row.total : 0;
       }
-      const totals = await this.expenseService.getTotals(userId, timezone, period);
+      const totals = await this.expenseService.getTotals(owner, timezone, period);
       return totals.count ? this.formatter.sumInCurrency(totals.byCurrency, currency) : 0;
     }));
+    periods.forEach((period, index) => { period.value = values[index]; });
+    const average = charts.trendAverage(periods, { excludeLast: offset === 0 });
+    return { currency, startDay, category, periods, average };
+  }
+
+  // 📈 Столбики за 6 периодов, последний — выбранный (offset). categoryId — только эта категория (по имени, как
+  // группирует обзор). → { png, caption, text } (text — текстом, если png: null) или null — категории нет
+  async trend(userId, lang, offset, { categoryId = null, botUsername } = {}) {
+    const data = await this.trendData(userId, offset, { categoryId });
+    if (!data) return null;
+    const { currency, startDay, category, periods, average } = data;
     const labels = this.periodLabels(periods, lang, startDay);
     const bars = periods.map((period, index) => ({
       label: labels[index],
-      value: values[index],
-      amount: this.compact(values[index], currency, lang),
+      value: period.value,
+      amount: this.compact(period.value, currency, lang),
       current: index === periods.length - 1
     }));
-    // Текущий период ещё идёт — в среднюю не входит
-    const average = charts.trendAverage(bars, { excludeLast: offset === 0 });
     const categoryLabel = category ? this.categoryName(category.name, lang) : null;
     const trendTitle = this.t(lang, 'chart_trend_title');
     const range = this.formatter.formatPeriodRange({ start: periods[0].start, last: periods[periods.length - 1].last });
@@ -172,17 +186,21 @@ class ChartService {
     return { png: await this.render(svg, IMAGE_WIDTH.trend), caption, text };
   }
 
-  // 📉 План и факт по дням (картинка обзора): траты нарастающим итогом против плана. План — общий бюджет: регулярные
-  // платежи периода — ступенькой в свой день (списанные — в день записи, будущие — в nextChargeDate), остаток бюджета
-  // поровну на дни. Так скачок факта в день аренды не выглядит перерасходом. Прогноз (текущий период, со 2-го дня):
-  // обычные траты прошедших дней (без сегодня и без регулярных) в среднем за день — до конца периода, будущие
-  // регулярные — ступеньками. → { png, summary } — summary: строки «план к сегодня · запас / сверх», «прогноз на конец»
-  // и «регулярные в плане» для текста обзора (null — нечего сказать); png: null — не нарисовать.
+  // 📉 План и факт по дням данными (картинка обзора бота — planFact, интерактивный график Mini App): траты нарастающим
+  // итогом против плана. План — общий бюджет: регулярные платежи периода — ступенькой в свой день (списанные — в день
+  // записи, будущие — в nextChargeDate), остаток бюджета поровну на дни. Так скачок факта в день аренды не выглядит
+  // перерасходом. Прогноз (текущий период, со 2-го дня): обычные траты прошедших дней (без сегодня и без регулярных) в
+  // среднем за день — до конца периода, будущие регулярные — ступеньками.
   // familyId — семейные траты всех участников против семейного бюджета, будущие семейные регулярные
-  // (RecurringExpenseService.listFamily) — ступеньками. Свой график плана не рисует, если бюджет пользователя семейный
-  // (BudgetService.scopeFor): потолок общий, а траты на нём — только свои
-  async planFact(userId, lang, offset, { botUsername, familyId = null } = {}) {
+  // (RecurringExpenseService.listFamily) — ступеньками. Своего плана нет, если бюджет пользователя семейный
+  // (BudgetService.scopeFor): потолок общий, а траты на нём — только свои.
+  // → { currency, period, today, current, days, lastIndex, actual, running, limit, bills, planLine, planJumps (null без
+  //     общего бюджета), forecast: { start, values, jumps, end } | null, planToDate: { date, plan, diff } | null }
+  // planToDate — только по прожитым дням: в текущем периоде на конец вчера (сегодняшняя доля ещё не прожита, в запас не
+  // идёт) плюс регулярные, уже списанные сегодня; траты — все, с сегодняшними. Первый день периода — null
+  async planFactData(userId, offset, { familyId = null } = {}) {
     const { timezone, currency, today, period } = await this.expenseService.getPeriodContext(userId, 'month', offset);
+    const current = offset === 0;
     const upcoming = () => (familyId ? this.recurringExpenseService.listFamily(familyId) : this.recurringExpenseService.list(userId));
     const budgets = async () => {
       if (!this.budgetService) return [];
@@ -193,13 +211,13 @@ class ChartService {
     const [rows, statuses, recurring] = await Promise.all([
       this.expenseService.getExpenses(familyId ? { familyId } : userId, timezone, period),
       budgets(),
-      this.recurringExpenseService && offset === 0 ? upcoming() : []
+      this.recurringExpenseService && current ? upcoming() : []
     ]);
     const total = statuses.find(b => b.category_name === null);
     const limit = total ? total.limit : null;
     const convert = (amount, from) => this.formatter.sumInCurrency([{ currency: from, total: Number(amount) }], currency);
     const { days, lastIndex, chargedByDay, futureByDay, actual, running, forecast } = await periodSeries({
-      rows, recurring, period, today, timezone, convert, current: offset === 0
+      rows, recurring, period, today, timezone, convert, current
     });
     const billsOn = (day) => (chargedByDay.get(day) || 0) + (futureByDay.get(day) || 0);
     let planLine = null;
@@ -218,21 +236,27 @@ class ChartService {
         planJumps.push(jump);
       }
     }
+    const closedIndex = current ? lastIndex - 1 : lastIndex;
+    let planToDate = null;
+    if (planLine && closedIndex >= 0) {
+      const plan = planLine[closedIndex] + (current ? chargedByDay.get(today) || 0 : 0);
+      planToDate = { date: days[closedIndex], plan, diff: running - plan };
+    }
+    return { currency, period, today, current, days, lastIndex, actual, running, limit, bills, planLine, planJumps, forecast, planToDate };
+  }
 
+  // 📉 Картинка «План и факт по дням» (planFactData) → { png, summary } — summary: строки «план к сегодня · запас /
+  // сверх», «прогноз на конец» и «регулярные в плане» для текста обзора (null — нечего сказать); png: null — не нарисовать
+  async planFact(userId, lang, offset, { botUsername, familyId = null } = {}) {
+    const { currency, period, days, actual, running, limit, bills, planLine, planJumps, forecast, planToDate } = await this.planFactData(userId, offset, { familyId });
     const shortDay = (day) => `${day.slice(8, 10)}.${day.slice(5, 7)}`;
     const lines = [];
-    // План к дате — только по прожитым дням: в текущем периоде на конец вчера (сегодняшняя доля ещё не прожита, в
-    // запас не идёт) плюс регулярные, уже списанные сегодня; траты — все, с сегодняшними. Первый день — строки нет
-    const closedIndex = offset === 0 ? lastIndex - 1 : lastIndex;
-    let over = false;
-    if (planLine && closedIndex >= 0) {
-      const planToDate = planLine[closedIndex] + (offset === 0 ? chargedByDay.get(today) || 0 : 0);
-      const diff = running - planToDate;
-      over = diff > 0;
+    const over = !!planToDate && planToDate.diff > 0;
+    if (planToDate) {
       lines.push(this.t(lang, over ? 'chart_planfact_over' : 'chart_planfact_under', {
-        date: shortDay(days[closedIndex]),
-        plan: this.money(Math.round(planToDate), currency),
-        amount: this.money(Math.round(Math.abs(diff)), currency)
+        date: shortDay(planToDate.date),
+        plan: this.money(Math.round(planToDate.plan), currency),
+        amount: this.money(Math.round(Math.abs(planToDate.diff)), currency)
       }));
     }
     if (forecast) {

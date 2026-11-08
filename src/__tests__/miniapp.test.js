@@ -29,47 +29,54 @@ describe('Telegram initData', () => {
   });
 });
 
-describe('mini app server', () => {
-  function server() {
-    const savingsScenarioService = {
-      build: jest.fn(async () => ({
-        family: true, currency: 'RUB', today: '2026-11-07', startDay: 1, total: 838000, parts: [{ balance: 838000, yieldRate: null }],
-        income: { amount: 329000, periods: 1 }, rates: { yieldRate: 0, inflationRate: 0, contributionGrowth: 0 },
-        scenarios: [{ key: 'average', spending: 178000, periods: 3, monthly: 151000, points: [] }, { key: 'plan', spending: 150000, monthly: 179000, points: [] }]
-      }))
+describe('mini app server core', () => {
+  // Контейнер-заглушка: только то, что нужно /api/me
+  function server({ family = null, familyMode = false, rateLimit } = {}) {
+    const services = {
+      localizationService: new LocalizationService(),
+      userService: {
+        getUserLanguage: async () => 'ru', getUserCurrency: async () => 'RUB', getUserTimezone: async () => 'Asia/Bangkok', getUserPeriodStartDay: async () => 1,
+        getUserById: async (id) => ({ id, first_name: 'Ilya', username: 'ilu', family_mode: familyMode }),
+        getPremiumStatus: async () => ({ isPremium: true, expiresAt: '2027-01-01T00:00:00.000Z', daysRemaining: 54 }),
+        isUserAdmin: async () => false
+      },
+      premiumService: { isPremiumUser: async () => true },
+      familyService: { getUserFamily: async () => family },
+      familyRepository: { getFamilyMembers: async () => [{ id: 907470387, first_name: 'Ilya', role: 'owner' }, { id: 2, username: 'yulia', role: 'member' }] },
+      budgetService: { scopeFor: async (id) => (family && familyMode ? { familyId: family.id } : id) }
     };
-    const app = new MiniAppServer({
-      port: 0, botToken: TOKEN, savingsScenarioService,
-      userService: { getUserLanguage: async () => 'ru' }, localizationService: new LocalizationService()
-    });
-    return { app: app.app, savingsScenarioService };
+    const get = jest.fn((name) => services[name]);
+    return { app: new MiniAppServer({ port: 0, botToken: TOKEN, get, rateLimit }).app, get };
   }
   const auth = (id) => `tma ${signInitData(fields(id, Math.floor(Date.now() / 1000) - 60), TOKEN)}`;
 
-  test('data only for the signed user: their scenarios, strings in their language, money units', async () => {
-    const { app, savingsScenarioService } = server();
-    await request(app).get('/api/scenarios').expect(401);
-    await request(app).get('/api/scenarios').set('Authorization', 'tma query_id=x&user=%7B%22id%22%3A1%7D&hash=' + 'a'.repeat(64)).expect(401);
-    expect(savingsScenarioService.build).not.toHaveBeenCalled();
+  test('API only with a Telegram signature; /api/me — the signed user with language, money units, family and home scope', async () => {
+    const { app, get } = server({ family: { id: 7, owner_id: '907470387' }, familyMode: true });
+    await request(app).get('/api/me').expect(401);
+    await request(app).get('/api/me').set('Authorization', 'tma query_id=x&user=%7B%22id%22%3A1%7D&hash=' + 'a'.repeat(64)).expect(401);
+    expect(get).not.toHaveBeenCalled();
 
-    const res = await request(app).get('/api/scenarios').set('Authorization', auth(907470387)).expect(200);
-    expect(savingsScenarioService.build).toHaveBeenCalledWith(907470387);
+    const res = await request(app).get('/api/me').set('Authorization', auth(907470387)).expect(200);
     expect(res.headers['cache-control']).toBe('no-store');
     expect(res.body).toMatchObject({
-      lang: 'ru', locale: 'ru', currency: 'RUB', family: true, total: 838000, income: { amount: 329000 },
-      units: { thousand: '{n} тыс', million: '{n} млн', comma: true, symbol: '₽' },
-      scenarios: [{ key: 'average', spending: 178000, periods: 3 }, { key: 'plan', spending: 150000, periods: null }]
+      user: { id: 907470387, firstName: 'Ilya' }, lang: 'ru', locale: 'ru', currency: 'RUB', timezone: 'Asia/Bangkok', startDay: 1,
+      premium: { active: true, daysRemaining: 54 }, isAdmin: false, homeScope: 'family',
+      family: { id: 7, isOwner: true, mode: true, members: [{ id: 907470387, name: 'Ilya' }, { id: 2, name: 'yulia' }] },
+      units: { thousand: '{n} тыс', million: '{n} млн', comma: true, symbol: '₽' }
     });
-    expect(res.body.scenarios[0].points).toBeUndefined();
-    expect(res.body.strings).toMatchObject({ miniapp_title: 'Сценарии накоплений', savings_scen_leg_plan: 'по плану' });
-    expect(Object.keys(res.body.strings).every(key => /^(miniapp_|savings_scen_leg_)/.test(key))).toBe(true);
+    expect(res.body.today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(res.body.strings).toMatchObject({ core_tab_today: 'Сегодня', category_food: expect.any(String) });
+
+    const alone = await request(server().app).get('/api/me').set('Authorization', auth(5)).expect(200);
+    expect(alone.body).toMatchObject({ family: null, homeScope: 'mine' });
+    await request(server().app).get('/api/nope').set('Authorization', auth(5)).expect(404, { error: 'not_found' });
   });
 
   test('too many requests from one user are cut off, others are not affected', async () => {
-    const { app } = server();
-    for (let i = 0; i < 30; i++) await request(app).get('/api/scenarios').set('Authorization', auth(1)).expect(200);
-    await request(app).get('/api/scenarios').set('Authorization', auth(1)).expect(429);
-    await request(app).get('/api/scenarios').set('Authorization', auth(2)).expect(200);
+    const { app } = server({ rateLimit: 5 });
+    for (let i = 0; i < 5; i++) await request(app).get('/api/me').set('Authorization', auth(1)).expect(200);
+    await request(app).get('/api/me').set('Authorization', auth(1)).expect(429);
+    await request(app).get('/api/me').set('Authorization', auth(2)).expect(200);
   });
 
   test('the page opens inside Telegram only, the browser gets the bot\'s own forecast math', async () => {
@@ -87,6 +94,26 @@ describe('mini app server', () => {
   });
 });
 
+describe('mini app strings', () => {
+  const { slices, LANGS, SLICES } = require('../miniapp/i18n');
+  const PREFIX = { core: 'core_', expenses: 'ex_', overview: 'ov_', income: 'inc_', plans: 'plan_', savings: 'sav_', profile: 'prof_', extras: 'xtra_' };
+
+  test('every section has all 13 languages with the same keys, its own prefix (or error_*), no key in two sections', () => {
+    expect(Object.keys(slices).sort()).toEqual([...SLICES].sort());
+    const owner = new Map();
+    for (const [slice, table] of Object.entries(slices)) {
+      const keys = Object.keys(table.ru).sort();
+      expect(keys.length).toBeGreaterThan(0);
+      for (const lang of LANGS) expect([slice, lang, Object.keys(table[lang] || {}).sort()]).toEqual([slice, lang, keys]);
+      for (const key of keys) {
+        expect([slice, key, key.startsWith(PREFIX[slice]) || key.startsWith('error_')]).toEqual([slice, key, true]);
+        expect([key, owner.get(key) || slice]).toEqual([key, slice]);
+        owner.set(key, slice);
+      }
+    }
+  });
+});
+
 describe('bot button to the mini app', () => {
   test('savings forecast and scenarios get «📱 Play with it in the app» only when the app address is set', async () => {
     const localization = new LocalizationService();
@@ -101,10 +128,18 @@ describe('bot button to the mini app', () => {
     const withApp = ctx();
     await handlers('https://app.example.org/').showScenarios(withApp);
     expect(withApp.editMessageText.mock.calls[0][1].reply_markup.inline_keyboard[0]).toEqual([
-      { text: localization.getText('ru', 'miniapp_button'), web_app: { url: 'https://app.example.org/' } }
+      { text: localization.getText('ru', 'miniapp_button'), web_app: { url: 'https://app.example.org/#/savings/scenarios' } }
     ]);
     const without = ctx();
     await handlers(null).showScenarios(without);
     expect(JSON.stringify(without.editMessageText.mock.calls[0][1].reply_markup)).not.toContain('web_app');
+  });
+
+  test('«☰ More» opens the app first, only when the app address is set', () => {
+    const { generateMoreMenu } = require('../utils/constants');
+    const localization = new LocalizationService();
+    const withApp = generateMoreMenu(localization, 'ru', false, { miniAppUrl: 'https://app.example.org/' });
+    expect(withApp[0]).toEqual([{ text: '📱 Открыть приложение', web_app: { url: 'https://app.example.org/' } }]);
+    expect(JSON.stringify(generateMoreMenu(localization, 'ru', false, { miniAppUrl: null }))).not.toContain('web_app');
   });
 });

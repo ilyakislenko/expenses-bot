@@ -161,12 +161,14 @@ class QuizRepository extends BaseRepository {
     return result.rows.map(row => row.week_key);
   }
 
-  // Активные сессии, у которых текущий вопрос так и не отправлен (перезапуск между ответом и следующим вопросом)
+  // Активные сессии, у которых текущий вопрос так и не отправлен (перезапуск между ответом и следующим вопросом).
+  // Прошлый вопрос задан в Mini App (poll_id a…) — следующий ждёт «Дальше» в приложении, в чат его не шлём
   async stuckSessions(now, idleMs, limit = 50) {
     const result = await this.query(
       `SELECT ${SESSION_COLUMNS} FROM quiz_sessions s
        WHERE s.status = 'active' AND s.current_index < s.total
          AND NOT EXISTS (SELECT 1 FROM quiz_polls p WHERE p.session_id = s.id AND p.question_index = s.current_index)
+         AND NOT EXISTS (SELECT 1 FROM quiz_polls p WHERE p.session_id = s.id AND p.question_index = s.current_index - 1 AND p.poll_id LIKE 'a%')
          AND COALESCE(s.asked_at, s.started_at) < $1::timestamptz - make_interval(secs => $2::float / 1000)
        ORDER BY s.id LIMIT $3`,
       [now, idleMs, limit]
@@ -186,6 +188,12 @@ class QuizRepository extends BaseRepository {
 
   async getPoll(pollId) {
     const result = await this.query('SELECT * FROM quiz_polls WHERE poll_id = $1', [pollId]);
+    return result.rows[0] || null;
+  }
+
+  // Вопрос сессии (опрос, кнопки в чате или вопрос в Mini App — один на номер)
+  async getQuestionPoll(sessionId, index) {
+    const result = await this.query('SELECT * FROM quiz_polls WHERE session_id = $1 AND question_index = $2', [sessionId, index]);
     return result.rows[0] || null;
   }
 

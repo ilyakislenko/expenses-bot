@@ -110,10 +110,10 @@ class PlanningService {
   // ========================================
 
   // Подписки для резерва в «Можно сегодня» — как в календаре: отмеченные пользователем или известные.
-  // Ошибка поиска подписок расчёт не ломает — резерв без них
-  async reservedSubscriptions(userId) {
+  // Ошибка поиска подписок расчёт не ломает — резерв без них. subs — уже посчитанные getSubscriptions
+  async reservedSubscriptions(userId, subs = null) {
     try {
-      const { visible } = await this.getSubscriptions(userId);
+      const { visible } = subs || await this.getSubscriptions(userId);
       return visible.filter(isExpected);
     } catch (error) {
       logger.warn('Subscriptions for allowance failed', { userId, error: error.message });
@@ -123,7 +123,8 @@ class PlanningService {
 
   // Контур «все траты в семью» (BudgetService.scopeFor → { familyId }): траты, регулярные и бюджет — семейные; доходы,
   // долги, взнос в накопления и подписки личные, поэтому семейное «Можно сегодня» — от общего семейного бюджета
-  async getAllowance(userId) {
+  // subs — уже посчитанные getSubscriptions (хаб Mini App считает их один раз для всех блоков)
+  async getAllowance(userId, { subs = null } = {}) {
     const ctx = await this.expenseService.getPeriodContext(userId, 'month', 0);
     const { timezone, currency, today, period } = ctx;
     const convert = this.converter(currency);
@@ -136,7 +137,7 @@ class PlanningService {
       family ? null : this.planningRepository.getMonthlyContribution(userId),
       family ? NO_INCOME : this.incomeOutlook(userId, ctx, convert),
       this.budgetService.getStatus(scope, { timezone, currency, period }),
-      family ? [] : this.reservedSubscriptions(userId)
+      family ? [] : this.reservedSubscriptions(userId, subs)
     ]);
 
     let spentBefore = 0;

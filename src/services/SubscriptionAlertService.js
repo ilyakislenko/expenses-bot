@@ -69,6 +69,12 @@ class SubscriptionAlertService {
     return !enabled;
   }
 
+  // Включить / выключить «🔔 Предупреждать о списании» (Mini App: переключатель вместо «переключить»)
+  async setWarnEnabled(userId, enabled) {
+    await this.planningRepository.setWarnEnabled(userId, !!enabled);
+    return !!enabled;
+  }
+
   // За сколько дней (1, 2, 3, 7); выбор включает предупреждения. null — такого варианта нет
   async setWarnDays(userId, days) {
     if (!WARN_DAYS_OPTIONS.includes(days)) return null;
@@ -230,33 +236,58 @@ class SubscriptionAlertService {
     return this.planningRepository.deleteTrial(userId, trialId);
   }
 
+  // Пробный период одним шагом (Mini App: название, цена и дата окончания в одной форме) — тот же черновик и та же
+  // дата, что у бота в два сообщения. endDate — от сегодня до maxDays вперёд.
+  // { trial, today } или { error: 'limit' | 'bad_date' | 'outdated' }
+  async addTrial(userId, { name, amount = null, currency = null, endDate, maxDays = 366 }) {
+    const today = await this.today(userId);
+    if (!endDate || endDate < today || endDate > addDays(today, maxDays)) return { error: 'bad_date' };
+    const started = await this.startTrial(userId, { name, amount, currency });
+    if (started.error) return started;
+    return this.finishTrial(userId, started.id, endDate);
+  }
+
   // ========================================
   // КАК ОТМЕНИТЬ
   // ========================================
 
-  // Текст и кнопки-ссылки «Как отменить»: сервис из списка (config/subscriptionCancel.js) — его страница;
-  // App Store и Google Play — общие шаги со ссылками; неизвестный сервис — совет найти раздел «Подписка».
-  // recurring — регулярная трата бота: после отмены её нужно удалить (иначе бот продолжит записывать)
+  // «Как отменить» без текста: сервис из списка (config/subscriptionCancel.js) — его страницы; App Store и Google Play —
+  // общие шаги со ссылками (у подписки самого магазина — только он); неизвестный сервис — совет найти раздел «Подписка».
+  // recurringId — регулярная трата бота: после отмены её нужно удалить (иначе бот продолжит записывать).
+  // { service: { name, manage, help } | null, apple: url | null, google: url | null, generic, recurringId }
+  cancelGuideInfo({ name, key = '', recurringId = null }) {
+    const found = findCancelService(name, key);
+    return {
+      service: found && !found.store ? { name: found.name, manage: found.manage || null, help: found.help || null } : null,
+      apple: !found || found.store !== 'google' ? APP_STORE.manage : null,
+      google: !found || found.store !== 'apple' ? GOOGLE_PLAY.manage : null,
+      generic: !found,
+      recurringId: recurringId || null
+    };
+  }
+
+  // Текст и кнопки-ссылки «Как отменить» для бота (данные — cancelGuideInfo)
   cancelGuide(lang, { name, key = '', recurringId = null }) {
+    const guide = this.cancelGuideInfo({ name, key, recurringId });
     const service = findCancelService(name, key);
     const lines = [`❓ *${this.t(lang, 'sub_cancel_title', { name: this.name(name) })}*`, '', this.t(lang, 'sub_cancel_intro')];
     const urls = [];
-    if (service && !service.store) {
-      lines.push(this.t(lang, 'sub_cancel_service', { service: service.name }));
-      if (service.manage) urls.push([{ text: this.t(lang, 'sub_button_open_service', { service: service.name }), url: service.manage }]);
-      if (service.help) urls.push([{ text: this.t(lang, 'sub_button_help_service', { service: service.name }), url: service.help }]);
+    if (guide.service) {
+      lines.push(this.t(lang, 'sub_cancel_service', { service: guide.service.name }));
+      if (guide.service.manage) urls.push([{ text: this.t(lang, 'sub_button_open_service', { service: guide.service.name }), url: guide.service.manage }]);
+      if (guide.service.help) urls.push([{ text: this.t(lang, 'sub_button_help_service', { service: guide.service.name }), url: guide.service.help }]);
     }
     const stores = [];
-    if (!service || service.store !== 'google') {
+    if (guide.apple) {
       lines.push(this.t(lang, 'sub_cancel_apple'));
-      stores.push({ text: this.t(lang, 'sub_button_appstore'), url: APP_STORE.manage });
+      stores.push({ text: this.t(lang, 'sub_button_appstore'), url: guide.apple });
     }
-    if (!service || service.store !== 'apple') {
+    if (guide.google) {
       lines.push(this.t(lang, 'sub_cancel_google'));
-      stores.push({ text: this.t(lang, 'sub_button_googleplay'), url: GOOGLE_PLAY.manage });
+      stores.push({ text: this.t(lang, 'sub_button_googleplay'), url: guide.google });
     }
     urls.push(stores);
-    if (!service) lines.push(this.t(lang, 'sub_cancel_generic'));
+    if (guide.generic) lines.push(this.t(lang, 'sub_cancel_generic'));
     lines.push('', this.t(lang, 'sub_cancel_tip'));
     if (recurringId) lines.push('', this.t(lang, 'sub_cancel_recurring', { name: this.name(name) }));
     return { text: lines.join('\n'), urlRows: urls, service };

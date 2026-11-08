@@ -3,38 +3,30 @@ const path = require('path');
 const express = require('express');
 const logger = require('../utils/logger');
 const { verifyInitData } = require('./initData');
-const { currencySymbol, commaDecimal } = require('../utils/savingsView');
-const ruLocale = require('../locales/ru');
+const http = require('./http');
+const { registerApi } = require('./api');
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const FORECAST_SOURCE = path.join(__dirname, '..', 'utils', 'savingsForecast.js');
-const INTL_LOCALES = { jp: 'ja', kz: 'kk' };
 const RATE_WINDOW_MS = 60 * 1000;
-const RATE_LIMIT = 30; // запросов данных в минуту на пользователя
-const STRING_PREFIXES = ['miniapp_', 'savings_scen_leg_'];
+const RATE_LIMIT = 300; // запросов API в минуту на пользователя
 
-// Mini App в Telegram (кнопка web_app в боте): страница и API сценариев накоплений. Слушает только 127.0.0.1 —
-// наружу её выводит туннель (Cloudflare Tunnel → MINIAPP_PORT), мониторинг и бот наружу не смотрят.
-// Вход — только из Telegram: заголовок «Authorization: tma <initData>», подпись проверяется токеном бота (initData.js).
-// Кривые считает браузер тем же utils/savingsForecast.js, что и бот (/forecast.js — тот же файл в обёртке).
+// Mini App в Telegram — тот же функционал, что в боте, экранами (src/miniapp/public — SPA без сборки, ES-модули).
+// Слушает только 127.0.0.1: наружу её выводит туннель (Cloudflare Tunnel → MINIAPP_PORT); бот, мониторинг и база
+// наружу не смотрят. Вход в /api — только из Telegram: «Authorization: tma <initData>», подпись — токеном бота
+// (initData.js); req.userId — из подписи, данные — только этого пользователя (и его семьи там, где это семейное).
+// Маршруты — модули api/*.js (api/index.js), сервисы берутся из контейнера (get), как у обработчиков бота.
 class MiniAppServer {
-  constructor({ port, host = '127.0.0.1', botToken, savingsScenarioService, userService, localizationService }) {
+  constructor({ port, host = '127.0.0.1', botToken, get, rateLimit = RATE_LIMIT }) {
+    this.rateLimit = rateLimit;
     this.port = port;
     this.host = host;
     this.botToken = botToken;
-    this.savingsScenarioService = savingsScenarioService;
-    this.userService = userService;
-    this.localizationService = localizationService;
+    this.get = get;
     this.hits = new Map(); // userId → { start, count } — простой лимит запросов
     this.app = express();
     this.app.disable('x-powered-by');
     this.setupRoutes();
-  }
-
-  // Строки интерфейса на языке пользователя в боте (ключи miniapp_* и подписи кривых)
-  strings(lang) {
-    const keys = Object.keys(ruLocale).filter(key => STRING_PREFIXES.some(prefix => key.startsWith(prefix)));
-    return Object.fromEntries(keys.map(key => [key, this.localizationService.getText(lang, key)]));
   }
 
   limited(userId, now = Date.now()) {
@@ -45,7 +37,7 @@ class MiniAppServer {
       return false;
     }
     entry.count += 1;
-    return entry.count > RATE_LIMIT;
+    return entry.count > this.rateLimit;
   }
 
   setupRoutes() {
@@ -53,47 +45,40 @@ class MiniAppServer {
       res.set({
         'X-Content-Type-Options': 'nosniff',
         'Referrer-Policy': 'no-referrer',
-        'Content-Security-Policy': "default-src 'self'; script-src 'self' https://telegram.org; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors https://web.telegram.org https://*.telegram.org 'self'"
+        'Content-Security-Policy': "default-src 'self'; script-src 'self' https://telegram.org; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; frame-ancestors https://web.telegram.org https://*.telegram.org 'self'"
       });
       next();
     });
 
+    // Расчёт прогноза накоплений для браузера — тот же файл, что у бота (window.savingsForecast)
     const forecastScript = `(function () {\nvar module = { exports: {} };\n${fs.readFileSync(FORECAST_SOURCE, 'utf8')}\nwindow.savingsForecast = module.exports;\n})();\n`;
     this.app.get('/forecast.js', (req, res) => res.type('application/javascript').set('Cache-Control', 'no-cache').send(forecastScript));
     this.app.use(express.static(PUBLIC_DIR, { index: 'index.html', setHeaders: (res) => res.set('Cache-Control', 'no-cache') }));
 
-    this.app.get('/api/scenarios', async (req, res) => {
+    const api = express.Router();
+    api.use((req, res, next) => {
       const header = req.get('authorization') || '';
       const user = header.startsWith('tma ') ? verifyInitData(header.slice(4), this.botToken) : null;
       if (!user) return res.status(401).json({ error: 'auth' });
       if (this.limited(user.id)) return res.status(429).json({ error: 'rate' });
-      try {
-        const lang = await this.userService.getUserLanguage(user.id);
-        const result = await this.savingsScenarioService.build(user.id);
-        res.set('Cache-Control', 'no-store').json({
-          lang,
-          locale: INTL_LOCALES[lang] || lang,
-          strings: this.strings(lang),
-          units: {
-            thousand: this.localizationService.getText(lang, 'savings_compact_thousand'),
-            million: this.localizationService.getText(lang, 'savings_compact_million'),
-            comma: commaDecimal(lang),
-            symbol: currencySymbol(result.currency)
-          },
-          currency: result.currency,
-          today: result.today,
-          family: result.family,
-          total: result.total,
-          parts: result.parts,
-          income: result.income,
-          rates: result.rates,
-          scenarios: result.scenarios.map(({ key, spending, periods }) => ({ key, spending, periods: periods || null }))
-        });
-      } catch (error) {
-        logger.error('Mini app scenarios failed', { userId: user.id, error: error.message });
-        res.status(500).json({ error: 'server' });
-      }
+      req.userId = user.id;
+      req.telegramUser = user;
+      res.set('Cache-Control', 'no-store');
+      next();
     });
+    api.use(express.json({ limit: '200kb' }));
+    api.use(http.attachContext(this.get));
+    registerApi(api, { get: this.get, http });
+    api.use((req, res) => res.status(404).json({ error: 'not_found' }));
+    // eslint-disable-next-line no-unused-vars
+    api.use((error, req, res, next) => {
+      if (error instanceof http.HttpError) return res.status(error.status).json({ error: error.code, ...(error.extra || {}) });
+      if (error.type === 'entity.too.large') return res.status(413).json({ error: 'too_large' });
+      if (error.type === 'entity.parse.failed') return res.status(400).json({ error: 'bad_json' });
+      logger.error('Mini app API failed', { userId: req.userId, path: req.path, error: error.message, stack: error.stack });
+      res.status(500).json({ error: 'server' });
+    });
+    this.app.use('/api', api);
   }
 
   start() {

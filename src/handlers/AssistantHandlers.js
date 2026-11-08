@@ -3,9 +3,6 @@ const logger = require('../utils/logger');
 const { keepTyping } = require('./ReceiptHandlers');
 const { parseEntries } = require('../utils/multiEntry');
 
-const EXAMPLE_COUNT = 6;
-const EXAMPLES_IN_HINT = 3;
-
 // Слово (или пара слов) до пробела, знака препинания или конца текста; «что-то», «где-то» — не вопрос
 const word = (alternatives) => `(?<![\\p{L}\\p{N}])(?:${alternatives})(?![\\p{L}\\p{N}-])`;
 // Начало вопроса — вопрос и без «?»: «сколько я потратил вчера», «how much did i spend yesterday»
@@ -44,23 +41,24 @@ function isQuestion(text, entries) {
 }
 
 // «🤖 Спроси бота»: экран с примерами, вопрос текстом (`?`, /ask, состояние ai_in:), ответ в фоне — сообщение
-// «🤔 Думаю…» превращается в ответ. Один вопрос за раз на пользователя.
+// «🤔 Думаю…» превращается в ответ. Один вопрос за раз на пользователя — общий с Mini App (AssistantService.turns);
+// проверки и тексты без ответа — AssistantService (бот и приложение зовут одно и то же).
 class AssistantHandlers {
   constructor({ assistantService, userService, stateService, localizationService }) {
     this.assistantService = assistantService;
     this.userService = userService;
     this.stateService = stateService;
     this.localizationService = localizationService;
-    this.tasks = new Set();
-    this.busyUsers = new Set();
+    this.turns = assistantService.constructor.turns;
+    this.busyUsers = this.turns.busy;
   }
 
   t(lang, key, params) {
     return this.localizationService.getText(lang, key, params);
   }
 
-  exampleList(lang, count = EXAMPLE_COUNT) {
-    return Array.from({ length: count }, (_, i) => this.t(lang, `ai_example_${i + 1}`));
+  exampleList(lang) {
+    return this.assistantService.constructor.examples((key, params) => this.t(lang, key, params));
   }
 
   // Экран примеров: кнопка = вопрос; «✍️ Свой вопрос»; лимит на сегодня
@@ -117,29 +115,27 @@ class AssistantHandlers {
     // Ответы — о личных деньгах: в группах не отвечаем
     if (ctx.chat && ctx.chat.type !== 'private') return;
     const userId = ctx.from.id;
-    const question = String(rawQuestion || '').trim().replace(/^[?？¿]+\s*/, '');
-    if (!question) {
+    const Service = this.assistantService.constructor;
+    const { question, error } = Service.prepareQuestion(rawQuestion);
+    if (error === 'empty') {
       await ctx.reply(this.t(lang, 'ai_ask_prompt'), { parse_mode: 'Markdown' });
       return;
     }
-    if (question.length > this.assistantService.constructor.MAX_QUESTION_LENGTH) {
-      await ctx.reply(this.t(lang, 'ai_too_long', { max: this.assistantService.constructor.MAX_QUESTION_LENGTH }));
+    if (error === 'too_long') {
+      await ctx.reply(this.t(lang, 'ai_too_long', { max: Service.MAX_QUESTION_LENGTH }));
       return;
     }
-    if (this.busyUsers.has(userId)) {
+    if (!this.turns.claim(userId)) {
       await ctx.reply(this.t(lang, 'ai_busy'));
       return;
     }
-    this.busyUsers.add(userId);
     let started = false;
     try {
       const timezone = await this.userService.getUserTimezone(userId);
       const limit = await this.assistantService.checkLimit(userId, timezone);
       if (!limit.remaining) {
-        const key = limit.isPremium ? 'ai_limit_premium' : 'ai_limit_regular';
         const keyboard = limit.isPremium ? [] : [[{ text: this.t(lang, 'button_premium'), callback_data: 'premium_subscription' }]];
-        // used может быть больше лимита: например, премиум закончился сегодня после 20 вопросов
-        await ctx.reply(this.t(lang, key, { used: Math.min(limit.used, limit.limit), limit: limit.limit, premium: this.assistantService.premiumLimit }), {
+        await ctx.reply(Service.limitMessage(limit, (key, params) => this.t(lang, key, params)), {
           parse_mode: 'Markdown',
           reply_markup: { inline_keyboard: keyboard }
         });
@@ -148,24 +144,16 @@ class AssistantHandlers {
       const status = await ctx.reply(this.t(lang, 'ai_thinking'));
       // Нейросеть может думать секунды, а в очереди за чеком — дольше: обработчик апдейта не ждёт,
       // иначе polling задержит остальных пользователей
-      this.track(userId, this.answerInBackground(ctx, { question, lang, statusId: status.message_id, limit, example }));
+      this.turns.track(userId, this.answerInBackground(ctx, { question, lang, statusId: status.message_id, limit, example }));
       started = true;
     } finally {
-      if (!started) this.busyUsers.delete(userId);
+      if (!started) this.turns.release(userId);
     }
-  }
-
-  track(userId, promise) {
-    const task = promise.finally(() => {
-      this.busyUsers.delete(userId);
-      this.tasks.delete(task);
-    });
-    this.tasks.add(task);
   }
 
   // Все фоновые ответы завершены (для тестов и smoke)
   async idle() {
-    await Promise.all([...this.tasks]);
+    await this.turns.idle();
   }
 
   async editStatus(ctx, messageId, text, extra = {}) {
@@ -174,10 +162,6 @@ class AssistantHandlers {
     } catch (error) {
       await ctx.reply(text, extra);
     }
-  }
-
-  examplesHint(lang) {
-    return this.exampleList(lang, EXAMPLES_IN_HINT).map(example => `• ${example}`).join('\n');
   }
 
   async answerInBackground(ctx, { question, lang, statusId, limit, example = null }) {
@@ -205,15 +189,8 @@ class AssistantHandlers {
         return;
       }
       logger.info('Assistant did not answer', { userId, status: result.status, source: result.source, position: result.position });
-      const key = {
-        future: 'ai_future',
-        model_down: 'ai_model_down',
-        model_busy: result.position ? 'ai_model_busy' : 'ai_model_busy_now',
-        model_limit: 'ai_model_limit',
-        period_unclear: 'ai_period_unclear'
-      }[result.status] || 'ai_not_understood';
-      const params = { examples: this.examplesHint(lang), position: result.position, limit: result.limit };
-      await this.editStatus(ctx, statusId, this.t(lang, key, params), {
+      const text = this.assistantService.constructor.failureMessage(result, (key, params) => this.t(lang, key, params));
+      await this.editStatus(ctx, statusId, text, {
         parse_mode: 'Markdown',
         reply_markup: { inline_keyboard: moreButton }
       });

@@ -82,9 +82,14 @@ class ReportService {
     return percent > 0 ? `↑ +${percent}%` : `↓ −${-percent}%`;
   }
 
-  // Отчёт за период (offset: 0 — текущий, -1 — прошлый). full — полная версия для премиума.
-  // Возвращает { text, hasData }
-  async buildReport(userId, offset, lang, { full }) {
+  // Итоги периода данными (offset: 0 — текущий, -1 — прошлый; full — полная версия для премиума): текст бота —
+  // buildReport, экран Mini App — те же цифры. Суммы — в основной валюте.
+  // → { offset, period, timezone, currency, full, hasData, count, spent, totals, incomeTotals,
+  //     previous: { spent, change, days } | null (days — сравнение с тем же числом первых дней, null — целиком),
+  //     income: { total, balance } | null, categories: [{ id, name, icon, total, change }] (краткие — топ-3, change
+  //     только в полной: процент | null — новое; undefined — сравнивать не с чем), compared, gone, budgets,
+  //     perDay, largest: { value, expense } | null }
+  async reportData(userId, offset, { full }) {
     const { timezone, currency, today, period } = await this.expenseService.getPeriodContext(userId, 'month', offset);
     const fullPrevious = (await this.expenseService.getPeriodContext(userId, 'month', offset - 1)).period;
     const { period: previous, days: toDateDays } = comparablePrevious(period, fullPrevious, today);
@@ -95,80 +100,115 @@ class ReportService {
       this.categoryBreakdown(userId, timezone, period, currency),
       this.categoryBreakdown(userId, timezone, previous, currency)
     ]);
+    const data = { offset, period, timezone, currency, full, hasData: totals.count > 0, count: totals.count, totals, incomeTotals };
+    if (!data.hasData) return data;
+
     const spent = await this.formatter.sumInCurrency(totals.byCurrency, currency);
-    const prevSpent = await this.formatter.sumInCurrency(prevTotals.byCurrency, currency);
-    const money = (value) => this.formatter.formatAmount(value, currency);
-
-    // Незавершённый период — «итоги на сегодня»
-    const titleKey = offset === 0 ? 'report_title_current' : 'report_title';
-    const lines = [`📄 *${this.t(lang, titleKey, { range: this.formatter.formatPeriodRange(period) })}*`, ''];
-    if (!totals.count) {
-      lines.push(this.t(lang, 'no_expenses_period'));
-      return { text: lines.join('\n'), hasData: false };
-    }
-
-    lines.push(this.t(lang, 'overview_spent', { amount: money(spent), count: totals.count }));
+    data.spent = spent;
+    data.previous = null;
     if (prevTotals.count) {
-      const change = this.changeText(lang, changePercent(spent, prevSpent));
-      lines.push(toDateDays
-        ? this.t(lang, 'report_vs_previous_to_date', { change, amount: money(prevSpent), days: toDateDays })
-        : this.t(lang, 'report_vs_previous', { change, amount: money(prevSpent) }));
+      const prevSpent = await this.formatter.sumInCurrency(prevTotals.byCurrency, currency);
+      data.previous = { spent: prevSpent, change: changePercent(spent, prevSpent), days: toDateDays };
     }
-    const incomeSummary = await this.formatter.formatIncomeSummary(incomeTotals, totals, currency, this.localizationService, lang);
-    if (incomeSummary) lines.push(incomeSummary);
+    data.income = null;
+    if (incomeTotals && incomeTotals.count) {
+      const income = await this.formatter.sumInCurrency(incomeTotals.byCurrency, currency);
+      data.income = { total: income, balance: income - spent };
+    }
 
     if (!full) {
-      lines.push('', `*${this.t(lang, 'report_top_categories')}*`);
-      for (const category of categories.slice(0, TOP_FREE)) {
-        lines.push(`${this.categoryLabel(category, lang)} — ${money(category.total)} (${Math.round(category.total / spent * 100)}%)`);
-      }
-      lines.push('', this.t(lang, 'report_locked'));
-      return { text: lines.join('\n'), hasData: true };
+      data.categories = categories.slice(0, TOP_FREE);
+      return data;
     }
 
-    // Категории с шкалой; сравнение — только если в прошлом периоде были траты (иначе всё было бы «новое»)
-    const hasPrevious = prevTotals.count > 0;
+    // Сравнение категорий — только если в прошлом периоде были траты (иначе всё было бы «новое»)
+    data.compared = prevTotals.count > 0;
     const prevByName = new Map(prevCategories.map(c => [c.name, c.total]));
-    const maxTotal = categories.length ? categories[0].total : 0;
-    const categoriesTitle = !hasPrevious ? 'by_categories' : toDateDays ? 'report_categories_vs_previous_to_date' : 'report_categories_vs_previous';
-    lines.push('', `*${this.t(lang, categoriesTitle, { days: toDateDays })}*`);
-    for (const category of categories) {
-      const change = hasPrevious ? ` · ${this.changeText(lang, changePercent(category.total, prevByName.get(category.name)))}` : '';
-      lines.push(`${this.categoryLabel(category, lang)} — ${money(category.total)}${change}`);
-      lines.push(`   ${this.formatter.progressBar(maxTotal ? category.total / maxTotal : 0)}`);
-    }
-    const gone = prevCategories.filter(c => !categories.some(x => x.name === c.name));
-    if (gone.length) {
-      lines.push(this.t(lang, 'report_categories_gone', { list: gone.map(c => this.categoryLabel(c, lang)).join(', ') }));
-    }
+    data.categories = categories.map(c => (data.compared ? { ...c, change: changePercent(c.total, prevByName.get(c.name)) } : { ...c }));
+    data.gone = prevCategories.filter(c => !categories.some(x => x.name === c.name));
 
     // Бюджеты (текущие лимиты), заведённые не позже последнего дня периода
-    const budgets = (await this.budgetService.getStatus(userId, { timezone, currency, period }))
+    data.budgets = (await this.budgetService.getStatus(userId, { timezone, currency, period }))
       .filter(budget => localYmd(budget.created_at, timezone) <= period.last);
-    if (budgets.length) {
-      lines.push('', `*${this.t(lang, 'budgets_title')}:*`);
-      for (const budget of budgets) {
-        const mark = budget.ratio > 1 ? '🚨' : '✅';
-        lines.push(`${mark} ${this.budgetService.budgetName(budget, lang)}: ${money(budget.spent)} / ${money(budget.limit)} (${Math.round(budget.ratio * 100)}%)`);
-      }
-    }
 
-    // Средняя трата в день и крупнейшая трата
+    // Средняя трата в день (текущий период — по прошедшим дням) и крупнейшая трата
     const periodDays = daysBetween(period.start, period.end);
     const elapsedDays = offset === 0 ? Math.min(periodDays, daysBetween(period.start, addDays(today, 1))) : periodDays;
+    data.perDay = spent / Math.max(1, elapsedDays);
     const expenses = await this.expenseService.getExpenses(userId, timezone, period);
     let largest = null;
     for (const expense of expenses) {
       const value = await this.currencyUtils.convert(Number(expense.amount), expense.currency, currency);
       if (!largest || value > largest.value) largest = { value, expense };
     }
+    data.largest = largest;
+    return data;
+  }
+
+  // Отчёт за период текстом (offset: 0 — текущий, -1 — прошлый). full — полная версия для премиума.
+  // Возвращает { text, hasData }
+  async buildReport(userId, offset, lang, { full }) {
+    const data = await this.reportData(userId, offset, { full });
+    const { period, currency, timezone } = data;
+    const money = (value) => this.formatter.formatAmount(value, currency);
+
+    // Незавершённый период — «итоги на сегодня»
+    const titleKey = offset === 0 ? 'report_title_current' : 'report_title';
+    const lines = [`📄 *${this.t(lang, titleKey, { range: this.formatter.formatPeriodRange(period) })}*`, ''];
+    if (!data.hasData) {
+      lines.push(this.t(lang, 'no_expenses_period'));
+      return { text: lines.join('\n'), hasData: false };
+    }
+
+    lines.push(this.t(lang, 'overview_spent', { amount: money(data.spent), count: data.count }));
+    if (data.previous) {
+      const change = this.changeText(lang, data.previous.change);
+      lines.push(data.previous.days
+        ? this.t(lang, 'report_vs_previous_to_date', { change, amount: money(data.previous.spent), days: data.previous.days })
+        : this.t(lang, 'report_vs_previous', { change, amount: money(data.previous.spent) }));
+    }
+    const incomeSummary = await this.formatter.formatIncomeSummary(data.incomeTotals, data.totals, currency, this.localizationService, lang);
+    if (incomeSummary) lines.push(incomeSummary);
+
+    if (!full) {
+      lines.push('', `*${this.t(lang, 'report_top_categories')}*`);
+      for (const category of data.categories) {
+        lines.push(`${this.categoryLabel(category, lang)} — ${money(category.total)} (${Math.round(category.total / data.spent * 100)}%)`);
+      }
+      lines.push('', this.t(lang, 'report_locked'));
+      return { text: lines.join('\n'), hasData: true };
+    }
+
+    // Категории с шкалой и изменением к прошлому периоду
+    const toDateDays = data.previous ? data.previous.days : null;
+    const maxTotal = data.categories.length ? data.categories[0].total : 0;
+    const categoriesTitle = !data.compared ? 'by_categories' : toDateDays ? 'report_categories_vs_previous_to_date' : 'report_categories_vs_previous';
+    lines.push('', `*${this.t(lang, categoriesTitle, { days: toDateDays })}*`);
+    for (const category of data.categories) {
+      const change = data.compared ? ` · ${this.changeText(lang, category.change)}` : '';
+      lines.push(`${this.categoryLabel(category, lang)} — ${money(category.total)}${change}`);
+      lines.push(`   ${this.formatter.progressBar(maxTotal ? category.total / maxTotal : 0)}`);
+    }
+    if (data.gone.length) {
+      lines.push(this.t(lang, 'report_categories_gone', { list: data.gone.map(c => this.categoryLabel(c, lang)).join(', ') }));
+    }
+
+    if (data.budgets.length) {
+      lines.push('', `*${this.t(lang, 'budgets_title')}:*`);
+      for (const budget of data.budgets) {
+        const mark = budget.ratio > 1 ? '🚨' : '✅';
+        lines.push(`${mark} ${this.budgetService.budgetName(budget, lang)}: ${money(budget.spent)} / ${money(budget.limit)} (${Math.round(budget.ratio * 100)}%)`);
+      }
+    }
+
     lines.push('', `*${this.t(lang, 'report_more_numbers')}*`);
-    lines.push(this.t(lang, 'report_per_day', { amount: money(spent / Math.max(1, elapsedDays)) }));
-    if (largest) {
+    lines.push(this.t(lang, 'report_per_day', { amount: money(data.perDay) }));
+    if (data.largest) {
+      const { expense } = data.largest;
       lines.push(this.t(lang, 'report_largest', {
-        amount: this.formatter.formatAmount(Number(largest.expense.amount), largest.expense.currency),
-        description: this.formatter.expenseLabel(largest.expense, this.localizationService, lang),
-        date: this.formatter.formatShortDateTime(largest.expense.created_at_utc, timezone).split(',')[0]
+        amount: this.formatter.formatAmount(Number(expense.amount), expense.currency),
+        description: this.formatter.expenseLabel(expense, this.localizationService, lang),
+        date: this.formatter.formatShortDateTime(expense.created_at_utc, timezone).split(',')[0]
       }));
     }
     return { text: lines.join('\n'), hasData: true };

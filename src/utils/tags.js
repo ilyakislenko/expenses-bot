@@ -31,4 +31,32 @@ function stripTags(text) {
   return String(text || '').replace(STRIP, '').trim();
 }
 
-module.exports = { extractTags, stripTags, normalizeTag, TAG_SQL_PATTERN, MAX_TAG_LENGTH };
+// Суммы по тегам — общие для бота (TagHandlers) и Mini App (api/tags.js). rows — траты (новые первыми),
+// convert(amount, currency) → сумма в основной валюте. → Map<тег, { total, count, rows: [{ ...row, value }] }>,
+// теги по убыванию суммы, записи тега — в порядке rows
+async function summarizeTags(rows, convert) {
+  const tags = new Map();
+  for (const row of rows) {
+    const value = await convert(Number(row.amount), row.currency);
+    for (const tag of extractTags(row.description)) {
+      const entry = tags.get(tag) || { total: 0, count: 0, rows: [] };
+      entry.total += value;
+      entry.count += 1;
+      entry.rows.push({ ...row, value });
+      tags.set(tag, entry);
+    }
+  }
+  return new Map([...tags].sort((a, b) => b[1].total - a[1].total));
+}
+
+// Перевод в основную валюту с кешем курса на время одного подсчёта
+function currencyConverter(currencyUtils, currency) {
+  const rates = new Map();
+  return async (amount, from) => {
+    if (!from || from === currency) return amount;
+    if (!rates.has(from)) rates.set(from, await currencyUtils.convert(1, from, currency));
+    return amount * rates.get(from);
+  };
+}
+
+module.exports = { extractTags, stripTags, normalizeTag, summarizeTags, currencyConverter, TAG_SQL_PATTERN, MAX_TAG_LENGTH };

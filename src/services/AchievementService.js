@@ -265,9 +265,12 @@ class AchievementService {
       ? [this.t(lang, 'ach_retro_banner', { count: result.unlocked.length })]
       : this.grantLines(lang, result)));
     const xp = this.xpOf(snap);
+    // finished и grant — то же, что в notes, данными (Mini App рисует заметки сам)
     return {
       snap,
       notes: notes.filter(Boolean),
+      finished,
+      grant: result,
       xp,
       level: levelForXp(xp),
       active,
@@ -506,7 +509,9 @@ class AchievementService {
       } : null,
       biggestDay: biggest && dayTotals.size > 1 ? { day: biggest.day, total: biggest.total } : null
     };
-    return { text: lines.join('\n'), period, card };
+    // facts — остальное из текста данными (Mini App): иконка главной категории, счётчики слов, значки периода, цель
+    const facts = { topIcon: top && total > 0 ? top.icon || null : null, keywords, badges, goal, streak };
+    return { text: lines.join('\n'), period, card, facts };
   }
 
   // Цель, ближе всего к достижению (не достигнутая): { name, percent } или null
@@ -614,6 +619,32 @@ class AchievementService {
     } catch (error) {
       logger.warn('Wrapped card not rendered', { error: error.message });
       return null;
+    }
+  }
+
+  // Карточку можно нарисовать и прислать картинкой
+  get canShareWrapped() {
+    return !!(this.chartService && this.chartService.available && this.notificationService.sendPhoto);
+  }
+
+  // «📤 Поделиться картинкой» из Mini App: карточка итогов отдельным сообщением в чат с ботом — как achwi (подпись —
+  // только ссылка на бота, кнопка «Открыть бота»). → 'sent' | 'empty' (трат нет) | 'unavailable' (не нарисовать/не отправить)
+  async shareWrapped(userId, lang, offset = -1) {
+    const wrapped = await this.buildWrapped(userId, lang, Math.min(0, offset));
+    if (!wrapped) return 'empty';
+    const png = await this.wrappedCardImage(wrapped.card, lang);
+    if (!png) return 'unavailable';
+    const username = this.notificationService.botUsername();
+    const link = username ? `https://t.me/${username}?start=wrapped` : null;
+    try {
+      await this.notificationService.sendPhoto(userId, png, {
+        caption: link ? this.t(lang, 'chart_card_caption', { link }) : undefined,
+        reply_markup: link ? { inline_keyboard: [[{ text: this.t(lang, 'button_chart_try'), url: link }]] } : undefined
+      });
+      return 'sent';
+    } catch (error) {
+      logger.warn('Wrapped card not sent', { userId, error: error.message });
+      return 'unavailable';
     }
   }
 }

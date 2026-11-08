@@ -15,11 +15,15 @@ class IncomeService {
     return this.userRepository.setUserIncomeCurrency(userId, currency);
   }
 
-  // currency = null → валюта дохода пользователя по умолчанию
-  async addIncome(userId, amount, currency, description) {
+  // currency = null → валюта дохода пользователя по умолчанию. date — другой день (локальная 'YYYY-MM-DD', проверена
+  // вызывающим; Mini App), timezone — пояс пользователя; без date — сейчас
+  async addIncome(userId, amount, currency, description, { date = null, timezone = null } = {}) {
     const incomeCurrency = currency || await this.userRepository.getUserIncomeCurrency(userId);
-    const income = await this.incomeRepository.addIncome(userId, amount, incomeCurrency, description);
+    let income = await this.incomeRepository.addIncome(userId, amount, incomeCurrency, description);
     logger.info('Income added', { userId, amount, currency: incomeCurrency, incomeId: income.id });
+    if (date && timezone) {
+      income = await this.incomeRepository.setIncomeCreatedAt(userId, income.id, moveToDate(income.created_at_utc, date, timezone)) || income;
+    }
     return income;
   }
 
@@ -56,6 +60,15 @@ class IncomeService {
 
   async deleteIncome(userId, incomeId) {
     return this.incomeRepository.deleteIncomeById(userId, incomeId);
+  }
+
+  // «Вернуть» сразу после удаления: row — удалённая строка (результат deleteIncome) с тем же id, временем и отметкой
+  // выписки. null — строка чужая или id уже занят
+  async restoreIncome(userId, row) {
+    if (!row || Number(row.user_id) !== Number(userId)) return null;
+    const income = await this.incomeRepository.restoreIncome(row);
+    if (income) logger.info('Income restored', { userId, incomeId: income.id });
+    return income || null;
   }
 }
 

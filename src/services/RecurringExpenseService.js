@@ -64,7 +64,21 @@ class RecurringExpenseService {
     });
     logger.info('Recurring expense created', { userId, recurringId: id, amount, currency: resolvedCurrency, dayOfMonth });
 
-    const due = (await this.recurringExpenseRepository.getDueForUser(userId)).filter(r => r.id === id);
+    const { chargedNow, budgetWarnings } = await this.chargeIfDue(userId, id);
+
+    return {
+      id,
+      currency: resolvedCurrency,
+      chargedNow,
+      budgetWarnings,
+      nextChargeDate: nextChargeDate(dayOfMonth, chargedNow ? thisMonth : lastChargedMonth, today)
+    };
+  }
+
+  // Записать трату регулярной сразу, если её число в этом месяце наступило, а месяц ещё не записан (то же, что сделает
+  // cron при ближайшем запуске). { chargedNow, budgetWarnings }
+  async chargeIfDue(userId, recurringId) {
+    const due = (await this.recurringExpenseRepository.getDueForUser(userId)).filter(r => r.id === recurringId);
     let chargedNow = false;
     const budgetWarnings = [];
     for (const recurring of due) {
@@ -74,14 +88,34 @@ class RecurringExpenseService {
         budgetWarnings.push(...charged.warnings);
       }
     }
+    return { chargedNow, budgetWarnings };
+  }
 
-    return {
-      id,
-      currency: resolvedCurrency,
-      chargedNow,
-      budgetWarnings,
-      nextChargeDate: nextChargeDate(dayOfMonth, chargedNow ? thisMonth : lastChargedMonth, today)
-    };
+  // Правка (Mini App): сумма, валюта, описание, число месяца, категория — для следующих записей; уже записанные траты
+  // не меняются. Отметка записанного месяца остаётся: месяц записан (или оплачен заранее) — следующая запись в новое
+  // число следующего месяца; не записан, а новое число сегодня или уже прошло — трата за этот месяц записывается
+  // сразу (как сделал бы cron: просроченное списывается при ближайшем запуске); иначе — в новое число этого месяца.
+  // { item, chargedNow, budgetWarnings } | null — регулярной нет
+  async update(userId, recurringId, { amount, currency, description, dayOfMonth, categoryId }) {
+    const updated = await this.recurringExpenseRepository.update(userId, recurringId, { amount, currency, description, dayOfMonth, categoryId });
+    if (!updated) return null;
+    logger.info('Recurring expense updated', { userId, recurringId, amount, currency, dayOfMonth });
+    const { chargedNow, budgetWarnings } = await this.chargeIfDue(userId, recurringId);
+    return { item: await this.get(userId, recurringId), chargedNow, budgetWarnings };
+  }
+
+  // «Вернуть» сразу после удаления: row — удалённая строка (результат delete). Тот же id и отметка записанного месяца;
+  // траты, записанные до удаления, остаются отвязанными. null — строка чужая или id уже занят; лимит — ошибка recurring_limit
+  async restore(userId, row) {
+    if (!row || Number(row.user_id) !== Number(userId)) return null;
+    if (await this.recurringExpenseRepository.countByUser(userId) >= MAX_RECURRING_PER_USER) {
+      const error = new Error('recurring_limit');
+      error.code = 'recurring_limit';
+      throw error;
+    }
+    const restored = await this.recurringExpenseRepository.restore(row);
+    if (restored) logger.info('Recurring expense restored', { userId, recurringId: restored.id });
+    return restored ? this.get(userId, restored.id) : null;
   }
 
   async list(userId) {

@@ -142,6 +142,45 @@ describe('TaxRefundService: summary and user corrections', () => {
     expect(await service.search(1, 2026, 'п', CTX)).toBeNull();
   });
 
+  test('setKind (mini app): a kind, «none» and null; the whole list with the same sum as the summary', async () => {
+    const { service, repository } = makeTaxService({ expenses: EXPENSES });
+    // угаданная другим видом — правка; тем же — правки нет; «none» — «не для вычета»; null — снять правку
+    expect(await service.setKind(1, 2026, 4, 'medical', CTX)).toBe(true);
+    expect(repository.marks[4]).toBe('medical');
+    expect(await service.setKind(1, 2026, 4, 'sport', CTX)).toBe(true);
+    expect(repository.marks[4]).toBeUndefined();
+    expect(await service.setKind(1, 2026, 3, 'none', CTX)).toBe(true);
+    expect(repository.marks[3]).toBe('none');
+    let list = await service.list(1, 2026, CTX);
+    expect(list).toMatchObject({ counted: 3, excluded: 1, sum: 36200, refund: 4706 });
+    expect(list.sum).toBe((await service.summary(1, 2026, CTX)).sum);
+    expect(await service.setKind(1, 2026, 3, null, CTX)).toBe(true);
+    expect(repository.marks[3]).toBeUndefined();
+    // не угаданная: вид — в расчёт, «none» — снять отметку (уходит из списка)
+    await service.setKind(1, 2026, 5, 'education', CTX);
+    expect((await service.list(1, 2026, CTX)).items.map(i => i.id)).toContain(5);
+    await service.setKind(1, 2026, 5, 'none', CTX);
+    expect(repository.marks[5]).toBeUndefined();
+    list = await service.list(1, 2026, CTX);
+    expect(list.items.map(i => i.id)).not.toContain(5);
+    expect(list).toMatchObject({ counted: 4, excluded: 0, sum: 37000 });
+    // чужой год, валюта, неизвестный вид
+    expect(await service.setKind(1, 2026, 7, 'medical', CTX)).toBe(false);
+    expect(await service.setKind(1, 2026, 6, 'none', CTX)).toBe(false);
+    expect(await service.setKind(1, 2026, 1, 'food', CTX)).toBe(false);
+    expect(repository.marks).toEqual({});
+  });
+
+  test('howSections: the «how to get it back» text as steps without Markdown', () => {
+    const { service } = makeTaxService();
+    const blocks = service.howSections(2025);
+    expect(blocks.map(b => b.heading)).toEqual(['1. Возьми документы об оплате', '2. Подай заявление', '3. Жди деньги', null]);
+    expect(blocks[0].lines).toHaveLength(4);
+    expect(blocks[2].lines).toEqual([{ text: 'На карту после проверки — обычно за 1–4 месяца.', item: false }]);
+    expect(blocks[3].lines[0].text).toMatch(/^Лимит — 150\s000\s₽ в год/);
+    expect(blocks[3].lines[1].text).toBe('За 2025 год заявить вычет можно до конца 2028 года.');
+  });
+
   test('deposit interest of the current year from RUB accounts with own rate above 1%', async () => {
     const pots = [
       { kind: 'general', currency: 'RUB', balance: '100000', yield_rate: null },

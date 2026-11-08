@@ -1,4 +1,28 @@
-// Раздел «Накопления»: компактные суммы, иконки счетов, очередь мастера «Обновить остатки».
+// Раздел «Накопления»: компактные суммы, иконки счетов, очередь мастера «Обновить остатки», общие правила ввода
+// (бот и Mini App).
+
+const MAX_SAVINGS_AMOUNT = 9999999999; // savings_pots.balance DECIMAL(14,2) с запасом на пополнения
+const MAX_NAME_LENGTH = 60; // название счёта, цели, долга
+const RATE_LIMITS = { i: 300, y: 300, g: 100 }; // проценты годовых: инфляция, доходность, рост взноса
+
+// Название счёта, цели или долга: 1..60 символов, без недопустимого содержимого (validator — enhancedValidator).
+// null — не подходит
+function cleanPotName(text, validator) {
+  const name = String(text || '').trim();
+  if (!name || name.length > MAX_NAME_LENGTH) return null;
+  if (!validator.validateDescription(name, MAX_NAME_LENGTH).isValid) return null;
+  return validator.sanitizeText(name, MAX_NAME_LENGTH);
+}
+
+// Счета на экране: пустая общая копилка при своих счетах не показывается
+function visibleAccounts(accounts) {
+  return accounts.filter(a => !(a.kind === 'general' && a.balance === 0 && accounts.length > 1));
+}
+
+// Куда можно переводить и что пополнять: счета, общая копилка и цели со своей копилкой (не долги)
+function ownPots(pots) {
+  return pots.filter(p => p.kind !== 'debt' && (p.kind !== 'goal' || p.goal_mode === 'own'));
+}
 
 const POINT_DECIMAL_LANGS = ['en', 'hi', 'jp', 'zh']; // как в CSV-экспорте: у остальных десятичная запятая
 const NUMBER = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 });
@@ -115,4 +139,7 @@ class UpdateWizards {
   }
 }
 
-module.exports = { compactAmount, currencySymbol, commaDecimal, potIcon, updateQueue, UpdateWizards };
+module.exports = {
+  compactAmount, currencySymbol, commaDecimal, potIcon, updateQueue, UpdateWizards,
+  cleanPotName, visibleAccounts, ownPots, MAX_SAVINGS_AMOUNT, MAX_NAME_LENGTH, RATE_LIMITS
+};

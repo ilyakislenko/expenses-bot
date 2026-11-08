@@ -13,13 +13,45 @@ function ownerFilter(owner) {
 }
 
 class ExpenseRepository extends BaseRepository {
-  async addExpense(userId, amount, description, categoryId, currency = currencyConfig.BASE_CURRENCY, userTimezone = 'UTC', familyId = null) {
+  // createdAt — момент траты (другой день из Mini App), null — сейчас
+  async addExpense(userId, amount, description, categoryId, currency = currencyConfig.BASE_CURRENCY, userTimezone = 'UTC', familyId = null, createdAt = null) {
     const query = `
       INSERT INTO expenses (user_id, amount, description, category_id, currency, family_id, created_at_utc) 
-      VALUES ($1, $2, $3, $4, $5, $6, NOW()) 
+      VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7::timestamptz, NOW())) 
       RETURNING *
     `;
-    const result = await this.query(query, [userId, amount, description, categoryId, currency, familyId]);
+    const result = await this.query(query, [userId, amount, description, categoryId, currency, familyId, createdAt]);
+    return result.rows[0];
+  }
+
+  // Сколько раз пользователь записывал траты в каждую категорию с даты since (частые категории — первыми в форме)
+  async getCategoryUsage(userId, since) {
+    const result = await this.query(`
+      SELECT category_id, COUNT(*)::int AS count, MAX(created_at_utc) AS last_at
+      FROM expenses
+      WHERE user_id = $1 AND category_id IS NOT NULL AND import_hash IS NULL AND recurring_expense_id IS NULL
+        AND created_at_utc >= $2::timestamptz
+      GROUP BY category_id
+      ORDER BY count DESC, last_at DESC
+    `, [userId, since]);
+    return result.rows.map(row => ({ categoryId: Number(row.category_id), count: row.count }));
+  }
+
+  // «Вернуть» после удаления: та же запись (новый id) со всеми полями удалённой строки. Ссылки на то, чего уже нет
+  // (семья, чек, партия, регулярная, импорт), становятся NULL — как сделал бы ON DELETE SET NULL
+  async restoreExpense(userId, row) {
+    const result = await this.query(`
+      INSERT INTO expenses (user_id, amount, currency, category_id, description, created_at_utc, recorded_at, family_id,
+        recurring_expense_id, import_id, import_hash, receipt_id, quantity, unit_price, batch_id, category_guessed)
+      VALUES ($1, $2, $3, (SELECT id FROM categories WHERE id = $4), $5, $6, $7,
+        (SELECT family_id FROM family_user WHERE family_id = $8 AND user_id = $1),
+        (SELECT id FROM recurring_expenses WHERE id = $9), (SELECT id FROM imports WHERE id = $10), $11,
+        (SELECT id FROM receipts WHERE id = $12 AND user_id = $1 AND status <> 'undone'), $13, $14,
+        (SELECT id FROM entry_batches WHERE id = $15 AND user_id = $1 AND status <> 'undone'), $16)
+      RETURNING *
+    `, [userId, row.amount, row.currency, row.category_id, row.description, row.created_at_utc, row.recorded_at || null,
+      row.family_id, row.recurring_expense_id, row.import_id, row.import_hash, row.receipt_id, row.quantity, row.unit_price,
+      row.batch_id, !!row.category_guessed]);
     return result.rows[0];
   }
 
@@ -127,7 +159,8 @@ class ExpenseRepository extends BaseRepository {
   // Траты с тегами (в описании есть «#»), новые первыми — для экрана «🏷 Теги»
   async getTaggedExpenses(userId, limit = 5000) {
     const result = await this.query(`
-      SELECT e.id, e.amount::float AS amount, e.currency, e.description, e.created_at_utc, c.name AS category_name, c.icon AS category_icon
+      SELECT e.id, e.amount::float AS amount, e.currency, e.description, e.created_at_utc, c.name AS category_name, c.icon AS category_icon,
+             e.user_id, e.category_id, e.family_id, e.recurring_expense_id, e.receipt_id, e.import_id
       FROM expenses e
       LEFT JOIN categories c ON c.id = e.category_id
       WHERE e.user_id = $1 AND e.description LIKE '%#%'

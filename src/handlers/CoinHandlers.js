@@ -2,8 +2,6 @@ const respond = require('../utils/respond');
 const { COINS } = require('../utils/constants');
 const CoinService = require('../services/CoinService');
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 // «🪙 Монеты» (coins, /coins, кнопка на экране достижений): баланс, как заработать, обмен на дни премиума
 // (cnb|<дни> — подтверждение, cnc|<дни> — обмен; ключ идемпотентности — сообщение с подтверждением), история
 class CoinHandlers {
@@ -61,32 +59,28 @@ class CoinHandlers {
     await respond(ctx, lines.join('\n'), { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
   }
 
-  // Сколько нужно и можно ли сейчас: alert-текст или null
-  blocker(lang, overview, item) {
-    if (overview.left < item.days) return this.t(lang, 'coins_cap', { cap: overview.cap, left: overview.left });
-    if (overview.balance < item.price) return this.t(lang, 'coins_not_enough', { need: item.price - overview.balance, price: item.price });
+  // Что мешает обмену (CoinService.quote): alert-текст или null
+  blocker(lang, quote) {
+    if (quote.blocked === 'cap') return this.t(lang, 'coins_cap', { cap: quote.cap, left: quote.left });
+    if (quote.blocked === 'insufficient') return this.t(lang, 'coins_not_enough', { need: quote.need, price: quote.price });
     return null;
   }
 
   // cnb|<дни>: подтверждение (до какого числа продлится премиум)
   async confirm(ctx) {
     const userId = ctx.from.id;
-    const item = COINS.SHOP.find(i => i.days === parseInt(ctx.match[1], 10));
     const lang = await this.userService.getUserLanguage(userId);
-    if (!item) return this.show(ctx);
-    const overview = await this.coinService.getOverview(userId);
-    const blocked = this.blocker(lang, overview, item);
+    const quote = await this.coinService.quote(userId, parseInt(ctx.match[1], 10));
+    if (!quote) return this.show(ctx);
+    const blocked = this.blocker(lang, quote);
     if (blocked) return ctx.answerCbQuery(blocked, { show_alert: true }).catch(() => {});
-    const [user, timezone] = await Promise.all([this.userService.getUserById(userId), this.userService.getUserTimezone(userId)]);
-    const now = Date.now();
-    const current = user && user.premium && user.premium_expires_at && new Date(user.premium_expires_at).getTime() > now
-      ? new Date(user.premium_expires_at).getTime() : now;
-    const date = this.formatter.escapeMarkdown(this.formatter.formatDate(new Date(current + item.days * DAY_MS), timezone));
+    const timezone = await this.userService.getUserTimezone(userId);
+    const date = this.formatter.escapeMarkdown(this.formatter.formatDate(quote.expiresAt, timezone));
     await ctx.answerCbQuery().catch(() => {});
-    await respond(ctx, this.t(lang, 'coins_confirm', { price: item.price, days: item.days, date, balance: overview.balance }), {
+    await respond(ctx, this.t(lang, 'coins_confirm', { price: quote.price, days: quote.days, date, balance: quote.balance }), {
       parse_mode: 'Markdown',
       reply_markup: { inline_keyboard: [
-        [{ text: this.t(lang, 'coins_button_confirm', { price: item.price, days: item.days }), callback_data: `cnc|${item.days}` }],
+        [{ text: this.t(lang, 'coins_button_confirm', { price: quote.price, days: quote.days }), callback_data: `cnc|${quote.days}` }],
         [{ text: this.t(lang, 'button_back'), callback_data: 'coins' }]
       ] }
     });

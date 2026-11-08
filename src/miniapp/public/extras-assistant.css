@@ -1,0 +1,18 @@
+/* «Спроси бота» (/assistant): переписка пузырями и поле вопроса внизу экрана */
+.ai-screen { display: flex; flex-direction: column; min-height: calc(100vh - 120px); }
+.ai-intro { margin: 0 4px 16px; color: var(--hint); font-size: 15px; }
+.ai-examples .row-title { white-space: normal; }
+.ai-log { flex: 1; display: flex; flex-direction: column; gap: 6px; padding-bottom: 12px; }
+.ai-msg { max-width: 86%; padding: 9px 13px; border-radius: 18px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.4; }
+.ai-q { align-self: flex-end; background: var(--button); color: var(--button-text); border-bottom-right-radius: 6px; margin-top: 10px; }
+.ai-a { align-self: flex-start; background: var(--surface); color: var(--text); border-bottom-left-radius: 6px; }
+.ai-a.thinking { color: var(--hint); }
+.ai-actions { align-self: flex-start; max-width: 86%; display: flex; align-items: center; gap: 16px; padding: 0 4px; }
+.ai-actions button { border: 0; background: none; padding: 8px 0; min-height: 36px; font-size: 15px; display: inline-flex; align-items: center; gap: 2px; }
+.ai-link { color: var(--accent); }
+.ai-link svg { width: 16px; height: 16px; }
+.ai-wrong { color: var(--hint); }
+.ai-composer { position: sticky; bottom: 0; background: var(--bg); padding: 8px 0 calc(4px + var(--safe-bottom)); }
+.ai-composer textarea { display: block; width: 100%; box-sizing: border-box; border: 0; outline: none; resize: none; border-radius: 20px; background: var(--surface); color: var(--text); font: inherit; font-size: 16px; line-height: 1.35; padding: 10px 14px; max-height: 140px; }
+.ai-composer textarea::placeholder { color: var(--hint); }
+.ai-left { color: var(--hint); font-size: 13px; padding: 6px 14px 0; }

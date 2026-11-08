@@ -11,6 +11,7 @@ const { resolvePeriod, comparisonPeriods, elapsedDays } = require('./assistant/p
 const { searchStem, expandTerms, matchCategory, mentionsCategory, stemPhrase } = require('./assistant/text');
 const { AnswerComposer } = require('./assistant/compose');
 const { isTaxRefundAvailable } = require('../utils/taxRefund');
+const { QuestionTurns } = require('./assistant/turns');
 
 // Сколько вопрос может ждать нейросеть вместе с очередью. Вопросы встают в очереди перед чеками (receipt/chain.js),
 // но идущий чек не прерывается — дольше не ждём: честно отвечаем «нейросеть занята» с местом в очереди
@@ -19,6 +20,14 @@ const MAX_QUESTION_LENGTH = 300;
 const MAX_TERMS = 3;
 const WRONG_REFUNDS_PER_DAY = 1;
 const PER_DAYS = { day: 1, week: 7, month: 30.44 };
+const EXAMPLES_IN_HINT = 3;
+// Ответа нет: строка по статусу AssistantService.answer (остальное — «не понял»)
+const FAILURE_KEYS = {
+  future: 'ai_future',
+  model_down: 'ai_model_down',
+  model_limit: 'ai_model_limit',
+  period_unclear: 'ai_period_unclear'
+};
 // Кнопки-примеры (ai|<n>, тексты ai_example_<n>) — готовые намерения: ответ сразу и на любом языке, без нейросети
 const EXAMPLE_INTENTS = {
   1: { type: 'spend_total', period: { kind: 'month', offset: 0 } },
@@ -50,6 +59,40 @@ class AssistantService {
     this.currencyUtils = currencyUtils;
     this.modelDeadlineMs = modelDeadlineMs;
     this.taxRefundService = taxRefundService;
+  }
+
+  // Вопрос как его прислали → { question } или { error: 'empty' | 'too_long' }: «?» в начале — знак «вопрос боту»,
+  // не часть вопроса. Проверки бота и Mini App одни и те же
+  static prepareQuestion(raw) {
+    const question = String(raw || '').trim().replace(/^[?？¿]+\s*/, '');
+    if (!question) return { error: 'empty' };
+    if (question.length > MAX_QUESTION_LENGTH) return { error: 'too_long' };
+    return { question };
+  }
+
+  // Примеры вопросов (ai_example_<n> — у каждого готовое намерение EXAMPLE_INTENTS); t(key, params) — перевод
+  static examples(t, count = Object.keys(EXAMPLE_INTENTS).length) {
+    return Array.from({ length: count }, (_, i) => t(`ai_example_${i + 1}`));
+  }
+
+  // Вопросы на сегодня закончились (limit — checkLimit). used может быть больше лимита: например, премиум
+  // закончился сегодня после 20 вопросов
+  static limitMessage(limit, t) {
+    return t(limit.isPremium ? 'ai_limit_premium' : 'ai_limit_regular', {
+      used: Math.min(limit.used, limit.limit),
+      limit: limit.limit,
+      premium: USER_LIMITS.premium.MAX_ASSISTANT_QUESTIONS_PER_DAY
+    });
+  }
+
+  // Текст вместо ответа по статусу answer(): «не понял», «нейросеть занята (ты был N-м)» и т.д. — с примерами
+  // простых вопросов, которые работают всегда
+  static failureMessage(result, t) {
+    const key = result.status === 'model_busy'
+      ? (result.position ? 'ai_model_busy' : 'ai_model_busy_now')
+      : FAILURE_KEYS[result.status] || 'ai_not_understood';
+    const examples = AssistantService.examples(t, EXAMPLES_IN_HINT).map(example => `• ${example}`).join('\n');
+    return t(key, { examples, position: result.position, limit: result.limit });
   }
 
   get premiumLimit() {
@@ -451,5 +494,7 @@ class AssistantService {
 
 AssistantService.MAX_QUESTION_LENGTH = MAX_QUESTION_LENGTH;
 AssistantService.EXAMPLE_INTENTS = EXAMPLE_INTENTS;
+// Кто сейчас ждёт ответа — один набор на процесс: бот и Mini App (см. assistant/turns.js)
+AssistantService.turns = new QuestionTurns();
 
 module.exports = AssistantService;

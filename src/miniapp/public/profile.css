@@ -1,0 +1,15 @@
+/* Раздел «Ещё»: профиль, настройки, семья, премиум, админка */
+.prof-hero-text { font-size: 28px; }
+.prof-under-hero { white-space: pre-line; margin: -8px 0 20px; padding: 0 4px; }
+.prof-link { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; word-break: break-all; }
+.prof-sheet-text, .prof-multiline { white-space: pre-line; }
+.prof-sheet-text { padding: 4px 4px 16px; line-height: 1.45; }
+.prof-text .prof-gap { height: 10px; }
+.prof-text .prof-strong { font-weight: 600; }
+.prof-multiline { display: block; font-weight: 400; overflow-wrap: anywhere; }
+.prof-quote { margin-top: 6px; padding-left: 10px; border-left: 3px solid var(--separator); color: var(--text); }
+.prof-hours { padding: 4px 0 8px; }
+.prof-hours .tile { font-size: 15px; padding: 12px 4px; min-height: 44px; }
+.prof-code { text-align: center; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 30px; font-weight: 700; letter-spacing: 0.12em; padding: 12px 0 4px; }
+.prof-wrap .row-subtitle { white-space: normal; display: block; }
+.prof-wrap .row-title { white-space: normal; }

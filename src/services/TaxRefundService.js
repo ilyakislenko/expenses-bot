@@ -172,9 +172,37 @@ class TaxRefundService {
     });
   }
 
+  // Тот же текст «Как вернуть» без разметки Telegram и без заголовка — для Mini App: [{ heading, lines: [{ text, item }] }].
+  // Абзац «*2. Подай заявление* в приложении …» → заголовок «2. Подай заявление» и строка «В приложении …»
+  howSections(year) {
+    const plain = (text) => text.replace(/[*_]/g, '').trim();
+    const capitalize = (text) => text.charAt(0).toUpperCase() + text.slice(1);
+    const [, ...paragraphs] = this.howText(year).split(/\n{2,}/);
+    return paragraphs.map((paragraph) => {
+      const lines = paragraph.split('\n');
+      let heading = null;
+      const bold = lines[0].match(/^\*([^*]+)\*\s*(.*)$/);
+      if (bold) {
+        heading = plain(bold[1]);
+        if (bold[2]) lines[0] = capitalize(bold[2]);
+        else lines.shift();
+      }
+      return {
+        heading,
+        lines: lines.map(line => line.startsWith('• ') ? { text: plain(line.slice(2)), item: true } : { text: plain(line), item: false })
+          .filter(line => line.text)
+      };
+    });
+  }
+
+  // Траты года в списке «🧾 Траты списком»: угаданные и отмеченные вручную (новые сначала)
+  async listed(userId, year, timezone) {
+    return (await this.rows(userId, year, timezone)).filter(row => row.listed);
+  }
+
   // Страница списка: { items, page, pages, counted, countedTotal, excluded }
   async listPage(userId, year, page, { timezone }) {
-    const listed = (await this.rows(userId, year, timezone)).filter(row => row.listed);
+    const listed = await this.listed(userId, year, timezone);
     const pages = Math.max(1, Math.ceil(listed.length / PAGE_SIZE));
     const current = Math.min(Math.max(0, page), pages - 1);
     const counted = listed.filter(row => row.kind);
@@ -186,6 +214,15 @@ class TaxRefundService {
       countedTotal: counted.reduce((sum, row) => sum + row.amount, 0),
       excluded: listed.length - counted.length
     };
+  }
+
+  // Весь список года одной выдачей (Mini App) с итогом по нему: { items, counted, excluded, sum, base, limit, capped, refund, … }
+  async list(userId, year, { timezone }) {
+    const items = await this.listed(userId, year, timezone);
+    const totals = Object.fromEntries(KINDS.map(kind => [kind, 0]));
+    for (const row of items) if (row.kind) totals[row.kind] += row.amount;
+    const counted = items.filter(row => row.kind).length;
+    return { items, counted, excluded: items.length - counted, ...estimateRefund(totals, year) };
   }
 
   async expense(userId, year, expenseId, timezone) {
@@ -217,11 +254,18 @@ class TaxRefundService {
   }
 
   // Добавить трату в расчёт как kind. false — такой траты нет
-  async addToKind(userId, year, expenseId, kind, { timezone }) {
+  async addToKind(userId, year, expenseId, kind, context) {
     if (!KINDS.includes(kind)) return false;
+    return this.setKind(userId, year, expenseId, kind, context);
+  }
+
+  // Вид траты из Mini App: вид вычета — как addToKind; 'none' — не учитывать (угаданную отметить «не для вычета»,
+  // добавленную вручную — снять отметку); null — снять правку, остаётся угадывание. false — такой траты нет
+  async setKind(userId, year, expenseId, kind, { timezone }) {
+    if (kind !== null && kind !== 'none' && !KINDS.includes(kind)) return false;
     const row = await this.expense(userId, year, expenseId, timezone);
     if (!row) return false;
-    if (row.auto === kind) await this.taxRefundRepository.deleteMark(userId, expenseId);
+    if (kind === null || (kind === 'none' && !row.auto) || row.auto === kind) await this.taxRefundRepository.deleteMark(userId, expenseId);
     else await this.taxRefundRepository.setMark(userId, expenseId, kind);
     return true;
   }

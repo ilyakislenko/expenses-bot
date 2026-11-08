@@ -1134,14 +1134,13 @@ class Container {
       case 'monitoringServer':
         return new MonitoringServer(process.env.MONITORING_PORT || 3001);
 
-      // Mini App: только при MINIAPP_PORT (127.0.0.1; наружу — туннель), см. src/miniapp
+      // Mini App: только при MINIAPP_PORT (127.0.0.1; наружу — туннель), см. src/miniapp. Модули API берут сервисы
+      // из контейнера сами (get), как обработчики бота
       case 'miniAppServer':
         return new MiniAppServer({
           port: Number(process.env.MINIAPP_PORT),
           botToken: process.env.BOT_TOKEN,
-          savingsScenarioService: this.get('savingsScenarioService'),
-          userService: this.get('userService'),
-          localizationService: this.get('localizationService')
+          get: (name) => this.get(name)
         });
 
       case 'callbackDeduplicator':

@@ -12,14 +12,15 @@ class IncomeRepository extends BaseRepository {
     return result.rows[0];
   }
 
+  // batch_source — откуда партия записи (text / voice / bank), для отметки «из уведомления банка»
   async getIncomesBetween(userId, userTimezone, start, end) {
     const query = `
-      SELECT *
-      FROM incomes
-      WHERE user_id = $1
-        AND (created_at_utc AT TIME ZONE $2) >= $3::date
-        AND (created_at_utc AT TIME ZONE $2) < $4::date
-      ORDER BY created_at_utc ASC
+      SELECT i.*, (SELECT b.source FROM entry_batches b WHERE b.id = i.batch_id) AS batch_source
+      FROM incomes i
+      WHERE i.user_id = $1
+        AND (i.created_at_utc AT TIME ZONE $2) >= $3::date
+        AND (i.created_at_utc AT TIME ZONE $2) < $4::date
+      ORDER BY i.created_at_utc ASC
     `;
     const result = await this.query(query, [userId, userTimezone, start, end]);
     return result.rows;
@@ -76,6 +77,20 @@ class IncomeRepository extends BaseRepository {
       RETURNING *
     `;
     const result = await this.query(query, [incomeId, userId]);
+    return result.rows[0];
+  }
+
+  // «Вернуть» после удаления: строка целиком (из deleteIncomeById … RETURNING *) с тем же id, временем и отметкой
+  // выписки. Колонки — из самой строки БД. undefined — id уже занят
+  async restoreIncome(row) {
+    const columns = Object.keys(row);
+    const result = await this.query(
+      `INSERT INTO incomes (${columns.map(c => `"${c}"`).join(', ')})
+       VALUES (${columns.map((_, i) => `$${i + 1}`).join(', ')})
+       ON CONFLICT (id) DO NOTHING
+       RETURNING *`,
+      columns.map(c => row[c])
+    );
     return result.rows[0];
   }
 }

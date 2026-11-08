@@ -127,19 +127,16 @@ class ImportHandlers {
     if (!session) return;
     await ctx.answerCbQuery().catch(() => {});
     const userCurrency = await this.userService.getUserCurrency(userId);
-    const summary = await this.importService.summarize(session, userCurrency);
     let result;
     try {
-      result = await this.importService.commit(userId, session);
+      result = await this.importService.confirm(userId, messageId, session, userCurrency);
     } catch (error) {
       logger.error('Statement import failed', { userId, error: error.message });
-      this.importService.saveSession(userId, messageId, session);
       await ctx.reply(this.t(lang, 'import_error'));
       return;
     }
-    this.importService.deleteSession(userId, messageId);
 
-    const skipped = { ...summary.skipped, duplicates: summary.skipped.duplicates + result.raced };
+    const skipped = result.skipped;
     const lines = [
       this.t(lang, 'import_done_title'),
       this.t(lang, 'import_done_expenses', { count: result.expenses }),

@@ -6,6 +6,7 @@ const { BY_CODE } = require('../utils/achievements');
 const REASONS = ['day', 'streak', 'plan', 'challenge', 'achievement', 'quiz', 'redeem', 'refund'];
 const KEY_MAX = 100;
 const REASON_MAX = 20;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 function localMonth(timezone, now) {
   const parts = new Intl.DateTimeFormat('en-US', { timeZone: timezone || 'UTC', year: 'numeric', month: '2-digit' })
@@ -102,6 +103,30 @@ class CoinService {
       this.coinRepository.getHistory(userId, COINS.HISTORY)
     ]);
     return { balance, earned, used, left: Math.max(0, COINS.MONTHLY_DAYS_CAP - used), cap: COINS.MONTHLY_DAYS_CAP, history, shop: COINS.SHOP };
+  }
+
+  // Подтверждение обмена: товар, что мешает ('cap' — лимит месяца, 'insufficient' — не хватает монет, null — можно),
+  // сколько не хватает и до какого момента будет премиум (к действующему сроку, истёкший — от сейчас).
+  // overview — уже загруженный getOverview. → null (нет такого товара) или { days, price, blocked, need, balance, left, cap, expiresAt }
+  async quote(userId, days, overview = null) {
+    const item = COINS.SHOP.find(i => i.days === Number(days));
+    if (!item) return null;
+    const [view, user] = await Promise.all([overview || this.getOverview(userId), this.userService.getUserById(userId)]);
+    let blocked = null;
+    if (view.left < item.days) blocked = 'cap';
+    else if (view.balance < item.price) blocked = 'insufficient';
+    const now = this.now().getTime();
+    const expires = user && user.premium && user.premium_expires_at ? new Date(user.premium_expires_at).getTime() : 0;
+    return {
+      days: item.days,
+      price: item.price,
+      blocked,
+      need: Math.max(0, item.price - view.balance),
+      balance: view.balance,
+      left: view.left,
+      cap: view.cap,
+      expiresAt: new Date(Math.max(expires, now) + item.days * DAY_MS)
+    };
   }
 
   // Обмен на days дней премиума. idempotencyKey — одно нажатие (сообщение с подтверждением): двойное нажатие

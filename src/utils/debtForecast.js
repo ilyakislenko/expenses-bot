@@ -52,4 +52,17 @@ function projectDebt({ balance, rate = 0, payment, months }) {
   return points;
 }
 
-module.exports = { amortize, projectDebt };
+// Сколько всего останется должен по месяцам 0..months в основной валюте по текущему курсу: каждый долг — по своей
+// ставке и плановому платежу (debts — из SavingsService.getState: balance, balanceMain, yield_rate, monthly_payment)
+function projectDebts(debts, months) {
+  const total = new Array(months + 1).fill(0);
+  for (const debt of debts) {
+    if (debt.balance <= 0) continue;
+    const fx = debt.balanceMain / debt.balance; // курс валюты долга к основной
+    const points = projectDebt({ balance: debt.balance, rate: debt.yield_rate, payment: debt.monthly_payment, months });
+    points.forEach((owed, k) => { total[k] += owed * fx; });
+  }
+  return total;
+}
+
+module.exports = { amortize, projectDebt, projectDebts };

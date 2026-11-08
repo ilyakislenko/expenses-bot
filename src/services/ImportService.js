@@ -191,10 +191,11 @@ class ImportService {
     }
   }
 
-  // Что будет записано при выборе по переводам (null — ещё не выбран, переводы не считаются)
+  // Что будет записано при выборе по переводам (null — ещё не выбран, переводы не считаются).
+  // Операции, исключённые вручную в приложении (excluded), не записываются и не считаются
   async summarize(session, userCurrency) {
     const include = session.includeTransfers === true;
-    const fresh = session.operations.filter(op => op.status === 'new');
+    const fresh = session.operations.filter(op => op.status === 'new' && !op.excluded);
     const regular = fresh.filter(op => !op.isTransfer);
     const transfers = fresh.filter(op => op.isTransfer);
     const toWrite = fresh.filter(op => !op.isTransfer || include);
@@ -241,12 +242,29 @@ class ImportService {
     };
   }
 
+  // Правка новой операции превью в приложении: include false — не записывать, categoryId — другая категория траты
+  // (из доступных пользователю). false — операцию нельзя править (нет такой, не новая, чужая категория)
+  async updateOperation(userId, session, index, { include, categoryId } = {}) {
+    const op = session.operations[index];
+    if (!op || op.status !== 'new') return false;
+    if (categoryId !== undefined) {
+      if (op.kind !== 'expense') return false;
+      const category = (await this.expenseService.getCategories(userId)).find(item => Number(item.id) === Number(categoryId));
+      if (!category) return false;
+      op.categoryId = category.id;
+      op.categoryName = category.name;
+      op.categoryIcon = category.icon;
+    }
+    if (include !== undefined) op.excluded = !include;
+    return true;
+  }
+
   // ---------- Запись и отмена ----------
 
   // Записывает новые операции (переводы — если выбрано). Бюджеты не проверяются, запомненные категории не меняются.
   async commit(userId, session) {
     const include = session.includeTransfers === true;
-    const toWrite = session.operations.filter(op => op.status === 'new' && (!op.isTransfer || include));
+    const toWrite = session.operations.filter(op => op.status === 'new' && !op.excluded && (!op.isTransfer || include));
     const expenses = toWrite.filter(op => op.kind === 'expense');
     const incomes = toWrite.filter(op => op.kind === 'income');
     const result = await this.importRepository.createImport(userId, session.source, session.timezone, expenses, incomes);
@@ -256,10 +274,31 @@ class ImportService {
     return { ...result, raced };
   }
 
+  // Подтверждение превью id выпиской, уже забранной takeSession: итоги, запись; ошибка записи — выписка возвращается
+  // под тем же id (можно подтвердить ещё раз), после записи — забывается. → { importId, expenses, incomes, raced,
+  // summary, skipped } (skipped — с операциями, записанными параллельно, среди дубликатов)
+  async confirm(userId, id, session, userCurrency) {
+    const summary = await this.summarize(session, userCurrency);
+    let result;
+    try {
+      result = await this.commit(userId, session);
+    } catch (error) {
+      this.saveSession(userId, id, session);
+      throw error;
+    }
+    this.deleteSession(userId, id);
+    return { ...result, summary, skipped: { ...summary.skipped, duplicates: summary.skipped.duplicates + result.raced } };
+  }
+
   async undo(userId, importId) {
     const result = await this.importRepository.deleteImport(userId, importId);
     if (result) logger.info('Statement import undone', { userId, importId, ...result });
     return result;
+  }
+
+  // Записанные импорты (для отмены в приложении): [{ id, source, created_at, expenses, incomes, first_day, last_day }]
+  async history(userId, timezone) {
+    return this.importRepository.listImports(userId, timezone);
   }
 }
 

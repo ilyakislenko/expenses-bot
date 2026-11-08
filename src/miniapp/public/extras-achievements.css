@@ -1,0 +1,9 @@
+/* «Достижения» (js/screens/achievements.js) */
+.xa-hero-bar { margin: 10px 0 2px; }
+.xa-hero-bar .progress { height: 8px; border-radius: 4px; }
+.xa-bar { flex: 1; min-width: 0; padding: 6px 0 2px; }
+/* Заметки — целиком; описания значков и челленджей — до двух строк, а не обрезка */
+.xa-wrap .row-title { white-space: normal; }
+.xa-lines .row-subtitle { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; }
+.xa-locked .avatar { filter: grayscale(1); opacity: .45; }
+.xa-locked .row-title { color: var(--hint); }

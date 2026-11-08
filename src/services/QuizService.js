@@ -11,6 +11,11 @@ const STALE_ASK_MS = 60000; // отправка вопроса «застрял�
 const STALE_GRANT_MS = 10 * 60000;
 const ANSWER_MARK = { correct: 'c', wrong: 'w', missed: 'm' };
 
+// Вопрос, заданный в Mini App: запись quiz_polls с poll_id a<сессия>_<вопрос> (kind 'buttons' — ответ кнопкой, без
+// сообщения в чате). Опросы Telegram — числовые id, кнопки в чате — b<сессия>_<вопрос>
+const appPollId = (sessionId, index) => `a${sessionId}_${index}`;
+const isAppPoll = (poll) => String(poll.poll_id).startsWith('a');
+
 function shortDate(day) {
   return `${day.slice(8, 10)}.${day.slice(5, 7)}`;
 }
@@ -24,6 +29,8 @@ function pollRejected(error) {
 
 // «🎲 Угадай свои траты» — квиз недели. Вопросы — из своих трат (utils/quiz.js), отправка — опросом-викториной
 // Telegram (ответ приходит апдейтом poll_answer, связь poll_id → вопрос — в quiz_polls), запасной вариант — кнопки.
+// В Mini App тот же квиз — кнопками на экране (playInApp / answerInApp): каждый вопрос задаётся там, где игрок нажал
+// «Играть»/«Продолжить» (один отправитель — claimAsk), следующий вопрос в чат после ответа в приложении не уходит.
 // Всё состояние — в БД: перезапуск посреди квиза не ломает его (таймеры вопросов восстанавливает sweep()).
 class QuizService {
   constructor({ quizRepository, userService, expenseService, incomeService, budgetService, currencyUtils, formatter, localizationService, notificationService, userNotificationRepository, achievementService = null, chartService = null, timers = true }) {
@@ -170,11 +177,8 @@ class QuizService {
     if (session && session.status === 'finished') return { status: 'finished', session, lang, window };
     if (!session) {
       if (!window.open) return { status: 'closed', lang, window };
-      const questions = await this.buildQuestions(userId, lang, window.weekKey);
-      if (!questions) return { status: 'no_data', lang, window };
-      session = await this.repo.createSession(userId, window.weekKey, lang, questions)
-        || await this.repo.getSession(userId, window.weekKey);
-      logger.info('Quiz started', { userId, weekKey: window.weekKey, kinds: questions.map(q => q.kind) });
+      session = await this.createWeekSession(userId, lang, window);
+      if (!session) return { status: 'no_data', lang, window };
       await this.askCurrent(session, now);
       return { status: 'started', session, lang, window };
     }
@@ -187,6 +191,146 @@ class QuizService {
     // Текущий вопрос уже отправлен и ещё открыт — ждём ответа; не отправлен (сбой) — отправляем
     if (await this.askCurrent(session, now)) return { status: 'resumed', session, lang, window };
     return { status: 'waiting', session, lang, window };
+  }
+
+  // Сессия недели: вопросы собираются один раз и хранятся в quiz_sessions. null — данных на вопросы не хватает
+  async createWeekSession(userId, lang, window) {
+    const questions = await this.buildQuestions(userId, lang, window.weekKey);
+    if (!questions) return null;
+    const session = await this.repo.createSession(userId, window.weekKey, lang, questions)
+      || await this.repo.getSession(userId, window.weekKey);
+    logger.info('Quiz started', { userId, weekKey: window.weekKey, kinds: questions.map(q => q.kind) });
+    return session;
+  }
+
+  // ---------- Игра в Mini App ----------
+
+  // Где открыт текущий вопрос: 'chat' — опрос или кнопки в чате, 'app' — в приложении, null — не задан
+  async currentChannel(session) {
+    if (session.status !== 'active' || session.current_index >= session.total) return null;
+    const poll = await this.repo.getQuestionPoll(session.id, session.current_index);
+    if (!poll || poll.status !== 'open') return null;
+    return isAppPoll(poll) ? 'app' : 'chat';
+  }
+
+  outcomeOf(poll) {
+    if (poll.status === 'missed') return 'missed';
+    return Number(poll.chosen_option) === Number(poll.correct_option) ? 'correct' : 'wrong';
+  }
+
+  // «Играть» / «Продолжить» в приложении. { status: 'question', session, index, deadline } — текущий вопрос (уже
+  // заданный в приложении — с прежним сроком) | 'in_chat' — вопрос открыт в чате, отвечать там | 'finished' | 'closed' |
+  // 'no_data'. Вопрос приложения с вышедшим сроком — «не успел», дальше следующий; пауза снимается
+  async playInApp(userId, now = new Date()) {
+    const { lang, window } = await this.userContext(userId, now);
+    let session = await this.repo.getSession(userId, window.weekKey);
+    if (!session) {
+      if (!window.open) return { status: 'closed', window };
+      session = await this.createWeekSession(userId, lang, window);
+      if (!session) return { status: 'no_data', window };
+    }
+    for (let step = 0; step <= session.total + 1; step++) {
+      if (session.status === 'finished') return { status: 'finished', session, window };
+      if (session.status === 'paused') {
+        session = (await this.repo.resume(session.id)) || (await this.repo.getSessionById(session.id));
+        continue;
+      }
+      const index = session.current_index;
+      const poll = index < session.total ? await this.repo.getQuestionPoll(session.id, index) : null;
+      if (index >= session.total) {
+        // Все вопросы закрыты, итог не подведён (сбой между ними)
+        await this.finish(session, now, { send: false });
+      } else if (poll && !isAppPoll(poll)) {
+        return { status: 'in_chat', session, window };
+      } else if (poll && poll.status === 'open') {
+        const expired = await this.repo.expirePoll(poll.poll_id, now, QUIZ.ANSWER_GRACE_MS);
+        if (!expired) return { status: 'question', session, index, deadline: new Date(poll.deadline), window };
+        this.clearTimer(poll.poll_id);
+        await this.resolve(expired, 'missed', now);
+      } else if (poll) {
+        // Ответ записан, а вопрос не закрыт (сбой между ними) — закрываем
+        await this.resolve(poll, this.outcomeOf(poll), now);
+      } else {
+        const asked = await this.askInApp(session, index, now);
+        // Не задан — этот вопрос прямо сейчас отправляет чат
+        if (!asked) return { status: 'in_chat', session, window };
+        return { status: 'question', session: asked.session, index, deadline: asked.deadline, window };
+      }
+      session = await this.repo.getSessionById(session.id);
+    }
+    return { status: 'in_chat', session, window };
+  }
+
+  // Задать вопрос в приложении: тот же единственный отправитель (claimAsk), срок — как у опроса в чате
+  async askInApp(session, index, now = new Date()) {
+    const claimed = await this.repo.claimAsk(session.id, index, now, STALE_ASK_MS);
+    if (!claimed) return null;
+    const pollId = appPollId(session.id, index);
+    const deadline = new Date(now.getTime() + QUIZ.OPEN_PERIOD_SEC * 1000);
+    try {
+      await this.repo.insertPoll({
+        pollId, sessionId: session.id, userId: Number(session.user_id), index, messageId: null,
+        correctOption: session.questions[index].correct, kind: 'buttons', deadline
+      });
+    } catch (error) {
+      await this.repo.releaseAsk(session.id, index);
+      throw error;
+    }
+    this.schedule(pollId, deadline);
+    return { session: claimed, deadline };
+  }
+
+  // Ответ в приложении: option — номер варианта, null — время вышло. Засчитывается один раз, только своей сессии и не
+  // позже срока + ANSWER_GRACE_MS (позже — «не успел», late). { status: 'correct' | 'wrong' | 'missed', late, question,
+  // finished, summary, achievement } | { status: 'unknown' | 'answered' | 'bad_option' }
+  async answerInApp(userId, sessionId, index, option, now = new Date()) {
+    const session = await this.repo.getSessionById(sessionId);
+    if (!session || Number(session.user_id) !== Number(userId)) return { status: 'unknown' };
+    const question = session.questions[index];
+    const pollId = appPollId(sessionId, index);
+    const poll = question ? await this.repo.getPoll(pollId) : null;
+    if (!poll) return { status: 'unknown' };
+    if (option !== null && !(Number.isInteger(option) && option >= 0 && option < question.options.length)) return { status: 'bad_option' };
+    let closed;
+    let outcome = 'missed';
+    let late = false;
+    if (option === null) {
+      closed = await this.repo.expirePoll(pollId, now, QUIZ.ANSWER_GRACE_MS, true);
+    } else {
+      closed = await this.repo.claimAnswer(pollId, Number(session.user_id), option, now, QUIZ.ANSWER_GRACE_MS);
+      if (closed) {
+        outcome = option === Number(closed.correct_option) ? 'correct' : 'wrong';
+      } else if (poll.status === 'open') {
+        late = true;
+        closed = await this.repo.expirePoll(pollId, now, QUIZ.ANSWER_GRACE_MS);
+      }
+    }
+    if (!closed && !late) return { status: 'answered' };
+    const base = { status: outcome, late, question, finished: false, session: null, summary: null, achievement: '' };
+    if (!closed) return base; // срок вышел, вопрос уже закрыл таймер
+    this.clearTimer(pollId);
+    const result = await this.resolve(closed, outcome, now);
+    return { ...base, finished: !!result.finished, session: result.session || null, summary: result.summary || null, achievement: result.achievement || '' };
+  }
+
+  // Числа для правил квиза (бот — quiz_rules, приложение — свой экран)
+  rulesParams() {
+    const [grand, runner] = QUIZ.PRIZES;
+    return {
+      hour: QUIZ.OPEN_HOUR,
+      questions: QUIZ.QUESTIONS,
+      seconds: QUIZ.OPEN_PERIOD_SEC,
+      correct: QUIZ.POINTS_CORRECT,
+      finish: QUIZ.BONUS_FINISH,
+      perfect: QUIZ.BONUS_PERFECT,
+      max: QUIZ.QUESTIONS * QUIZ.POINTS_CORRECT + QUIZ.BONUS_FINISH + QUIZ.BONUS_PERFECT,
+      grandDays: grand.days,
+      grandCount: grand.count,
+      runnerDays: runner.days,
+      runnerCount: runner.count,
+      perfectDays: QUIZ.PERFECT_DAYS,
+      drawHour: QUIZ.DRAW_HOUR_UTC
+    };
   }
 
   // Отправить текущий вопрос сессии, если его ещё никто не отправил. true — отправлен этим вызовом
@@ -331,8 +475,10 @@ class QuizService {
     return this.resolve(expired, 'missed', now);
   }
 
-  // Вопрос закрыт: счётчики, следующий вопрос, пауза или итоги
+  // Вопрос закрыт: счётчики, следующий вопрос, пауза или итоги. Вопрос из приложения — следующий не отправляется в
+  // чат (его задаст приложение по «Дальше»), пауза и итог — без сообщений в чат: их показывает приложение
   async resolve(poll, outcome, now = new Date()) {
+    const inApp = isAppPoll(poll);
     const session = await this.repo.advance(poll.session_id, poll.question_index, {
       correct: outcome === 'correct',
       missed: outcome === 'missed',
@@ -340,16 +486,18 @@ class QuizService {
       pauseAfter: QUIZ.PAUSE_AFTER_MISSED
     });
     if (!session) return { status: 'ignored' };
-    if (session.current_index >= session.total) return { status: outcome, finished: true, ...(await this.finish(session, now)) };
+    if (session.current_index >= session.total) return { status: outcome, finished: true, ...(await this.finish(session, now, { send: !inApp })) };
     if (session.status === 'paused') {
-      await this.telegram.callApi('sendMessage', {
-        chat_id: Number(session.user_id),
-        text: this.t(session.lang, 'quiz_paused', { n: session.current_index, total: session.total }),
-        reply_markup: { inline_keyboard: [[{ text: this.t(session.lang, 'quiz_button_continue'), callback_data: 'qz|go' }]] }
-      }).catch(error => logger.warn('Quiz pause message not delivered', { userId: session.user_id, error: error.message }));
+      if (!inApp) {
+        await this.telegram.callApi('sendMessage', {
+          chat_id: Number(session.user_id),
+          text: this.t(session.lang, 'quiz_paused', { n: session.current_index, total: session.total }),
+          reply_markup: { inline_keyboard: [[{ text: this.t(session.lang, 'quiz_button_continue'), callback_data: 'qz|go' }]] }
+        }).catch(error => logger.warn('Quiz pause message not delivered', { userId: session.user_id, error: error.message }));
+      }
       return { status: outcome, paused: true, session };
     }
-    await this.askCurrent(session, now);
+    if (!inApp) await this.askCurrent(session, now);
     return { status: outcome, session };
   }
 
@@ -393,19 +541,20 @@ class QuizService {
     return [...String(answers || '')].map(mark => (mark === 'c' ? '🟩' : mark === 'w' ? '🟥' : '⬜')).join('');
   }
 
-  // Квиз пройден: очки, отметка (один раз), достижения и сообщение с карточкой результата
-  async finish(session, now = new Date()) {
+  // Квиз пройден: очки, отметка (один раз), достижения и сообщение с карточкой результата (send: false — итог
+  // показывает приложение)
+  async finish(session, now = new Date(), { send = true } = {}) {
     const score = quiz.scoreOf({ correct: session.correct_count, total: session.total, finished: true });
     const finished = await this.repo.finish(session.id, score.total, now);
     if (!finished) return { session };
     const summary = await this.summary(finished);
-    logger.info('Quiz finished', { userId: finished.user_id, weekKey: finished.week_key, correct: finished.correct_count, score: score.total });
+    logger.info('Quiz finished', { userId: finished.user_id, weekKey: finished.week_key, correct: finished.correct_count, score: score.total, app: !send });
     const achievement = this.achievementService
       ? await this.achievementService.track(Number(finished.user_id), 'quiz_finished', { lang: finished.lang })
       : '';
     const text = this.resultText(finished, summary, [achievement]);
-    await this.sendResult(finished, summary, text);
-    return { session: finished, summary, text };
+    if (send) await this.sendResult(finished, summary, text);
+    return { session: finished, summary, text, achievement };
   }
 
   resultKeyboard(lang) {
