@@ -1,11 +1,12 @@
 // Админка (/admin бота, только админам): статистика, воронка, пользователи и активные, поиск, карточка пользователя
-// (премиум, права админа, возврат по хэшу платежа), админы, баг-репорты, донаты, массовое уведомление
+// (премиум, права админа), платежи звёздами (поиск по куску кода, карточка с кодом и возвратом), админы,
+// баг-репорты, донаты, массовое уведомление
 import { route, navigate } from '../core/router.js';
-import { h, page, section, row, avatar, async, stats, segmented, stepper, field, sheet, act, toast, pick, confirmDelete, empty } from '../core/ui.js';
+import { h, page, section, row, avatar, async, stats, segmented, stepper, field, act, toast, pick, confirmDelete, empty } from '../core/ui.js';
 import { t, me, number, percent } from '../core/i18n.js';
 import { api, qs } from '../core/api.js';
 import { mainButton, confirm } from '../core/tg.js';
-import { dateText, dateTimeText } from './profileKit.js';
+import { dateText, dateTimeText, copyText } from './profileKit.js';
 
 const GRANT_DAYS = [1, 7, 14, 30, 90, 180, 365];
 // Заголовок над плитками показателей (section без строк не рисуется)
@@ -42,8 +43,10 @@ function home() {
       row({ avatar: avatar('user'), title: t('prof_adm_active'), href: '/admin/active' }),
       row({ avatar: avatar('shield'), title: t('prof_adm_admins'), href: '/admin/admins' })),
     section({},
+      row({ avatar: avatar('receipt'), title: t('prof_adm_payments'), href: '/admin/payments' }),
+      row({ avatar: avatar('star'), title: t('prof_adm_donations'), href: '/admin/donations' })),
+    section({},
       row({ avatar: avatar('help'), title: t('prof_adm_bugs'), href: '/admin/bugs' }),
-      row({ avatar: avatar('star'), title: t('prof_adm_donations'), href: '/admin/donations' }),
       row({ avatar: avatar('bell'), title: t('prof_adm_broadcast'), href: '/admin/broadcast' })));
 }
 
@@ -124,27 +127,63 @@ function searchScreen(ctx) {
     d.users.length ? section({}, d.users.map(u => userRow(u))) : empty({ icon: 'search', title: t('prof_adm_not_found') })));
 }
 
-// Возврат: хэш → найденный платёж → подтверждение
-function refundSheet(userId, onDone) {
-  let hash = '';
-  const input = field({ placeholder: 'telegram_payment_charge_id', onInput: (v) => { hash = v.trim(); s.button.update({ enabled: !!hash }); } });
-  const s = sheet({
-    title: t('prof_adm_refund'),
-    content: h('div', { class: 'section-body' }, input),
-    mainButton: {
-      text: t('prof_adm_refund_find'), enabled: false,
-      onClick: async () => {
-        const payment = await act(() => api.post(`/admin/users/${userId}/payment`, { hash }));
-        if (!payment) return;
-        const kind = t(`prof_adm_pay_${payment.kind}`);
-        if (!(await confirm(t('prof_adm_refund_confirm', { kind, stars: payment.stars, status: payment.status })))) return;
-        const result = await act(() => api.post(`/admin/users/${userId}/refund`, { hash }));
-        if (!result) return;
-        toast(result.premiumUntil ? t('prof_adm_refunded_until', { date: dateText(result.premiumUntil) }) : t('prof_adm_refunded'));
-        s.close();
-        onDone();
-      }
+// Платёж: что куплено и кто платил
+const paymentWhat = (p) => (p.kind === 'premium'
+  ? [t(p.family ? 'prof_adm_pay_family' : 'prof_adm_pay_premium'), t('prof_days_short', { n: p.days }), p.recurring ? t('prof_adm_pay_recurring') : null]
+  : p.kind === 'group_pass' ? [t('prof_adm_pay_group_pass'), t('prof_days_short', { n: p.days })] : [t('prof_adm_pay_donation')]).filter(Boolean).join(' · ');
+const paymentWho = (p) => (p.user.username ? `@${p.user.username}` : (p.user.name || String(p.user.id)));
+
+// Платежи звёздами, новые сверху: ?user= — одного пользователя, ?q= — кусок кода; строка → карточка
+function paymentsScreen(ctx) {
+  const userId = ctx.query.user || null;
+  const q = ctx.query.q || '';
+  const pageNo = Number(ctx.query.page || 1);
+  const go = (params) => navigate(`/admin/payments${qs({ user: userId, ...params })}`, { replace: true });
+  let query = q;
+  const search = field({ placeholder: t('prof_adm_pay_search'), value: q, onInput: (v) => { query = v; } });
+  search.input.addEventListener('keydown', (e) => { if (e.key === 'Enter') go({ q: query.trim() || null }); });
+  return async(() => api.get(`/admin/payments${qs({ user: userId, q: q || null, page: pageNo })}`), (d) => page({
+    title: t('prof_adm_payments'),
+    subtitle: [userId ? (d.items[0] ? paymentWho(d.items[0]) : String(userId)) : null, t('prof_adm_payments_total', { n: number(d.total) })].filter(Boolean).join(' · ')
+  },
+  h('div', { class: 'section' }, h('div', { class: 'section-body' }, search), h('div', { class: 'section-footer' }, t('prof_adm_pay_search_hint'))),
+  d.items.length ? section({}, d.items.map(p => row({
+    title: `${number(p.stars)} ⭐ · ${paymentWhat(p)}`,
+    subtitle: [dateText(p.at), userId ? null : paymentWho(p), p.status === 'refunded' ? t('prof_adm_pay_refunded') : null].filter(Boolean).join(' · '),
+    href: `/admin/payment/${p.kind}/${p.id}`
+  }))) : empty({ icon: 'receipt', title: t('prof_adm_no_payments') }),
+  d.totalPages > 1 ? stepper(`${d.page} / ${d.totalPages}`, {
+    canPrev: d.page > 1, canNext: d.page < d.totalPages,
+    onPrev: () => go({ q: q || null, page: d.page - 1 }),
+    onNext: () => go({ q: q || null, page: d.page + 1 })
+  }) : null));
+}
+
+// Карточка платежа: кто, когда, статус, полный код (касание — копировать) и «Вернуть N ⭐» главной кнопкой
+function paymentScreen(ctx) {
+  const { kind, id } = ctx.params;
+  return async(() => api.get(`/admin/payments/${kind}/${id}`), (p) => {
+    if (p.status !== 'refunded') {
+      const button = mainButton.push({
+        text: t('prof_adm_refund_btn', { stars: number(p.stars) }),
+        onClick: async () => {
+          if (!(await confirm(t('prof_adm_refund_confirm', { stars: number(p.stars), who: paymentWho(p), kind: paymentWhat(p) })))) return;
+          button.busy(true);
+          const result = await act(() => api.post(`/admin/payments/${kind}/${id}/refund`));
+          button.busy(false);
+          if (!result) return;
+          toast(result.premiumUntil ? t('prof_adm_refunded_until', { date: dateText(result.premiumUntil) }) : t('prof_adm_refunded'));
+          ctx.refresh();
+        }
+      });
     }
+    return page({ title: `${number(p.stars)} ⭐`, subtitle: paymentWhat(p) },
+      section({},
+        row({ title: t('prof_adm_pay_who'), value: paymentWho(p), href: `/admin/user/${p.user.id}` }),
+        row({ title: t('prof_adm_pay_when'), value: dateTimeText(p.at) }),
+        row({ title: t('prof_adm_pay_status'), value: t(p.status === 'refunded' ? 'prof_adm_pay_refunded' : 'prof_adm_pay_paid'), valueTone: p.status === 'refunded' ? 'warn' : 'good' })),
+      h('div', { class: 'prof-wrap' }, section({ title: t('prof_adm_pay_code'), footer: t('prof_adm_pay_code_hint') },
+        row({ title: h('span', { class: 'prof-link' }, p.hash), onClick: () => copyText(p.hash), chevron: false }))));
   });
 }
 
@@ -175,11 +214,7 @@ function userScreen(ctx) {
         u.premium || u.premiumActive ? row({ avatar: avatar('close'), title: t('prof_adm_revoke'), tone: 'danger', onClick: revoke, chevron: false }) : null,
         !u.admin ? row({ avatar: avatar('shield'), title: t('prof_adm_promote'), onClick: () => setAdmin(true) }) : null,
         u.admin && !u.self ? row({ avatar: avatar('shield'), title: t('prof_adm_demote'), tone: 'danger', onClick: () => setAdmin(false), chevron: false }) : null,
-        row({ avatar: avatar('receipt'), title: t('prof_adm_refund'), onClick: () => refundSheet(id, ctx.refresh) })),
-      u.transactions.length ? section({ title: t('prof_adm_transactions') }, u.transactions.map(x => row({
-        title: x.stars ? `${number(x.stars)} ⭐` : t('prof_adm_free'),
-        subtitle: [dateText(x.at), x.days ? t('prof_days_short', { n: x.days }) : null, x.status].filter(Boolean).join(' · ')
-      }))) : null);
+        row({ avatar: avatar('receipt'), title: t('prof_adm_payments'), value: number(u.payments), href: `/admin/payments${qs({ user: id })}` })));
   });
 }
 
@@ -243,5 +278,7 @@ export function register() {
   route('/admin/admins', guard(adminsScreen), { tab: 'more' });
   route('/admin/bugs', guard(bugsScreen), { tab: 'more' });
   route('/admin/donations', guard(donationsScreen), { tab: 'more' });
+  route('/admin/payments', guard(paymentsScreen), { tab: 'more' });
+  route('/admin/payment/:kind/:id', guard(paymentScreen), { tab: 'more' });
   route('/admin/broadcast', guard(broadcastScreen), { tab: 'more', tabs: false });
 }

@@ -386,10 +386,6 @@ class GroupService {
     return { status: 'completed', ledger, passUntil: result.passUntil };
   }
 
-  async findPass(chargeId) {
-    return this.groupRepository.getPassByChargeId(chargeId);
-  }
-
   // Возврат пропуска: null — это не пропуск
   async revokePass(chargeId) {
     const result = await this.groupRepository.refundPass(chargeId);

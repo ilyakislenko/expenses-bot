@@ -395,7 +395,6 @@ describe('group limits and the group pass', () => {
       total_amount: GROUP_PASS.stars, telegram_payment_charge_id: 'ch-1'
     }, {});
     expect(paid).toMatchObject({ type: 'group_pass', status: 'completed' });
-    expect(await payments.findPaymentByChargeId('ch-1')).toMatchObject({ kind: 'group_pass', userId: 1, stars: GROUP_PASS.stars });
     expect(await payments.revokeRefundedPayment('ch-1')).toMatchObject({ status: 'refunded', type: 'group_pass' });
     expect(await payments.revokeRefundedPayment('ch-1')).toMatchObject({ status: 'already_refunded' });
   });

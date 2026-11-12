@@ -294,26 +294,6 @@ class PaymentService {
   }
 
   /**
-   * Платёж для возврата из админки: премиум, пропуск группы или пожертвование с этим telegram_payment_charge_id.
-   * @returns {Promise<{ kind: 'premium'|'group_pass'|'donation', id: number, userId: number, stars: number, status: string, chargeId: string }|null>}
-   */
-  async findPaymentByChargeId(chargeId) {
-    const transaction = await this.premiumTransactionRepository.getTransactionByTelegramPaymentId(chargeId);
-    if (transaction) {
-      return { kind: 'premium', id: transaction.id, userId: Number(transaction.user_id), stars: transaction.stars_amount, status: transaction.status, chargeId };
-    }
-    const pass = this.groupService ? await this.groupService.findPass(chargeId) : null;
-    if (pass) {
-      return { kind: 'group_pass', id: pass.id, userId: Number(pass.user_id), stars: pass.stars, status: pass.status, chargeId };
-    }
-    const donation = this.donationRepository ? await this.donationRepository.getDonationByTelegramPaymentId(chargeId) : null;
-    if (donation) {
-      return { kind: 'donation', id: donation.id, userId: Number(donation.user_id), stars: donation.stars, status: donation.status, chargeId };
-    }
-    return null;
-  }
-
-  /**
    * Возврат платежа (из админки или refunded_payment от Telegram): снимает премиум, выданный этим платежом,
    * и отменяет подписку, если платёж был по ней; пожертвование помечается возвращённым.
    * Повторный вызов для того же платежа ничего не меняет.

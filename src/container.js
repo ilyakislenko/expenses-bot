@@ -34,6 +34,7 @@ const FamilyPremiumRepository = require('./repositories/FamilyPremiumRepository'
 const FamilyInvitationRepository = require('./repositories/FamilyInvitationRepository');
 const PremiumTransactionRepository = require('./repositories/PremiumTransactionRepository');
 const DonationRepository = require('./repositories/DonationRepository');
+const StarPaymentRepository = require('./repositories/StarPaymentRepository');
 const BugReportRepository = require('./repositories/BugReportRepository');
 const IncomeRepository = require('./repositories/IncomeRepository');
 const SavingsRepository = require('./repositories/SavingsRepository');
@@ -210,6 +211,9 @@ class Container {
 
       case 'donationRepository':
         return new DonationRepository();
+
+      case 'starPaymentRepository':
+        return new StarPaymentRepository();
 
       case 'bugReportRepository':
         return new BugReportRepository();
@@ -894,7 +898,8 @@ class Container {
           this.get('premiumTransactionRepository'),
           this.get('notificationService'),
           this.get('localizationService'),
-          this.get('familyPremiumService')
+          this.get('familyPremiumService'),
+          this.get('starPaymentRepository')
         );
 
       case 'savingsService':

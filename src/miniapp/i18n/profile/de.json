@@ -246,7 +246,6 @@
   "error_donate_invalid": "1 bis 2500 Sterne, Nachricht bis 500 Zeichen",
   "error_owner_cannot_leave": "Der Inhaber kann nicht austreten — du kannst die Familie löschen",
   "error_cannot_remove_self": "Du kannst dich nicht selbst entfernen",
-  "error_payment_not_found": "Zahlung bei diesem Benutzer nicht gefunden",
   "error_admin_cannot_demote_self": "Du kannst dir nicht selbst die Rechte entziehen",
   "error_broadcast_too_long": "Zu lang — bis 3600 Zeichen",
   "error_broadcast_running": "Ein Rundschreiben läuft bereits",

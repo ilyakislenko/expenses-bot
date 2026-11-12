@@ -351,11 +351,6 @@ class GroupRepository extends BaseRepository {
     });
   }
 
-  async getPassByChargeId(chargeId) {
-    const result = await this.query('SELECT * FROM group_passes WHERE telegram_payment_id = $1', [chargeId]);
-    return result.rows[0] || null;
-  }
-
   // Возврат: срок покупки вычитается из пропуска. null — платежа нет; { alreadyRefunded } — уже возвращён
   async refundPass(chargeId) {
     return this.transaction(async (client) => {

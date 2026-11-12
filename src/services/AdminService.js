@@ -11,8 +11,31 @@ const BUG_REPORT_SUSPICIOUS = [
   /(.)\1{20,}/ // повтор более 20 одинаковых символов подряд
 ];
 
+const PAYMENTS_PAGE_SIZE = 10;
+const PAYMENT_KINDS = ['premium', 'group_pass', 'donation'];
+// Минимальная длина куска кода платежа для поиска — короче совпадёт почти всё
+const PAYMENT_FRAGMENT_MIN = 4;
+
+// Строка StarPaymentRepository → платёж для админки
+function paymentView(row) {
+  return {
+    kind: row.kind,
+    id: Number(row.id),
+    userId: Number(row.user_id),
+    username: row.username || null,
+    firstName: row.first_name || null,
+    stars: Number(row.stars) || 0,
+    status: row.status,
+    chargeId: row.charge_id,
+    at: row.created_at,
+    days: row.days === null || row.days === undefined ? null : Number(row.days),
+    recurring: !!row.recurring,
+    family: !!row.family
+  };
+}
+
 class AdminService {
-  constructor(userService, expenseRepository, bugReportRepository, donationRepository, premiumTransactionRepository, notificationService, localizationService, familyPremiumService = null) {
+  constructor(userService, expenseRepository, bugReportRepository, donationRepository, premiumTransactionRepository, notificationService, localizationService, familyPremiumService = null, starPaymentRepository = null) {
     this.userService = userService;
     this.expenseRepository = expenseRepository;
     this.bugReportRepository = bugReportRepository;
@@ -21,6 +44,7 @@ class AdminService {
     this.notificationService = notificationService;
     this.localizationService = localizationService;
     this.familyPremiumService = familyPremiumService;
+    this.starPaymentRepository = starPaymentRepository;
     this.bot = null; // Для прямого доступа к боту
   }
 
@@ -30,6 +54,27 @@ class AdminService {
 
   async isUserAdmin(userId) {
     return this.userService.isUserAdmin(userId);
+  }
+
+  // История платежей звёздами (премиум, семейный тариф, пропуск группы, пожертвование), новые сверху.
+  // userId — только этого пользователя; fragment — код платежа (telegram_payment_charge_id) содержит кусок.
+  // page с 1; страница за пределами — последняя
+  async listPayments({ userId = null, fragment = null, page = 1, pageSize = PAYMENTS_PAGE_SIZE } = {}) {
+    const first = await this.starPaymentRepository.list({ userId, fragment, limit: pageSize, offset: (Math.max(1, page) - 1) * pageSize });
+    const totalPages = Math.max(1, Math.ceil(first.total / pageSize));
+    let { rows } = first;
+    let current = Math.max(1, page);
+    if (current > totalPages) {
+      current = totalPages;
+      ({ rows } = await this.starPaymentRepository.list({ userId, fragment, limit: pageSize, offset: (current - 1) * pageSize }));
+    }
+    return { items: rows.map(paymentView), total: first.total, page: current, totalPages };
+  }
+
+  async getPayment(kind, id) {
+    if (!PAYMENT_KINDS.includes(kind)) return null;
+    const row = await this.starPaymentRepository.get(kind, id);
+    return row ? paymentView(row) : null;
   }
 
   // Статистика пользователей
@@ -483,4 +528,6 @@ class AdminService {
   }
 }
 
+AdminService.PAYMENT_KINDS = PAYMENT_KINDS;
+AdminService.PAYMENT_FRAGMENT_MIN = PAYMENT_FRAGMENT_MIN;
 module.exports = AdminService;

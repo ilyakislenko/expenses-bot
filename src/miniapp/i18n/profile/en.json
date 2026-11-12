@@ -246,7 +246,6 @@
   "error_donate_invalid": "From 1 to 2500 stars, a note up to 500 characters",
   "error_owner_cannot_leave": "The owner can't leave — you can delete the family",
   "error_cannot_remove_self": "You can't remove yourself",
-  "error_payment_not_found": "No such payment for this user",
   "error_admin_cannot_demote_self": "You can't remove your own rights",
   "error_broadcast_too_long": "Too long — up to 3600 characters",
   "error_broadcast_running": "A broadcast is already running",

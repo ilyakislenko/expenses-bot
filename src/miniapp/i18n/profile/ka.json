@@ -246,7 +246,6 @@
   "error_donate_invalid": "1-დან 2500 ვარსკვლავამდე, წერილი — 500 სიმბოლომდე",
   "error_owner_cannot_leave": "მფლობელი ვერ გავა — შეგიძლია ოჯახი წაშალო",
   "error_cannot_remove_self": "საკუთარი თავის გარიცხვა არ შეიძლება",
-  "error_payment_not_found": "ამ მომხმარებელთან გადახდა ვერ მოიძებნა",
   "error_admin_cannot_demote_self": "საკუთარ თავს უფლებებს ვერ ჩამოართმევ",
   "error_broadcast_too_long": "ძალიან გრძელია — 3600 სიმბოლომდე",
   "error_broadcast_running": "დაგზავნა უკვე მიმდინარეობს",

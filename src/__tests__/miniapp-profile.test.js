@@ -14,6 +14,11 @@ const profileStrings = require('../miniapp/i18n/profile');
 const TOKEN = '123456:TEST-token';
 const ME = 907470387;
 const auth = (id = ME) => `tma ${signInitData({ auth_date: String(Math.floor(Date.now() / 1000) - 60), query_id: 'AAE', user: JSON.stringify({ id, first_name: 'Ilya' }) }, TOKEN)}`;
+// Платёж в виде AdminService.listPayments / getPayment
+const payment = {
+  kind: 'premium', id: 100, userId: 2, username: 'yulia', firstName: 'Юля', stars: 149, status: 'paid', chargeId: 'stxpci2oh12-abc',
+  at: new Date('2026-11-12T17:43:57Z'), days: 30, recurring: true, family: false
+};
 
 function makeServices({ premium = true, family = null, admin = false, subscription = null } = {}) {
   const sent = [];
@@ -68,7 +73,9 @@ function makeServices({ premium = true, family = null, admin = false, subscripti
       createInvoiceLink: jest.fn(async () => 'https://t.me/$invoice'),
       createDonation: jest.fn(async (id, stars) => (stars <= 2500 ? { id: 5 } : null)),
       createDonationInvoiceLink: jest.fn(async () => 'https://t.me/$donation'),
-      cancelActiveSubscription: jest.fn(async () => true)
+      cancelActiveSubscription: jest.fn(async () => true),
+      refundStarsPayment: jest.fn(async () => true),
+      revokeRefundedPayment: jest.fn(async () => ({ status: 'refunded', premiumUntil: new Date('2027-09-12T14:06:34Z') }))
     },
     bot: { botInfo: { username: 'ExpensesAssistant_bot' } },
     formatter: { currencyUtils: { convert: async (amount) => amount * 90 } },
@@ -76,6 +83,8 @@ function makeServices({ premium = true, family = null, admin = false, subscripti
       submitBugReport: jest.fn(async (id, text) => (text.length > 1000 ? { ok: false, error: 'too_long', excess: text.length - 1000 } : { ok: true })),
       getUserDetails: jest.fn(async (id) => (id === 2 ? { user: { id: 2, first_name: 'Юля', premium: false, is_admin: false, timezone: 'UTC' }, premiumStatus: { isPremium: false }, expenseStats: { totalExpenses: 3 }, recentTransactions: [], recentBugReports: [] } : null)),
       grantPremium: jest.fn(async () => ({})), revokePremium: jest.fn(async () => {}),
+      listPayments: jest.fn(async ({ page = 1 }) => ({ items: [payment], total: 1, page, totalPages: 1 })),
+      getPayment: jest.fn(async (kind, id) => (kind === 'premium' && id === 100 ? payment : (kind === 'premium' && id === 101 ? { ...payment, id: 101, status: 'refunded' } : null))),
       sendBroadcastMessage: jest.fn(async () => ({ total: 2, sent: 2, failed: 0 }))
     },
     referralService: {
@@ -295,6 +304,23 @@ describe('admin API', () => {
     expect(services.adminService.revokePremium).toHaveBeenCalledWith(2, ME);
     expect(services.paymentService.cancelActiveSubscription).toHaveBeenCalledWith(2);
     await request(app).delete(`/api/admin/users/${ME}/admin`).set('Authorization', auth()).expect(400, { error: 'admin_cannot_demote_self' });
+  });
+
+  test('payments: search needs 4+ characters, card by kind and id, refund once — stars back to the payer, premium recalculated', async () => {
+    const { app, services } = server({ admin: true });
+    await request(app).get('/api/admin/payments?q=stx').set('Authorization', auth()).expect(400, { error: 'payment_query_short' });
+    const list = await request(app).get('/api/admin/payments?q=oh12&user=2').set('Authorization', auth()).expect(200);
+    expect(services.adminService.listPayments).toHaveBeenCalledWith(expect.objectContaining({ userId: 2, fragment: 'oh12' }));
+    expect(list.body.items[0]).toMatchObject({ kind: 'premium', id: 100, stars: 149, hash: payment.chargeId, recurring: true, user: { id: 2, username: 'yulia' } });
+
+    await request(app).get('/api/admin/payments/donation/100').set('Authorization', auth()).expect(404, { error: 'payment_not_found' });
+    await request(app).post('/api/admin/payments/premium/101/refund').set('Authorization', auth()).expect(400, { error: 'payment_already_refunded' });
+    expect(services.paymentService.refundStarsPayment).not.toHaveBeenCalled();
+
+    const res = await request(app).post('/api/admin/payments/premium/100/refund').set('Authorization', auth()).expect(200);
+    expect(services.paymentService.refundStarsPayment).toHaveBeenCalledWith(2, payment.chargeId);
+    expect(services.paymentService.revokeRefundedPayment).toHaveBeenCalledWith(payment.chargeId);
+    expect(res.body).toMatchObject({ status: 'refunded', premiumUntil: '2027-09-12T14:06:34.000Z' });
   });
 
   test('broadcast: length limit, runs in the background, result goes to the admin chat', async () => {

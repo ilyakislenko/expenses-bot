@@ -127,9 +127,9 @@ constructor({ expenseService, userService, premiumService, familyService, catego
         if (userState === 'admin_search') {
           return await this.handleAdminSearchInput(ctx, text, userLanguage);
         }
-        // Поиск транзакции для возврата в админке
-        if (typeof userState === 'string' && userState.startsWith('admin_refund_search:')) {
-          return await this.adminHandlers.handleRefundSearchInput(ctx, text);
+        // Поиск платежа по куску кода в админке
+        if (typeof userState === 'string' && userState.startsWith('admin_pay_search:')) {
+          return await this.adminHandlers.handlePaymentSearchInput(ctx, text);
         }
 
         if (userState === 'admin_broadcast') {

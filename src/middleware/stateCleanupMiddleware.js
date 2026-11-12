@@ -22,8 +22,9 @@ const AUTO_RESET_STATES = [
 ];
 // Состояния с параметром после двоеточия (например, setting_budget:<цель>); rd_in: — строка/дата черновика чека,
 // dt_in: — «✏️ Другая дата» записи, дохода или чека, sub_in: — пробный период (кнопки дат несут id черновика),
-// tax_in: — слово для поиска траты в «💡 Верни 13%» (найденные траты — кнопками с id)
-const AUTO_RESET_PREFIXES = ['setting_budget:', 'renaming_custom_category:', 'admin_refund_search:', 'editing_income:', 'sv_in:', 'pl_in:', 'sub_in:', 'ai_in:', 'rd_in:', 'dt_in:', 'tax_in:'];
+// tax_in: — слово для поиска траты в «💡 Верни 13%» (найденные траты — кнопками с id), admin_pay_search: — кусок кода
+// платежа в админке
+const AUTO_RESET_PREFIXES = ['setting_budget:', 'renaming_custom_category:', 'admin_pay_search:', 'editing_income:', 'sv_in:', 'pl_in:', 'sub_in:', 'ai_in:', 'rd_in:', 'dt_in:', 'tax_in:'];
 
 // Команда в начале сообщения: имя без «/» и «@бот» (null — не команда)
 function commandName(message) {
@@ -67,14 +68,10 @@ function stateCleanupMiddleware(handlers) {
 
       if (stateService.hasUserState(userId)) {
         const userState = stateService.getUserState(userId);
-        // Найденная транзакция для возврата живёт только до кнопки «Вернуть» на её карточке
-        const isStaleRefundConfirm = userState?.type === 'admin_refund_confirm'
-          && ctx.callbackQuery?.data !== 'panel_refund_exec';
         // Вопрос о бюджете в опросе ждёт сумму и после траты, записанной посреди него («250 кофе» → выбор категории)
         const keepForExpenseCard = userState === 'onb_budget' && /^category\|/.test(ctx.callbackQuery?.data || '');
         const shouldReset = (AUTO_RESET_STATES.includes(userState)
-          || (typeof userState === 'string' && AUTO_RESET_PREFIXES.some(prefix => userState.startsWith(prefix)))
-          || isStaleRefundConfirm) && !keepForExpenseCard;
+          || (typeof userState === 'string' && AUTO_RESET_PREFIXES.some(prefix => userState.startsWith(prefix)))) && !keepForExpenseCard;
 
         if (shouldReset) {
           logger.debug('Input state reset by button', { userId, state: typeof userState === 'string' ? userState : userState?.type, updateType: ctx.updateType });

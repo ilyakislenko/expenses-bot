@@ -246,7 +246,6 @@
   "error_donate_invalid": "1 ile 2500 yıldız arası, not en fazla 500 karakter",
   "error_owner_cannot_leave": "Aile sahibi çıkamaz — aileyi silebilirsin",
   "error_cannot_remove_self": "Kendini çıkaramazsın",
-  "error_payment_not_found": "Bu kullanıcıda böyle bir ödeme bulunamadı",
   "error_admin_cannot_demote_self": "Kendi yetkilerini kaldıramazsın",
   "error_broadcast_too_long": "Çok uzun — en fazla 3600 karakter",
   "error_broadcast_running": "Toplu gönderim zaten sürüyor",

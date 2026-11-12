@@ -246,7 +246,6 @@
   "error_donate_invalid": "1 से 2500 स्टार्स, संदेश 500 अक्षरों तक",
   "error_owner_cannot_leave": "मालिक परिवार नहीं छोड़ सकता — परिवार हटा सकते हो",
   "error_cannot_remove_self": "खुद को नहीं हटा सकते",
-  "error_payment_not_found": "इस यूज़र का यह भुगतान नहीं मिला",
   "error_admin_cannot_demote_self": "अपने अधिकार खुद नहीं हटा सकते",
   "error_broadcast_too_long": "बहुत लंबा — 3600 अक्षरों तक",
   "error_broadcast_running": "मैसेज भेजना पहले से चल रहा है",

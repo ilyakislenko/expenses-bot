@@ -310,15 +310,9 @@ describe('inline buttons reset text-input states (REC-1, TG-3, SEC-6, PLT-3)', (
     expect(stateService.getUserState(7)).toBe('renaming_custom_category:738');
   });
 
-  test('admin refund search and a leftover refund confirmation are reset by other buttons', async () => {
+  test('abandoned payment search in the admin panel is reset by other buttons', async () => {
     const stateService = new StateService();
-    stateService.setUserState(7, 'admin_refund_search:42');
-    await run(stateService, button('panel_user_42'));
-    expect(stateService.getUserState(7)).toBeUndefined();
-
-    stateService.setUserState(7, { type: 'admin_refund_confirm', data: { userId: 42, paymentId: 'ch_1' } });
-    await run(stateService, button('panel_refund_exec'));
-    expect(stateService.getUserState(7)).toMatchObject({ type: 'admin_refund_confirm' });
+    stateService.setUserState(7, 'admin_pay_search:42');
     await run(stateService, button('panel_user_42'));
     expect(stateService.getUserState(7)).toBeUndefined();
   });

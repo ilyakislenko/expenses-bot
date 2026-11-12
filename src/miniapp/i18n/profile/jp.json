@@ -246,7 +246,6 @@
   "error_donate_invalid": "1〜2500スター、メッセージは500文字まで",
   "error_owner_cannot_leave": "オーナーは抜けられません — 家族を削除できます",
   "error_cannot_remove_self": "自分は外せません",
-  "error_payment_not_found": "このユーザーの支払いが見つかりません",
   "error_admin_cannot_demote_self": "自分の権限は外せません",
   "error_broadcast_too_long": "長すぎます — 3600文字まで",
   "error_broadcast_running": "一斉送信はすでに実行中です",

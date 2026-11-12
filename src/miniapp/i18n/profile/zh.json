@@ -246,7 +246,6 @@
   "error_donate_invalid": "1 到 2500 颗星星，留言最多 500 字",
   "error_owner_cannot_leave": "创建者不能退出 — 可以删除家庭",
   "error_cannot_remove_self": "不能移除自己",
-  "error_payment_not_found": "该用户没有这笔付款",
   "error_admin_cannot_demote_self": "不能撤销自己的权限",
   "error_broadcast_too_long": "太长了 — 最多 3600 字",
   "error_broadcast_running": "群发正在进行中",

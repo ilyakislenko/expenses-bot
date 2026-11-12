@@ -246,7 +246,6 @@
   "error_donate_invalid": "1 dan 2500 yulduzgacha, xat — 500 belgigacha",
   "error_owner_cannot_leave": "Egasi chiqa olmaydi — oilani o‘chirish mumkin",
   "error_cannot_remove_self": "O‘zingni chiqarib bo‘lmaydi",
-  "error_payment_not_found": "Bu foydalanuvchida bunday to‘lov topilmadi",
   "error_admin_cannot_demote_self": "O‘zingdan huquqlarni olib bo‘lmaydi",
   "error_broadcast_too_long": "Juda uzun — 3600 belgigacha",
   "error_broadcast_running": "Tarqatma allaqachon ketmoqda",

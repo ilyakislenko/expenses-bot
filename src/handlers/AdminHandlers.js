@@ -1,9 +1,13 @@
 const logger = require('../utils/logger');
 const respond = require('../utils/respond');
 const { getTimezoneDisplayName } = require('../utils/timezoneCalculator');
+const AdminService = require('../services/AdminService');
 
 const ACTIVE_PAGE_SIZE = 20; // «🟢 Активные»: строк на странице
 const ACTIVE_DAYS = [7, 30, 90]; // окна активности на кнопках
+// Вид платежа в callback_data (panel_pay_<код>_<id>) и обратно
+const KIND_CODE = { premium: 'p', group_pass: 'g', donation: 'd' };
+const KIND_BY_CODE = { p: 'premium', g: 'group_pass', d: 'donation' };
 
 class AdminHandlers {
   constructor(adminService, userService, localizationService, formatter, stateService, funnelService, paymentService, referralService = null) {
@@ -70,7 +74,10 @@ class AdminHandlers {
         { text: '📢 Массовое уведомление', callback_data: 'panel_broadcast' }
       ],
       [
-        { text: '🔍 Поиск', callback_data: 'panel_search' },
+        { text: '🧾 Платежи', callback_data: 'panel_pays_0_1' },
+        { text: '🔍 Поиск', callback_data: 'panel_search' }
+      ],
+      [
         { text: '🔙 Назад', callback_data: 'back_to_menu' }
       ]
     ];
@@ -507,59 +514,168 @@ class AdminHandlers {
     });
   }
 
-  // Поиск транзакции по хэшу для возврата
-  async initiateRefundSearch(ctx, targetUserId) {
-    if (!(await this.checkAdminAccess(ctx))) return;
-    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
-    const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
-    this.stateService.setUserState(ctx.from.id, `admin_refund_search:${targetUserId}`);
-    const prompt = '🔎 Введи хэш (telegram_payment_id) транзакции для возврата:';
-    await ctx.reply(prompt, { reply_markup: { inline_keyboard: [[{ text: '🔙 Назад', callback_data: `panel_user_${targetUserId}` }]] } });
+  // Код вида платежа из callback_data (p / g / d) → premium / group_pass / donation
+  paymentKind(code) {
+    return KIND_BY_CODE[code] || null;
   }
 
-  async handleRefundSearchInput(ctx, text) {
+  // Подпись платежа: что куплено (премиум / семейный тариф N дн., автопродление; пропуск группы; пожертвование)
+  paymentLabel(payment) {
+    if (payment.kind === 'donation') return 'пожертвование';
+    if (payment.kind === 'group_pass') return `пропуск группы ${payment.days} дн.`;
+    return `${payment.family ? 'семейный тариф' : 'премиум'} ${payment.days} дн.${payment.recurring ? ', автопродление' : ''}`;
+  }
+
+  paymentWho(payment) {
+    return payment.username ? `@${payment.username}` : (payment.firstName || String(payment.userId));
+  }
+
+  // Дата (и время) платежа в поясе админа
+  async paymentDate(adminId, date, withTime = false) {
+    const timeZone = await this.userService.getUserTimezone(adminId);
+    return new Intl.DateTimeFormat('ru-RU', {
+      timeZone, day: '2-digit', month: '2-digit', year: withTime ? 'numeric' : '2-digit', ...(withTime ? { hour: '2-digit', minute: '2-digit' } : {})
+    }).format(new Date(date));
+  }
+
+  // «🧾 Платежи»: все платежи звёздами (или одного пользователя), новые сверху, по 10; кнопка платежа → карточка.
+  // targetUserId 0 — все пользователи
+  async showPayments(ctx, targetUserId = 0, page = 1) {
     if (!(await this.checkAdminAccess(ctx))) return;
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
+    try {
+      const list = await this.adminService.listPayments({ userId: targetUserId || null, page });
+      await this.replyPaymentList(ctx, list, {
+        title: targetUserId ? `🧾 Платежи пользователя ${targetUserId}: ${list.total}` : `🧾 Платежи звёздами: ${list.total}`,
+        targetUserId,
+        pageCallback: (p) => `panel_pays_${targetUserId}_${p}`
+      });
+    } catch (error) {
+      logger.error('Error showing payments:', error);
+      await ctx.reply(this.localizationService.getText(await this.userService.getUserLanguage(ctx.from.id), 'admin_error'));
+    }
+  }
+
+  async replyPaymentList(ctx, list, { title, targetUserId, pageCallback = null }) {
     const adminId = ctx.from.id;
-    const state = this.stateService.getUserState(adminId);
-    if (!state || !state.startsWith('admin_refund_search:')) return;
-    const targetUserId = parseInt(state.split(':')[1], 10);
-    this.stateService.deleteUserState(adminId);
-    const userLanguage = await this.userService.getUserLanguage(adminId);
-    // Ищем платёж по хэшу: покупка премиума или пожертвование
-    const payment = await this.paymentService.findPaymentByChargeId(text.trim());
-    if (!payment || payment.userId !== targetUserId) {
-      await ctx.reply('❌ Транзакция не найдена у выбранного пользователя.');
+    const keyboard = [];
+    for (const p of list.items) {
+      const date = await this.paymentDate(adminId, p.at);
+      const refunded = p.status === 'refunded' ? ' · ↩️' : '';
+      keyboard.push([{ text: `${date} · ${this.paymentWho(p)} · ${p.stars}⭐ · ${this.paymentLabel(p)}${refunded}`, callback_data: `panel_pay_${KIND_CODE[p.kind]}_${p.id}` }]);
+    }
+    if (pageCallback && list.totalPages > 1) {
+      const nav = [];
+      if (list.page > 1) nav.push({ text: '◀️', callback_data: pageCallback(list.page - 1) });
+      nav.push({ text: `${list.page} / ${list.totalPages}`, callback_data: pageCallback(list.page) });
+      if (list.page < list.totalPages) nav.push({ text: '▶️', callback_data: pageCallback(list.page + 1) });
+      keyboard.push(nav);
+    }
+    keyboard.push([{ text: '🔎 Найти по куску кода платежа', callback_data: `panel_pay_search_${targetUserId}` }]);
+    keyboard.push([{ text: '🔙 Назад', callback_data: targetUserId ? `panel_user_${targetUserId}` : 'panel_main' }]);
+    const text = list.items.length ? `${title}\n\nНажми на платёж — откроется код и возврат.` : `${title}\n\nПлатежей нет.`;
+    await ctx.reply(text, { reply_markup: { inline_keyboard: keyboard } });
+  }
+
+  // Карточка платежа: кто, когда, что, статус, полный код (моноширинный — копируется касанием) и «↩️ Вернуть»
+  async showPayment(ctx, kind, id) {
+    if (!(await this.checkAdminAccess(ctx))) return;
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
+    const payment = await this.adminService.getPayment(kind, id);
+    if (!payment) {
+      await ctx.reply('❌ Платёж не найден.');
       return;
     }
-    // Ограничим callback_data до безопасной длины: передаем только индекс найденной транзакции во временном состоянии
-    this.stateService.setUserState(adminId, { type: 'admin_refund_confirm', data: { userId: targetUserId, paymentId: payment.chargeId } });
-    const kb = [[{ text: '↩️ Вернуть', callback_data: 'panel_refund_exec' }], [{ text: '🔙 Назад', callback_data: `panel_user_${targetUserId}` }]];
-    const kindLabel = { donation: 'пожертвование', group_pass: 'пропуск для группы' }[payment.kind] || 'премиум';
-    await ctx.reply(`Найдена транзакция (${kindLabel}):\nID: ${payment.id}\nHash: ${payment.chargeId}\nStars: ${payment.stars}\nStatus: ${payment.status}`, { reply_markup: { inline_keyboard: kb } });
+    const who = this.formatter.escapeMarkdown(`${payment.firstName || ''}${payment.username ? ` (@${payment.username})` : ''}`.trim() || String(payment.userId));
+    const lines = [
+      `🧾 *Платёж: ${payment.stars} ⭐*`,
+      `Что: ${this.formatter.escapeMarkdown(this.paymentLabel(payment))}`,
+      `Кто: ${who}, ID ${payment.userId}`,
+      `Когда: ${await this.paymentDate(ctx.from.id, payment.at, true)}`,
+      `Статус: ${payment.status === 'refunded' ? '↩️ возвращён' : '✅ оплачен'}`,
+      '',
+      `Код: \`${payment.chargeId}\``
+    ];
+    const keyboard = [];
+    if (payment.status !== 'refunded') {
+      keyboard.push([{ text: `↩️ Вернуть ${payment.stars} ⭐`, callback_data: `panel_payref_${KIND_CODE[kind]}_${id}` }]);
+    }
+    keyboard.push([{ text: '👤 Пользователь', callback_data: `panel_user_${payment.userId}` }, { text: '🧾 Его платежи', callback_data: `panel_pays_${payment.userId}_1` }]);
+    keyboard.push([{ text: '🔙 Все платежи', callback_data: 'panel_pays_0_1' }]);
+    await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
+  }
+
+  // Подтверждение возврата
+  async askRefund(ctx, kind, id) {
+    if (!(await this.checkAdminAccess(ctx))) return;
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
+    const payment = await this.adminService.getPayment(kind, id);
+    if (!payment || payment.status === 'refunded') {
+      await ctx.reply(payment ? '↩️ Этот платёж уже возвращён.' : '❌ Платёж не найден.');
+      return;
+    }
+    const effect = payment.kind === 'donation' ? 'Пожертвование пометится возвращённым.'
+      : payment.kind === 'group_pass' ? 'Срок пропуска группы уменьшится.'
+        : `Премиум по этому платежу снимется${payment.recurring ? ', автопродление отменится' : ''}.`;
+    await ctx.reply(`Вернуть ${payment.stars} ⭐ пользователю ${this.paymentWho(payment)} (${this.paymentLabel(payment)})?\n${effect}`, {
+      reply_markup: { inline_keyboard: [
+        [{ text: `✅ Да, вернуть ${payment.stars} ⭐`, callback_data: `panel_payrefx_${KIND_CODE[kind]}_${id}` }],
+        [{ text: '🔙 Отмена', callback_data: `panel_pay_${KIND_CODE[kind]}_${id}` }]
+      ] }
+    });
   }
 
   // Звёзды возвращаются пользователю; премиум по этому платежу снимается, подписка (если платёж по ней) отменяется.
   // Telegram затем пришлёт refunded_payment — повторный revokeRefundedPayment ничего не изменит.
-  async executeRefund(ctx) {
+  async executeRefund(ctx, kind, id) {
     if (!(await this.checkAdminAccess(ctx))) return;
-    const state = this.stateService.getUserState(ctx.from.id);
-    if (!state || state.type !== 'admin_refund_confirm') {
-      await ctx.answerCbQuery('Нет данных для возврата');
+    const payment = await this.adminService.getPayment(kind, id);
+    if (!payment || payment.status === 'refunded') {
+      await ctx.answerCbQuery(payment ? 'Этот платёж уже возвращён' : 'Платёж не найден', { show_alert: true });
       return;
     }
-    const { userId: targetUserId, paymentId } = state.data;
-    this.stateService.deleteUserState(ctx.from.id);
     try {
-      await this.paymentService.refundStarsPayment(Number(targetUserId), paymentId);
-      const result = await this.paymentService.revokeRefundedPayment(paymentId);
+      await this.paymentService.refundStarsPayment(payment.userId, payment.chargeId);
+      const result = await this.paymentService.revokeRefundedPayment(payment.chargeId);
       const until = result.type === 'donation' ? 'пожертвование помечено возвращённым'
         : result.type === 'group_pass' ? 'срок пропуска группы уменьшен'
           : (result.premiumUntil ? `премиум до ${this.formatter.formatDate(result.premiumUntil)}` : 'премиум снят');
       await ctx.answerCbQuery(`✅ Возврат выполнен, ${until}`, { show_alert: true });
+      await this.showPayment(ctx, kind, id);
     } catch (error) {
-      logger.error('Admin refund failed', { targetUserId, paymentId, error: error.message });
+      logger.error('Admin refund failed', { userId: payment.userId, chargeId: payment.chargeId, error: error.message });
       await ctx.answerCbQuery(`❌ Ошибка возврата: ${error.message}`.slice(0, 190), { show_alert: true });
     }
+  }
+
+  // Поиск платежа по куску кода (telegram_payment_charge_id): у всех или у одного пользователя
+  async initiatePaymentSearch(ctx, targetUserId = 0) {
+    if (!(await this.checkAdminAccess(ctx))) return;
+    if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
+    this.stateService.setUserState(ctx.from.id, `admin_pay_search:${targetUserId}`);
+    await ctx.reply(`🔎 Пришли кусок кода платежа — хотя бы ${AdminService.PAYMENT_FRAGMENT_MIN} символа, из начала, середины или конца:`, {
+      reply_markup: { inline_keyboard: [[{ text: '🔙 Назад', callback_data: `panel_pays_${targetUserId}_1` }]] }
+    });
+  }
+
+  async handlePaymentSearchInput(ctx, text) {
+    if (!(await this.checkAdminAccess(ctx))) return;
+    const adminId = ctx.from.id;
+    const state = this.stateService.getUserState(adminId);
+    if (typeof state !== 'string' || !state.startsWith('admin_pay_search:')) return;
+    const targetUserId = parseInt(state.split(':')[1], 10) || 0;
+    const fragment = String(text || '').trim();
+    if (fragment.length < AdminService.PAYMENT_FRAGMENT_MIN) {
+      await ctx.reply(`Нужно хотя бы ${AdminService.PAYMENT_FRAGMENT_MIN} символа — пришли кусок подлиннее.`);
+      return;
+    }
+    this.stateService.deleteUserState(adminId);
+    const list = await this.adminService.listPayments({ userId: targetUserId || null, fragment, pageSize: 20 });
+    if (list.total === 1) {
+      await this.showPayment(ctx, list.items[0].kind, list.items[0].id);
+      return;
+    }
+    await this.replyPaymentList(ctx, list, { title: `🔎 Платежи с «${fragment}» в коде: ${list.total}${list.total > 20 ? ' (показаны 20 новых)' : ''}`, targetUserId });
   }
 
   // Обработка поискового запроса
@@ -669,8 +785,7 @@ class AdminHandlers {
         keyboard.push(actionsRow);
       }
 
-      // Кнопки возвратов по хэшу платежа
-      keyboard.push([{ text: '🔎 Найти транзакцию по хэшу', callback_data: `panel_refund_search_${targetUserId}` }]);
+      keyboard.push([{ text: '🧾 Платежи и возвраты', callback_data: `panel_pays_${targetUserId}_1` }]);
 
       keyboard.push([{ text: '🔙 Назад', callback_data: 'panel_main' }]);
 

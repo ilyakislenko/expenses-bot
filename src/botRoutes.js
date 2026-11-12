@@ -598,13 +598,12 @@ module.exports = function registerBotRoutes(bot, handlers) {
     const targetUserId = parseInt(ctx.match[1], 10);
     return adminHandlers.showUserDetails(ctx, targetUserId);
   }));
-  bot.action(/panel_refund_search_(\d+)/, errorHandler((ctx) => {
-    const targetUserId = parseInt(ctx.match[1], 10);
-    return adminHandlers.initiateRefundSearch(ctx, targetUserId);
-  }));
-  bot.action('panel_refund_exec', errorHandler((ctx) => {
-    return adminHandlers.executeRefund(ctx);
-  }));
+  // Платежи звёздами: список (0 — все, иначе пользователь) по страницам, карточка, возврат, поиск по куску кода
+  bot.action(/^panel_pays_(\d+)_(\d+)$/, errorHandler((ctx) => adminHandlers.showPayments(ctx, parseInt(ctx.match[1], 10), Math.max(1, parseInt(ctx.match[2], 10)))));
+  bot.action(/^panel_pay_search_(\d+)$/, errorHandler((ctx) => adminHandlers.initiatePaymentSearch(ctx, parseInt(ctx.match[1], 10))));
+  bot.action(/^panel_pay_([pgd])_(\d+)$/, errorHandler((ctx) => adminHandlers.showPayment(ctx, adminHandlers.paymentKind(ctx.match[1]), parseInt(ctx.match[2], 10))));
+  bot.action(/^panel_payref_([pgd])_(\d+)$/, errorHandler((ctx) => adminHandlers.askRefund(ctx, adminHandlers.paymentKind(ctx.match[1]), parseInt(ctx.match[2], 10))));
+  bot.action(/^panel_payrefx_([pgd])_(\d+)$/, errorHandler((ctx) => adminHandlers.executeRefund(ctx, adminHandlers.paymentKind(ctx.match[1]), parseInt(ctx.match[2], 10))));
 
   bot.action(/panel_promote_(\d+)/, errorHandler((ctx) => {
     const targetUserId = parseInt(ctx.match[1], 10);

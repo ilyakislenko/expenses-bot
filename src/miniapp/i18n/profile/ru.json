@@ -246,7 +246,6 @@
   "error_donate_invalid": "От 1 до 2500 звёзд, письмо — до 500 символов",
   "error_owner_cannot_leave": "Владелец не может выйти — можно удалить семью",
   "error_cannot_remove_self": "Себя исключить нельзя",
-  "error_payment_not_found": "Платёж не найден у этого пользователя",
   "error_admin_cannot_demote_self": "Нельзя снять права с себя",
   "error_broadcast_too_long": "Слишком длинно — до 3600 символов",
   "error_broadcast_running": "Рассылка уже идёт",

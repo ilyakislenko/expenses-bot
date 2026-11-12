@@ -162,12 +162,6 @@ describe('donation refund (PAY-7)', () => {
     expect(donationRepository.markDonationRefunded).toHaveBeenCalledTimes(1);
     expect(userRepository.updateUser).not.toHaveBeenCalled();
   });
-
-  test('the admin refund search finds donations', async () => {
-    const { service } = build();
-    expect(await service.findPaymentByChargeId('ch_don')).toEqual({ kind: 'donation', id: 3, userId: 5, stars: 50, status: 'completed', chargeId: 'ch_don' });
-    expect(await service.findPaymentByChargeId('nope')).toBeNull();
-  });
 });
 
 describe('admin revoke cancels the Stars subscription (Q3)', () => {

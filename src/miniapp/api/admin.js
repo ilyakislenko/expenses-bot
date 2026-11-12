@@ -1,6 +1,7 @@
 const logger = require('../../utils/logger');
 const { getTimezoneDisplayName } = require('../../utils/timezoneCalculator');
 const { iso, botUsername } = require('./profileHelpers');
+const AdminService = require('../../services/AdminService');
 
 const PAGE_SIZE = 20;
 const ACTIVE_DAYS = [7, 30, 90];
@@ -19,7 +20,8 @@ const userRow = (u) => ({
 });
 
 // Админка (/admin бота, AdminHandlers): статистика, воронка, пользователи и активные, поиск, карточка пользователя
-// (премиум, админ, возврат платежа по хэшу), админы, баг-репорты, донаты, массовое уведомление. Только админам
+// (премиум, админ), платежи звёздами (все или пользователя, поиск по куску кода, карточка с возвратом), админы,
+// баг-репорты, донаты, массовое уведомление. Только админам
 module.exports = (router, { get, http }) => {
   let broadcasting = false; // одна рассылка за раз
 
@@ -137,9 +139,7 @@ module.exports = (router, { get, http }) => {
       premiumActive: !!details.premiumStatus.isPremium,
       premiumExpiresAt: iso(details.premiumStatus.expiresAt),
       expenses: { count: details.expenseStats.totalExpenses, amount: details.expenseStats.totalAmount, last: iso(details.expenseStats.lastExpense) },
-      transactions: details.recentTransactions.map(t => ({
-        id: t.id, stars: num(t.stars_amount), days: num(t.tariff_duration), status: t.status, hash: t.telegram_payment_id || null, at: iso(t.created_at)
-      })),
+      payments: (await get('adminService').listPayments({ userId: id, pageSize: 1 })).total,
       bugReports: details.recentBugReports.length
     };
   }
@@ -183,28 +183,42 @@ module.exports = (router, { get, http }) => {
     res.json(await userCard(id, req.userId));
   }));
 
-  // Возврат по хэшу платежа: сначала найти (платёж этого пользователя), затем вернуть звёзды — премиум по платежу
-  // снимается, подписка отменяется, пожертвование помечается возвращённым (PaymentService)
-  async function findPayment(req) {
-    const id = http.int(req.params.id, { min: 1, code: 'not_found' });
-    const hash = http.str(req.body.hash, { max: 256, code: 'payment_not_found' });
-    const payment = await get('paymentService').findPaymentByChargeId(hash);
-    if (!payment || payment.userId !== id) throw http.notFound('payment_not_found');
-    return payment;
+  const paymentView = (p) => ({
+    kind: p.kind, id: p.id, stars: p.stars, status: p.status, hash: p.chargeId, at: iso(p.at), days: p.days,
+    recurring: p.recurring, family: p.family, user: { id: p.userId, name: p.firstName || '', username: p.username }
+  });
+  async function payment(req) {
+    const kind = String(req.params.kind);
+    const id = http.int(req.params.id, { min: 1, code: 'payment_not_found' });
+    const found = await get('adminService').getPayment(kind, id);
+    if (!found) throw http.notFound('payment_not_found');
+    return found;
   }
 
-  router.post('/admin/users/:id/payment', admin(async (req, res) => {
-    const payment = await findPayment(req);
-    res.json({ kind: payment.kind, id: payment.id, stars: num(payment.stars), status: payment.status, hash: payment.chargeId });
+  // Платежи звёздами, новые сверху: ?user= — одного пользователя, ?q= — кусок кода платежа (от 4 символов)
+  router.get('/admin/payments', admin(async (req, res) => {
+    const userId = req.query.user ? http.int(req.query.user, { min: 1, code: 'not_found' }) : null;
+    const q = http.str(req.query.q, { max: 256, def: '', code: 'bad_query' }).trim();
+    if (q && q.length < AdminService.PAYMENT_FRAGMENT_MIN) throw http.badRequest('payment_query_short');
+    const page = http.int(req.query.page, { min: 1, max: 100000, def: 1, code: 'bad_page' });
+    const list = await get('adminService').listPayments({ userId, fragment: q || null, page, pageSize: PAGE_SIZE });
+    res.json({ items: list.items.map(paymentView), total: list.total, page: list.page, totalPages: list.totalPages });
   }));
 
-  router.post('/admin/users/:id/refund', admin(async (req, res) => {
-    const payment = await findPayment(req);
+  router.get('/admin/payments/:kind/:id', admin(async (req, res) => {
+    res.json(paymentView(await payment(req)));
+  }));
+
+  // Возврат звёзд: премиум по платежу снимается, подписка отменяется, пожертвование помечается возвращённым,
+  // пропуск группы укорачивается (PaymentService)
+  router.post('/admin/payments/:kind/:id/refund', admin(async (req, res) => {
+    const found = await payment(req);
+    if (found.status === 'refunded') throw http.badRequest('payment_already_refunded');
     const paymentService = get('paymentService');
-    get('bot');
-    await paymentService.refundStarsPayment(payment.userId, payment.chargeId);
-    const result = await paymentService.revokeRefundedPayment(payment.chargeId);
-    res.json({ type: result.type || payment.kind, premiumUntil: iso(result.premiumUntil) });
+    get('bot'); // экземпляр бота ставит себя в paymentService — без него возврат не отправить
+    await paymentService.refundStarsPayment(found.userId, found.chargeId);
+    const result = await paymentService.revokeRefundedPayment(found.chargeId);
+    res.json({ ...paymentView({ ...found, status: 'refunded' }), premiumUntil: iso(result.premiumUntil) });
   }));
 
   router.get('/admin/admins', admin(async (req, res) => {

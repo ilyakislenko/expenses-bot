@@ -246,7 +246,6 @@
   "error_donate_invalid": "De 1 a 2500 estrelas, mensagem de até 500 caracteres",
   "error_owner_cannot_leave": "O titular não pode sair — você pode excluir a família",
   "error_cannot_remove_self": "Você não pode remover a si mesmo",
-  "error_payment_not_found": "Pagamento não encontrado para este usuário",
   "error_admin_cannot_demote_self": "Você não pode tirar seus próprios direitos",
   "error_broadcast_too_long": "Longo demais — até 3600 caracteres",
   "error_broadcast_running": "Um envio em massa já está em andamento",

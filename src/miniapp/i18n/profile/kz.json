@@ -246,7 +246,6 @@
   "error_donate_invalid": "1-ден 2500 жұлдызға дейін, хат — 500 таңбаға дейін",
   "error_owner_cannot_leave": "Иесі шыға алмайды — отбасыны жоюға болады",
   "error_cannot_remove_self": "Өзіңді шығаруға болмайды",
-  "error_payment_not_found": "Бұл пайдаланушыда мұндай төлем табылмады",
   "error_admin_cannot_demote_self": "Өзіңнен құқықтарды алуға болмайды",
   "error_broadcast_too_long": "Тым ұзын — 3600 таңбаға дейін",
   "error_broadcast_running": "Тарату жүріп жатыр",
