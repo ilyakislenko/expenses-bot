@@ -1,4 +1,5 @@
 const respond = require('../utils/respond');
+const premiumGate = require('../utils/premiumGate');
 const respondPhoto = require('../utils/respondPhoto');
 const logger = require('../utils/logger');
 const { localToday } = require('../utils/period');
@@ -208,9 +209,13 @@ class ExpenseHandlers {
       }
     }
     if (!warnings.length) return;
+    // Без премиума приходит одно «бюджет превышен — предупреждения с премиумом» (locked): кнопка — к тарифам
+    const button = warnings.some(w => w.locked)
+      ? { text: this.t(lang, 'button_premium'), callback_data: 'premium_subscription' }
+      : { text: this.t(lang, 'button_budgets'), callback_data: 'bg_menu' };
     await ctx.reply(warnings.map(w => this.budgetService.warningText(lang, w)).join('\n'), {
       parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: [[{ text: this.t(lang, 'button_budgets'), callback_data: 'bg_menu' }]] }
+      reply_markup: { inline_keyboard: [[button]] }
     });
   }
 
@@ -526,9 +531,9 @@ class ExpenseHandlers {
     const lang = await this.userService.getUserLanguage(userId);
     const expenseId = parseInt(ctx.match[1], 10);
     const back = ctx.match[2];
-    const isPremium = await this.premiumService.isPremiumUser(userId);
-    if (!isPremium) {
-      return ctx.answerCbQuery(this.t(lang, 'premium_required'), { show_alert: true });
+    if (!(await this.premiumService.isPremiumUser(userId))) {
+      // Кнопка с карточки, оставшаяся после конца премиума: «Назад» — к той же карточке
+      return premiumGate(ctx, { localizationService: this.localizationService, lang, feature: 'family', back: `ex|${expenseId}|${back}` });
     }
     const expense = await this.expenseService.getExpenseById(userId, expenseId);
     if (!expense || Number(expense.user_id) !== userId) {
@@ -571,11 +576,13 @@ class ExpenseHandlers {
     return premium ? this.familyService.getUserFamily(userId) : null;
   }
 
-  // Семейный экран без премиума или без семьи: объяснение и «Назад» в меню семьи
+  // Семейный экран без премиума — что даёт семья и «⭐️ Премиум»; без семьи — объяснение и «Назад» в меню семьи
   async familyUnavailable(ctx, userId, lang) {
-    const isPremium = await this.premiumService.isPremiumUser(userId);
+    if (!(await this.premiumService.isPremiumUser(userId))) {
+      return premiumGate(ctx, { localizationService: this.localizationService, lang, feature: 'family', back: 'back_to_menu' });
+    }
     const backRow = [{ text: this.t(lang, 'button_back'), callback_data: 'family_menu' }];
-    return respond(ctx, this.t(lang, isPremium ? 'not_family_member' : 'premium_required'), { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [backRow] } });
+    return respond(ctx, this.t(lang, 'not_family_member'), { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [backRow] } });
   }
 
   // Переключатель вида под экраном; personal / familyView — callback того же экрана в своём и семейном виде

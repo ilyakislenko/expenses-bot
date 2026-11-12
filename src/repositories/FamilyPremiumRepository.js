@@ -62,10 +62,11 @@ class FamilyPremiumRepository extends BaseRepository {
     });
   }
 
-  // Участники семьи плательщика, покрытые тарифом, кроме него самого (для уведомлений)
+  // Участники семьи плательщика, покрытые тарифом, кроме него самого (для уведомлений).
+  // blocked — заблокировал бота: уведомления его пропускают, а в число покрытых он входит
   async getCoveredMembers(payerId, maxMembers) {
     const result = await this.query(
-      `SELECT u.id, u.language, u.timezone, u.premium_expires_at
+      `SELECT u.id, u.language, u.timezone, u.premium_expires_at, u.blocked_at IS NOT NULL AS blocked
        FROM families f
        JOIN family_user fu ON fu.family_id = f.id
        JOIN users u ON u.id = fu.user_id
@@ -87,10 +88,11 @@ class FamilyPremiumRepository extends BaseRepository {
     return result.rows[0];
   }
 
-  // Плательщики, у которых семейный срок в окне [from, to): для уведомлений о скором и наступившем окончании
+  // Плательщики, у которых семейный срок в окне [from, to): для уведомлений о скором и наступившем окончании.
+  // blocked — плательщик заблокировал бота (о скором окончании ему не пишем; участникам об окончании — пишем)
   async getPlansEndingBetween(from, to) {
     const result = await this.query(
-      `SELECT u.id, u.language, u.timezone, u.premium_expires_at, u.family_premium_expires_at,
+      `SELECT u.id, u.language, u.timezone, u.premium_expires_at, u.family_premium_expires_at, u.blocked_at IS NOT NULL AS blocked,
               EXISTS (
                 SELECT 1 FROM premium_transactions t
                 WHERE t.user_id = u.id AND t.status = 'completed' AND t.is_recurring AND t.subscription_expires_at > NOW()

@@ -394,4 +394,12 @@ describe('SecurityMiddleware', () => {
     expect(stats.rateLimiter).toBeDefined();
     expect(stats.validatorLimits).toBeDefined();
   });
+
+  // Карточка итогов (achwi|…) — тот же лимит 'share', что у «Поделиться» в Mini App (3 за 10 минут)
+  test('wrapped card button shares the «share» limit with the Mini App', async () => {
+    mockRateLimiter.checkLimit.mockReturnValue({ allowed: true });
+    await securityMiddleware.checkRateLimit({ updateType: 'callback_query', callbackQuery: { data: 'achwi|-1' } }, 7, 'callback_query');
+    expect(mockRateLimiter.checkLimit).toHaveBeenLastCalledWith(7, 'share');
+    expect(new RateLimiter().limits.share).toEqual({ requests: 3, windowMs: 600000 });
+  });
 }); 

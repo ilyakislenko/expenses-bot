@@ -284,9 +284,9 @@ module.exports = {
     user_not_found: '❌ 未找到用户。',
     user_already_in_family: '❌ 用户已在某个家庭中。',
     user_already_has_invitation: '❌ 用户已有一个有效的邀请。',
-    user_already_in_other_family: '❌ 用户已在其他家庭中。',
     user_already_in_your_family: '❌ 用户已在你的家庭中。',
-    user_not_premium: '❌ 用户没有高级会员。',
+    invite_unavailable: '❌ 无法邀请该用户。请检查用户名：对方需要至少给机器人发过一次消息、拥有高级版（或你有带空位的家庭套餐），并且不在其他家庭中。',
+    invite_limit: '⏳ 邀请过多。每天最多可发送 10 个邀请；取消或被拒绝后，需过一天才能再次邀请同一个人。',
     only_owner_can_invite: '❌ 只有家庭拥有者可以邀请成员。',
     active_invitations: '📋 活跃邀请',
     no_active_invitations: '📋 你没有任何活跃邀请。',
@@ -321,7 +321,6 @@ module.exports = {
     member_removed: '✅ {name} 已被移出家庭。',
     
     // 高级功能
-    premium_required: '❌ 此功能仅对高级用户开放。',
     
     timezone_updated: `✅ *时区已更新！*
 
@@ -331,17 +330,11 @@ module.exports = {
 从现在起，你的支出将按当地时间显示。`,
     
     // 限制
-    status_regular: '👤 普通',
-    status_premium: '💎 高级',
-    max_description_length: '<b>描述最大长度:</b> {length} 个字符',
     premium_benefits: '💎 <b>高级版能带来什么</b>\n\n👀 <b>看清钱花在哪儿</b>\n• 完整的期间总结：每个类别与上月对比、日均支出、最大一笔支出{receipts}\n• 📈 「我的通胀」：你的购物篮涨价幅度，以及「变贵 / 变便宜」列表最多 {inflationPremium} 项（无高级版 — 示例 {inflationFree} 项）\n\n🎯 <b>按计划花钱</b>\n• 月度和分类预算——达到 80% 和超支时提醒\n• 🔁 显示找到的全部订阅 — 最多 {subsPremium} 个（无高级版 — {subsFree} 个）\n\n🏦 <b>存钱更快</b>\n• 最多 10 个储蓄目标（无高级版 — 1 个）\n\n🤖 <b>机器人随时在手</b>\n• 「问问机器人」：每天最多 {askPremium} 个问题（无高级版 — {askFree} 个）{voice}\n\n🔥 <b>坚持好习惯</b>\n• 🧊 每周连续记录冻结卡：{freezePremium} 张（无高级版 — {freezeFree} 张）\n• 🏁 挑战不限数量（无高级版 — 同时 {challengesFree} 个）\n\n👨‍👩‍👧 <b>全家一起</b>\n• 家庭预算：所有人的共同支出集中在一处{family}\n\n✏️ <b>按你的习惯</b>\n• 最多 5 个自定义类别，描述最长 160 个字符（原为 80）\n\n免费且不限量：记录支出和收入（一条消息可记多笔：“咖啡 250，出租车 400”）、导入账单、储蓄与预测、成就与连续记录、规划——今天还能花多少和付款日历。',
     
     // 高级订阅
     premium_subscription_title: '⭐️ 订阅',
-    premium_status_header: '<b>你的状态:</b>',
-    premium_privileges: '权限: {status}',
-    premium_menu_title: '<b>菜单:</b>',
-    premium_tariff_button: '⭐️ 套餐',
+    premium_tariff_button: "⭐️ 全部套餐和家庭套餐",
     premium_why_paid_button: '👀 为什么收费？',
     premium_donate_button: '🤝 捐赠',
     premium_back_button: '⬅️ 返回',
@@ -349,7 +342,6 @@ module.exports = {
     per_month: '每月',
     premium_payment_info: '💳 通过 Telegram 的内部货币 Telegram Stars 支付。🔁 月度方案自动续费；可在 Telegram 中取消：设置 → 我的星星 → 我的订阅（英文界面：Settings → My Stars → My subscriptions）。3、6 和 12 个月方案为一次性付款。',
     premium_renewal_info: '📅 可随时续费，时长将累加。',
-    premium_stars_info: '💡 可通过官方 [@PremiumBot] 无手续费购买星星。',
     premium_why_paid_title: '👀 为什么收费？',
     premium_purchases_button: '🧾 购买记录',
     purchases_header: '🧾 购买记录',
@@ -358,7 +350,7 @@ module.exports = {
     no_purchases: '暂无购买记录',
     purchases_prev_button: '◀ 上一页',
     purchases_next_button: '下一页 ▶',
-    premium_why_paid_text: '运行此机器人服务器每月约需 $200，且用户数量持续增长。作为开发者，我也需要维持生活来改进服务 :)',
+    premium_why_paid_text: "这个机器人由一个人开发，是一个小型独立项目。服务器和 AI（小票与语音识别、问题解答）每月都需要费用，新功能也需要时间。高级版支付这一切，让机器人得以持续运行和发展。记录支出依然免费。",
     button_invite: '🎁 邀请好友',
     command_invite: '邀请好友：高级版 +7 天',
     referral_title: '🎁 *邀请好友*',
@@ -398,10 +390,9 @@ module.exports = {
     premium_product: '高级订阅',
     discount_save: '省 {percent}%',
   
-    payment_success: '🎉 *付款成功!* 已激活高级订阅，享受全部高级功能。',
+    payment_success: "🎉 *付款成功！*\n\n高级版有效期至 {date}。预算、完整总结、家庭等所有功能都已开启。先从预算开始吧——达到 80% 和超支时我会提醒你。",
     donation_success: '🙏 *感谢支持!* 你的捐赠将帮助我们改进机器人。',
     general_payment_success: '✅ *付款成功!* 感谢使用我们的机器人。',
-    premium_expires: '📅 高级有效至: <b>{date}</b>\n⏰ 剩余天数: <b>{days}</b>',
   
     // 捐赠
     donate_prompt_title: '🤝 支持项目',
@@ -495,7 +486,6 @@ module.exports = {
     custom_categories_list_title: '你的自定义类别：',
     custom_categories_delete: '🗑️ 删除',
     custom_categories_deleted: '✅ 类别已删除。',
-    custom_categories_premium_required: '�� 此功能仅对高级用户开放。',
 
     // Income
     button_income: '💵 收入',
@@ -678,7 +668,7 @@ module.exports = {
     savings_monthly_manual: '📥 你每月存 {amount}（手动设置）',
     savings_monthly_unknown: '📥 暂时不知道你每月存多少',
     savings_monthly_negative: '📉 每月支出比收入多 ~{amount} — 储蓄没有增长',
-    savings_monthly_auto: '📥 你每月存 ~{amount} — 过去 {n} 个月收入减去支出',
+    savings_monthly_auto: "📥 你每月存 ~{amount} — 过去 {n} 个月的平均收入减去本月支出",
     savings_button_set_current: '✏️ 填写储蓄总额',
     savings_button_forecast: '📈 预测',
     savings_button_settings: '⚙️ 设置',
@@ -2109,4 +2099,22 @@ module.exports = {
     payment_subscription_already_active: '🔁 你已经有一个有效的月度订阅，无需再订一个。想提前延长高级版，请选择一次性套餐：/limits',
     payment_foreign_payer: '⚠️ 此付款链接是为其他用户创建的。请你在机器人中自行打开套餐 — /limits',
     premium_expired_granted: '🌙 你的高级版已到期。记录支出和收入仍然免费；预算、完整总结、自定义类别和家庭需要高级版。你可以随时续费。',
+  onb_trial: "🎁 {date} 前可免费使用高级版：带提醒的预算、完整的月度总结和家庭预算。",
+  language_other: "🌍 其他语言",
+  nudge_first_expense: "👋 来记第一笔支出吧？只需发一条消息，例如 `250 咖啡`。只要几秒钟。这件事我不会再提醒你。",
+  premium_gate_family: "👨‍👩‍👧 *家庭预算 — 高级版功能*\n\n与家人的共同支出集中在一处：每人各自记录，汇总和导出共享。家庭套餐每月 {stars} ⭐ 起，最多 {max} 人。",
+  premium_gate_categories: "🏷 *自定义类别 — 高级版功能*\n\n最多 {max} 个自定义类别，图标自选——按你习惯的方式整理支出。",
+  premium_status_free: "👤 当前：免费版",
+  premium_status_until: "💎 高级版至 <b>{date}</b> · 剩余天数：{days}",
+  premium_status_trial: "🎁 高级版试用至 <b>{date}</b> · 剩余天数：{days}",
+  premium_pay_year: "⭐ 一年 — {stars} ⭐（−{percent}%）",
+  premium_pay_month: "🔁 一个月 — {stars} ⭐",
+  premium_stars_help_button: "❓ 如何购买星星",
+  premium_stars_help_text: "⭐ <b>如何购买星星</b>\n\n星星是 Telegram 用于在机器人中付款的货币。无需提前购买：点击套餐，如果星星不够，Telegram 会直接在付款窗口中提示你购买。\n\n• 在 iPhone 和 Android 的 Telegram 应用中，星星通过 App Store 或 Google Play 购买。\n• Telegram 官方机器人 @PremiumBot 也出售星星。\n\n年付套餐一次购买即可用一整年，无需每月购买星星。",
+  premium_trial_summary_title: "📊 过去 {days} 天：",
+  premium_trial_summary_records: "• 记录：{count} 条",
+  premium_trial_summary_top: "• 最常见：{category}",
+  premium_trial_summary_budgets: "• 预算：{count} 个 — 预算提醒需高级版",
+  premium_trial_price: "💡 高级版每月 {month} ⭐，或每年 {year} ⭐：相当于每月 ≈ {perMonth} ⭐，节省 {percent}%。",
+  budget_locked_notice: "🚨 {name}：预算超支 — {spent} / {limit}。\n预算提醒需高级版；没有高级版时，此消息每月最多发送一次。",
 };

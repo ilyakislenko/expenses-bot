@@ -25,7 +25,7 @@ const GROUPS = {
   errors: ['error_achievements_spent', 'error_achievements_marked', 'error_achievements_duplicate', 'error_achievements_no_budget',
     'error_achievements_finished', 'error_achievements_bad_kind', 'error_achievements_bad_category', 'error_achievements_coins_cap',
     'error_achievements_coins_short', 'error_achievements_coins_failed', 'error_achievements_bad_days', 'error_achievements_bad_key',
-    'error_achievements_bad_offset', 'error_achievements_wrapped_empty', 'error_achievements_share_unavailable']
+    'error_achievements_bad_offset', 'error_achievements_wrapped_empty', 'error_achievements_share_unavailable', 'error_achievements_share_rate']
 };
 
 const T = {
@@ -57,7 +57,7 @@ const T = {
       'Для «Месяца в бюджете» нужен общий бюджет', 'Этот челлендж уже закончился', 'Нет такого челленджа', 'Выбери категорию',
       'В этом месяце столько дней уже не обменять', 'Не хватает монет',
       'Не получилось выдать премиум — монеты вернул. Попробуй позже', 'Нет такого обмена', 'Открой обмен заново',
-      'Нет такого периода', 'В этом периоде трат нет', 'Картинку сейчас не отправить — попробуй позже']
+      'Нет такого периода', 'В этом периоде трат нет', 'Картинку сейчас не отправить — попробуй позже', 'Карточкой можно поделиться 3 раза за 10 минут — попробуй позже']
   },
   en: {
     main: ['Achievements', 'Coins', 'Level {level} of {max}', '{xp} of {next} XP', '{xp} XP — top level', 'Streak',
@@ -87,7 +87,7 @@ const T = {
       'This challenge is already running', '«Month on budget» needs a total budget', 'This challenge has already ended',
       'No such challenge', 'Choose a category', 'You can’t exchange that many days this month', 'Not enough coins',
       'Could not grant premium — coins are returned. Try later', 'No such exchange', 'Open the exchange again', 'No such period',
-      'No spending in this period', 'Can’t send the picture right now — try later']
+      'No spending in this period', 'Can’t send the picture right now — try later', 'You can share the card 3 times per 10 minutes — try later']
   },
   de: {
     main: ['Erfolge', 'Münzen', 'Level {level} von {max}', '{xp} von {next} XP', '{xp} XP — höchstes Level', 'Serie',
@@ -119,7 +119,7 @@ const T = {
       'Diese Challenge gibt es nicht', 'Wähle eine Kategorie', 'So viele Tage kannst du diesen Monat nicht mehr tauschen',
       'Nicht genug Münzen', 'Premium konnte nicht vergeben werden — Münzen sind zurück. Versuch es später', 'Diesen Tausch gibt es nicht',
       'Öffne den Tausch erneut', 'Diese Periode gibt es nicht', 'In dieser Periode gibt es keine Ausgaben',
-      'Das Bild lässt sich gerade nicht senden — versuch es später']
+      'Das Bild lässt sich gerade nicht senden — versuch es später', 'Die Karte lässt sich 3-mal in 10 Minuten teilen — versuch es später']
   },
   es: {
     main: ['Logros', 'Monedas', 'Nivel {level} de {max}', '{xp} de {next} XP', '{xp} XP — nivel máximo', 'Racha',
@@ -150,7 +150,7 @@ const T = {
       '«Mes dentro del presupuesto» necesita un presupuesto total', 'Este reto ya terminó', 'No existe ese reto', 'Elige una categoría',
       'Este mes ya no puedes canjear tantos días', 'No tienes suficientes monedas',
       'No se pudo dar premium — devolví las monedas. Inténtalo más tarde', 'No existe ese canje', 'Abre el canje de nuevo',
-      'No existe ese periodo', 'No hay gastos en este periodo', 'Ahora no se puede enviar la imagen — inténtalo más tarde']
+      'No existe ese periodo', 'No hay gastos en este periodo', 'Ahora no se puede enviar la imagen — inténtalo más tarde', 'Puedes compartir la tarjeta 3 veces cada 10 minutos; inténtalo más tarde']
   },
   fr: {
     main: ['Succès', 'Pièces', 'Niveau {level} sur {max}', '{xp} sur {next} XP', '{xp} XP — niveau maximum', 'Série',
@@ -182,7 +182,7 @@ const T = {
       'Ce défi est déjà en cours', '«Mois dans le budget» demande un budget total', 'Ce défi est déjà terminé', 'Ce défi n’existe pas',
       'Choisis une catégorie', 'Tu ne peux plus échanger autant de jours ce mois-ci', 'Pas assez de pièces',
       'Impossible d’activer premium — pièces rendues. Réessaie plus tard', 'Cet échange n’existe pas', 'Rouvre l’échange',
-      'Cette période n’existe pas', 'Aucune dépense sur cette période', 'Impossible d’envoyer l’image maintenant — réessaie plus tard']
+      'Cette période n’existe pas', 'Aucune dépense sur cette période', 'Impossible d’envoyer l’image maintenant — réessaie plus tard', 'Tu peux partager la carte 3 fois par 10 minutes — réessaie plus tard']
   },
   pt: {
     main: ['Conquistas', 'Moedas', 'Nível {level} de {max}', '{xp} de {next} XP', '{xp} XP — nível máximo', 'Sequência',
@@ -213,7 +213,7 @@ const T = {
       '«Mês no orçamento» precisa de um orçamento total', 'Este desafio já terminou', 'Esse desafio não existe', 'Escolha uma categoria',
       'Este mês já não dá para trocar tantos dias', 'Moedas insuficientes',
       'Não deu para liberar o premium — moedas devolvidas. Tente mais tarde', 'Essa troca não existe', 'Abra a troca de novo',
-      'Esse período não existe', 'Não há gastos neste período', 'Não dá para enviar a imagem agora — tente mais tarde']
+      'Esse período não existe', 'Não há gastos neste período', 'Não dá para enviar a imagem agora — tente mais tarde', 'Dá para compartilhar o cartão 3 vezes a cada 10 minutos — tente mais tarde']
   },
   tr: {
     main: ['Başarılar', 'Jetonlar', 'Seviye {level} / {max}', '{xp} / {next} XP', '{xp} XP — en yüksek seviye', 'Seri',
@@ -243,7 +243,7 @@ const T = {
       'Bu meydan okuma zaten sürüyor', '«Bütçede bir ay» için toplam bütçe gerekir', 'Bu meydan okuma zaten bitti',
       'Böyle bir meydan okuma yok', 'Bir kategori seç', 'Bu ay bu kadar günü artık takas edemezsin', 'Yeterli jeton yok',
       'Premium verilemedi — jetonlar iade edildi. Sonra dene', 'Böyle bir takas yok', 'Takası yeniden aç', 'Böyle bir dönem yok',
-      'Bu dönemde harcama yok', 'Resim şu an gönderilemiyor — sonra dene']
+      'Bu dönemde harcama yok', 'Resim şu an gönderilemiyor — sonra dene', 'Kart 10 dakikada 3 kez paylaşılabilir — daha sonra dene']
   },
   hi: {
     main: ['उपलब्धियाँ', 'सिक्के', 'स्तर {level} / {max}', '{xp} / {next} XP', '{xp} XP — सबसे ऊँचा स्तर', 'लगातार दिन',
@@ -273,7 +273,7 @@ const T = {
       'यह चैलेंज पहले से चल रहा है', '«बजट में महीना» के लिए कुल बजट चाहिए', 'यह चैलेंज पहले ही ख़त्म हो चुका है',
       'ऐसा कोई चैलेंज नहीं', 'श्रेणी चुनें', 'इस महीने इतने दिन अब नहीं बदल सकते', 'सिक्के कम हैं',
       'प्रीमियम नहीं दे पाए — सिक्के लौटा दिए। बाद में कोशिश करें', 'ऐसी कोई अदला-बदली नहीं', 'अदला-बदली फिर से खोलें',
-      'ऐसी कोई अवधि नहीं', 'इस अवधि में कोई खर्च नहीं', 'अभी तस्वीर नहीं भेज सकते — बाद में कोशिश करें']
+      'ऐसी कोई अवधि नहीं', 'इस अवधि में कोई खर्च नहीं', 'अभी तस्वीर नहीं भेज सकते — बाद में कोशिश करें', 'कार्ड 10 मिनट में 3 बार शेयर किया जा सकता है — बाद में कोशिश करें']
   },
   ka: {
     main: ['მიღწევები', 'მონეტები', 'დონე {level} / {max}', '{xp} / {next} XP', '{xp} XP — მაქსიმალური დონე', 'სერია',
@@ -303,7 +303,7 @@ const T = {
       '«თვე ბიუჯეტში»-სთვის საჭიროა საერთო ბიუჯეტი', 'ეს გამოწვევა უკვე დასრულდა', 'ასეთი გამოწვევა არ არსებობს', 'აირჩიე კატეგორია',
       'ამ თვეს ამდენი დღის გაცვლა აღარ შეიძლება', 'მონეტები არ ჰყოფნის',
       'პრემიუმი ვერ გაიცა — მონეტები დაგიბრუნე. სცადე მოგვიანებით', 'ასეთი გაცვლა არ არსებობს', 'გახსენი გაცვლა თავიდან',
-      'ასეთი პერიოდი არ არსებობს', 'ამ პერიოდში ხარჯი არ არის', 'სურათს ახლა ვერ ვაგზავნი — სცადე მოგვიანებით']
+      'ასეთი პერიოდი არ არსებობს', 'ამ პერიოდში ხარჯი არ არის', 'სურათს ახლა ვერ ვაგზავნი — სცადე მოგვიანებით', 'ბარათის გაზიარება 10 წუთში 3-ჯერ შეიძლება — სცადე მოგვიანებით']
   },
   kz: {
     main: ['Жетістіктер', 'Тиындар', 'Деңгей {level} / {max}', '{xp} / {next} XP', '{xp} XP — ең жоғары деңгей', 'Серия',
@@ -334,7 +334,7 @@ const T = {
       '«Бюджет ішіндегі ай» үшін жалпы бюджет керек', 'Бұл челлендж аяқталған', 'Мұндай челлендж жоқ', 'Санатты таңда',
       'Осы айда мұнша күнді енді айырбастай алмайсың', 'Тиын жетпейді', 'Премиум берілмеді — тиындар қайтарылды. Кейінірек көр',
       'Мұндай айырбас жоқ', 'Айырбасты қайта аш', 'Мұндай кезең жоқ', 'Бұл кезеңде шығын жоқ',
-      'Суретті қазір жіберу мүмкін емес — кейінірек көр']
+      'Суретті қазір жіберу мүмкін емес — кейінірек көр', 'Карточканы 10 минутта 3 рет бөлісуге болады — кейінірек көр']
   },
   uz: {
     main: ['Yutuqlar', 'Tangalar', 'Daraja {level} / {max}', '{xp} / {next} XP', '{xp} XP — eng yuqori daraja', 'Seriya',
@@ -366,7 +366,7 @@ const T = {
       'Bu chellenj allaqachon davom etmoqda', '«Byudjet doirasida oy» uchun umumiy byudjet kerak', 'Bu chellenj allaqachon tugagan',
       'Bunday chellenj yo‘q', 'Toifani tanla', 'Bu oy buncha kunni endi almashtirib bo‘lmaydi', 'Tangalar yetmaydi',
       'Premium berib bo‘lmadi — tangalar qaytarildi. Keyinroq urinib ko‘r', 'Bunday almashuv yo‘q', 'Almashuvni qaytadan och',
-      'Bunday davr yo‘q', 'Bu davrda xarajat yo‘q', 'Rasmni hozir yuborib bo‘lmaydi — keyinroq urinib ko‘r']
+      'Bunday davr yo‘q', 'Bu davrda xarajat yo‘q', 'Rasmni hozir yuborib bo‘lmaydi — keyinroq urinib ko‘r', 'Kartani 10 daqiqada 3 marta ulashish mumkin — keyinroq urinib ko‘r']
   },
   jp: {
     main: ['実績', 'コイン', 'レベル {level} / {max}', '{xp} / {next} XP', '{xp} XP — 最高レベル', '連続記録',
@@ -394,7 +394,7 @@ const T = {
       'このチャレンジはすでに進行中です', '「予算内の1か月」には全体予算が必要です', 'このチャレンジはすでに終了しています',
       'そのチャレンジはありません', 'カテゴリを選んでください', '今月はもうその日数を交換できません', 'コインが足りません',
       'プレミアムを付与できませんでした — コインは返却しました。後でもう一度', 'その交換はありません', '交換をもう一度開いてください',
-      'その期間はありません', 'この期間は支出がありません', '今は画像を送れません — 後でもう一度']
+      'その期間はありません', 'この期間は支出がありません', '今は画像を送れません — 後でもう一度', 'カードの共有は10分間に3回までです。しばらくしてからお試しください']
   },
   zh: {
     main: ['成就', '金币', '等级 {level} / {max}', '{xp} / {next} XP', '{xp} XP — 最高等级', '连续记录',
@@ -417,7 +417,7 @@ const T = {
       '不再发送回顾', '以图片发送到聊天', '已发送到聊天 — 可以转发给朋友'],
     errors: ['今天已有支出 — 不能算零支出日', '今天已标记为零支出日', '这个挑战已在进行中', '「预算内的一个月」需要总预算',
       '这个挑战已结束', '没有这个挑战', '请选择类别', '本月已不能兑换这么多天', '金币不足', '未能开通高级版 — 金币已退回。请稍后再试',
-      '没有这个兑换', '请重新打开兑换', '没有这个周期', '这个周期没有支出', '现在无法发送图片 — 请稍后再试']
+      '没有这个兑换', '请重新打开兑换', '没有这个周期', '这个周期没有支出', '现在无法发送图片 — 请稍后再试', '卡片每 10 分钟最多分享 3 次，请稍后再试']
   }
 };
 

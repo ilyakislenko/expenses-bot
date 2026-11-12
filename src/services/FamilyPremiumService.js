@@ -108,6 +108,7 @@ class FamilyPremiumService {
 
   async notifyLost(members, familyName) {
     for (const member of members) {
+      if (member.blocked) continue; // заблокировал бота
       try {
         const lang = member.language || 'en';
         await this.notificationService.sendMessage(member.id, this.t(lang, 'family_premium_lost', {
@@ -160,6 +161,7 @@ class FamilyPremiumService {
   async notifyStarted(payerId, members, expiresAt) {
     const [name, family] = await Promise.all([this.payerName(payerId), this.familyRepository.getFamilyByOwnerId(payerId)]);
     for (const member of members) {
+      if (member.blocked) continue; // заблокировал бота
       try {
         const lang = member.language || 'en';
         await this.notificationService.sendMessage(member.id, this.t(lang, 'family_premium_started', {
@@ -178,7 +180,7 @@ class FamilyPremiumService {
     const refKey = `${payerId}:${new Date(expiresAt).getTime()}`;
     let sent = 0;
     for (const member of members) {
-      if (member.premium_expires_at && new Date(member.premium_expires_at) > now) continue;
+      if (member.blocked || (member.premium_expires_at && new Date(member.premium_expires_at) > now)) continue;
       try {
         if (!anyHour && !inSendWindow(member.timezone, now)) continue;
         if (!(await this.userNotificationRepository.markSent(member.id, 'family_premium_end', refKey))) continue;
@@ -204,7 +206,7 @@ class FamilyPremiumService {
     let sent = 0;
     const ending = await this.familyPremiumRepository.getPlansEndingBetween(now, new Date(now.getTime() + 2 * DAY));
     for (const plan of ending) {
-      if (plan.has_active_subscription) continue;
+      if (plan.has_active_subscription || plan.blocked) continue;
       const familyExpiry = new Date(plan.family_premium_expires_at);
       const personalExpiry = plan.premium_expires_at ? new Date(plan.premium_expires_at) : null;
       if (personalExpiry && Math.abs(personalExpiry - familyExpiry) < SAME_EXPIRY) continue;

@@ -119,6 +119,8 @@ class AdminHandlers {
         totalStars: donationStats.totalStars,
         premiumTransactions: premiumStats.total_transactions || 0
       });
+      // Заблокировали бота (users.blocked_at): рассылки им не уходят
+      statsText += `\n\n🚫 Заблокировали бота: ${userStats.blockedUsers}`;
       // Приглашения друзей: всего, сколько записали 3 траты (награда выдана), бонусных дней обоим сторонам
       if (this.referralService) {
         const referrals = await this.referralService.getGlobalStats().catch(() => null);
@@ -154,12 +156,12 @@ class AdminHandlers {
     const pct = (value, total) => (total > 0 ? `${Math.round(value / total * 100)}%` : '0%');
     const block = (title, r) => [
       `${title} — ${r.registered} чел.`,
-      `  онбординг ${r.onboarded} (${pct(r.onboarded, r.registered)}) · 1-я трата ${r.first_expense} (${pct(r.first_expense, r.registered)}) · вернулись через неделю ${r.returned_week2} (${pct(r.returned_week2, r.registered)})`,
-      `  смотрели премиум ${r.paywall_viewed} · тарифы ${r.tariffs_viewed} · оплатили ${r.paid} (${pct(r.paid, r.registered)}) · ${r.stars} ⭐`
+      `  пробный выдан ${r.trial_started} · онбординг ${r.onboarded} (${pct(r.onboarded, r.registered)}) · 1-я трата ${r.first_expense} (${pct(r.first_expense, r.registered)}) · вернулись через неделю ${r.returned_week2} (${pct(r.returned_week2, r.registered)})`,
+      `  смотрели премиум ${r.paywall_viewed} · тарифы ${r.tariffs_viewed} · ссылка на счёт ${r.invoice_created} · пробный закончился ${r.trial_ended} · оплатили ${r.paid} (${pct(r.paid, r.registered)}) · ${r.stars} ⭐`
     ].join('\n');
 
     const total = rows.reduce((acc, r) => {
-      for (const key of ['registered', 'onboarded', 'first_expense', 'returned_week2', 'paywall_viewed', 'tariffs_viewed', 'paid', 'stars']) {
+      for (const key of ['registered', 'trial_started', 'onboarded', 'first_expense', 'returned_week2', 'paywall_viewed', 'tariffs_viewed', 'invoice_created', 'trial_ended', 'paid', 'stars']) {
         acc[key] = (acc[key] || 0) + r[key];
       }
       return acc;

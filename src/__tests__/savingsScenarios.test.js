@@ -1,6 +1,7 @@
 // «📊 Сценарии на год»: накопления через 12 месяцев при тратах как в среднем, по плану и как в этом месяце;
 // в семейном контуре — доходы, траты и накопления всех участников. Без БД: сервисы — моки, даты фиксированы.
 const SavingsScenarioService = require('../services/SavingsScenarioService');
+const SavingsService = require('../services/SavingsService');
 const SavingsHandlers = require('../handlers/SavingsHandlers');
 const LocalizationService = require('../services/LocalizationService');
 const Formatter = require('../utils/formatter');
@@ -12,7 +13,7 @@ const TODAY = '2026-11-06';
 
 // Октябрь — 100 000 трат и 300 000 дохода (две записи участников), сентябрь — 80 000 трат, дохода нет;
 // ноябрь: 01–05.11 по 2 000 в день, сегодня ничего; аренда 27 000 10.11 — регулярная Юли (участник 2)
-function build({ family = true, budget = 150000, incomes = true } = {}) {
+function build({ family = true, budget = 150000, incomes = true, savingsService = null } = {}) {
   const totalsBy = { '2026-10-01': 100000, '2026-09-01': 80000 };
   const expenseService = {
     getPeriodContext: jest.fn(async (userId, kind, offset) => ({ timezone: 'UTC', currency: 'RUB', startDay: 1, today: TODAY, period: customPeriod(TODAY, 1, offset) })),
@@ -29,7 +30,7 @@ function build({ family = true, budget = 150000, incomes = true } = {}) {
   };
   const state = (total) => ({ currency: 'RUB', total, parts: [{ balance: total, yieldRate: null }], settings: { yieldRate: 0, inflationRate: 0, contributionGrowth: 0 } });
   const service = new SavingsScenarioService({
-    savingsService: { getState: jest.fn(async (id) => state(id === 1 ? 800000 : 200000)) },
+    savingsService: savingsService || { getState: jest.fn(async (id) => state(id === 1 ? 800000 : 200000)) },
     expenseService,
     budgetService: {
       scopeFor: jest.fn(async (id) => (family ? { familyId: 7 } : id)),
@@ -112,5 +113,69 @@ describe('savings scenarios for a year', () => {
     await none.showScenarios(noneCtx);
     expect(noneCtx.editMessageText.mock.calls[0][0]).toContain(localization.getText('ru', 'savings_scen_no_income'));
     expect(noneCtx.editMessageText.mock.calls[0][1].reply_markup.inline_keyboard[0][0].callback_data).toBe('income_add');
+  });
+});
+
+// Взнос «авто» в накоплениях — по базе сценариев. Накопления — настоящий SavingsService: у участника 1 общая копилка
+// 800 000, у участника 2 — 200 000; ставка 12% у пользователя 1. manual — взнос из настроек (null — «авто»).
+// Доход ноября ещё не записан (только октябрьский): раньше взнос уходил в минус, сценарии — нет
+describe('automatic monthly contribution = the default scenario', () => {
+  function withSavings({ manual = null, ...options } = {}) {
+    let scenarios = null;
+    const balances = { 1: 800000, 2: 200000 };
+    const savings = new SavingsService({
+      savingsRepository: {
+        ensureGeneralPot: async () => ({}),
+        getPots: async (id) => [{ id, kind: 'general', name: null, balance: String(balances[id]), currency: 'RUB', yield_rate: null, target_amount: null, monthly_payment: null }],
+        getSettings: async (id) => (id === 1 ? { monthly_contribution: manual, inflation_rate: null, yield_rate: '12', contribution_growth: null } : null)
+      },
+      userService: { getUserCurrency: async () => 'RUB', getUserTimezone: async () => 'UTC' },
+      currencyUtils: { convert: async (amount) => amount },
+      scenarios: () => scenarios
+    });
+    const built = build({ ...options, savingsService: savings });
+    scenarios = built.service;
+    return { ...built, savings, scenarios };
+  }
+
+  test('family, income of past periods 300 000 and none yet this month: positive, equal to «this month» scenario', async () => {
+    const { savings, scenarios } = withSavings();
+    const result = await scenarios.build(1);
+    expect(result.base).toBe('current');
+    const base = result.scenarios.find(s => s.key === result.base);
+    const state = await savings.getState(1);
+    expect(state.auto).toMatchObject({ key: 'current', income: 300000, periods: 1 });
+    expect(state.auto.spending).toBeCloseTo(87000);
+    expect(state.monthly).toBeCloseTo(base.monthly);
+    expect(state.monthly).toBeCloseTo(213000);
+  });
+
+  test('own budget: the bot\'s «in a year» line shows the scenario\'s monthly amount and 12-month total', async () => {
+    const { savings, scenarios } = withSavings({ family: false });
+    const base = (await scenarios.build(1)).scenarios.find(s => s.key === 'current');
+    // Доход 200 000 (свой), траты ноября по темпу 2 000 в день без аренды Юли: 60 000
+    expect(base.monthly).toBeCloseTo(140000);
+    const handlers = new SavingsHandlers({
+      savingsService: savings, userService: { getUserLanguage: async () => 'ru' }, localizationService: localization,
+      formatter: new Formatter({ convert: async (a) => a })
+    });
+    const ctx = { from: { id: 1 }, callbackQuery: { data: 'sv', message: { message_id: 3 } }, answerCbQuery: jest.fn(async () => true), editMessageText: jest.fn(async () => true) };
+    await handlers.showMenu(ctx);
+    const text = ctx.editMessageText.mock.calls[0][0];
+    expect(text).toContain(localization.getText('ru', 'savings_main_year', {
+      amount: handlers.compact(base.points[12], 'RUB', 'ru'), monthly: handlers.money(base.monthly, 'RUB')
+    }));
+  });
+
+  test('a manual contribution wins; without income history the contribution stays unknown', async () => {
+    const manual = withSavings({ manual: '50000' });
+    const state = await manual.savings.getState(1);
+    expect(state.monthly).toBe(50000);
+    expect(state.auto).toBeNull();
+    expect(manual.planningRepository.getIncomeRowsSince).not.toHaveBeenCalled();
+
+    const none = await withSavings({ incomes: false }).savings.getState(1);
+    expect(none.auto).toBeNull();
+    expect(none.monthly).toBeNull();
   });
 });

@@ -20,7 +20,10 @@ const CROP_PADDING = 0.03;
 const MAX_CROP_SHARE = 0.85; // рамка почти во весь кадр — не обрезаем
 const ORIENTATION_RATIO = 1.15; // во сколько раз отрезки вдоль одной оси длиннее, чтобы поверить направлению
 const JPEG_QUALITY = 85;
-const MAX_DECODE_MP = 50;
+// Больше — не декодируем (кадр уходит модели как есть): 24 Мп — с запасом для фото телефонов, а «бомба» в сотни Мп
+// не съест память потока картинок (imageWorker, предел 512 МБ)
+const MAX_DECODE_MP = 24;
+const MAX_DECODE_MEMORY_MB = 512;
 
 function clamp(value, min, max) {
   return value < min ? min : value > max ? max : value;
@@ -321,7 +324,7 @@ function encode(rgb, width, height) {
 }
 
 function decode(buffer) {
-  const decoded = jpeg.decode(buffer, { useTArray: true, formatAsRGBA: false, maxResolutionInMP: MAX_DECODE_MP, maxMemoryUsageInMB: 1024 });
+  const decoded = jpeg.decode(buffer, { useTArray: true, formatAsRGBA: false, maxResolutionInMP: MAX_DECODE_MP, maxMemoryUsageInMB: MAX_DECODE_MEMORY_MB });
   return { data: decoded.data, width: decoded.width, height: decoded.height, factor: 1 };
 }
 

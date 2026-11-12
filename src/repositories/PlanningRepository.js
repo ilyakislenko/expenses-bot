@@ -144,9 +144,10 @@ class PlanningRepository extends BaseRepository {
     await this.query('UPDATE users SET bill_reminders_enabled = $2 WHERE id = $1', [userId, !!enabled]);
   }
 
+  // Заблокировавшим бота (blocked_at) не напоминаем
   async getBillReminderCandidates() {
     const result = await this.query(
-      'SELECT id, language, timezone, daily_plan_enabled FROM users WHERE id > 0 AND bill_reminders_enabled = TRUE',
+      'SELECT id, language, timezone, daily_plan_enabled FROM users WHERE id > 0 AND bill_reminders_enabled = TRUE AND blocked_at IS NULL',
       []
     );
     return result.rows;
@@ -249,12 +250,13 @@ class PlanningRepository extends BaseRepository {
   }
 
   // Кандидаты на предупреждения: включили их и есть траты за 770 дней (окно поиска подписок) или регулярные;
-  // либо есть недавний пробный период или отметка «отменю» (о них пишем при любой настройке)
+  // либо есть недавний пробный период или отметка «отменю» (о них пишем при любой настройке).
+  // Заблокировавших бота (blocked_at) не разбираем: вернётся — предупреждения о ещё не наступивших списаниях придут
   async getWarnCandidates() {
     const result = await this.query(`
       SELECT u.id, u.language, u.timezone, u.sub_warn_enabled, u.sub_warn_days
       FROM users u
-      WHERE u.id > 0 AND (
+      WHERE u.id > 0 AND u.blocked_at IS NULL AND (
         (u.sub_warn_enabled AND (
           EXISTS (SELECT 1 FROM recurring_expenses r WHERE r.user_id = u.id)
           OR EXISTS (SELECT 1 FROM expenses e WHERE e.user_id = u.id AND e.created_at_utc > NOW() - INTERVAL '770 days')

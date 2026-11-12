@@ -7,7 +7,7 @@ const MAX_UNIT_PRICE = 99999999.99; // expenses.unit_price DECIMAL(12,2) с за
 // Распознанные чеки: партия трат (expenses.receipt_id) для списка, правки и отмены, и счётчик месячного лимита.
 class ReceiptRepository extends BaseRepository {
   // Распознавания с начала локального месяца (monthStart 'YYYY-MM-01'): чеки (включая отменённые) и попытки без записи
-  // (показанный черновик, «не получилось распознать» — receipt_attempts)
+  // (показанный черновик, «не получилось распознать», «на фото не чек» — receipt_attempts)
   async countSince(userId, monthStart, timezone) {
     const result = await this.query(`
       SELECT
@@ -17,7 +17,7 @@ class ReceiptRepository extends BaseRepository {
     return Number(result.rows[0].count);
   }
 
-  // Попытка распознавания без записи (outcome: 'draft' | 'unreadable') — одна на фото: ключ — сообщение со статусом
+  // Попытка распознавания без записи (outcome: 'draft' | 'unreadable' | 'not_receipt') — одна на фото: ключ — сообщение со статусом
   // (messageId). Повороты того же фото обновляют ту же строку. Возвращает id (черновик хранит его, чтобы при записи
   // заменить попытку чеком)
   async addAttempt(userId, messageId, outcome) {

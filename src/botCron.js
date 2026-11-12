@@ -4,6 +4,12 @@ const logger = require('./utils/logger');
 const { DEFAULT_REMINDER_HOURS } = require('./utils/constants');
 // Напоминалка до этого локального часа — «утренняя»: её заменяет «☀️ План на день», если он уже пришёл сегодня
 const MORNING_UNTIL_HOUR = 12;
+// Единственное напоминание «запиши первую трату»: через сутки после регистрации (но не позже 3 суток — старым
+// пользователям без трат не пишем), днём по местному времени: с 10:00 до 20:59
+const NUDGE_AFTER_HOURS = 24;
+const NUDGE_UNTIL_HOURS = 72;
+const NUDGE_FROM_HOUR = 10;
+const NUDGE_TO_HOUR = 21;
 
 // Локальные дата (YYYY-MM-DD) и час. hourCycle h23: в полночь час 0, а не 24
 function localDateHour(timezone, now) {
@@ -17,11 +23,14 @@ function localDateHour(timezone, now) {
 // Серия от 3 дней под угрозой и сработавшая заморозка — строкой в той же напоминалке (achievementService, если есть).
 // Утром (до 12:00), если сегодня уже пришёл «☀️ План на день», напоминалка не нужна — план и есть утреннее сообщение.
 // Ошибка у одного пользователя (невалидный пояс, заблокированный бот) не прерывает рассылку остальным.
+// Заблокировавших бота (blocked_at — ставит NotificationService на 403) не выбираем, пока снова не напишут.
+// Тем, кто не записал ни одной траты, ежедневных напоминаний нет — им одно сообщение sendFirstExpenseNudges.
 async function sendReminders({ userService, expenseService, notificationService, achievementService = null, dailyPlanService = null }, now = new Date()) {
   const { rows } = await userService.userRepository.query(`
     SELECT id, timezone, language, reminder_hours, reminder_sent_today_hours,
            to_char(last_reminder_local_date, 'YYYY-MM-DD') AS last_reminder_local_date
-    FROM users WHERE reminder_enabled = true`);
+    FROM users WHERE reminder_enabled = true AND blocked_at IS NULL
+      AND EXISTS (SELECT 1 FROM expenses e WHERE e.user_id = users.id)`);
   const { localizationService } = notificationService;
   let sent = 0;
   for (const user of rows) {
@@ -46,7 +55,7 @@ async function sendReminders({ userService, expenseService, notificationService,
       const message = Array.isArray(variants) && variants.length ? variants[Math.floor(Math.random() * variants.length)] : '';
       const streakLine = achievementService ? await achievementService.reminderLine(user.id, lang) : '';
       const text = `🔔 *${title}*\n\n${message}${streakLine ? `\n\n${streakLine}` : ''}`;
-      await notificationService.bot.telegram.sendMessage(user.id, text, { parse_mode: 'Markdown' });
+      await notificationService.sendMessage(user.id, text, { parse_mode: 'Markdown' });
       await userService.updateLastReminderLocalDate(user.id, date);
       await userService.setReminderSentTodayHours(user.id, [...sentHours, hour].sort((a, b) => a - b));
       sent++;
@@ -57,7 +66,39 @@ async function sendReminders({ userService, expenseService, notificationService,
   return sent;
 }
 
-function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, recurringExpenseService, premiumLifecycleService, reportService, dailySummaryService, weeklyInsightService, planningService, achievementService, subscriptionAlertService, dailyPlanService = null, quizService = null, taxRefundService = null, supportedCurrencies = currencyConfig.SUPPORTED_CURRENCIES) {
+// «Запиши первую трату»: ровно одно сообщение тому, кто за сутки после регистрации не записал ни одной траты, —
+// днём по его времени (NUDGE_FROM_HOUR–NUDGE_TO_HOUR), не позже NUDGE_UNTIL_HOURS после регистрации. Отправленное
+// помечается шагом воронки nudge_sent (повторно не уходит). Не пишем заблокировавшим бота и тем, кто в опросе
+// ответил «🔕 Не надо» на вопрос о напоминаниях. Ошибка у одного пользователя не прерывает остальных.
+async function sendFirstExpenseNudges({ userService, notificationService, funnelService }, now = new Date()) {
+  const { rows } = await userService.userRepository.query(`
+    SELECT u.id, u.timezone, u.language
+    FROM users u
+    WHERE u.id > 0 AND u.blocked_at IS NULL
+      AND u.created_at <= LOCALTIMESTAMP - make_interval(hours => $1::int)
+      AND u.created_at > LOCALTIMESTAMP - make_interval(hours => $2::int)
+      AND COALESCE(u.onboarding_answers->'answers'->>'reminders', '') <> 'no'
+      AND NOT EXISTS (SELECT 1 FROM expenses e WHERE e.user_id = u.id)
+      AND NOT EXISTS (SELECT 1 FROM user_funnel_events f WHERE f.user_id = u.id AND f.event = 'nudge_sent')`,
+  [NUDGE_AFTER_HOURS, NUDGE_UNTIL_HOURS]);
+  const { localizationService } = notificationService;
+  let sent = 0;
+  for (const user of rows) {
+    try {
+      const { hour } = localDateHour(user.timezone || 'UTC', now);
+      if (hour < NUDGE_FROM_HOUR || hour >= NUDGE_TO_HOUR) continue;
+      const lang = user.language || 'en';
+      await notificationService.sendMessage(user.id, localizationService.getText(lang, 'nudge_first_expense'), { parse_mode: 'Markdown' });
+      await funnelService.track(user.id, 'nudge_sent');
+      sent++;
+    } catch (error) {
+      logger.warn('First expense nudge not delivered', { userId: user.id, error: error.message });
+    }
+  }
+  return sent;
+}
+
+function setupBotCron(cron, currencyUtils, donationRepository, userService, expenseService, notificationService, recurringExpenseService, premiumLifecycleService, reportService, dailySummaryService, weeklyInsightService, planningService, achievementService, subscriptionAlertService, dailyPlanService = null, quizService = null, taxRefundService = null, funnelService = null, supportedCurrencies = currencyConfig.SUPPORTED_CURRENCIES) {
   // Проверяем, нужно ли обновлять курсы при запуске
   (async () => {
     try {
@@ -223,6 +264,19 @@ function setupBotCron(cron, currencyUtils, donationRepository, userService, expe
     }
   });
 
+  if (funnelService) {
+    // «Запиши первую трату» — одно сообщение через сутки после регистрации тем, кто ничего не записал (днём по местному
+    // времени). В :30 — не в одну минуту с другими рассылками
+    cron.schedule('30 * * * *', async () => {
+      try {
+        const sent = await sendFirstExpenseNudges({ userService, notificationService, funnelService });
+        if (sent > 0) console.log(`Напоминание о первой трате: отправлено ${sent}`);
+      } catch (err) {
+        console.error('Ошибка напоминаний о первой трате:', err);
+      }
+    });
+  }
+
   if (quizService) {
     // Квиз недели: каждую минуту — вопросы, срок которых вышел (таймеры теряются при перезапуске), и неотправленные
     cron.schedule('* * * * *', async () => {
@@ -269,3 +323,4 @@ function setupBotCron(cron, currencyUtils, donationRepository, userService, expe
 module.exports = setupBotCron;
 module.exports.sendReminders = sendReminders;
 module.exports.localDateHour = localDateHour;
+module.exports.sendFirstExpenseNudges = sendFirstExpenseNudges;

@@ -1,6 +1,8 @@
 const BaseRepository = require('./BaseRepository');
 
 class UserNotificationRepository extends BaseRepository {
+  // Во всех выборках кандидатов — только доступные (blocked_at IS NULL): заблокировавшим бота не пишем
+
   // Кандидаты для уведомлений о премиуме: срок истекает или истёк недавно.
   // Окно берётся с запасом, точная проверка — в сервисе. premium_expires_at — TIMESTAMP без пояса, его пишет Node
   // в своём поясе, поэтому сравниваем с переданным из Node временем, а не с NOW() сессии Postgres.
@@ -28,7 +30,7 @@ class UserNotificationRepository extends BaseRepository {
                WHERE t.user_id = u.id AND t.status = 'refunded'
              ) AS last_refund_at
       FROM users u
-      WHERE u.id > 0
+      WHERE u.id > 0 AND u.blocked_at IS NULL
         AND u.premium_expires_at IS NOT NULL
         AND u.premium_expires_at BETWEEN $1::timestamp - INTERVAL '9 days' AND $1::timestamp + INTERVAL '3 days'
     `;
@@ -41,7 +43,7 @@ class UserNotificationRepository extends BaseRepository {
     const query = `
       SELECT u.id, u.language, u.timezone
       FROM users u
-      WHERE u.id > 0 AND EXISTS (
+      WHERE u.id > 0 AND u.blocked_at IS NULL AND EXISTS (
         SELECT 1 FROM expenses e
         WHERE e.user_id = u.id AND e.recurring_expense_id IS NULL AND e.created_at_utc > NOW() - INTERVAL '45 days'
       )
@@ -53,7 +55,7 @@ class UserNotificationRepository extends BaseRepository {
   // Кандидаты для ежедневной сводки: включили её в настройках напоминаний
   async getDailySummaryCandidates() {
     const result = await this.query(
-      'SELECT id, language, timezone, daily_summary_hour FROM users WHERE id > 0 AND daily_summary_enabled = TRUE',
+      'SELECT id, language, timezone, daily_summary_hour FROM users WHERE id > 0 AND daily_summary_enabled = TRUE AND blocked_at IS NULL',
       []
     );
     return result.rows;
@@ -62,7 +64,7 @@ class UserNotificationRepository extends BaseRepository {
   // Кандидаты для сводки недели: включили её в настройках напоминаний
   async getWeeklyInsightCandidates() {
     const result = await this.query(
-      'SELECT id, language, timezone FROM users WHERE id > 0 AND weekly_insight_enabled = TRUE',
+      'SELECT id, language, timezone FROM users WHERE id > 0 AND weekly_insight_enabled = TRUE AND blocked_at IS NULL',
       []
     );
     return result.rows;

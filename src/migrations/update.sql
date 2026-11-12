@@ -571,7 +571,7 @@ CREATE TABLE IF NOT EXISTS savings_settings (
     contribution_growth DECIMAL(6,2) NULL CHECK (contribution_growth IS NULL OR contribution_growth BETWEEN 0 AND 100),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-COMMENT ON COLUMN savings_settings.monthly_contribution IS 'Сколько откладывается в месяц (основная валюта); NULL — среднее (доходы − траты) за 3 полных периода';
+COMMENT ON COLUMN savings_settings.monthly_contribution IS 'Сколько откладывается в месяц (основная валюта); NULL — авто: средний доход за прошлые периоды − траты сценария по умолчанию (SavingsScenarioService)';
 COMMENT ON COLUMN savings_settings.contribution_growth IS 'Рост ежемесячного взноса раз в год, %';
 
 -- ========================================
@@ -938,7 +938,7 @@ CREATE TABLE IF NOT EXISTS receipt_attempts (
     outcome VARCHAR(16) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-COMMENT ON TABLE receipt_attempts IS 'Распознавания чеков без записи (draft — черновик, unreadable — не разобрано); считаются в месячный лимит вместе с receipts';
+COMMENT ON TABLE receipt_attempts IS 'Распознавания чеков без записи (draft — черновик, unreadable — не разобрано, not_receipt — на фото не чек); считаются в месячный лимит вместе с receipts';
 CREATE INDEX IF NOT EXISTS idx_receipt_attempts_user_created ON receipt_attempts(user_id, created_at);
 
 -- Фоновые задачи с сообщением-статусом («🔍 Распознаю чек…», «🎙 Распознаю голос…»): после перезапуска бота
@@ -1333,3 +1333,8 @@ COMMENT ON COLUMN category_budgets.family_id IS 'Семейный бюджет: 
 DROP INDEX IF EXISTS idx_category_budgets_user_category;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_category_budgets_user_category ON category_budgets(user_id, (COALESCE(category_name, ''))) WHERE family_id IS NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_category_budgets_family_category ON category_budgets(family_id, (COALESCE(category_name, ''))) WHERE family_id IS NOT NULL;
+
+-- ==== BLOCKED USERS ====
+-- Пользователь заблокировал бота (или удалил аккаунт): проактивные сообщения ему не шлём, пока он снова не напишет
+ALTER TABLE users ADD COLUMN IF NOT EXISTS blocked_at TIMESTAMP NULL;
+COMMENT ON COLUMN users.blocked_at IS 'Когда Telegram ответил 403 (бот заблокирован, аккаунт удалён) или пришёл my_chat_member kicked; NULL — доступен. Сбрасывается любым апдейтом из лички';

@@ -111,6 +111,10 @@ class SecurityMiddleware {
     if (ctx.callbackQuery?.data?.startsWith('xp|')) {
       limitType = 'export';
     }
+    // Карточка итогов картинкой (achwi|…): PNG рисуется на сервере — тот же лимит 'share', что в Mini App
+    if (ctx.callbackQuery?.data?.startsWith('achwi|')) {
+      limitType = 'share';
+    }
 
     // Файлы выписок (скачивание и разбор PDF/CSV) — отдельный лимит
     if (ctx.message?.document) {

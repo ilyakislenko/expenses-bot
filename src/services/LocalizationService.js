@@ -15,8 +15,9 @@ const uz = require('../locales/uz');
 const jp = require('../locales/jp');
 const zh = require('../locales/zh');
 
-// Коды Telegram, не совпадающие с кодами языков бота
-const TELEGRAM_LANGUAGE_ALIASES = { ja: 'jp', kk: 'kz' };
+// Коды Telegram, не совпадающие с кодами языков бота. Украинский и белорусский интерфейс Telegram — русский в боте
+// (украинского и белорусского нет, а русский эти пользователи почти всегда читают)
+const TELEGRAM_LANGUAGE_ALIASES = { ja: 'jp', kk: 'kz', uk: 'ru', be: 'ru' };
 
 class LocalizationService {
   constructor() {
@@ -174,12 +175,18 @@ class LocalizationService {
    * Клавиатура выбора языка на указанном языке: по два языка в строке, текущий отмечен ✅.
    * onboarding: кнопки несут признак шага онбординга (`|ob`), «Назад» в Настройки нет — это первый шаг;
    * первой строкой — «✅ Продолжить на <языке экрана>» (язык Telegram пользователя), остальные — ниже.
+   * compact (только с onboarding и поддерживаемым языком): «Продолжить на <языке>» и «🌍 Другой язык»
+   * (ob_language_all — полный список)
    */
-  getLanguageKeyboardLocalized(language, { onboarding = false } = {}) {
+  getLanguageKeyboardLocalized(language, { onboarding = false, compact = false } = {}) {
     const suffix = onboarding ? '|ob' : '';
     const keyboard = [];
     if (onboarding && this.isLanguageSupported(language)) {
       keyboard.push([{ text: this.getText(language, 'language_continue'), callback_data: `set_language|${language}${suffix}` }]);
+      if (compact) {
+        keyboard.push([{ text: this.getText(language, 'language_other'), callback_data: 'ob_language_all' }]);
+        return keyboard;
+      }
     }
     const others = this.getSupportedLanguages()
       .filter(lang => !(onboarding && lang.code === language))

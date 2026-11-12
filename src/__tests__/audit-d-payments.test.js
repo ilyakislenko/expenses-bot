@@ -190,7 +190,8 @@ describe('premium lifecycle notifications (PAY-9)', () => {
     const sent = [];
     const service = new PremiumLifecycleService(
       { getPremiumLifecycleCandidates: async () => [candidate], markSent: async () => true },
-      { sendMessage: async (id, text) => { sent.push(text); } },
+      // Первый абзац — текст стадии (у конца пробного ниже идут итог и цена)
+      { sendMessage: async (id, text) => { sent.push(text.split('\n\n')[0]); } },
       { getText: (lang, key) => key },
       { formatDate: () => 'date' }
     );

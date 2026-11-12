@@ -25,3 +25,16 @@ logs/
 
 # OS files
 Thumbs.db
+
+# Секреты и их копии, дампы, ключи — в публичный репозиторий не попадают
+.env.*
+!.env.example
+*.bak
+*.sql.gz
+*.dump
+*.pem
+*.key
+id_rsa*
+
+# Отчёт jest (пишется при каждом прогоне)
+junit.xml

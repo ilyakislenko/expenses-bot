@@ -495,11 +495,11 @@ describe('streak lines in the existing flows', () => {
     };
     const notificationService = {
       localizationService: { getText: (lang, key) => (key === 'reminder_sample_variants' ? ['Запиши траты'] : 'Напоминалка') },
-      bot: { telegram: { sendMessage: jest.fn().mockResolvedValue({}) } }
+      sendMessage: jest.fn().mockResolvedValue({})
     };
     const achievementService = { reminderLine: jest.fn(async () => '🔥 risk') };
     await sendReminders({ userService, expenseService: { hasAnyExpenseToday: async () => false }, notificationService, achievementService }, new Date('2026-10-26T10:00:00Z'));
-    expect(notificationService.bot.telegram.sendMessage.mock.calls[0][1]).toBe('🔔 *Напоминалка*\n\nЗапиши траты\n\n🔥 risk');
+    expect(notificationService.sendMessage.mock.calls[0][1]).toBe('🔔 *Напоминалка*\n\nЗапиши траты\n\n🔥 risk');
   });
 
   test('daily summary ends with the streak line', async () => {

@@ -1095,6 +1095,8 @@ class GroupHandlers {
           await this.receiptService.addAttempt(Number(userId), statusId, 'unreadable');
           await edit(this.t(ledger.lang, 'grp_split_unreadable'));
         } else {
+          // «Не чек» — попытка в личном месячном лимите, как в личном чате
+          if (result.error.code === 'not_receipt') await this.receiptService.addAttempt(Number(userId), statusId, 'not_receipt');
           await edit(this.t(ledger.lang, 'grp_split_failed'));
         }
         return;

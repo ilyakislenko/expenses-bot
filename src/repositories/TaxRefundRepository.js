@@ -51,10 +51,10 @@ class TaxRefundRepository extends BaseRepository {
     await this.query('DELETE FROM tax_refund_marks WHERE user_id = $1 AND expense_id = $2', [userId, expenseId]);
   }
 
-  // Январское напоминание: русский язык и рубли (премиум проверяет сервис)
+  // Январское напоминание: русский язык и рубли, бот не заблокирован (премиум проверяет сервис)
   async getReminderCandidates() {
     const result = await this.query(
-      `SELECT id, language, timezone FROM users WHERE id > 0 AND language = 'ru' AND currency = 'RUB'`,
+      `SELECT id, language, timezone FROM users WHERE id > 0 AND language = 'ru' AND currency = 'RUB' AND blocked_at IS NULL`,
       []
     );
     return result.rows;

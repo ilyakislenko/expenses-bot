@@ -67,11 +67,13 @@ module.exports = (router, { get, http }) => {
     });
   }));
 
-  // Язык; чат получает reply-клавиатуру на новом языке, как после выбора языка в боте
+  // Язык; чат получает reply-клавиатуру на новом языке, как после выбора языка в боте. Каждая смена — сообщение
+  // в чат: лимит 'settings' (10 в минуту)
   router.put('/settings/language', http.wrap(async (req, res) => {
     const localization = get('localizationService');
     const language = req.body.language;
     if (!localization.isLanguageSupported(language)) throw http.badRequest('bad_language');
+    http.rateLimit(get, req.userId, 'settings');
     await get('userService').setUserLanguage(req.userId, language);
     await refreshChatKeyboard(get, req.userId, language, localization.getText(language, 'keyboard_updated'));
     res.json({ language });

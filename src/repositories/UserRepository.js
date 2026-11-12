@@ -2,17 +2,18 @@ const BaseRepository = require('./BaseRepository');
 const currencyConfig = require('../config/currencies');
 
 class UserRepository extends BaseRepository {
-  async createUser(userId, username, firstName) {
+  // language и timezone пишутся только новой записи (выбор существующего пользователя не трогаем)
+  async createUser(userId, username, firstName, { language = 'en', timezone = 'UTC' } = {}) {
     const query = `
-      INSERT INTO users (id, username, first_name) 
-      VALUES ($1, $2, $3) 
+      INSERT INTO users (id, username, first_name, language, timezone)
+      VALUES ($1, $2, $3, $4, $5)
       ON CONFLICT (id) DO UPDATE SET 
         username = EXCLUDED.username,
         first_name = EXCLUDED.first_name
       RETURNING *, (xmax = 0) AS is_new,
         (created_at > LOCALTIMESTAMP - INTERVAL '10 seconds') AS just_created
     `;
-    const result = await this.query(query, [userId, username, firstName]);
+    const result = await this.query(query, [userId, username, firstName, language, timezone]);
     return result.rows[0];
   }
 
@@ -249,10 +250,24 @@ class UserRepository extends BaseRepository {
     await this.query(query, [userId]);
   }
 
+  // blocked — заблокировал бота (users.blocked_at): рассылка ему не пишет, но считает его в total и failed
   async getAllUsersForBroadcast() {
-    const query = 'SELECT id FROM users WHERE id > 0 ORDER BY id';
+    const query = 'SELECT id, blocked_at IS NOT NULL AS blocked FROM users WHERE id > 0 ORDER BY id';
     const result = await this.query(query, []);
     return result.rows;
+  }
+
+  // Telegram ответил 403 (бот заблокирован, аккаунт удалён): время первой такой ошибки, повторная не перезаписывает.
+  // true — пометка поставлена сейчас
+  async setBlocked(userId) {
+    const result = await this.query('UPDATE users SET blocked_at = NOW() WHERE id = $1 AND blocked_at IS NULL', [userId]);
+    return result.rowCount > 0;
+  }
+
+  // Пользователь снова написал боту. Без пометки — ничего не пишет (чтение по первичному ключу); true — пометка снята
+  async clearBlocked(userId) {
+    const result = await this.query('UPDATE users SET blocked_at = NULL WHERE id = $1 AND blocked_at IS NOT NULL', [userId]);
+    return result.rowCount > 0;
   }
 }
 

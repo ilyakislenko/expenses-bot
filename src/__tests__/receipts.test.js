@@ -956,6 +956,17 @@ describe('ReceiptHandlers background recognition', () => {
     expect(callbackCtx.answerCbQuery).toHaveBeenLastCalledWith(t('receipt_rotate_outdated'), { show_alert: true });
   });
 
+  it('«not a receipt» counts as an attempt in the monthly limit and says so', async () => {
+    const { handlers, receiptService, ctx, finish } = setup();
+    const { ReceiptError } = require('../services/receipt/errors');
+    await handlers.processImage(ctx, { fileId: 'f', fileSize: 1000, mimeType: 'image/jpeg' });
+    finish({ error: new ReceiptError('not_receipt'), image: tinyJpeg(16, 32), mimeType: 'image/jpeg', attempts: 1 });
+    await handlers.idle();
+    const [, , , text] = ctx.telegram.editMessageText.mock.calls.pop();
+    expect(text).toBe(`${t('receipt_not_receipt')}\n\n${t('receipt_attempt_counted')}`);
+    expect(receiptService.attempts).toEqual([{ userId: 7, messageId: 101, outcome: 'not_receipt' }]);
+  });
+
   it('a draft and «rotate» survive a bot restart; buttons that can do nothing more are removed', async () => {
     const { createHandlers, handlers, receiptService, ctx, finish, receipt, ok } = setup();
     const { runImageTask } = require('../services/receipt/imageWorker');

@@ -19,7 +19,8 @@ class FunnelRepository extends BaseRepository {
   }
 
   // Когорта — пользователи, зарегистрированные за последние `days` дней (null — за всё время), по источникам.
-  // returned_week2 — записали трату вручную спустя 7+ дней после регистрации.
+  // returned_week2 — записали трату вручную спустя 7+ дней после регистрации; trial_started / invoice_created /
+  // trial_ended — шаги FunnelService.FUNNEL_EVENTS (пробный выдан, получил ссылку на счёт, пробный закончился без оплаты).
   async getReport(days) {
     const query = `
       WITH cohort AS (
@@ -30,6 +31,7 @@ class FunnelRepository extends BaseRepository {
       ),
       steps AS (
         SELECT c.*,
+          EXISTS (SELECT 1 FROM user_funnel_events e WHERE e.user_id = c.id AND e.event = 'trial_started') AS trial_started,
           -- Дошёл до главной клавиатуры: опрос пройден или пропущен («Пропустить всё»)
           EXISTS (SELECT 1 FROM user_funnel_events e WHERE e.user_id = c.id AND e.event IN ('onboarding_completed', 'onboarding_skipped')) AS onboarded,
           EXISTS (SELECT 1 FROM user_funnel_events e WHERE e.user_id = c.id AND e.event = 'first_expense') AS first_expense,
@@ -37,6 +39,8 @@ class FunnelRepository extends BaseRepository {
                     AND x.created_at_utc >= c.registered_at + INTERVAL '7 days') AS returned_week2,
           EXISTS (SELECT 1 FROM user_funnel_events e WHERE e.user_id = c.id AND e.event = 'paywall_viewed') AS paywall_viewed,
           EXISTS (SELECT 1 FROM user_funnel_events e WHERE e.user_id = c.id AND e.event = 'tariffs_viewed') AS tariffs_viewed,
+          EXISTS (SELECT 1 FROM user_funnel_events e WHERE e.user_id = c.id AND e.event = 'invoice_created') AS invoice_created,
+          EXISTS (SELECT 1 FROM user_funnel_events e WHERE e.user_id = c.id AND e.event = 'trial_ended') AS trial_ended,
           EXISTS (SELECT 1 FROM user_funnel_events e WHERE e.user_id = c.id AND e.event = 'paid') AS paid,
           (SELECT COALESCE(SUM(t.stars_amount), 0) FROM premium_transactions t
              WHERE t.user_id = c.id AND t.status = 'completed' AND t.stars_amount > 0) AS stars
@@ -44,11 +48,14 @@ class FunnelRepository extends BaseRepository {
       )
       SELECT source,
         COUNT(*)::int AS registered,
+        COUNT(*) FILTER (WHERE trial_started)::int AS trial_started,
         COUNT(*) FILTER (WHERE onboarded)::int AS onboarded,
         COUNT(*) FILTER (WHERE first_expense)::int AS first_expense,
         COUNT(*) FILTER (WHERE returned_week2)::int AS returned_week2,
         COUNT(*) FILTER (WHERE paywall_viewed)::int AS paywall_viewed,
         COUNT(*) FILTER (WHERE tariffs_viewed)::int AS tariffs_viewed,
+        COUNT(*) FILTER (WHERE invoice_created)::int AS invoice_created,
+        COUNT(*) FILTER (WHERE trial_ended)::int AS trial_ended,
         COUNT(*) FILTER (WHERE paid)::int AS paid,
         SUM(stars)::int AS stars
       FROM steps

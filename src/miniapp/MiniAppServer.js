@@ -10,6 +10,7 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 const FORECAST_SOURCE = path.join(__dirname, '..', 'utils', 'savingsForecast.js');
 const RATE_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT = 300; // запросов API в минуту на пользователя
+const REQUEST_TIMEOUT_MS = 60 * 1000;
 
 // Mini App в Telegram — тот же функционал, что в боте, экранами (src/miniapp/public — SPA без сборки, ES-модули).
 // Слушает только 127.0.0.1: наружу её выводит туннель (Cloudflare Tunnel → MINIAPP_PORT); бот, мониторинг и база
@@ -87,6 +88,8 @@ class MiniAppServer {
         logger.startup(`Mini app server started on ${this.host}:${this.port}`);
         resolve();
       });
+      // Весь запрос (заголовки и тело) — не дольше минуты: медленные загрузки не держат память (по умолчанию 300 с)
+      this.server.requestTimeout = REQUEST_TIMEOUT_MS;
       this.server.on('error', reject);
     });
   }

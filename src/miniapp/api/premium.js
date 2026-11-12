@@ -43,11 +43,12 @@ module.exports = (router, { get, http }) => {
       referralService.getStats(req.userId).catch(() => null),
       get('familyPremiumService').getOwnerStatus(req.userId)
     ]);
-    await get('funnelService').track(req.userId, 'paywall_viewed');
     // Как CommandHandlers.premiumPitch: премиум только от семьи — как оплаченный (без пробного и «пригласи друга»)
     const familyOnly = !!info.familyPremium && !info.personalActive;
     const onTrial = !!info.isPremium && source === 'trial' && !familyOnly;
     const paidOrGranted = !!info.isPremium && !onTrial;
+    // Пейвол в воронке — только у тех, кто ещё не платит (без премиума или на пробном)
+    if (!paidOrGranted) await get('funnelService').track(req.userId, 'paywall_viewed');
     let status = null;
     if (info.isPremium) status = familyOnly ? 'family' : (source === 'trial' ? 'trial' : (source === 'paid' ? 'paid' : 'granted'));
 
@@ -102,9 +103,11 @@ module.exports = (router, { get, http }) => {
     });
   }));
 
-  // Счёт Stars на личный тариф: PaymentService.createInvoiceLink — тот же payload и суммы, что у кнопок бота
+  // Счёт Stars на личный тариф: PaymentService.createInvoiceLink — тот же payload и суммы, что у кнопок бота.
+  // Каждый вызов — запрос к Telegram: лимит 'invoice' (10 в минуту)
   router.post('/premium/invoice', http.wrap(async (req, res) => {
     const ctx = await req.ctx();
+    http.rateLimit(get, req.userId, 'invoice');
     const tariff = findTariff(http.int(req.body.duration, { min: 1, code: 'bad_tariff' }));
     if (!tariff) throw http.badRequest('bad_tariff');
     if (tariff.duration === SUBSCRIPTION_DAYS && await get('userService').getActiveRecurringSubscription(req.userId)) {
@@ -138,9 +141,10 @@ module.exports = (router, { get, http }) => {
     res.json({ items });
   }));
 
-  // «💎 Поддержать проект»: 1–2500 ⭐ и письмо (PaymentService.createDonation), затем счёт Stars
+  // «💎 Поддержать проект»: 1–2500 ⭐ и письмо (PaymentService.createDonation), затем счёт Stars; лимит 'invoice'
   router.post('/premium/donate', http.wrap(async (req, res) => {
     const ctx = await req.ctx();
+    http.rateLimit(get, req.userId, 'invoice');
     const stars = http.int(req.body.stars, { min: 1, max: 2500, code: 'donate_invalid' });
     const message = typeof req.body.message === 'string' ? req.body.message : '';
     const paymentService = get('paymentService');

@@ -42,9 +42,10 @@ describe('CommandHandlers flows', () => {
       getUserTimezone: jest.fn().mockResolvedValue('America/Sao_Paulo'),
       getUserPeriodStartDay: jest.fn().mockResolvedValue(5),
       getReminderSettings: jest.fn().mockResolvedValue({ reminder_enabled: true, reminder_hours: [18, 9] }),
-      getUserById: jest.fn().mockResolvedValue({ id: 1, family_mode: false })
+      getUserById: jest.fn().mockResolvedValue({ id: 1, family_mode: false }),
+      getOnboarding: jest.fn().mockResolvedValue({ answers: { status: 'completed' }, completedAt: new Date() })
     };
-    funnelService = { registerSource: jest.fn(), track: jest.fn() };
+    funnelService = { registerSource: jest.fn(), track: jest.fn(), hasEvent: jest.fn().mockResolvedValue(true) };
     stateService = { setUserState: jest.fn(), getUserState: jest.fn(), clearUserState: jest.fn() };
     premiumService = { isPremiumUser: jest.fn().mockResolvedValue(false) };
     familyService = { getUserFamily: jest.fn().mockResolvedValue(null) };
@@ -67,32 +68,84 @@ describe('CommandHandlers flows', () => {
   });
 
   describe('start', () => {
-    test('new user: registers, records source and starts onboarding with language picker', async () => {
+    test('new user: registers with the Telegram language and source, welcome with one «continue» button', async () => {
       userService.registerUser.mockResolvedValue({ id: 1, isNew: true });
       const ctx = createCtx({ text: '/start ads_tg', languageCode: 'ru' });
 
       await handlers.start(ctx);
 
-      expect(userService.registerUser).toHaveBeenCalledWith(1, 'testuser', 'Test');
-      expect(funnelService.registerSource).toHaveBeenCalledWith(1, 'ads_tg');
-      expect(funnelService.track).toHaveBeenCalledWith(1, 'registered');
+      // Язык, пояс по нему, источник и шаги воронки пишет регистрация (UserService.registerUser)
+      expect(userService.registerUser).toHaveBeenCalledWith(1, 'testuser', 'Test', { language: 'ru', source: 'ads_tg' });
       // Шаг онбординга — в callback_data, а не в памяти
       expect(stateService.setUserState).not.toHaveBeenCalled();
 
       const [text, extra] = ctx.reply.mock.calls[0];
       expect(text).toBe(`${t('ru', 'onb_welcome')}\n\n${t('ru', 'language_select')}`);
-      const data = buttons(extra.reply_markup.inline_keyboard).map((b) => b.callback_data);
-      expect(data).toEqual(expect.arrayContaining(['set_language|ru|ob', 'set_language|en|ob']));
-      expect(data.every((d) => d.startsWith('set_language|') && d.endsWith('|ob'))).toBe(true);
+      expect(extra.reply_markup.inline_keyboard).toEqual([
+        [{ text: t('ru', 'language_continue'), callback_data: 'set_language|ru|ob' }],
+        [{ text: t('ru', 'language_other'), callback_data: 'ob_language_all' }]
+      ]);
     });
 
-    test('new user with unsupported Telegram language gets English onboarding', async () => {
+    test('Ukrainian Telegram interface → Russian; welcome says until when premium is free', async () => {
       userService.registerUser.mockResolvedValue({ id: 1, isNew: true });
-      const ctx = createCtx({ languageCode: 'xx' });
+      userService.getPremiumStatus = jest.fn().mockResolvedValue({ isPremium: true, expiresAt: new Date(2026, 10, 27, 12) });
+      handlers.referralService = { getPremiumSource: jest.fn().mockResolvedValue('trial') };
+      const ctx = createCtx({ languageCode: 'uk' });
 
       await handlers.start(ctx);
 
-      expect(ctx.reply.mock.calls[0][0]).toBe(`${t('en', 'onb_welcome')}\n\n${t('en', 'language_select')}`);
+      expect(userService.registerUser).toHaveBeenCalledWith(1, 'testuser', 'Test', { language: 'ru', source: null });
+      expect(ctx.reply.mock.calls[0][0]).toBe([t('ru', 'onb_welcome'), t('ru', 'onb_trial', { date: '27.11.2026' }), t('ru', 'language_select')].join('\n\n'));
+    });
+
+    test('«Другой язык» shows the full list; unsupported Telegram language gets it right away in English', async () => {
+      const all = createCtx({ callback: true });
+      userService.getUserLanguage.mockResolvedValue('ru');
+      await handlers.onboardingLanguage(all, null, { compact: false });
+      const allData = buttons(all.editMessageText.mock.calls[0][1].reply_markup.inline_keyboard).map((b) => b.callback_data);
+      expect(allData[0]).toBe('set_language|ru|ob');
+      expect(allData).toEqual(expect.arrayContaining(['set_language|en|ob', 'set_language|kz|ob']));
+      expect(allData).not.toContain('ob_language_all');
+
+      userService.registerUser.mockResolvedValue({ id: 1, isNew: true });
+      const ctx = createCtx({ languageCode: 'xx' });
+      await handlers.start(ctx);
+      expect(userService.registerUser).toHaveBeenCalledWith(1, 'testuser', 'Test', { language: null, source: null });
+      const [text, extra] = ctx.reply.mock.calls[0];
+      expect(text).toBe(`${t('en', 'onb_welcome')}\n\n${t('en', 'language_select')}`);
+      const data = buttons(extra.reply_markup.inline_keyboard).map((b) => b.callback_data);
+      expect(data.length).toBe(Object.keys(localizationService.supportedLanguages).length);
+      expect(data.every((d) => d.startsWith('set_language|') && d.endsWith('|ob'))).toBe(true);
+    });
+
+    test('user created by the Mini App or a split link, no survey and no expenses: /start shows the welcome', async () => {
+      userService.getUserLanguage.mockResolvedValue('kz');
+      userService.getOnboarding.mockResolvedValue({ answers: null, completedAt: null });
+      funnelService.hasEvent.mockResolvedValue(false);
+      const ctx = createCtx();
+
+      await handlers.start(ctx);
+
+      const [text, extra] = ctx.reply.mock.calls[0];
+      expect(text).toBe(`${t('kz', 'onb_welcome')}\n\n${t('kz', 'language_select')}`);
+      expect(buttons(extra.reply_markup.inline_keyboard).map((b) => b.callback_data)).toEqual(['set_language|kz|ob', 'ob_language_all']);
+    });
+
+    test('split-check link: a newcomer is registered (source «split») and gets the welcome; a known user does not', async () => {
+      userService.registerUser.mockResolvedValue({ id: 1, isNew: true });
+      const ctx = createCtx({ text: '/start split_abc123def', languageCode: 'de' });
+
+      await handlers.startFromGroupLink(ctx);
+
+      expect(userService.registerUser).toHaveBeenCalledWith(1, 'testuser', 'Test', { language: 'de', source: 'split' });
+      expect(ctx.reply.mock.calls[0][0]).toBe(`${t('de', 'onb_welcome')}\n\n${t('de', 'language_select')}`);
+
+      userService.registerUser.mockResolvedValue({ id: 1, isNew: false });
+      const known = createCtx({ text: '/start gpass_abc123def', languageCode: 'de' });
+      await handlers.startFromGroupLink(known);
+      expect(userService.registerUser).toHaveBeenLastCalledWith(1, 'testuser', 'Test', { language: 'de', source: 'gpass' });
+      expect(known.reply).not.toHaveBeenCalled();
     });
 
     test('returning user: greeted in own language with main menu, no onboarding', async () => {

@@ -74,14 +74,33 @@ describe('BudgetService.checkAfterExpense', () => {
     expect(warnings.map(w => w.id).sort()).toEqual([1, 3]);
   });
 
-  test('no alerts without premium', async () => {
+  test('without premium: no 80% alerts; an exceeded budget gives one "alerts come with premium" notice per period', async () => {
+    let food = 8500;
     const service = makeService({
       premium: false,
-      spentByCategory: () => ({ 'Еда': 12000 }),
-      totalSpent: () => 12000,
-      budgets: [{ id: 1, category_name: 'Еда', amount: 10000, currency: 'RUB' }]
+      spentByCategory: () => ({ 'Еда': food }),
+      totalSpent: () => food,
+      budgets: [{ id: 1, category_name: 'Еда', amount: 10000, currency: 'RUB' }, { id: 2, category_name: 'Кафе', amount: 100, currency: 'RUB' }]
     });
     expect(await service.checkAfterExpense(1, 'Еда')).toEqual([]);
+    food = 12000;
+    const [notice, ...rest] = await service.checkAfterExpense(1, 'Еда');
+    expect(rest).toEqual([]);
+    expect(notice).toMatchObject({ id: 1, locked: true, level: 100, currency: 'RUB', spent: 12000, limit: 10000 });
+    expect(service.warningText('ru', notice)).toBe('budget_locked_notice');
+    food = 15000;
+    expect(await service.checkAfterExpense(1, 'Еда')).toEqual([]);
+    // Новый период — снова одно сообщение
+    service.expenseService.getPeriodContext = async () => ({ timezone: 'UTC', currency: 'RUB', period: { start: '2026-11-01', end: '2026-12-01' } });
+    expect((await service.checkAfterExpense(1, 'Еда')).map(w => w.locked)).toEqual([true]);
+    expect(await service.checkAfterExpense(1, 'Еда')).toEqual([]);
+  });
+
+  test('without premium and without budgets nothing is computed', async () => {
+    const service = makeService({ premium: false, spentByCategory: () => ({}), totalSpent: () => 0, budgets: [] });
+    service.expenseService.getPeriodContext = jest.fn();
+    expect(await service.checkAfterExpense(1, 'Еда')).toEqual([]);
+    expect(service.expenseService.getPeriodContext).not.toHaveBeenCalled();
   });
 });
 

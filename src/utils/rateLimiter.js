@@ -44,6 +44,21 @@ class RateLimiter {
         requests: 20,
         windowMs: 600000 // 10 минут
       },
+      // Карточка итогов (PNG рисуется на сервере и уходит фото в чат)
+      share: {
+        requests: 3,
+        windowMs: 600000 // 10 минут
+      },
+      // Настройки из Mini App, после которых бот пишет в чат (язык, «все траты в семью»)
+      settings: {
+        requests: 10,
+        windowMs: 60000 // 1 минута
+      },
+      // Счета Stars (createInvoiceLink в Telegram) и пожертвования
+      invoice: {
+        requests: 10,
+        windowMs: 60000 // 1 минута
+      },
       // Лимиты для баг-репортов
       bug_report: {
         requests: 3,

@@ -6,12 +6,23 @@ const INTL_LOCALES = { jp: 'ja', kz: 'kk' };
 
 // GET /api/me — всё для старта приложения: пользователь, язык и строки, валюта, пояс, сегодня, начало периода,
 // премиум, семья (участники, режим «все траты в семью»), контур главных экранов (homeScope), админ.
+// Приложение открыли до /start (кнопка меню, ссылка): пользователь регистрируется тем же путём, что и в боте —
+// пробный премиум, язык из initData (language_code) и пояс по нему, источник «miniapp» — и сразу может записывать траты
 module.exports = (router, { get, http }) => {
   router.get('/me', http.wrap(async (req, res) => {
-    const ctx = await req.ctx();
     const userService = get('userService');
-    const [user, premium, isAdmin, family] = await Promise.all([
-      userService.getUserById(req.userId),
+    const localization = get('localizationService');
+    let user = await userService.getUserById(req.userId);
+    if (!user) {
+      const tg = req.telegramUser || {};
+      user = await userService.registerUser(req.userId, tg.username || null, tg.first_name || null, {
+        language: localization.resolveTelegramLanguage(tg.language_code),
+        source: 'miniapp'
+      });
+    }
+    // Контекст (язык, валюта, пояс) — после регистрации: у нового пользователя он уже из его строки
+    const ctx = await req.ctx();
+    const [premium, isAdmin, family] = await Promise.all([
       userService.getPremiumStatus(req.userId),
       userService.isUserAdmin(req.userId),
       get('familyService').getUserFamily(req.userId)
@@ -29,7 +40,6 @@ module.exports = (router, { get, http }) => {
         members: members.map(m => ({ id: Number(m.id), name: m.first_name || m.username || '', username: m.username || null, role: m.role }))
       };
     }
-    const localization = get('localizationService');
     res.json({
       user: { id: req.userId, firstName: user ? user.first_name : null, username: user ? user.username : null },
       lang: ctx.lang,

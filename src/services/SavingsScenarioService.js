@@ -5,13 +5,16 @@ const { simulate } = require('../utils/savingsForecast');
 
 const HORIZON_MONTHS = 12;
 const AVERAGE_PERIODS = 3; // «как в среднем» и доход — за столько прошлых полных периодов (где были записи)
+// Сценарий по умолчанию — с него открываются сценарии в мини-приложении, им же считается взнос «авто» в накоплениях
+// (contribution): «в этом месяце»; в первый день периода темпа нет — «в среднем»; без прошлых трат — «по плану»
+const BASE_ORDER = ['current', 'average', 'plan'];
 
 // «📊 Сценарии на год» в накоплениях: сколько будет через 12 месяцев, если каждый месяц откладывать «доход − траты»
 // при трёх вариантах трат — как в среднем за прошлые периоды, по плану (общий бюджет), как идёт текущий период
 // (прогноз на его конец, utils/periodForecast). В семейном контуре (BudgetService.scopeFor) — домохозяйство: доходы,
 // все траты (личные, семейные, импорт выписок) и накопления всех участников семьи; иначе — свои.
-// Доход — средний за прошлые периоды (доходы из выписки — только зарплата, isPlannedIncome). Рост — utils/savingsForecast
-// по ставкам из «⚙️ Настройки прогноза» пользователя.
+// Доход — средний за прошлые периоды (доходы из выписки — только зарплата, isPlannedIncome): доход текущего периода
+// обычно ещё не пришёл. Рост — utils/savingsForecast по ставкам из «⚙️ Настройки прогноза» пользователя.
 class SavingsScenarioService {
   constructor({ savingsService, expenseService, budgetService, recurringExpenseService, planningRepository, familyRepository, currencyUtils }) {
     this.savingsService = savingsService;
@@ -87,9 +90,10 @@ class SavingsScenarioService {
     return series.lastIndex === series.days.length - 1 ? series.running : null;
   }
 
-  // Накопления участников: части для прогноза в основной валюте пользователя, итог, его параметры прогноза
+  // Накопления участников: части для прогноза в основной валюте пользователя, итог, его параметры прогноза.
+  // Их взносы не нужны: сценарии считают свой «доход − траты» (contribution: false)
   async savings(userId, ids, currency) {
-    const states = await Promise.all(ids.map(id => this.savingsService.getState(id)));
+    const states = await Promise.all(ids.map(id => this.savingsService.getState(id, { contribution: false })));
     const parts = [];
     let total = 0;
     for (const state of states) {
@@ -102,19 +106,16 @@ class SavingsScenarioService {
     return { parts, total, rates: { yieldRate, inflationRate, contributionGrowth } };
   }
 
-  // { family, currency, today, startDay, total, income, rates, scenarios: [{ key, spending, periods?, monthly, points }] }.
-  // income: null — доходов нет, сценарии не посчитать (scenarios пустой)
-  async build(userId) {
-    const ctx = await this.expenseService.getPeriodContext(userId, 'month', 0);
+  // Доход и варианты трат для участников ids в текущем периоде ctx: { income, variants, base } (base — ключ варианта
+  // по умолчанию, null — вариантов нет)
+  async basis(userId, ids, family, ctx) {
     const { currency, timezone, period } = ctx;
-    const { family, ids } = await this.members(userId);
     const owner = family ? { userIds: ids } : userId;
-    const [income, average, statuses, current, savings] = await Promise.all([
+    const [income, average, statuses, current] = await Promise.all([
       this.monthlyIncome(ids, ctx),
       this.averageSpending(owner, ctx),
       this.budgetService.getStatus(userId, { timezone, currency, period }),
-      this.currentSpending(owner, ids, ctx),
-      this.savings(userId, ids, currency)
+      this.currentSpending(owner, ids, ctx)
     ]);
     const total = statuses.find(b => b.category_name === null);
     const variants = [
@@ -122,13 +123,41 @@ class SavingsScenarioService {
       total && { key: 'plan', spending: total.limit },
       current !== null && { key: 'current', spending: current }
     ].filter(Boolean);
+    const base = BASE_ORDER.find(key => variants.some(v => v.key === key)) || null;
+    return { income, variants, base };
+  }
+
+  // Взнос «авто» в накоплениях (SavingsService.getState): доход − траты сценария по умолчанию — то же «Откладываешь …
+  // в месяц», что в сценариях. { amount, income, spending, key, periods } (periods — месяцев в среднем доходе) | null —
+  // дохода за прошлые периоды нет или трат не из чего взять
+  async contribution(userId) {
+    const ctx = await this.expenseService.getPeriodContext(userId, 'month', 0);
+    const { family, ids } = await this.members(userId);
+    const { income, variants, base } = await this.basis(userId, ids, family, ctx);
+    if (!income || !base) return null;
+    const { spending } = variants.find(v => v.key === base);
+    return { amount: income.amount - spending, income: income.amount, spending, key: base, periods: income.periods };
+  }
+
+  // { family, currency, today, startDay, total, parts, income, rates, base, scenarios: [{ key, spending, periods?, monthly,
+  // points }] }. income: null — доходов нет, сценарии не посчитать (scenarios пустой, base null)
+  async build(userId) {
+    const ctx = await this.expenseService.getPeriodContext(userId, 'month', 0);
+    const { family, ids } = await this.members(userId);
+    const [{ income, variants, base }, savings] = await Promise.all([
+      this.basis(userId, ids, family, ctx),
+      this.savings(userId, ids, ctx.currency)
+    ]);
     const scenarios = income ? variants.map(variant => {
       const monthly = income.amount - variant.spending;
       const { points } = simulate({ parts: savings.parts, monthly, ...savings.rates, months: HORIZON_MONTHS });
       return { ...variant, monthly, points: points.map(p => p.nominal) };
     }) : [];
     // parts — накопления по частям со ставками: мини-приложение само пересчитывает кривые (utils/savingsForecast)
-    return { family, currency, today: ctx.today, startDay: ctx.startDay, total: savings.total, parts: savings.parts, income, rates: savings.rates, scenarios };
+    return {
+      family, currency: ctx.currency, today: ctx.today, startDay: ctx.startDay, total: savings.total, parts: savings.parts,
+      income, rates: savings.rates, base: income ? base : null, scenarios
+    };
   }
 }
 

@@ -1,6 +1,7 @@
 const respond = require('../utils/respond');
 const logger = require('../utils/logger');
 const rules = require('../utils/onboarding');
+const { trialUntil } = require('../utils/trial');
 const { SAVAGE_LANGUAGES } = require('../utils/roast');
 const { generateCurrencyKeyboard, generateTimeKeyboard, DEFAULT_REMINDER_HOURS } = require('../utils/constants');
 const { getTimezoneDisplayName } = require('../utils/timezoneCalculator');
@@ -57,7 +58,8 @@ class OnboardingHandlers {
 
   // ===== Вход =====
 
-  // /start: незаконченный опрос продолжается с текущего вопроса, иначе — обычный /start
+  // /start: незаконченный опрос продолжается с текущего вопроса (вопрос, которого в этом проходе больше нет, —
+  // с первого), иначе — обычный /start
   async start(ctx) {
     const draft = await this.onboardingService.getActive(ctx.from.id).catch((error) => {
       logger.error('Failed to load onboarding', { userId: ctx.from.id, error: error.message });
@@ -65,7 +67,10 @@ class OnboardingHandlers {
     });
     // Опрос, застрявший на вопросе о времени после «Пропустить всё» (так было в прошлой версии), — закончить
     if (draft && draft.lastCall) return this.finish(ctx, draft, 'skipped');
-    if (draft) return this.show(ctx, draft, draft.step, { fresh: true });
+    if (draft) {
+      const list = rules.steps(draft);
+      return this.show(ctx, draft, list.includes(draft.step) ? draft.step : list[0], { fresh: true });
+    }
     return this.commandHandlers.start(ctx);
   }
 
@@ -461,13 +466,7 @@ class OnboardingHandlers {
 
   // Дата конца пробного периода (ДД.ММ.ГГГГ), если премиум сейчас пробный
   async trialUntil(userId) {
-    if (!this.referralService) return null;
-    const source = await this.referralService.getPremiumSource(userId).catch(() => null);
-    if (source !== 'trial') return null;
-    const status = await this.userService.getPremiumStatus(userId);
-    if (!status.isPremium || !status.expiresAt) return null;
-    const date = new Date(status.expiresAt);
-    return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${date.getFullYear()}`;
+    return trialUntil(this, userId);
   }
 
   // Кнопка законченного опроса: alert и кнопки убираем
@@ -482,14 +481,15 @@ class OnboardingHandlers {
     const userId = ctx.from.id;
     const lang = await this.lang(ctx);
     if (this.stateService.getUserState(userId) === BUDGET_STATE) this.stateService.deleteUserState(userId);
-    // Новый пользователь без своего времени: после итога — необязательный вопрос о времени (lastCall)
-    const askTime = draft.mode === 'new' && !draft.answers.timezone;
+    // Новый пользователь, чей пояс не угадан по языку: после итога — необязательный вопрос о времени (lastCall)
+    const askTime = draft.mode === 'new' && !draft.answers.timezone && !draft.answers.timezoneAuto;
     if (askTime) draft.lastCall = true;
     const finished = await this.onboardingService.finish(userId, draft, status, { language: lang });
     // Уже записывал траты (повторный проход или трата посреди опроса) — без «первой траты»
     const recorded = await this.onboardingService.hasRecorded(userId);
     const roastSample = await this.roastSample(userId, lang, finished);
-    const { text, keyboard } = this.doneScreen(lang, finished, { recorded, roastSample });
+    const trial = await this.trialUntil(userId);
+    const { text, keyboard } = this.doneScreen(lang, finished, { recorded, roastSample, trialUntil: trial });
     await this.send(ctx, finished, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
 
     // Главная клавиатура — отдельным сообщением (у сообщения одна клавиатура: inline или reply)
@@ -518,9 +518,9 @@ class OnboardingHandlers {
     }
   }
 
-  // Только то, что опрос действительно поменял (у нового пользователя — всегда пояс и напоминания: они стоят и без
-  // ответа), первый шаг и кнопки к разделам по целям
-  doneScreen(lang, draft, { recorded = false, roastSample = null } = {}) {
+  // Только то, что опрос действительно поменял (у нового пользователя — всегда пояс, напоминания и что присылать: они
+  // стоят и без ответа), пробный премиум, первый шаг и кнопки к разделам по целям
+  doneScreen(lang, draft, { recorded = false, roastSample = null, trialUntil: trial = null } = {}) {
     const t = (key, params) => this.t(lang, key, params);
     const a = draft.answers || {};
     const isNew = draft.mode === 'new';
@@ -544,6 +544,8 @@ class OnboardingHandlers {
     if (a.notify) {
       const on = rules.NOTIFY.filter((code) => a.notify[code]);
       configured.push(on.length ? t('onb_done_notify', { list: on.map((code) => plain(t(`onb_notify_${code}`))).join(', ') }) : t('onb_done_notify_none'));
+    } else if (Array.isArray(a.notifyAuto) && a.notifyAuto.length) {
+      configured.push(t('onb_done_notify', { list: a.notifyAuto.map((code) => plain(t(`onb_notify_${code}`))).join(', ') }));
     }
     if (a.roast) configured.push(t('onb_done_roast', { level: t(`roast_level_${a.roast}`) }));
     if (roastSample) configured.push(t('roast_enabled_sample', { sample: roastSample }), t('roast_enabled_when'));
@@ -551,6 +553,7 @@ class OnboardingHandlers {
     const lines = [t('onb_done_title'), ''];
     if (configured.length) lines.push(t('onb_done_configured'), ...configured);
     else lines.push(t('onb_done_nothing'));
+    if (trial) lines.push('', t('onb_trial', { date: trial }));
     lines.push('', t(recorded ? 'onb_done_next_step' : 'onb_done_first_step'));
     const inputs = this.inputOptions().filter((code) => draft.inputs.includes(code));
     if (inputs.includes('voice')) lines.push(t('onb_done_tip_voice'));

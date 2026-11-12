@@ -260,6 +260,12 @@ class ReceiptHandlers {
           });
           return;
         }
+        // «Не чек» — тоже попытка в месячном лимите (запрос к нейросети был), иначе такие фото шли бы без предела
+        if (code === 'not_receipt') {
+          await this.receiptService.addAttempt(userId, statusId, 'not_receipt');
+          await this.editStatus(ctx, statusId, `${this.t(lang, 'receipt_not_receipt')}\n\n${this.t(lang, 'receipt_attempt_counted')}`, { parse_mode: 'Markdown' });
+          return;
+        }
         await this.editStatus(ctx, statusId, this.t(lang, ERROR_KEYS[code] || 'receipt_error_unavailable', result.error.params), { parse_mode: 'Markdown' });
         return;
       }
@@ -938,9 +944,13 @@ class ReceiptHandlers {
       }
     }
     if (!warnings.length) return;
+    // Без премиума приходит одно «бюджет превышен — предупреждения с премиумом» (locked): кнопка — к тарифам
+    const button = warnings.some(warning => warning.locked)
+      ? { text: this.t(lang, 'button_premium'), callback_data: 'premium_subscription' }
+      : { text: this.t(lang, 'button_budgets'), callback_data: 'bg_menu' };
     await ctx.reply(warnings.map(warning => this.budgetService.warningText(lang, warning)).join('\n'), {
       parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: [[{ text: this.t(lang, 'button_budgets'), callback_data: 'bg_menu' }]] }
+      reply_markup: { inline_keyboard: [[button]] }
     });
   }
 

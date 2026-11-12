@@ -79,6 +79,9 @@ function makeWorld({ users: extraUsers = [] } = {}) {
         if (i.status === 'pending' && new Date(i.expires_at_utc) <= new Date()) i.status = 'expired';
       }
     }),
+    // Лимиты приглашений FamilyService: в этих сценариях не срабатывают
+    countSentSince: jest.fn(async () => 0),
+    hasRecentClosed: jest.fn(async () => false),
     updateInvitationStatusByCode: jest.fn(async (code, status) => { invitations.get(code).status = status; })
   };
 
@@ -169,14 +172,14 @@ describe('SEC-5 / Q4: username lookup', () => {
     const { service, invitations, notificationService } = makeWorld({
       users: [{ id: 5, username: 'alex', first_name: 'A' }, { id: 6, username: 'Alex', first_name: 'B' }]
     });
-    await expect(service.createInvitation(OWNER, 'alex')).rejects.toThrow('User not found');
+    await expect(service.createInvitation(OWNER, 'alex')).rejects.toThrow('Invitation unavailable');
     expect(invitations.size).toBe(0);
     expect(notificationService.sendFamilyInvitation).not.toHaveBeenCalled();
   });
 
   test('premium is checked by the real expiry, not by the users.premium flag', async () => {
     const { service, invitations } = makeWorld({ users: [{ id: 99, username: 'expired', first_name: 'E', premium: true }] });
-    await expect(service.createInvitation(OWNER, 'expired')).rejects.toThrow('User does not have premium status');
+    await expect(service.createInvitation(OWNER, 'expired')).rejects.toThrow('Invitation unavailable');
     expect(invitations.size).toBe(0);
   });
 });

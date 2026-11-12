@@ -1,4 +1,5 @@
 const respond = require('../utils/respond');
+const premiumGate = require('../utils/premiumGate');
 const { summaryHour } = require('../services/DailySummaryService');
 const { DEFAULT_REMINDER_HOURS } = require('../utils/constants');
 
@@ -490,18 +491,22 @@ class CallbackHandlers {
   // FAMILY CALLBACK HANDLERS
   // ========================================
 
+  // Кнопки семьи и своих категорий остаются в истории чата и после конца премиума: вместо тупика — что даёт
+  // функция и кнопка «⭐️ Премиум» (premiumGate)
+  familyGate(ctx, lang) {
+    return premiumGate(ctx, { localizationService: this.localizationService, lang, feature: 'family', back: 'back_to_menu' });
+  }
+
+  categoriesGate(ctx, lang) {
+    return premiumGate(ctx, { localizationService: this.localizationService, lang, feature: 'categories', back: 'back_to_settings' });
+  }
+
   async handleFamilyCreate(ctx) {
     try {
       const userId = ctx.from.id;
       const userLanguage = await this.userService.getUserLanguage(userId);
       
-      // Проверяем премиум статус
-      const isPremium = await this.premiumService.isPremiumUser(userId);
-      if (!isPremium) {
-        const premiumRequiredText = this.localizationService.getText(userLanguage, 'premium_required');
-        await ctx.answerCbQuery(premiumRequiredText);
-        return;
-      }
+      if (!(await this.premiumService.isPremiumUser(userId))) return this.familyGate(ctx, userLanguage);
       
       // Устанавливаем состояние создания семьи
       this.stateService.setUserState(userId, 'creating_family');
@@ -530,13 +535,7 @@ class CallbackHandlers {
       const userId = ctx.from.id;
       const userLanguage = await this.userService.getUserLanguage(userId);
       
-      // Проверяем премиум статус
-      const isPremium = await this.premiumService.isPremiumUser(userId);
-      if (!isPremium) {
-        const premiumRequiredText = this.localizationService.getText(userLanguage, 'premium_required');
-        await ctx.answerCbQuery(premiumRequiredText);
-        return;
-      }
+      if (!(await this.premiumService.isPremiumUser(userId))) return this.familyGate(ctx, userLanguage);
       
       // Устанавливаем состояние присоединения к семье
       this.stateService.setUserState(userId, 'joining_family');
@@ -565,13 +564,7 @@ class CallbackHandlers {
       const userId = ctx.from.id;
       const userLanguage = await this.userService.getUserLanguage(userId);
       
-      // Проверяем премиум статус
-      const isPremium = await this.premiumService.isPremiumUser(userId);
-      if (!isPremium) {
-        const premiumRequiredText = this.localizationService.getText(userLanguage, 'premium_required');
-        await ctx.answerCbQuery(premiumRequiredText);
-        return;
-      }
+      if (!(await this.premiumService.isPremiumUser(userId))) return this.familyGate(ctx, userLanguage);
       
       // Получаем информацию о семье пользователя
       const userFamily = await this.familyService.getUserFamily(userId);
@@ -639,13 +632,7 @@ class CallbackHandlers {
       const userId = ctx.from.id;
       const userLanguage = await this.userService.getUserLanguage(userId);
       
-      // Проверяем премиум статус
-      const isPremium = await this.premiumService.isPremiumUser(userId);
-      if (!isPremium) {
-        const premiumRequiredText = this.localizationService.getText(userLanguage, 'premium_required');
-        await ctx.answerCbQuery(premiumRequiredText);
-        return;
-      }
+      if (!(await this.premiumService.isPremiumUser(userId))) return this.familyGate(ctx, userLanguage);
       
       // Получаем информацию о семье пользователя
       const userFamily = await this.familyService.getUserFamily(userId);
@@ -689,13 +676,7 @@ class CallbackHandlers {
       const userId = ctx.from.id;
       const userLanguage = await this.userService.getUserLanguage(userId);
       
-      // Проверяем премиум статус
-      const isPremium = await this.premiumService.isPremiumUser(userId);
-      if (!isPremium) {
-        const premiumRequiredText = this.localizationService.getText(userLanguage, 'premium_required');
-        await ctx.answerCbQuery(premiumRequiredText);
-        return;
-      }
+      if (!(await this.premiumService.isPremiumUser(userId))) return this.familyGate(ctx, userLanguage);
       
       // Получаем информацию о семье пользователя
       const userFamily = await this.familyService.getUserFamily(userId);
@@ -785,13 +766,7 @@ class CallbackHandlers {
       const userLanguage = await this.userService.getUserLanguage(userId);
       const memberId = ctx.callbackQuery.data.split('|')[1];
       
-      // Проверяем премиум статус
-      const isPremium = await this.premiumService.isPremiumUser(userId);
-      if (!isPremium) {
-        const premiumRequiredText = this.localizationService.getText(userLanguage, 'premium_required');
-        await ctx.answerCbQuery(premiumRequiredText);
-        return;
-      }
+      if (!(await this.premiumService.isPremiumUser(userId))) return this.familyGate(ctx, userLanguage);
       
       // Получаем информацию о семье пользователя
       const userFamily = await this.familyService.getUserFamily(userId);
@@ -853,13 +828,7 @@ class CallbackHandlers {
       const userLanguage = await this.userService.getUserLanguage(userId);
       const memberId = ctx.callbackQuery.data.split('|')[1];
       
-      // Проверяем премиум статус
-      const isPremium = await this.premiumService.isPremiumUser(userId);
-      if (!isPremium) {
-        const premiumRequiredText = this.localizationService.getText(userLanguage, 'premium_required');
-        await ctx.answerCbQuery(premiumRequiredText);
-        return;
-      }
+      if (!(await this.premiumService.isPremiumUser(userId))) return this.familyGate(ctx, userLanguage);
       
       // Получаем информацию о семье пользователя
       const userFamily = await this.familyService.getUserFamily(userId);
@@ -907,13 +876,7 @@ class CallbackHandlers {
       const userId = ctx.from.id;
       const userLanguage = await this.userService.getUserLanguage(userId);
       
-      // Проверяем премиум статус
-      const isPremium = await this.premiumService.isPremiumUser(userId);
-      if (!isPremium) {
-        const premiumRequiredText = this.localizationService.getText(userLanguage, 'premium_required');
-        await ctx.answerCbQuery(premiumRequiredText);
-        return;
-      }
+      if (!(await this.premiumService.isPremiumUser(userId))) return this.familyGate(ctx, userLanguage);
       
       // Получаем информацию о семье пользователя
       const userFamily = await this.familyService.getUserFamily(userId);
@@ -950,13 +913,7 @@ class CallbackHandlers {
       const userId = ctx.from.id;
       const userLanguage = await this.userService.getUserLanguage(userId);
       
-      // Проверяем премиум статус
-      const isPremium = await this.premiumService.isPremiumUser(userId);
-      if (!isPremium) {
-        const premiumRequiredText = this.localizationService.getText(userLanguage, 'premium_required');
-        await ctx.answerCbQuery(premiumRequiredText);
-        return;
-      }
+      if (!(await this.premiumService.isPremiumUser(userId))) return this.familyGate(ctx, userLanguage);
       
       // Получаем информацию о семье пользователя
       const userFamily = await this.familyService.getUserFamily(userId);
@@ -1263,7 +1220,6 @@ class CallbackHandlers {
       const tariffsTitle = this.localizationService.getText(userLanguage, 'premium_tariffs_title');
       const paymentInfo = this.localizationService.getText(userLanguage, 'premium_payment_info');
       const renewalInfo = this.localizationService.getText(userLanguage, 'premium_renewal_info');
-      const starsInfo = this.localizationService.getText(userLanguage, 'premium_stars_info');
       const perMonth = this.localizationService.getText(userLanguage, 'per_month');
 
       const backButton = this.localizationService.getText(userLanguage, 'premium_back_button');
@@ -1320,7 +1276,7 @@ class CallbackHandlers {
         perPerson: Math.round(familyMonth.stars / FAMILY_PREMIUM.MAX_MEMBERS)
       });
 
-      let message = `${tariffsTitle}\n\n${lines}\n\n${familyLine}\n\n${paymentInfo}\n\n${renewalInfo}\n\n${starsInfo}`;
+      let message = `${tariffsTitle}\n\n${lines}\n\n${familyLine}\n\n${paymentInfo}\n\n${renewalInfo}`;
       if (subscription) {
         message += `\n\n${this.localizationService.getText(userLanguage, 'subscription_active_info', {
           date: this.formatter.formatDate(subscription.subscription_expires_at, user.timezone || 'UTC')
@@ -1351,6 +1307,7 @@ class CallbackHandlers {
       const inlineKeyboard = [
         ...buttonsWithLinks,
         [{ text: this.localizationService.getText(userLanguage, 'button_family_tariffs'), callback_data: 'pfam' }],
+        [{ text: this.localizationService.getText(userLanguage, 'premium_stars_help_button'), callback_data: 'premium_stars_help|t' }],
         [{ text: backButton, callback_data: 'premium_subscription' }]
       ];
       
@@ -1380,6 +1337,21 @@ class CallbackHandlers {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [[{ text: backButton, callback_data: 'premium_subscription' }]]
+      }
+    });
+  }
+
+  // «❓ Как купить звёзды»: звёзды покупаются в Telegram прямо в окне оплаты. «Назад» — туда, откуда открыли:
+  // premium_stars_help — экран подписки, premium_stars_help|t — тарифы
+  async handlePremiumStarsHelp(ctx) {
+    await ctx.answerCbQuery().catch(() => {});
+    const userLanguage = await this.userService.getUserLanguage(ctx.from.id);
+    const fromTariffs = ctx.callbackQuery.data.endsWith('|t');
+    await respond(ctx, this.localizationService.getText(userLanguage, 'premium_stars_help_text'), {
+      parse_mode: 'HTML',
+      disable_web_page_preview: true,
+      reply_markup: {
+        inline_keyboard: [[{ text: this.localizationService.getText(userLanguage, 'premium_back_button'), callback_data: fromTariffs ? 'premium_tariffs' : 'premium_subscription' }]]
       }
     });
   }
@@ -1421,12 +1393,7 @@ class CallbackHandlers {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
     try {
-      const isPremium = await this.premiumService.isPremiumUser(userId);
-      if (!isPremium) {
-        const text = this.localizationService.getText(userLanguage, 'custom_categories_premium_required');
-        await ctx.answerCbQuery(text, { show_alert: true });
-        return;
-      }
+      if (!(await this.premiumService.isPremiumUser(userId))) return this.categoriesGate(ctx, userLanguage);
 
       const title = this.localizationService.getText(userLanguage, 'custom_categories_title');
       const info = this.localizationService.getText(userLanguage, 'custom_categories_info');
@@ -1455,12 +1422,7 @@ class CallbackHandlers {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
     try {
-      const isPremium = await this.premiumService.isPremiumUser(userId);
-      if (!isPremium) {
-        const text = this.localizationService.getText(userLanguage, 'custom_categories_premium_required');
-        await ctx.answerCbQuery(text, { show_alert: true });
-        return;
-      }
+      if (!(await this.premiumService.isPremiumUser(userId))) return this.categoriesGate(ctx, userLanguage);
 
       // Ставим состояние ожидания имени категории
       this.stateService.setUserState(userId, 'adding_custom_category');
@@ -1482,12 +1444,7 @@ class CallbackHandlers {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
     try {
-      const isPremium = await this.premiumService.isPremiumUser(userId);
-      if (!isPremium) {
-        const text = this.localizationService.getText(userLanguage, 'custom_categories_premium_required');
-        await ctx.answerCbQuery(text, { show_alert: true });
-        return;
-      }
+      if (!(await this.premiumService.isPremiumUser(userId))) return this.categoriesGate(ctx, userLanguage);
 
       const list = await this.categoryService.getUserCategories(userId);
       const backText = this.localizationService.getText(userLanguage, 'button_back');
@@ -1540,12 +1497,7 @@ class CallbackHandlers {
     const userId = ctx.from.id;
     const userLanguage = await this.userService.getUserLanguage(userId);
     try {
-      const isPremium = await this.premiumService.isPremiumUser(userId);
-      if (!isPremium) {
-        const text = this.localizationService.getText(userLanguage, 'custom_categories_premium_required');
-        await ctx.answerCbQuery(text, { show_alert: true });
-        return;
-      }
+      if (!(await this.premiumService.isPremiumUser(userId))) return this.categoriesGate(ctx, userLanguage);
 
       const [, idStr] = ctx.callbackQuery.data.split('|');
       // Ставим состояние ожидания нового имени категории

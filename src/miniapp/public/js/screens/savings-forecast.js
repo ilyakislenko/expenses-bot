@@ -135,8 +135,8 @@ function scenarios(data) {
   if (!data.scenarios.length) {
     return page({ title: t('sav_scenarios') }, empty({ icon: 'chart', title: t('sav_scen_no_spending_title'), text: t('sav_scen_no_spending') }));
   }
-  const keys = data.scenarios.map(s => s.key);
-  const state = { base: keys.includes('current') ? 'current' : keys[0], spendingPct: 0, incomePct: 0, years: 1 };
+  // Сценарий по умолчанию выбирает сервер (SavingsScenarioService) — по нему же взнос «авто» в прогнозе
+  const state = { base: data.base, spendingPct: 0, incomePct: 0, years: 1 };
   const simulate = (monthly, months) => window.savingsForecast.simulate({ parts: data.parts, monthly, months, ...data.rates }).points.map(p => p.nominal);
 
   const hero = h('div', { class: 'hero' });

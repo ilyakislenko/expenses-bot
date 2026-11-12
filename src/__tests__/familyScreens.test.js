@@ -133,7 +133,7 @@ describe('family and personal screens are the same screens', () => {
     expect(buttons).toEqual([['ex|11|g.5.0.0', 'ex|12|g.5.0.0'], ['fovb|0']]);
   });
 
-  test('family screen without a family or premium explains why and leads to the family menu', async () => {
+  test('family screen without a family explains why; without premium it is the premium gate', async () => {
     const { handlers, deps } = build({ family: null });
     const ctx = ctxFor('fov|0');
     await handlers.showOverview(ctx, 0, { family: true });
@@ -143,7 +143,10 @@ describe('family and personal screens are the same screens', () => {
     const free = build({ premium: false });
     const freeCtx = ctxFor('fdy|0|0');
     await free.handlers.showDay(freeCtx, 0, 0, { family: true });
-    expect(screen(freeCtx).text).toBe(t('premium_required'));
+    expect(screen(freeCtx)).toEqual({
+      text: t('premium_gate_family', { stars: 249, max: 5 }),
+      buttons: [['premium_subscription'], ['back_to_menu']]
+    });
   });
 
   test('a record card returns to the family day it was opened from; old «today» buttons still work', async () => {

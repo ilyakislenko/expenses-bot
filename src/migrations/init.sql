@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS users (
     reminder_hours INTEGER[] DEFAULT NULL,
     reminder_sent_today_hours INTEGER[] DEFAULT NULL,
     is_admin BOOLEAN NOT NULL DEFAULT FALSE,
-    family_mode BOOLEAN NOT NULL DEFAULT FALSE
+    family_mode BOOLEAN NOT NULL DEFAULT FALSE,
+    blocked_at TIMESTAMP NULL
 );
 
 -- Create indexes for premium subscription fields
@@ -41,6 +42,7 @@ COMMENT ON COLUMN users.last_reminder_local_date IS 'Дата последней
 COMMENT ON COLUMN users.reminder_hours IS 'Часы отправки напоминалок в локальном времени пользователя (0-23), максимум 3';
 COMMENT ON COLUMN users.reminder_sent_today_hours IS 'Часы, по которым напоминалки уже отправлены в текущий локальный день пользователя';
 COMMENT ON COLUMN users.family_mode IS 'Режим «все траты в семью»: новые траты по умолчанию записываются в семью пользователя';
+COMMENT ON COLUMN users.blocked_at IS 'Когда Telegram ответил 403 (бот заблокирован, аккаунт удалён) или пришёл my_chat_member kicked; NULL — доступен. Сбрасывается любым апдейтом из лички';
 
 DO $$
 BEGIN
@@ -392,7 +394,7 @@ CREATE TABLE IF NOT EXISTS savings_settings (
     contribution_growth DECIMAL(6,2) NULL CHECK (contribution_growth IS NULL OR contribution_growth BETWEEN 0 AND 100),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-COMMENT ON COLUMN savings_settings.monthly_contribution IS 'Сколько откладывается в месяц (основная валюта); NULL — среднее (доходы − траты) за 3 полных периода';
+COMMENT ON COLUMN savings_settings.monthly_contribution IS 'Сколько откладывается в месяц (основная валюта); NULL — авто: средний доход за прошлые периоды − траты сценария по умолчанию (SavingsScenarioService)';
 COMMENT ON COLUMN savings_settings.contribution_growth IS 'Рост ежемесячного взноса раз в год, %';
 
 -- ========================================
@@ -759,7 +761,7 @@ CREATE TABLE IF NOT EXISTS receipt_attempts (
     outcome VARCHAR(16) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-COMMENT ON TABLE receipt_attempts IS 'Распознавания чеков без записи (draft — черновик, unreadable — не разобрано); считаются в месячный лимит вместе с receipts';
+COMMENT ON TABLE receipt_attempts IS 'Распознавания чеков без записи (draft — черновик, unreadable — не разобрано, not_receipt — на фото не чек); считаются в месячный лимит вместе с receipts';
 CREATE INDEX IF NOT EXISTS idx_receipt_attempts_user_created ON receipt_attempts(user_id, created_at);
 
 -- Фоновые задачи с сообщением-статусом («🔍 Распознаю чек…», «🎙 Распознаю голос…»): после перезапуска бота

@@ -149,6 +149,27 @@ class FamilyInvitationRepository extends BaseRepository {
     return result.rows[0].count > 0;
   }
 
+  // Сколько приглашений человек отправил за последние hours часов (любые: ожидают, приняты, отменены…)
+  async countSentSince(inviterId, hours) {
+    const result = await this.query(`
+      SELECT COUNT(*)::int AS count FROM family_invitations
+      WHERE inviter_id = $1 AND created_at_utc > NOW() - make_interval(hours => $2)
+    `, [inviterId, hours]);
+    return Number(result.rows[0].count);
+  }
+
+  // Он уже приглашал этого человека за последние hours часов, и приглашение закрыто раньше срока: отменено
+  // (статус expired до истечения суток) или отклонено. Пауза перед новым — иначе «пригласить → отменить» по кругу
+  async hasRecentClosed(inviterId, inviteeId, hours) {
+    const result = await this.query(`
+      SELECT 1 FROM family_invitations
+      WHERE inviter_id = $1 AND invitee_id = $2 AND status IN ('expired', 'rejected')
+        AND created_at_utc > NOW() - make_interval(hours => $3)
+      LIMIT 1
+    `, [inviterId, inviteeId, hours]);
+    return result.rowCount > 0;
+  }
+
   async getActiveInvitationsByFamily(familyId) {
     const query = `
       SELECT fi.*, u.username as invitee_username, u.first_name as invitee_first_name

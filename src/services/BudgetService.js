@@ -87,10 +87,12 @@ class BudgetService {
     return statuses;
   }
 
-  // После новой траты в категории: новые предупреждения по её бюджету и общему бюджету (только премиум)
+  // После новой траты в категории: новые предупреждения по её бюджету и общему бюджету (только премиум).
+  // Без премиума (пробный или тариф закончился) бюджеты хранятся: при превышении — одно сообщение за период, что
+  // предупреждения работают с премиумом (locked: true), вместо тишины
   async checkAfterExpense(userId, categoryName) {
     try {
-      if (!(await this.premiumService.isPremiumUser(userId))) return [];
+      if (!(await this.premiumService.isPremiumUser(userId))) return await this.lockedNotice(userId, categoryName);
       const context = await this.expenseService.getPeriodContext(userId, 'month', 0);
       const statuses = (await this.getStatus(userId, context))
         .filter(s => s.category_name === null || s.category_name === categoryName);
@@ -117,6 +119,18 @@ class BudgetService {
     }
   }
 
+  // Без премиума: первый превышенный бюджет (траты или весь месяц) — один раз за период (budget_locked).
+  // Бюджетов нет (почти все без премиума) — без расчёта периода и трат
+  async lockedNotice(userId, categoryName) {
+    if (!(await this.budgetRepository.getByOwner(userId)).length) return [];
+    const context = await this.expenseService.getPeriodContext(userId, 'month', 0);
+    const exceeded = (await this.getStatus(userId, context))
+      .find(s => (s.category_name === null || s.category_name === categoryName) && thresholdLevel(s.ratio) === 100);
+    if (!exceeded) return [];
+    if (!(await this.userNotificationRepository.markSent(userId, 'budget_locked', context.period.start))) return [];
+    return [{ ...exceeded, level: 100, locked: true, currency: context.currency }];
+  }
+
   budgetName(budget, lang) {
     if (budget.category_name === null) return this.localizationService.getText(lang, 'budget_total_name');
     const name = this.formatter.translateCategoryName(budget.category_name, this.localizationService, lang);
@@ -124,7 +138,8 @@ class BudgetService {
   }
 
   warningText(lang, warning) {
-    return this.localizationService.getText(lang, warning.level === 100 ? 'budget_warning_100' : 'budget_warning_80', {
+    const key = warning.locked ? 'budget_locked_notice' : (warning.level === 100 ? 'budget_warning_100' : 'budget_warning_80');
+    return this.localizationService.getText(lang, key, {
       name: this.budgetName(warning, lang),
       spent: this.formatter.formatAmount(warning.spent, warning.currency),
       limit: this.formatter.formatAmount(warning.limit, warning.currency),

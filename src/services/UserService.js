@@ -1,26 +1,47 @@
 const logger = require('../utils/logger');
 const { newUsersTotal } = require('../utils/metrics');
 const { TRIAL_PERIOD } = require('../utils/constants');
+const { LANGUAGE_TIMEZONE } = require('../utils/onboarding');
 
 class UserService {
-  constructor(userRepository, categoryRepository, premiumTransactionRepository) {
+  // funnelService — шаги воронки при регистрации (registered, trial_started) и источник нового пользователя
+  constructor(userRepository, categoryRepository, premiumTransactionRepository, funnelService = null) {
     this.userRepository = userRepository;
     this.categoryRepository = categoryRepository;
     this.premiumTransactionRepository = premiumTransactionRepository;
+    this.funnelService = funnelService;
+    // id, у которых в этом процессе уже сверили и сбросили blocked_at по апдейту из лички: следующие апдейты
+    // не ходят в БД. Пометка «заблокировал» убирает id отсюда
+    this.reachableIds = new Set();
   }
 
+  // Единственный путь регистрации: /start, ссылки дележа из группы, Mini App до /start, старые кнопки языка.
   // Возвращает строку пользователя и:
   // - isNew: true только для вызова, который действительно создал запись;
-  // - justCreated: запись создана несколько секунд назад (в т.ч. параллельным вызовом — дубль первого /start).
+  // - justCreated: запись создана несколько секунд назад (в т.ч. параллельным вызовом — дубль первого /start);
+  // - trialGranted: этот вызов выдал пробный премиум.
   // Telegraf обрабатывает пачку обновлений параллельно, поэтому два /start приходят одновременно:
   // признак «новый» берём из INSERT, а право на триал забираем атомарно.
-  async registerUser(userId, username, firstName) {
+  // language — язык бота по языку Telegram (LocalizationService.resolveTelegramLanguage; null — en): новой записи
+  // сразу ставятся он и часовой пояс по нему (utils/onboarding LANGUAGE_TIMEZONE, у en — UTC), чтобы трата до выбора
+  // языка и «сегодня» были по-человечески. У существующего пользователя язык и пояс не меняются.
+  // source — источник для воронки (код из ?start=, 'ref', 'split', 'gpass', 'miniapp'), пишется только новому
+  async registerUser(userId, username, firstName, { language = null, source = null } = {}) {
     try {
-      const created = await this.userRepository.createUser(userId, username, firstName);
+      const userLanguage = language || 'en';
+      const timezone = LANGUAGE_TIMEZONE[userLanguage] || 'UTC';
+      const created = await this.userRepository.createUser(userId, username, firstName, { language: userLanguage, timezone });
       const isNew = Boolean(created && created.is_new);
       const justCreated = isNew || Boolean(created && created.just_created);
-      if (isNew) newUsersTotal.inc({ source: 'telegram' });
+      if (isNew) {
+        newUsersTotal.inc({ source: 'telegram' });
+        if (this.funnelService) {
+          await this.funnelService.registerSource(userId, source);
+          await this.funnelService.track(userId, 'registered');
+        }
+      }
 
+      let trialGranted = false;
       if (await this.claimTrial(userId)) {
         const trialTransactionData = {
           stars: 0,
@@ -41,13 +62,15 @@ class UserService {
           await this.userRepository.query('UPDATE users SET has_trial = TRUE WHERE id = $1 AND premium_activated_at IS NULL', [userId]);
           throw error;
         }
+        trialGranted = true;
+        if (this.funnelService) await this.funnelService.track(userId, 'trial_started');
         logger.info('User registered with trial premium', { userId, isNew, trialDays: TRIAL_PERIOD.DAYS });
       } else {
         logger.info('User registered (no trial premium)', { userId, isNew });
       }
 
       const user = created || await this.userRepository.getUserById(userId);
-      return { ...user, isNew, justCreated };
+      return { ...user, isNew, justCreated, trialGranted };
     } catch (error) {
       logger.error('Failed to register user', {
         userId,
@@ -507,6 +530,20 @@ class UserService {
 
   async getAllUsersForBroadcast() {
     return this.userRepository.getAllUsersForBroadcast();
+  }
+
+  // Бот заблокирован / аккаунт удалён (403 на отправку или my_chat_member kicked): рассылки его пропускают
+  async markUnreachable(userId) {
+    this.reachableIds.delete(Number(userId));
+    if (await this.userRepository.setBlocked(userId)) logger.info('User marked unreachable', { userId });
+  }
+
+  // Апдейт из лички: пользователь снова доступен. В БД — только первый апдейт за жизнь процесса и после пометки
+  async markReachable(userId) {
+    const id = Number(userId);
+    if (this.reachableIds.has(id)) return;
+    if (await this.userRepository.clearBlocked(id)) logger.info('User reachable again', { userId: id });
+    this.reachableIds.add(id);
   }
 }
 

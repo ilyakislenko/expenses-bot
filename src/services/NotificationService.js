@@ -1,4 +1,5 @@
 const logger = require('../utils/logger');
+const { isUnreachableError } = require('../utils/telegramErrors');
 
 class NotificationService {
   constructor(localizationService, userService, formatter) {
@@ -10,6 +11,20 @@ class NotificationService {
 
   setBot(bot) {
     this.bot = bot;
+  }
+
+  // Любая отправка пользователю идёт через сюда: 403 «бот заблокирован» / «аккаунт удалён» помечает его недоступным
+  // (users.blocked_at — рассылки его пропускают, пока он снова не напишет). Ошибка пробрасывается как есть
+  async deliver(userId, send) {
+    try {
+      return await send();
+    } catch (error) {
+      if (Number(userId) > 0 && isUnreachableError(error)) {
+        await this.userService.markUnreachable(userId)
+          .catch((markError) => logger.warn('User not marked unreachable', { userId, error: markError.message }));
+      }
+      throw error;
+    }
   }
 
   async sendFamilyInvitation(inviteeId, familyName, inviterName, inviteCode) {
@@ -38,7 +53,7 @@ class NotificationService {
       const acceptText = this.localizationService.getText(userLanguage, 'accept_invitation');
       const rejectText = this.localizationService.getText(userLanguage, 'reject_invitation');
 
-      await this.bot.telegram.sendMessage(inviteeId, message, {
+      await this.deliver(inviteeId, () => this.bot.telegram.sendMessage(inviteeId, message, {
         parse_mode: 'Markdown',
         reply_markup: {
           inline_keyboard: [
@@ -48,7 +63,7 @@ class NotificationService {
             ]
           ]
         }
-      });
+      }));
 
       logger.info('Family invitation notification sent', {
         inviteeId,
@@ -80,9 +95,9 @@ class NotificationService {
         message += `\n\n${this.localizationService.getText(userLanguage, 'family_premium_lost', { family: this.formatter.escapeMarkdown(familyName) })}`;
       }
 
-      await this.bot.telegram.sendMessage(userId, message, {
+      await this.deliver(userId, () => this.bot.telegram.sendMessage(userId, message, {
         parse_mode: 'Markdown'
-      });
+      }));
 
       logger.info('Family member removed notification sent', {
         userId,
@@ -106,9 +121,9 @@ class NotificationService {
         cancelledBy: this.formatter.escapeMarkdown(cancelledBy)
       });
 
-      await this.bot.telegram.sendMessage(inviteeId, message, {
+      await this.deliver(inviteeId, () => this.bot.telegram.sendMessage(inviteeId, message, {
         parse_mode: 'Markdown'
-      });
+      }));
 
       logger.info('Invitation cancelled notification sent', {
         inviteeId,
@@ -133,7 +148,7 @@ class NotificationService {
         throw new Error('Bot not available');
       }
 
-      await this.bot.telegram.sendMessage(userId, text, options);
+      await this.deliver(userId, () => this.bot.telegram.sendMessage(userId, text, options));
       
       logger.info('Message sent successfully', { userId, textLength: text.length });
     } catch (error) {
@@ -151,7 +166,7 @@ class NotificationService {
       logger.warn('Bot not available for sending photo', { userId });
       throw new Error('Bot not available');
     }
-    await this.bot.telegram.sendPhoto(userId, { source: png, filename: 'chart.png' }, options);
+    await this.deliver(userId, () => this.bot.telegram.sendPhoto(userId, { source: png, filename: 'chart.png' }, options));
     logger.info('Photo sent successfully', { userId, bytes: png.length });
   }
 

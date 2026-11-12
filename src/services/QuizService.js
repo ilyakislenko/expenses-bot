@@ -3,6 +3,7 @@ const logger = require('../utils/logger');
 const { QUIZ } = require('../utils/constants');
 const { addDays, customPeriod } = require('../utils/period');
 const quiz = require('../utils/quiz');
+const { isUnreachableError } = require('../utils/telegramErrors');
 
 // Локали Intl для названий дней недели
 const INTL_LOCALES = { jp: 'ja', kz: 'kk' };
@@ -345,6 +346,11 @@ class QuizService {
     } catch (error) {
       await this.repo.releaseAsk(session.id, index);
       logger.warn('Quiz question not delivered', { userId: session.user_id, sessionId: session.id, index, error: error.message });
+      // Заблокировал бота посреди квиза: помечаем, иначе sweep повторял бы вопрос каждую минуту (stuckSessions)
+      if (isUnreachableError(error)) {
+        await this.userService.markUnreachable(Number(session.user_id))
+          .catch((markError) => logger.warn('User not marked unreachable', { userId: session.user_id, error: markError.message }));
+      }
       return false;
     }
   }

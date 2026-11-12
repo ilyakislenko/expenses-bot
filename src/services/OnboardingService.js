@@ -39,7 +39,7 @@ class OnboardingService {
     return draft;
   }
 
-  // mode: 'new' — сразу после выбора языка (с часовым поясом), 'setup' — повторный проход (/setup, Настройки).
+  // mode: 'new' — сразу после выбора языка, 'setup' — повторный проход (/setup, Настройки).
   // Новому пользователю основная валюта сразу ставится по языку — на шаге валюты она отмечена как текущая
   async begin(userId, mode, { language } = {}) {
     const { answers: previous } = await this.getState(userId);
@@ -50,7 +50,12 @@ class OnboardingService {
       await this.userService.setUserCurrency(userId, currency);
     }
     const draft = rules.newDraft(mode, { previous, budgetAllowed, currency, now: this.now() });
-    if (mode === 'new') await this.defaultSchedule(userId, draft, language);
+    if (mode === 'new') {
+      // Пояс, поставленный при регистрации по языку Telegram, — тоже догадка: выбран другой язык — поменяется
+      const current = await this.userService.getUserTimezone(userId);
+      if (Object.values(rules.LANGUAGE_TIMEZONE).includes(current)) draft.answers.timezoneAuto = current;
+      await this.defaultSchedule(userId, draft, language);
+    }
     await this.save(userId, draft);
     if (mode === 'new') await this.funnelService.track(userId, 'onboarding_started');
     return draft;
@@ -226,10 +231,31 @@ class OnboardingService {
     return { draft: await this.save(userId, draft), next };
   }
 
+  // Новый пользователь: вопроса «что присылать» в коротком опросе нет — включаем то, что подсказали бы цели
+  // (rules.initialNotify: «☀️ План на день», платежи при цели «подписки», сводка недели при цели «куда уходят
+  // деньги»). Только включаем, ничего не выключаем; что включено — answers.notifyAuto для итогового экрана
+  async applyNotifyDefaults(userId, draft) {
+    const options = this.notifyOptions();
+    const current = await this.currentNotify(userId);
+    const wanted = rules.initialNotify(draft, current).filter((code) => options.includes(code));
+    const enable = {
+      plan: () => this.dailyPlanService.setEnabled(userId, true),
+      daily: () => this.userService.setDailySummaryEnabled(userId, true),
+      weekly: () => this.userService.setWeeklyInsightEnabled(userId, true),
+      month: () => this.achievementService.setWrappedEnabled(userId, true),
+      bills: () => this.planningService.setBillRemindersEnabled(userId, true)
+    };
+    for (const code of wanted) {
+      if (!current[code]) await enable[code]();
+    }
+    draft.answers.notifyAuto = wanted;
+  }
+
   // status: 'completed' — дошёл до конца, 'skipped' — «Пропустить всё». language — для пояса по умолчанию у опроса,
   // начатого до этой логики
   async finish(userId, draft, status, { language = null } = {}) {
     if (language) await this.defaultSchedule(userId, draft, language);
+    if (draft.mode === 'new' && !draft.answers.notify) await this.applyNotifyDefaults(userId, draft);
     draft.status = status;
     draft.finishedAt = this.now().toISOString();
     await this.save(userId, draft, { finished: true });

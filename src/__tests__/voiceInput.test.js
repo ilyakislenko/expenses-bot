@@ -21,7 +21,7 @@ function fakeTools(transcript, { sleep = 0 } = {}) {
   const model = path.join(dir, 'model.bin');
   fs.writeFileSync(model, 'model');
   // ffmpeg: последний аргумент — WAV; копируем вход, чтобы whisper видел файл
-  fs.writeFileSync(ffmpeg, '#!/bin/sh\nin=""; prev=""; for a in "$@"; do [ "$prev" = "-i" ] && in="$a"; prev="$a"; out="$a"; done\ncp "$in" "$out"\n', { mode: 0o755 });
+  fs.writeFileSync(ffmpeg, `#!/bin/sh\necho "ffmpeg $@" >> "${argsLog}"\nin=""; prev=""; for a in "$@"; do [ "$prev" = "-i" ] && in="$a"; prev="$a"; out="$a"; done\ncp "$in" "$out"\n`, { mode: 0o755 });
   fs.writeFileSync(whisper, `#!/bin/sh
 echo "$@" >> "${argsLog}"
 of=""; f=""; prev=""; for a in "$@"; do [ "$prev" = "-of" ] && of="$a"; [ "$prev" = "-f" ] && f="$a"; prev="$a"; done
@@ -46,6 +46,16 @@ describe('whisper STT wrapper', () => {
     expect(args).toContain('-nt -np -otxt');
     expect(args).toMatch(/in\.ogg/); // файлы лежат в своей временной папке…
     expect(fs.readdirSync(os.tmpdir()).filter(name => name.startsWith('voice-')).length).toBe(before); // …и удалены
+  });
+
+  // Вход — байты пользователя: ffmpeg открывает только локальный файл и только аудиоконтейнеры записей, иначе
+  // манифест DASH/HLS заставил бы его ходить по адресам из манифеста (SSRF)
+  it('ffmpeg reads only a local file in an audio container (protocol and format whitelists before -i)', async () => {
+    const tools = fakeTools('ok');
+    const stt = new WhisperStt({ binary: tools.whisper, model: tools.model, ffmpeg: tools.ffmpeg });
+    await stt.transcribe(Buffer.from('OggS'), { language: 'ru' });
+    const line = tools.args().split('\n').find(l => l.startsWith('ffmpeg '));
+    expect(line).toMatch(/-protocol_whitelist file -format_whitelist ogg,matroska,mov,wav,mp3,aac -i \S+in\.ogg/);
   });
 
   it('kills a hung whisper after the timeout', async () => {

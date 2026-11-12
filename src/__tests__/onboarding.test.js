@@ -137,14 +137,17 @@ const lastScreen = (ctx) => {
 const t = (lang, key, params) => localizationService.getText(lang, key, params);
 
 describe('onboarding rules', () => {
-  test('budget question only with the «budget» goal and premium; timezone only for new users', () => {
+  test('new user: three questions (goals, currency, reminders); /setup: everything, budget only with the goal and premium', () => {
     const draft = rules.newDraft('new', { budgetAllowed: true });
-    expect(rules.steps(draft)).toEqual(['g', 'c', 'z', 'p', 'i', 'r', 'n', 'm']);
+    expect(rules.steps(draft)).toEqual(['g', 'c', 'r']);
     draft.goals = ['budget'];
-    expect(rules.steps(draft)).toEqual(['g', 'c', 'z', 'p', 'b', 'i', 'r', 'n', 'm']);
-    expect(rules.progress(draft, 'b')).toEqual({ n: 5, total: 9 });
-    expect(rules.steps({ ...draft, budgetAllowed: false })).not.toContain('b');
-    expect(rules.steps({ ...rules.newDraft('setup', { budgetAllowed: true }), goals: ['budget'] })).toEqual(['g', 'c', 'p', 'b', 'i', 'r', 'n', 'm']);
+    expect(rules.steps(draft)).toEqual(['g', 'c', 'r']);
+    expect(rules.progress(draft, 'r')).toEqual({ n: 3, total: 3 });
+    const setup = { ...rules.newDraft('setup', { budgetAllowed: true }), goals: ['budget'] };
+    expect(rules.steps(setup)).toEqual(['g', 'c', 'p', 'b', 'i', 'r', 'n', 'm']);
+    expect(rules.progress(setup, 'b')).toEqual({ n: 4, total: 8 });
+    expect(rules.steps({ ...setup, budgetAllowed: false })).not.toContain('b');
+    expect(rules.steps({ ...setup, goals: [] })).toEqual(['g', 'c', 'p', 'i', 'r', 'n', 'm']);
   });
 
   test('answer → settings mapping', () => {
@@ -164,30 +167,107 @@ describe('onboarding rules', () => {
   });
 });
 
-describe('full run (ru, all goals)', () => {
-  test('every answer changes the real setting, final screen lists only applied settings', async () => {
+// Повторный проход (/setup) у того, кто опрос уже прошёл: все вопросы, включая бюджет, зарплату, способы записи,
+// «что присылать» и злой режим
+async function beginSetup(env) {
+  env.store.onboarding = { ...rules.newDraft('new'), status: 'completed' };
+  env.store.completedAt = new Date();
+  const ctx = textCtx('/setup');
+  await env.onboardingHandlers.setup(ctx);
+  return ctx;
+}
+
+describe('new user: three questions', () => {
+  test('goals → currency → reminders, final screen: settings, trial until DATE, first step; goals turn on what to send', async () => {
     const env = build({ voice: true, receipt: true });
     const { store } = env;
 
-    // Язык выбран (set_language|ru|ob) — первый вопрос, валюта по языку
+    // Язык выбран (set_language|ru|ob) — первый вопрос, валюта и пояс по языку
     const first = callbackCtx('set_language|ru|ob');
     await env.onboardingHandlers.beginNew(first, 'ru');
     expect(env.funnelService.track).toHaveBeenCalledWith(1, 'onboarding_started');
+    expect(store.timezone).toBe('Europe/Moscow');
     let screen = lastScreen(first);
-    expect(screen.text).toContain(t('ru', 'onb_header', { n: 1, total: 8 }));
+    expect(screen.text).toContain(t('ru', 'onb_header', { n: 1, total: 3 }));
     expect(screen.data).toEqual(expect.arrayContaining(['onb|g|t|budget', 'onb|g|n', 'onb|g|s', 'onb|x', 'ob_language']));
     expect(first.editMessageText).toHaveBeenCalled(); // то же сообщение
 
     for (const goal of rules.GOALS) await press(env, `onb|g|t|${goal}`);
     screen = lastScreen(await press(env, 'onb|g|n'));
-    expect(screen.text).toContain('2/9'); // с бюджетом вопросов 9
+    expect(screen.text).toContain(t('ru', 'onb_header', { n: 2, total: 3 })); // бюджета у нового в опросе нет
     expect(buttons(screen.extra.reply_markup.inline_keyboard).find((b) => b.callback_data === 'set_currency|RUB|ob').text).toMatch(/^✅/);
 
     screen = lastScreen(await press(env, 'set_currency|EUR|ob'));
     expect(store.currency).toBe('EUR');
-    expect(screen.data.filter((d) => d.startsWith('time|')).length).toBe(24);
+    expect(screen.text).toContain(t('ru', 'onb_header', { n: 3, total: 3 }));
+    expect(screen.text).toContain(t('ru', 'onb_q_reminders'));
 
-    await env.onboardingHandlers.afterTimezone(callbackCtx('time|13|0|ob'), 'Europe/Moscow');
+    const done = await press(env, 'onb|r|a|me');
+    expect(store.reminder_hours).toEqual([9, 21]);
+    expect(store.reminder_enabled).toBe(true);
+    expect(env.funnelService.track).toHaveBeenCalledWith(1, 'onboarding_completed');
+    expect(store.onboarding.status).toBe('completed');
+    expect(store.completedAt).toBeInstanceOf(Date);
+    // «Что присылать» не спрашивали: по целям включены сводка недели («куда уходят») и платежи («подписки»)
+    expect(store).toMatchObject({ weekly_insight_enabled: true, bills: true, daily_summary_enabled: false });
+    expect(env.userService.setUserPeriodStartDay).not.toHaveBeenCalled();
+    expect(env.budgetService.setBudget).not.toHaveBeenCalled();
+
+    const [finalText, finalExtra] = done.editMessageText.mock.calls[done.editMessageText.mock.calls.length - 1];
+    expect(finalText).toContain(t('ru', 'onb_done_title'));
+    expect(finalText).toContain(t('ru', 'onb_done_currency', { currency: 'EUR' }));
+    expect(finalText).toContain(t('ru', 'onb_done_timezone_guess', { timezone: 'Europe/Moscow (UTC+3)' }));
+    expect(finalText).toContain(t('ru', 'onb_done_reminders', { hours: '09:00, 21:00' }));
+    expect(finalText).toContain(t('ru', 'onb_done_notify', { list: 'Сводка недели, Итоги месяца, Напоминания о платежах' }));
+    expect(finalText).toContain(t('ru', 'onb_trial', { date: '11.11.2026' }));
+    expect(finalText).toContain(t('ru', 'onb_done_first_step'));
+    expect(finalText.indexOf(t('ru', 'onb_trial', { date: '11.11.2026' }))).toBeLessThan(finalText.indexOf(t('ru', 'onb_done_first_step')));
+    expect(dataOf(finalExtra)).toEqual(['svgn', 'svbn', 'family', 'pls']);
+    // Главная клавиатура — отдельным сообщением; пояс угадан — вопроса о времени нет
+    expect(done.reply).toHaveBeenCalledTimes(1);
+    const [note, noteExtra] = done.reply.mock.calls[0];
+    expect(note).toBe(t('ru', 'onb_keyboard_note'));
+    expect(noteExtra.reply_markup.keyboard).toEqual([['MAIN']]);
+    expect(store.onboarding).toMatchObject({ goals: rules.GOALS, answers: { reminders: 'me', currency: 'EUR' } });
+  });
+
+  test('no trial line when premium is not a trial', async () => {
+    const env = build({ store: createStore({ premiumSource: 'paid' }) });
+    await env.onboardingHandlers.beginNew(callbackCtx('set_language|ru|ob'), 'ru');
+    const done = await press(env, 'onb|x');
+    expect(done.editMessageText.mock.calls[0][0]).not.toContain('🎁');
+  });
+
+  test('timezone set at registration by the Telegram language follows the language picked in the questionnaire', async () => {
+    const env = build({ store: createStore({ timezone: 'Asia/Almaty' }) });
+    await env.onboardingHandlers.beginNew(callbackCtx('set_language|de|ob'), 'de');
+    expect(env.store.timezone).toBe('Europe/Berlin');
+    expect(env.store.reminder_enabled).toBe(true);
+  });
+
+  test('a timezone the user picked is not a guess and stays', async () => {
+    const env = build({ store: createStore({ timezone: 'Etc/GMT-7' }) });
+    await env.onboardingHandlers.beginNew(callbackCtx('set_language|ru|ob'), 'ru');
+    expect(env.store.timezone).toBe('Etc/GMT-7');
+  });
+});
+
+describe('/setup: full run (ru, all goals)', () => {
+  test('every answer changes the real setting, final screen lists only applied settings', async () => {
+    const env = build({ voice: true, receipt: true });
+    const { store } = env;
+
+    const first = await beginSetup(env);
+    let screen = { text: first.reply.mock.calls[0][0] };
+    expect(screen.text).toContain(t('ru', 'onb_header', { n: 1, total: 7 }));
+
+    for (const goal of rules.GOALS) await press(env, `onb|g|t|${goal}`);
+    screen = lastScreen(await press(env, 'onb|g|n'));
+    expect(screen.text).toContain('2/8'); // с бюджетом вопросов 8
+
+    screen = lastScreen(await press(env, 'set_currency|EUR|ob'));
+    expect(store.currency).toBe('EUR');
+    expect(screen.text).toContain(t('ru', 'onb_q_payday'));
     screen = lastScreen(await press(env, 'onb|p|d'));
     expect(screen.data).toContain('onb|p|a|31');
     screen = lastScreen(await press(env, 'onb|p|a|5'));
@@ -204,7 +284,7 @@ describe('full run (ru, all goals)', () => {
     expect(env.budgetService.setBudget).toHaveBeenCalledWith(1, null, 30000, 'EUR');
     expect(env.stateService.getUserState(1)).toBeUndefined();
     expect(good.telegram.editMessageReplyMarkup).toHaveBeenCalledWith(1, 50, undefined, { inline_keyboard: [] }); // старый вопрос без кнопок
-    expect(good.reply.mock.calls[0][0]).toContain('6/9');
+    expect(good.reply.mock.calls[0][0]).toContain('5/8');
 
     for (const code of ['voice', 'receipt', 'statement']) await press(env, `onb|i|t|${code}`);
     screen = lastScreen(await press(env, 'onb|i|n'));
@@ -227,7 +307,6 @@ describe('full run (ru, all goals)', () => {
     expect(store.roast).toMatchObject({ level: 'spicy', gender: 'f' });
     expect(env.funnelService.track).toHaveBeenCalledWith(1, 'onboarding_completed');
     expect(store.onboarding.status).toBe('completed');
-    expect(store.completedAt).toBeInstanceOf(Date);
 
     const [finalText, finalExtra] = done.editMessageText.mock.calls[done.editMessageText.mock.calls.length - 1];
     expect(finalText).toContain(t('ru', 'onb_done_title'));
@@ -238,7 +317,6 @@ describe('full run (ru, all goals)', () => {
     expect(finalText).toContain(t('ru', 'onb_done_first_step'));
     expect(finalText).toContain(t('ru', 'onb_done_tip_voice'));
     expect(dataOf(finalExtra)).toEqual(['svgn', 'import', 'svbn', 'family']);
-    // Главная клавиатура — отдельным сообщением
     const [note, noteExtra] = done.reply.mock.calls[done.reply.mock.calls.length - 1];
     expect(note).toBe(t('ru', 'onb_keyboard_note'));
     expect(noteExtra.reply_markup.keyboard).toEqual([['MAIN']]);
@@ -254,7 +332,7 @@ describe('skip and skip all', () => {
     let screen = lastScreen(await press(env, 'onb|g|s'));
     expect(env.store.onboarding.goals).toEqual([]);
     expect(env.store.onboarding.skipped).toEqual(['g']);
-    expect(screen.text).toContain('2/8');
+    expect(screen.text).toContain('2/3');
     // «Пропустить всё» заканчивает опрос сразу: итог, главная клавиатура, затем необязательный вопрос о времени
     const done = await press(env, 'onb|x');
     expect(env.funnelService.track).toHaveBeenCalledWith(1, 'onboarding_skipped');
@@ -276,15 +354,15 @@ describe('skip and skip all', () => {
   test('skipping the last question completes the run', async () => {
     const env = build();
     await env.onboardingHandlers.beginNew(callbackCtx('set_language|ru|ob'), 'ru');
-    await press(env, 'onb|o|m');
-    await press(env, 'onb|m|s');
+    await press(env, 'onb|o|r');
+    await press(env, 'onb|r|s');
     expect(env.store.onboarding.status).toBe('completed');
-    expect(env.roastService.setLevel).not.toHaveBeenCalled();
+    expect(env.store.onboarding.answers.reminders).toBeUndefined();
   });
 
   test('irregular payday keeps the month from day 1', async () => {
     const env = build();
-    await env.onboardingHandlers.beginNew(callbackCtx('set_language|ru|ob'), 'ru');
+    await beginSetup(env);
     await press(env, 'onb|p|a|0');
     expect(env.store.periodStartDay).toBe(1);
     expect(env.store.onboarding.answers).toMatchObject({ payday: 0, periodDay: 1 });
@@ -294,7 +372,7 @@ describe('skip and skip all', () => {
 describe('conditional budget question', () => {
   test('without the budget goal payday leads to the input question', async () => {
     const env = build();
-    await env.onboardingHandlers.beginNew(callbackCtx('set_language|ru|ob'), 'ru');
+    await beginSetup(env);
     await press(env, 'onb|g|t|save');
     await press(env, 'onb|g|n');
     await press(env, 'onb|o|p');
@@ -317,18 +395,28 @@ describe('resume, restart and stale buttons', () => {
   test('/start mid-way shows the current question again (new message, old keyboard removed)', async () => {
     const env = build();
     await env.onboardingHandlers.beginNew(callbackCtx('set_language|ru|ob'), 'ru');
-    await press(env, 'onb|p|a|20');
+    await press(env, 'onb|g|n');
     // «Рестарт»: новые экземпляры на тех же данных
     const fresh = build({ store: env.store });
     const ctx = textCtx('/start');
     await fresh.onboardingHandlers.start(ctx);
     expect(fresh.commandHandlers.start).not.toHaveBeenCalled();
-    expect(ctx.reply.mock.calls[0][0]).toContain(t('ru', 'onb_q_input'));
+    expect(ctx.reply.mock.calls[0][0]).toContain(t('ru', 'onb_q_currency'));
     expect(ctx.telegram.editMessageReplyMarkup).toHaveBeenCalledWith(1, 50, undefined, { inline_keyboard: [] });
-    // Старая кнопка предыдущего шага продолжает с правильного места
+    // Старая кнопка продолжает с правильного места
+    await press(fresh, 'set_currency|USD|ob');
+    expect(fresh.store.onboarding.step).toBe('r');
     await press(fresh, 'onb|r|a|e');
     expect(fresh.store.reminder_hours).toEqual([21]);
-    expect(fresh.store.onboarding.step).toBe('n');
+    expect(fresh.store.onboarding.status).toBe('completed');
+  });
+
+  test('a run paused on a question the short questionnaire no longer has resumes from the first question', async () => {
+    const env = build({ store: createStore({ onboarding: { ...rules.newDraft('new'), step: 'p' } }) });
+    const ctx = textCtx('/start');
+    await env.onboardingHandlers.start(ctx);
+    expect(ctx.reply.mock.calls[0][0]).toContain(t('ru', 'onb_header', { n: 1, total: 3 }));
+    expect(ctx.reply.mock.calls[0][0]).toContain(t('ru', 'onb_q_goals'));
   });
 
   test('/start without an active run is the usual /start', async () => {
@@ -407,7 +495,7 @@ describe('expense text mid-onboarding', () => {
 
   test('«250 кофе» while the budget question waits is recorded as an expense, the question keeps waiting', async () => {
     const env = build();
-    await env.onboardingHandlers.beginNew(callbackCtx('set_language|ru|ob'), 'ru');
+    await beginSetup(env);
     await press(env, 'onb|g|t|budget');
     await press(env, 'onb|g|n');
     await press(env, 'onb|o|p');
@@ -446,7 +534,7 @@ describe('expense text mid-onboarding', () => {
 describe('roast question reuses the gender and 18+ screens', () => {
   test('savage without 18+ confirmation → existing 18+ screen with origin o → saved, run finished', async () => {
     const env = build({ store: createStore({ roast: { level: 'off', gender: 'm', adultConfirmed: false } }) });
-    await env.onboardingHandlers.beginNew(callbackCtx('set_language|ru|ob'), 'ru');
+    await beginSetup(env);
     await press(env, 'onb|o|m');
     let screen = lastScreen(await press(env, 'rstl|savage|o'));
     expect(screen.text).toContain(t('ru', 'roast_adult_title'));
@@ -459,7 +547,7 @@ describe('roast question reuses the gender and 18+ screens', () => {
 
   test('«🙂 Обычный» saves off without asking gender', async () => {
     const env = build();
-    await env.onboardingHandlers.beginNew(callbackCtx('set_language|ru|ob'), 'ru');
+    await beginSetup(env);
     await press(env, 'onb|o|m');
     await press(env, 'rstl|off|o');
     expect(env.roastService.setGender).not.toHaveBeenCalled();
@@ -496,12 +584,20 @@ describe('all 13 locales', () => {
       const calls = [...(ctx.editMessageText ? ctx.editMessageText.mock.calls : []), ...ctx.reply.mock.calls];
       for (const [text, extra] of calls) screens.push({ text, extra });
     };
+    // Новый пользователь: три вопроса и итог (со строкой о пробном премиуме)
     const begin = callbackCtx(`set_language|${lang}|ob`);
     await env.onboardingHandlers.beginNew(begin, lang);
     collect(begin);
     for (const goal of rules.GOALS) collect(await press(env, `onb|g|t|${goal}`));
     collect(await press(env, 'onb|g|n'));
-    collect(await press(env, 'onb|o|z'));
+    collect(await press(env, `set_currency|${lang === 'en' ? 'EUR' : 'USD'}|ob`));
+    collect(await press(env, 'onb|r|a|e'));
+    expect(env.store.onboarding.status).toBe('completed');
+    expect(screens.some(({ text }) => text.includes(t(lang, 'onb_trial', { date: '11.11.2026' })))).toBe(true);
+    // /setup: все остальные вопросы
+    collect(await beginSetup(env));
+    collect(await press(env, 'onb|g|t|budget'));
+    collect(await press(env, 'onb|g|n'));
     collect(await press(env, 'onb|o|p'));
     collect(await press(env, 'onb|p|d'));
     collect(await press(env, 'onb|p|a|25'));
@@ -593,8 +689,8 @@ describe('routing', () => {
 
 // Fix E: «Пропустить всё» не оставляет пояс UTC и 3 напоминания в день по UTC
 describe('skip all: timezone and reminders are not left at UTC', () => {
-  test('ru: timezone guessed from language, one evening reminder; skip all finishes at once, the time question is optional', async () => {
-    const env = build({ store: createStore({ premium: false }) });
+  test('ru: timezone guessed from language, one evening reminder; skip all finishes at once with the trial line, no time question', async () => {
+    const env = build();
     const { store } = env;
     await env.onboardingHandlers.beginNew(callbackCtx('set_language|ru|ob'), 'ru');
     expect(store.timezone).toBe('Europe/Moscow');
@@ -607,10 +703,13 @@ describe('skip all: timezone and reminders are not left at UTC', () => {
     const summary = ctx.editMessageText.mock.calls[0][0];
     expect(summary).toContain(t('ru', 'onb_done_timezone_guess', { timezone: 'Europe/Moscow (UTC+3)' }));
     expect(summary).toContain(t('ru', 'onb_done_reminders', { hours: '21:00' }));
+    // «Пропустить всё» — тоже со строкой о пробном премиуме
+    expect(summary).toContain(t('ru', 'onb_trial', { date: '11.11.2026' }));
     expect(ctx.reply.mock.calls[0][1].reply_markup.keyboard).toEqual([['MAIN']]);
-    expect(ctx.reply.mock.calls[1][0]).toBe(t('ru', 'onb_q_timezone_last', { timezone: 'Europe/Moscow (UTC+3)' }));
+    // Пояс угадан по языку — необязательного вопроса о времени нет
+    expect(ctx.reply).toHaveBeenCalledTimes(1);
 
-    // /start после этого — обычный, а не снова вопрос о времени
+    // /start после этого — обычный
     await env.onboardingHandlers.start(textCtx('/start'));
     expect(env.commandHandlers.start).toHaveBeenCalledTimes(1);
   });
@@ -675,7 +774,7 @@ describe('skip all: timezone and reminders are not left at UTC', () => {
 
   test('budget question: text without digits and a huge amount get their own hints', async () => {
     const env = build({ store: createStore({ currency: 'USD' }) });
-    env.store.onboarding = { ...rules.newDraft('new', { budgetAllowed: true }), goals: ['budget'], step: 'b' };
+    env.store.onboarding = { ...rules.newDraft('setup', { budgetAllowed: true }), goals: ['budget'], step: 'b' };
     const words = textCtx('abc');
     expect(await env.onboardingHandlers.handleBudgetInput(words, 'abc', 'ru')).toBe(true);
     expect(words.reply.mock.calls[0][0]).toBe(t('ru', 'onb_budget_need_number', { example: '30000 USD' }));

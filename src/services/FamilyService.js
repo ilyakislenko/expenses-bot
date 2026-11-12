@@ -4,6 +4,16 @@ const logger = require('../utils/logger');
 // или idx_family_invitations_pending_unique (у приглашённого уже есть ожидающее приглашение)
 const isUniqueViolation = (error) => error && error.code === '23505';
 
+// Приглашения: каждое — сообщение от бота приглашённому с названием семьи, которое задаёт приглашающий. Поэтому — не
+// больше INVITES_PER_DAY за сутки от одного человека и пауза INVITE_COOLDOWN_HOURS перед повторным приглашением
+// того же человека после отмены или отказа (иначе «пригласить → отменить» по кругу — спам от имени бота)
+const INVITES_PER_DAY = 10;
+const INVITE_COOLDOWN_HOURS = 24;
+// «Нет такого», «нет премиума», «в другой семье» — один ответ: по разным ответам видно, есть ли у любого username бот,
+// премиум и семья
+const INVITE_UNAVAILABLE = 'Invitation unavailable';
+const INVITE_LIMIT = 'Invitation limit reached';
+
 class FamilyService {
   constructor(familyRepository, familyInvitationRepository, userRepository, expenseRepository, notificationService, premiumService, familyPremiumService = null) {
     this.familyRepository = familyRepository;
@@ -168,6 +178,11 @@ class FamilyService {
         throw new Error('Only family owner can invite members');
       }
 
+      const sentToday = await this.familyInvitationRepository.countSentSince(inviterId, 24);
+      if (sentToday >= INVITES_PER_DAY) {
+        throw new Error(INVITE_LIMIT);
+      }
+
       // Username без учёта регистра; при нескольких совпадениях не угадываем, кому отправить приглашение
       const candidates = await this.userRepository.findUsersByUsername(inviteeUsername);
       if (candidates.length > 1) {
@@ -178,7 +193,8 @@ class FamilyService {
         });
       }
       if (candidates.length !== 1) {
-        throw new Error('User not found');
+        logger.info('Family service: invitee unavailable', { inviterId, reason: 'not_found' });
+        throw new Error(INVITE_UNAVAILABLE);
       }
       const invitee = candidates[0];
       invitee.id = Number(invitee.id);
@@ -188,7 +204,8 @@ class FamilyService {
       const isPremium = await this.premiumService.isPremiumUser(invitee.id)
         || (this.familyPremiumService ? await this.familyPremiumService.hasFreeSeat(inviterId, userFamily.id) : false);
       if (!isPremium) {
-        throw new Error('User does not have premium status');
+        logger.info('Family service: invitee unavailable', { inviterId, inviteeId: invitee.id, reason: 'not_premium' });
+        throw new Error(INVITE_UNAVAILABLE);
       }
 
       // Проверяем, не является ли приглашаемый уже членом семьи
@@ -196,9 +213,9 @@ class FamilyService {
       if (inviteeFamily) {
         if (inviteeFamily.id === userFamily.id) {
           throw new Error('User is already a member of your family');
-        } else {
-          throw new Error('User is already a member of another family');
         }
+        logger.info('Family service: invitee unavailable', { inviterId, inviteeId: invitee.id, reason: 'other_family' });
+        throw new Error(INVITE_UNAVAILABLE);
       }
 
       // Истёкшие приглашения переводим в expired: иначе уникальный индекс
@@ -209,6 +226,10 @@ class FamilyService {
       const hasPending = await this.familyInvitationRepository.hasPendingInvitation(invitee.id, userFamily.id);
       if (hasPending) {
         throw new Error('User already has a pending invitation');
+      }
+
+      if (await this.familyInvitationRepository.hasRecentClosed(inviterId, invitee.id, INVITE_COOLDOWN_HOURS)) {
+        throw new Error(INVITE_LIMIT);
       }
 
       let invitation;

@@ -378,7 +378,7 @@ describe('one default for reminder hours (Fix E, round 2)', () => {
         setReminderSentTodayHours: jest.fn(async () => {})
       },
       expenseService: { hasAnyExpenseToday: jest.fn(async () => false) },
-      notificationService: { localizationService, bot: { telegram: { sendMessage } } }
+      notificationService: { localizationService, sendMessage }
     };
     for (const hour of [10, 14, 18]) expect(await sendReminders(deps, new Date(`2026-10-28T${hour}:00:00Z`))).toBe(0);
     expect(await sendReminders(deps, new Date('2026-10-28T21:00:00Z'))).toBe(1);

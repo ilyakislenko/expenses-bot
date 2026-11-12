@@ -1,4 +1,7 @@
 const logger = require('../utils/logger');
+const { PREMIUM_TARIFFS, TRIAL_PERIOD, tariffDiscount } = require('../utils/constants');
+const { localToday, lastDaysPeriod } = require('../utils/period');
+const { quickTariffRows, yearPerMonthStars } = require('../utils/premiumOffer');
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
@@ -46,13 +49,20 @@ function coveredByFamily(candidate, plan) {
   return !!plan && plan.expiresAt > new Date(candidate.premium_expires_at);
 }
 
+// Сообщения о конце пробного периода — с личным итогом, ценой и тарифами
+const TRIAL_END_KEYS = ['premium_expiring_trial', 'premium_expired_trial'];
+
 class PremiumLifecycleService {
-  constructor(userNotificationRepository, notificationService, localizationService, formatter, familyPremiumService = null) {
+  constructor(userNotificationRepository, notificationService, localizationService, formatter, familyPremiumService = null, { expenseService = null, budgetService = null, paymentService = null, funnelService = null } = {}) {
     this.userNotificationRepository = userNotificationRepository;
     this.notificationService = notificationService;
     this.localizationService = localizationService;
     this.formatter = formatter;
     this.familyPremiumService = familyPremiumService;
+    this.expenseService = expenseService; // личный итог пробного периода
+    this.budgetService = budgetService;
+    this.paymentService = paymentService; // год и месяц — ссылками на счёт
+    this.funnelService = funnelService; // шаг воронки trial_ended
   }
 
   // Cron: предупреждение за 2 дня, сообщение об окончании и напоминание через неделю — по одному разу на срок;
@@ -71,14 +81,23 @@ class PremiumLifecycleService {
 
         const refKey = String(new Date(candidate.premium_expires_at).getTime());
         if (!(await this.userNotificationRepository.markSent(candidate.id, stage.kind, refKey))) continue;
+        if (stage.kind === 'premium_expired' && candidate.premium_source === 'trial' && this.funnelService) {
+          await this.funnelService.track(candidate.id, 'trial_ended');
+        }
 
         const lang = candidate.language || 'en';
         const date = this.formatter.formatDate(candidate.premium_expires_at, candidate.timezone || 'UTC');
-        const text = this.localizationService.getText(lang, textKeyFor(stage, candidate), { date });
+        const textKey = textKeyFor(stage, candidate);
+        const message = TRIAL_END_KEYS.includes(textKey)
+          ? await this.trialEndMessage(candidate, lang, textKey, date)
+          : {
+            text: this.localizationService.getText(lang, textKey, { date }),
+            keyboard: [[{ text: this.localizationService.getText(lang, 'button_view_tariffs'), callback_data: 'premium_tariffs' }]]
+          };
         // После markSent повторно не шлём, даже если пользователь заблокировал бота
-        await this.notificationService.sendMessage(candidate.id, text, {
+        await this.notificationService.sendMessage(candidate.id, message.text, {
           parse_mode: 'Markdown',
-          reply_markup: { inline_keyboard: [[{ text: this.localizationService.getText(lang, 'button_view_tariffs'), callback_data: 'premium_tariffs' }]] }
+          reply_markup: { inline_keyboard: message.keyboard }
         });
         sent++;
       } catch (error) {
@@ -93,6 +112,64 @@ class PremiumLifecycleService {
       }
     }
     return sent;
+  }
+
+  // Конец пробного: текст стадии, личный итог (если что-то записано), цена и кнопки года и месяца со ссылкой на
+  // счёт (созданы рассылкой — не шаг воронки «счёт»), ниже — все тарифы
+  async trialEndMessage(candidate, lang, textKey, date) {
+    const t = (key, params) => this.localizationService.getText(lang, key, params);
+    const year = PREMIUM_TARIFFS.MONTH_12;
+    const parts = [t(textKey, { date })];
+    const summary = await this.trialSummary(candidate, lang);
+    if (summary) parts.push(summary);
+    parts.push(t('premium_trial_price', {
+      month: PREMIUM_TARIFFS.MONTH_1.stars,
+      year: year.stars,
+      perMonth: yearPerMonthStars(),
+      percent: tariffDiscount(year).percent
+    }));
+    const payRows = await quickTariffRows(this.paymentService, this.localizationService, candidate.id, lang, { track: false });
+    return {
+      text: parts.join('\n\n'),
+      keyboard: [...payRows, [{ text: t('premium_tariff_button'), callback_data: 'premium_tariffs' }]]
+    };
+  }
+
+  // Итог последних TRIAL_PERIOD.DAYS дней (Markdown): сколько записей, самая частая категория, сколько бюджетов.
+  // Ничего не записано или данные не загрузились — без итога
+  async trialSummary(candidate, lang) {
+    if (!this.expenseService) return '';
+    const t = (key, params) => this.localizationService.getText(lang, key, params);
+    const timezone = candidate.timezone || 'UTC';
+    try {
+      const period = lastDaysPeriod(localToday(timezone), TRIAL_PERIOD.DAYS);
+      const [rows, budgets] = await Promise.all([
+        this.expenseService.getCategoryTotals(candidate.id, timezone, period),
+        this.budgetService ? this.budgetService.list(candidate.id).catch(() => []) : []
+      ]);
+      // Строки категорий — по валютам: складываем число записей по названию
+      const byName = new Map();
+      for (const row of rows) {
+        const entry = byName.get(row.name) || { name: row.name, icon: row.icon, count: 0 };
+        entry.count += Number(row.count) || 0;
+        byName.set(row.name, entry);
+      }
+      const categories = [...byName.values()];
+      const total = categories.reduce((sum, c) => sum + c.count, 0);
+      if (!total) return '';
+      const top = categories.reduce((best, c) => (c.count > best.count ? c : best));
+      const name = this.formatter.escapeMarkdown(this.formatter.translateCategoryName(top.name, this.localizationService, lang));
+      const lines = [
+        t('premium_trial_summary_title', { days: TRIAL_PERIOD.DAYS }),
+        t('premium_trial_summary_records', { count: total }),
+        t('premium_trial_summary_top', { category: `${top.icon || '📦'} ${name}` })
+      ];
+      if (budgets.length) lines.push(t('premium_trial_summary_budgets', { count: budgets.length }));
+      return lines.join('\n');
+    } catch (error) {
+      logger.warn('Trial summary not built', { userId: candidate.id, error: error.message });
+      return '';
+    }
   }
 }
 

@@ -9,6 +9,7 @@ const Formatter = require('../utils/formatter');
 const ExpenseService = require('../services/ExpenseService');
 const { localToday } = require('../utils/period');
 const { addDays } = require('../utils/period');
+const RateLimiter = require('../utils/rateLimiter');
 
 const TOKEN = '123456:TEST-token';
 const ME = 907470387;
@@ -116,6 +117,7 @@ function setup({ premium = true, family = { id: 7, owner_id: ME }, familyMode = 
       setDate: jest.fn(async () => ({ expenses: 2 }))
     }
   };
+  services.rateLimiter = new RateLimiter();
   const get = (name) => services[name];
   return { app: new MiniAppServer({ port: 0, botToken: TOKEN, get, rateLimit: 10000 }).app, services, store };
 }
@@ -247,7 +249,8 @@ describe('mini app expenses: several entries and voice', () => {
 
   test('voice: transcription with the daily limit, spoken numbers become entries; limit and setup errors', async () => {
     const { app, services } = setup();
-    const res = await request(app).post('/api/expenses/voice?duration=4').set('Authorization', auth()).set('Content-Type', 'audio/webm').send(Buffer.from('voice')).expect(200);
+    const webm = Buffer.concat([Buffer.from([0x1a, 0x45, 0xdf, 0xa3]), Buffer.alloc(40)]);
+    const res = await request(app).post('/api/expenses/voice?duration=4').set('Authorization', auth()).set('Content-Type', 'audio/webm').send(webm).expect(200);
     expect(services.voiceService.transcribe).toHaveBeenCalledWith(ME, expect.any(Buffer), expect.objectContaining({ lang: 'ru', timezone: TZ, durationSec: 4 }));
     expect(res.body.transcript).toBe('кофе двести пятьдесят такси четыреста');
     expect(res.body.entries.map(e => [e.description, e.amount])).toEqual([['кофе', 250], ['такси', 400]]);
@@ -257,6 +260,41 @@ describe('mini app expenses: several entries and voice', () => {
       .expect(400, { error: 'voice_limit', used: 20, limit: 20, premium: 300, isPremium: false });
     await request(app).post('/api/expenses/voice?duration=61').set('Authorization', auth()).set('Content-Type', 'audio/webm').send(Buffer.from('v')).expect(400);
     await request(setup({ voiceConfigured: false }).app).post('/api/expenses/voice').set('Authorization', auth()).set('Content-Type', 'audio/webm').send(Buffer.from('v')).expect(400, { error: 'voice_not_configured' });
+  });
+
+  // Находка 1: ffmpeg принимает что угодно — сюда доходит только аудиоконтейнер записи
+  test('voice: only an audio container reaches recognition (ogg, webm, mp4/m4a, wav, mp3); a DASH manifest is 400 voice_format', async () => {
+    const { app, services } = setup();
+    const send = (body, type = 'audio/webm') => request(app).post('/api/expenses/voice?duration=3').set('Authorization', auth()).set('Content-Type', type).send(body);
+    const manifest = Buffer.from('<?xml version="1.0"?><MPD xmlns="urn:mpeg:dash:schema:mpd:2011"><Period><AdaptationSet><Representation id="a"><BaseURL>http://192.168.1.1:5678/</BaseURL></Representation></AdaptationSet></Period></MPD>');
+    await send(manifest).expect(400, { error: 'voice_format' });
+    await send(Buffer.from('#EXTM3U\n#EXTINF:10,\nhttp://127.0.0.1:3001/seg.ts\n'), 'application/octet-stream').expect(400, { error: 'voice_format' });
+    await send(Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), 'audio/mp4').expect(400, { error: 'voice_format' });
+    expect(services.voiceService.transcribe).not.toHaveBeenCalled();
+
+    const pad = (head) => Buffer.concat([head, Buffer.alloc(32)]);
+    const samples = [
+      [pad(Buffer.from('OggS')), 'audio/ogg'],
+      [pad(Buffer.from([0x1a, 0x45, 0xdf, 0xa3])), 'audio/webm'],
+      [pad(Buffer.from([0, 0, 0, 0x1c, ...Buffer.from('ftypM4A ')])), 'audio/mp4'],
+      [pad(Buffer.concat([Buffer.from('RIFF'), Buffer.alloc(4), Buffer.from('WAVE')])), 'audio/wav'],
+      [pad(Buffer.from('ID3')), 'audio/mpeg'],
+      [pad(Buffer.from([0xff, 0xfb, 0x90, 0x64])), 'audio/mpeg'],
+      [pad(Buffer.from([0xff, 0xf1, 0x50, 0x80])), 'audio/aac']
+    ];
+    for (const [body, type] of samples) await send(body, type).expect(200);
+    expect(services.voiceService.transcribe).toHaveBeenCalledTimes(samples.length);
+  });
+
+  // Размер по Content-Length (413 до чтения тела) — в miniapp-uploads.test.js: supertest досылает тело и ловит EPIPE
+  test('voice: the bot voice rate limit is shared — 429 before the daily limit and recognition', async () => {
+    const { app, services } = setup();
+    for (let i = 0; i < 20; i++) services.rateLimiter.checkLimit(ME, 'voice'); // голосовые в боте
+    const over = await request(app).post('/api/expenses/voice').set('Authorization', auth()).set('Content-Type', 'audio/webm').send(Buffer.from('OggS0000000000'));
+    expect(over.status).toBe(429);
+    expect(over.body).toMatchObject({ error: 'voice_rate', retryAfter: expect.any(Number) });
+    expect(services.voiceService.checkLimit).not.toHaveBeenCalled();
+    expect(services.voiceService.transcribe).not.toHaveBeenCalled();
   });
 });
 
@@ -381,6 +419,28 @@ describe('mini app receipts', () => {
     await request(app).post('/api/receipts').set('Authorization', auth()).set('Content-Type', 'image/jpeg').send(jpeg)
       .expect(400, { error: 'receipt_limit', used: 10, limit: 10, premium: 300, isPremium: false });
     expect(services.receiptService.recognizePhoto).not.toHaveBeenCalled();
+  });
+
+  test('«not a receipt» counts as an attempt in the monthly limit (it was a model request)', async () => {
+    const { app, services } = setup();
+    services.receiptService.recognizePhoto.mockResolvedValueOnce({ error: { code: 'not_receipt' }, image: jpeg, mimeType: 'image/jpeg', attempts: 1 });
+    const job = (await request(app).post('/api/receipts').set('Authorization', auth()).set('Content-Type', 'image/jpeg').send(jpeg).expect(202)).body;
+    expect((await until(app, job.jobId, 'error')).body).toMatchObject({ status: 'error', code: 'not_receipt', canRotate: false });
+    expect(services.receiptService.addAttempt).toHaveBeenCalledWith(ME, -job.jobId, 'not_receipt');
+  });
+
+  test('receipts share the bot photo limit (20 in 10 minutes): 429 receipt_rate before the photo is read', async () => {
+    const { app, services } = setup();
+    services.receiptService.recognizePhoto.mockResolvedValue({ receipt: receipt(), image: jpeg, mimeType: 'image/jpeg', attempts: 1 });
+    for (let i = 0; i < 19; i++) services.rateLimiter.checkLimit(ME, 'receipt'); // фото в боте
+    const { body } = await request(app).post('/api/receipts').set('Authorization', auth()).set('Content-Type', 'image/jpeg').send(jpeg).expect(202);
+    await until(app, body.jobId, 'recorded');
+    const over = await request(app).post('/api/receipts').set('Authorization', auth()).set('Content-Type', 'image/jpeg').send(jpeg).expect(429);
+    expect(over.body).toMatchObject({ error: 'receipt_rate', retryAfter: expect.any(Number) });
+    expect(services.receiptService.recognizePhoto).toHaveBeenCalledTimes(1);
+    // 429 не оставил пользователя «занятым»: после окна лимита фото снова принимается
+    services.rateLimiter.resetUserLimits(ME);
+    await request(app).post('/api/receipts').set('Authorization', auth()).set('Content-Type', 'image/jpeg').send(jpeg).expect(202);
   });
 
   test('draft: view with sum check, line edit by id through draftEdit, record once, outdated — 404', async () => {

@@ -97,8 +97,9 @@ class ReceiptService {
   }
 
   // Месячный лимит распознаваний (локальный календарный месяц): записанные чеки и фото без записи — показанный
-  // черновик или «не получилось распознать» (addAttempt, одна попытка на фото, повороты её не добавляют). Сбои
-  // сервиса, «не чек» и «валюта не поддерживается» не считаются
+  // черновик, «не получилось распознать» или «на фото не чек» (addAttempt, одна попытка на фото, повороты её не
+  // добавляют: иначе фото «не чек» по кругу занимали бы нейросеть без предела). Сбои сервиса и «валюта не
+  // поддерживается» не считаются
   async checkLimit(userId, timezone) {
     const isPremium = await this.premiumService.isPremiumUser(userId);
     const limit = (isPremium ? USER_LIMITS.premium : USER_LIMITS.regular).MAX_RECEIPTS_PER_MONTH;
@@ -106,7 +107,7 @@ class ReceiptService {
     return { isPremium, limit, used, remaining: Math.max(0, limit - used) };
   }
 
-  // Фото сообщения messageId показано без записи ('draft' | 'unreadable'): засчитывается в лимит один раз (повторный
+  // Фото сообщения messageId показано без записи ('draft' | 'unreadable' | 'not_receipt'): засчитывается в лимит один раз (повторный
   // вызов для того же сообщения — та же попытка), id — в черновик
   async addAttempt(userId, messageId, outcome) {
     return this.receiptRepository.addAttempt(userId, messageId, outcome);
@@ -192,7 +193,16 @@ class ReceiptService {
     const qrTask = runImageTask('qr', image).then(result => result.qr || null).catch(() => null);
     let prep = { image, mimeType, info: { prepared: true, reused: true, small, lowResolution } };
     if (!prepared) {
-      prep = await runImageTask('prepare', image, { mimeType });
+      try {
+        prep = await runImageTask('prepare', image, { mimeType });
+      } catch (error) {
+        // Поток картинок упал (нехватка памяти на огромном кадре и т. п.): фото не разобрать — «не получилось»,
+        // без кадра для поворота (повтор упал бы так же) и без запроса к нейросети
+        if (error.code !== 'image_worker_failed') throw error;
+        await qrTask;
+        logger.warn('Receipt image rejected', { userId, error: error.message });
+        return { error: new ReceiptError('unreadable'), image: null, mimeType: null, turn: 0, attempts: 0, small: false, lowResolution: false };
+      }
       logger.info('Receipt image prepared', { userId, ...prep.info });
     }
     const isSmall = Boolean(prep.info.small);

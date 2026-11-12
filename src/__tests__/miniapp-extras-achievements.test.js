@@ -10,6 +10,7 @@ const CoinService = require('../services/CoinService');
 const Formatter = require('../utils/formatter');
 const { USER_LIMITS, COINS } = require('../utils/constants');
 const { customPeriod, localToday } = require('../utils/period');
+const RateLimiter = require('../utils/rateLimiter');
 
 const TOKEN = '123456:TEST-token';
 const OWNER = 907470387;
@@ -131,9 +132,9 @@ function server({ premium = [] } = {}) {
     notificationService, userNotificationRepository: {}, chartService: { available: true, wrappedCard: jest.fn(async () => Buffer.from('png')) },
     coinService
   });
-  const services = { localizationService, formatter, userService, premiumService, expenseService, coinService, achievementService };
+  const services = { localizationService, formatter, userService, premiumService, expenseService, coinService, achievementService, rateLimiter: new RateLimiter() };
   const get = (name) => services[name];
-  return { app: new MiniAppServer({ port: 0, botToken: TOKEN, get }).app, repo, coins, userService, notificationService };
+  return { app: new MiniAppServer({ port: 0, botToken: TOKEN, get }).app, repo, coins, userService, notificationService, services };
 }
 
 describe('mini app achievements', () => {
@@ -250,6 +251,16 @@ describe('mini app achievements', () => {
       .expect(409, { error: 'achievements_wrapped_empty' });
     await request(app).post('/api/achievements/wrapped/share').set('Authorization', auth(OWNER)).send({}).expect(400);
     expect(notificationService.sendPhoto).not.toHaveBeenCalled();
+  });
+
+  test('sharing the card: 3 times per 10 minutes, the counter is shared with the bot button (achwi)', async () => {
+    const { app, services } = server();
+    services.achievementService.shareWrapped = jest.fn(async () => 'sent');
+    services.rateLimiter.checkLimit(OWNER, 'share'); // «📤 Поделиться» в боте
+    for (let i = 0; i < 2; i++) await request(app).post('/api/achievements/wrapped/share').set('Authorization', auth(OWNER)).send({ offset: -1 }).expect(200);
+    const over = await request(app).post('/api/achievements/wrapped/share').set('Authorization', auth(OWNER)).send({ offset: -1 }).expect(429);
+    expect(over.body).toMatchObject({ error: 'achievements_share_rate', retryAfter: expect.any(Number) });
+    expect(services.achievementService.shareWrapped).toHaveBeenCalledTimes(2);
   });
 });
 

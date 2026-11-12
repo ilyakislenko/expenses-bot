@@ -10,6 +10,7 @@ const PaymentService = require('../services/PaymentService');
 const FamilyService = require('../services/FamilyService');
 const { strings } = require('../miniapp/i18n');
 const profileStrings = require('../miniapp/i18n/profile');
+const RateLimiter = require('../utils/rateLimiter');
 
 const TOKEN = '123456:TEST-token';
 const ME = 907470387;
@@ -56,7 +57,7 @@ function makeServices({ premium = true, family = null, admin = false, subscripti
       getPendingInvitations: jest.fn(async () => [{ invite_code: 'ABCD1234', family_name: 'Ивановы', inviter_first_name: 'Аня', expires_at_utc: new Date() }]),
       getActiveInvitations: jest.fn(async () => []),
       createFamily: jest.fn(async (id, name) => ({ id: 7, name })),
-      createInvitation: jest.fn(async () => { throw new Error('User does not have premium status'); }),
+      createInvitation: jest.fn(async () => { throw new Error('Invitation unavailable'); }),
       acceptInvitation: jest.fn(async () => ({ family: { id: 7, name: 'Ивановы' }, familyPremium: null })),
       getRemovableMember: jest.fn(async (owner, id) => { if (Number(id) !== 2) throw new Error('User is not a member of this family'); return { id: 2 }; }),
       removeMemberFromFamily: jest.fn(async () => ({})),
@@ -91,7 +92,8 @@ function makeServices({ premium = true, family = null, admin = false, subscripti
       getOrCreateCode: async () => 'k3m9x2p', getStats: async () => ({ invited: 2, activated: 1, days: 7, maxDays: 70, capped: false }),
       rewardDays: 7, config: { ACTIVATION_EXPENSES: 3, ACTIVATION_DAYS: 2 }
     },
-    funnelService: { track: jest.fn(async () => {}) }
+    funnelService: { track: jest.fn(async () => {}) },
+    rateLimiter: new RateLimiter()
   };
   return { services, sent };
 }
@@ -110,7 +112,7 @@ describe('mini app profile strings', () => {
       expect(Object.keys(table).sort()).toEqual(Object.keys(ru).sort());
       for (const key of Object.keys(ru)) expect([lang, key, placeholders(table[key])]).toEqual([lang, key, placeholders(ru[key])]);
     }
-    expect(strings('ru', new LocalizationService())).toMatchObject({ prof_settings_title: 'Настройки', error_user_not_premium: expect.any(String) });
+    expect(strings('ru', new LocalizationService())).toMatchObject({ prof_settings_title: 'Настройки', error_invite_unavailable: expect.any(String), error_invite_limit: expect.any(String) });
   });
 });
 
@@ -202,7 +204,7 @@ describe('family API', () => {
     const res = await request(app).get('/api/family').set('Authorization', auth()).expect(200);
     expect(res.body.family).toMatchObject({ isOwner: true, mode: false, members: [{ id: ME, role: 'owner' }, { id: 2, name: 'yulia' }] });
 
-    await request(app).post('/api/family/invitations').set('Authorization', auth()).send({ username: '@yulia' }).expect(409, { error: 'user_not_premium' });
+    await request(app).post('/api/family/invitations').set('Authorization', auth()).send({ username: '@yulia' }).expect(409, { error: 'invite_unavailable' });
     expect(services.familyService.createInvitation).toHaveBeenCalledWith(ME, 'yulia');
 
     await request(app).delete('/api/family/members/99').set('Authorization', auth()).expect(404);
@@ -286,6 +288,56 @@ describe('premium API', () => {
     const res = await request(app).get('/api/invite').set('Authorization', auth()).expect(200);
     expect(res.body).toMatchObject({ link: 'https://t.me/ExpensesAssistant_bot?start=ref_k3m9x2p', days: 7, stats: { invited: 2, activated: 1 } });
     expect(res.body.shareUrl).toMatch(/^https:\/\/t\.me\/share\/url\?url=https%3A%2F%2Ft\.me%2FExpensesAssistant_bot%3Fstart%3Dref_k3m9x2p&text=/);
+  });
+});
+
+describe('per-endpoint limits (shared rateLimiter)', () => {
+  const ownFamily = { id: 7, name: 'Ивановы', owner_id: ME, owner_first_name: 'Ilya' };
+
+  test('invitations: one generic error for not found / not premium / another family, 429 over the daily limit', async () => {
+    const { app, services } = server({ family: ownFamily });
+    await request(app).post('/api/family/invitations').set('Authorization', auth()).send({ username: 'yu' }).expect(409, { error: 'invite_unavailable' });
+    expect(services.familyService.createInvitation).not.toHaveBeenCalled();
+    services.familyService.createInvitation.mockRejectedValueOnce(new Error('Invitation limit reached'));
+    await request(app).post('/api/family/invitations').set('Authorization', auth()).send({ username: 'yulia' }).expect(429, { error: 'invite_limit' });
+    services.familyService.createInvitation.mockRejectedValueOnce(new Error('User already has a pending invitation'));
+    await request(app).post('/api/family/invitations').set('Authorization', auth()).send({ username: 'yulia' }).expect(409, { error: 'user_already_has_invitation' });
+  });
+
+  test('language and family mode (both message the chat) share 10 changes a minute', async () => {
+    const { app, services, sent } = server({ family: ownFamily });
+    for (let i = 0; i < 9; i++) await request(app).put('/api/settings/language').set('Authorization', auth()).send({ language: i % 2 ? 'ru' : 'en' }).expect(200);
+    await request(app).put('/api/family/mode').set('Authorization', auth()).send({ enabled: true }).expect(200);
+    const over = await request(app).put('/api/settings/language').set('Authorization', auth()).send({ language: 'de' }).expect(429);
+    expect(over.body).toMatchObject({ error: 'rate', retryAfter: expect.any(Number) });
+    await request(app).put('/api/family/mode').set('Authorization', auth()).send({ enabled: false }).expect(429);
+    expect(sent).toHaveLength(10);
+    expect(services.userService.setUserLanguage).not.toHaveBeenCalledWith(ME, 'de');
+    // Другой пользователь — свой счётчик
+    await request(app).put('/api/settings/language').set('Authorization', auth(5)).send({ language: 'de' }).expect(200);
+  });
+
+  test('family export shares the bot export limit (5 files in 5 minutes)', async () => {
+    const { app, services } = server({ family: { id: 7, name: 'Мы', owner_id: 5 } });
+    services.familyService.getAllFamilyExpenses = jest.fn(async () => [{ id: 1 }]);
+    services.formatter.formatCSV = jest.fn(async () => 'a;b\n');
+    services.bot.telegram = { sendDocument: jest.fn(async () => ({})) };
+    for (let i = 0; i < 4; i++) services.rateLimiter.checkLimit(ME, 'export'); // кнопки xp|… в боте
+    await request(app).post('/api/family/export').set('Authorization', auth()).expect(200);
+    await request(app).post('/api/family/export').set('Authorization', auth()).expect(429, { error: 'export_rate', retryAfter: 300 });
+    expect(services.bot.telegram.sendDocument).toHaveBeenCalledTimes(1);
+  });
+
+  test('invoices and donations: 10 a minute together, then 429 without asking Telegram', async () => {
+    const { app, services } = server({ family: ownFamily });
+    for (let i = 0; i < 4; i++) await request(app).post('/api/premium/invoice').set('Authorization', auth()).send({ duration: 365 }).expect(200);
+    for (let i = 0; i < 3; i++) await request(app).post('/api/premium/donate').set('Authorization', auth()).send({ stars: 50 }).expect(200);
+    for (let i = 0; i < 3; i++) await request(app).post('/api/family/plan/invoice').set('Authorization', auth()).send({ duration: 90 }).expect(200);
+    await request(app).post('/api/premium/invoice').set('Authorization', auth()).send({ duration: 365 }).expect(429);
+    await request(app).post('/api/premium/donate').set('Authorization', auth()).send({ stars: 50 }).expect(429);
+    await request(app).post('/api/family/plan/invoice').set('Authorization', auth()).send({ duration: 90 }).expect(429);
+    expect(services.paymentService.createInvoiceLink).toHaveBeenCalledTimes(7);
+    expect(services.paymentService.createDonation).toHaveBeenCalledTimes(3);
   });
 });
 

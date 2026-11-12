@@ -198,7 +198,7 @@ class RecurringExpenseService {
   }
 
   // Записывает трату за месяц и проверяет бюджет. null — за этот месяц уже записана.
-  // notify — сообщить пользователю (cron); при создании предупреждения показывает обработчик.
+  // notify — сообщить пользователю (cron; заблокировавшему бота — нет); при создании предупреждения показывает обработчик.
   async processRecurring(recurring, { notify }) {
     const lang = recurring.language || 'en';
     const amountText = this.formatter.formatAmount(Number(recurring.amount), recurring.currency);
@@ -213,7 +213,7 @@ class RecurringExpenseService {
 
     // Удалённая категория заменяется на системную «Другое» (см. chargeForMonth)
     const warnings = await this.budgetService.checkAfterExpense(recurring.user_id, recurring.category_name || 'Другое');
-    if (notify) {
+    if (notify && !recurring.blocked) {
       let text = this.localizationService.getText(lang, 'recurring_charged_notification', {
         icon: recurring.category_icon || '🔁', description: descriptionText, amount: amountText
       });

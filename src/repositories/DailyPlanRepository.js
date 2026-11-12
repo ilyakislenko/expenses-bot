@@ -17,10 +17,11 @@ class DailyPlanRepository extends BaseRepository {
     await this.query('UPDATE users SET daily_plan_hour = $2, daily_plan_enabled = TRUE WHERE id = $1', [userId, hour]);
   }
 
+  // Заблокировавшим бота (blocked_at) план не шлём
   async getCandidates() {
     const result = await this.query(
       `SELECT id, language, timezone, daily_plan_hour, bill_reminders_enabled, sub_warn_enabled
-       FROM users WHERE id > 0 AND daily_plan_enabled = TRUE`,
+       FROM users WHERE id > 0 AND daily_plan_enabled = TRUE AND blocked_at IS NULL`,
       []
     );
     return result.rows;

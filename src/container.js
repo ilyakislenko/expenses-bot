@@ -760,7 +760,13 @@ class Container {
           this.get('notificationService'),
           this.get('localizationService'),
           this.get('formatter'),
-          this.get('familyPremiumService')
+          this.get('familyPremiumService'),
+          {
+            expenseService: this.get('expenseService'),
+            budgetService: this.get('budgetService'),
+            paymentService: this.get('paymentService'),
+            funnelService: this.get('funnelService')
+          }
         );
 
       case 'budgetRepository':
@@ -830,12 +836,13 @@ class Container {
           this.get('referralService')
         );
 
-          case 'userService':
-      return new UserService(
-        this.get('userRepository'),
-        this.get('categoryRepository'),
-        this.get('premiumTransactionRepository')
-      );
+      case 'userService':
+        return new UserService(
+          this.get('userRepository'),
+          this.get('categoryRepository'),
+          this.get('premiumTransactionRepository'),
+          this.get('funnelService')
+        );
 
       case 'premiumService':
         return new PremiumService(
@@ -905,11 +912,11 @@ class Container {
       case 'savingsService':
         return new SavingsService({
           savingsRepository: this.get('savingsRepository'),
-          expenseService: this.get('expenseService'),
-          incomeService: this.get('incomeService'),
           userService: this.get('userService'),
           premiumService: this.get('premiumService'),
-          currencyUtils: this.get('currencyUtils')
+          currencyUtils: this.get('currencyUtils'),
+          // Лениво: savingsScenarioService сам зависит от savingsService
+          scenarios: () => this.get('savingsScenarioService')
         });
 
       case 'savingsScenarioService':

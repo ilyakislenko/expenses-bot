@@ -225,7 +225,7 @@ describe('referral attribution', () => {
       };
       const funnelService = { registerSource: jest.fn(async () => {}), track: jest.fn(async () => {}) };
       const handlers = new CommandHandlers({
-        userService: { registerUser: jest.fn(async () => registered), getUserLanguage: async () => 'ru' },
+        userService: { registerUser: jest.fn(async () => registered), getUserLanguage: async () => 'ru', getOnboarding: async () => ({ answers: { status: 'completed' }, completedAt: new Date() }) },
         localizationService: new LocalizationService(),
         funnelService,
         referralService,
@@ -235,15 +235,16 @@ describe('referral attribution', () => {
       });
       handlers.onboardingLanguage = jest.fn(async () => {});
       const ctx = { from: { id: FRIEND, first_name: 'Аня' }, message: { text: '/start ref_k3m9x2p' }, reply: jest.fn(async () => ({})) };
-      return { handlers, referralService, funnelService, ctx };
+      return { handlers, referralService, funnelService, ctx, userService: handlers.userService };
     }
 
     test('new user via ref link: attributed, inviter notified, funnel source is "ref"', async () => {
-      const { handlers, referralService, funnelService, ctx } = startHandlers({ isNew: true, justCreated: true });
+      const { handlers, referralService, userService, ctx } = startHandlers({ isNew: true, justCreated: true });
       await handlers.start(ctx);
       expect(referralService.attribute).toHaveBeenCalledWith(FRIEND, 'k3m9x2p', { isNew: true });
       expect(referralService.notifyJoined).toHaveBeenCalledWith(INVITER, ctx.from);
-      expect(funnelService.registerSource).toHaveBeenCalledWith(FRIEND, 'ref');
+      // Источник пишет регистрация (UserService.registerUser) — только новому
+      expect(userService.registerUser).toHaveBeenCalledWith(FRIEND, undefined, 'Аня', expect.objectContaining({ source: 'ref' }));
     });
 
     test('returning user via ref link: nothing is attributed', async () => {
@@ -254,10 +255,10 @@ describe('referral attribution', () => {
     });
 
     test('ad codes keep working as the source', async () => {
-      const { handlers, referralService, funnelService, ctx } = startHandlers({ isNew: true, justCreated: true });
+      const { handlers, referralService, userService, ctx } = startHandlers({ isNew: true, justCreated: true });
       ctx.message.text = '/start ads_tg1';
       await handlers.start(ctx);
-      expect(funnelService.registerSource).toHaveBeenCalledWith(FRIEND, 'ads_tg1');
+      expect(userService.registerUser).toHaveBeenCalledWith(FRIEND, undefined, 'Аня', expect.objectContaining({ source: 'ads_tg1' }));
       expect(referralService.attribute).not.toHaveBeenCalled();
     });
   });

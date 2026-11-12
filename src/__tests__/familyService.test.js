@@ -62,6 +62,7 @@ function makeWorld({ premium = [OWNER, MEMBER, OUTSIDER, OTHER_OWNER] } = {}) {
         invitee_id: String(inviteeId),
         invite_code: `CODE${id}`,
         status: 'pending',
+        created_at_utc: new Date().toISOString(),
         expires_at_utc: new Date(Date.now() + 24 * 3600 * 1000).toISOString()
       };
       invitations.set(invitation.invite_code, invitation);
@@ -75,6 +76,11 @@ function makeWorld({ premium = [OWNER, MEMBER, OUTSIDER, OTHER_OWNER] } = {}) {
         if (i.status === 'pending' && new Date(i.expires_at_utc) <= new Date()) i.status = 'expired';
       }
     }),
+    countSentSince: jest.fn(async (inviterId, hours) => [...invitations.values()]
+      .filter(i => Number(i.inviter_id) === inviterId && Date.now() - new Date(i.created_at_utc) < hours * 3600 * 1000).length),
+    hasRecentClosed: jest.fn(async (inviterId, inviteeId, hours) => [...invitations.values()]
+      .some(i => Number(i.inviter_id) === inviterId && Number(i.invitee_id) === inviteeId && ['expired', 'rejected'].includes(i.status)
+        && Date.now() - new Date(i.created_at_utc) < hours * 3600 * 1000)),
     updateInvitationStatusByCode: jest.fn(async (code, status) => { invitations.get(code).status = status; })
   };
 
@@ -189,14 +195,15 @@ describe('FamilyService.createInvitation', () => {
     await expect(service.createInvitation(OUTSIDER, 'member')).rejects.toThrow('User is not a member of any family');
   });
 
-  test('unknown username is rejected', async () => {
+  // «Нет такого», «нет премиума», «в другой семье» — один и тот же ответ: по нему не узнать чужой статус
+  test('unknown username is rejected with the generic error', async () => {
     const { service } = await withFamily();
-    await expect(service.createInvitation(OWNER, 'nobody')).rejects.toThrow('User not found');
+    await expect(service.createInvitation(OWNER, 'nobody')).rejects.toThrow('Invitation unavailable');
   });
 
-  test('a non-premium invitee is rejected', async () => {
+  test('a non-premium invitee is rejected with the generic error', async () => {
     const { service, invitations, notificationService } = await withFamily({ premium: [OWNER, MEMBER] });
-    await expect(service.createInvitation(OWNER, 'outsider')).rejects.toThrow('User does not have premium status');
+    await expect(service.createInvitation(OWNER, 'outsider')).rejects.toThrow('Invitation unavailable');
     expect(invitations.size).toBe(0);
     expect(notificationService.sendFamilyInvitation).not.toHaveBeenCalled();
   });
@@ -206,10 +213,10 @@ describe('FamilyService.createInvitation', () => {
     await expect(service.createInvitation(OWNER, 'member')).rejects.toThrow('User is already a member of your family');
   });
 
-  test('inviting someone from another family is rejected', async () => {
+  test('inviting someone from another family is rejected with the generic error', async () => {
     const { service } = await withFamily();
     await service.createFamily(OTHER_OWNER, 'Other');
-    await expect(service.createInvitation(OWNER, 'other')).rejects.toThrow('User is already a member of another family');
+    await expect(service.createInvitation(OWNER, 'other')).rejects.toThrow('Invitation unavailable');
   });
 
   test('a second pending invitation to the same user is rejected', async () => {
@@ -217,6 +224,37 @@ describe('FamilyService.createInvitation', () => {
     await service.createInvitation(OWNER, 'outsider');
     await expect(service.createInvitation(OWNER, 'outsider')).rejects.toThrow('User already has a pending invitation');
     expect(invitations.size).toBe(1);
+  });
+
+  test('invite → cancel → invite again: a day of pause, the invitee gets no third message', async () => {
+    const { service, invitations, notificationService } = await withFamily();
+    const { invitation } = await service.createInvitation(OWNER, 'outsider');
+    await service.cancelInvitation(OWNER, invitation.invite_code);
+    await expect(service.createInvitation(OWNER, 'outsider')).rejects.toThrow('Invitation limit reached');
+    expect(notificationService.sendFamilyInvitation).toHaveBeenCalledTimes(1);
+    expect(notificationService.sendInvitationCancelled).toHaveBeenCalledTimes(1);
+    // Сутки спустя — снова можно
+    invitation.created_at_utc = new Date(Date.now() - 25 * 3600 * 1000).toISOString();
+    await expect(service.createInvitation(OWNER, 'outsider')).resolves.toBeDefined();
+    expect(invitations.size).toBe(2);
+  });
+
+  test('a refused invitation also pauses re-inviting the same person for a day', async () => {
+    const { service } = await withFamily();
+    const { invitation } = await service.createInvitation(OWNER, 'outsider');
+    await service.rejectInvitation(OUTSIDER, invitation.invite_code);
+    await expect(service.createInvitation(OWNER, 'outsider')).rejects.toThrow('Invitation limit reached');
+  });
+
+  test('no more than 10 invitations a day from one person', async () => {
+    const { service, invitations, notificationService } = await withFamily();
+    for (let i = 0; i < 10; i++) {
+      invitations.set(`OLD${i}`, { id: 100 + i, family_id: 1, inviter_id: String(OWNER), invitee_id: String(200 + i), invite_code: `OLD${i}`, status: 'expired', created_at_utc: new Date().toISOString() });
+    }
+    await expect(service.createInvitation(OWNER, 'outsider')).rejects.toThrow('Invitation limit reached');
+    expect(notificationService.sendFamilyInvitation).not.toHaveBeenCalled();
+    invitations.get('OLD0').created_at_utc = new Date(Date.now() - 25 * 3600 * 1000).toISOString();
+    await expect(service.createInvitation(OWNER, 'outsider')).resolves.toBeDefined();
   });
 });
 
@@ -315,6 +353,41 @@ describe('FamilyService.cancelInvitation', () => {
     await expect(service.cancelInvitation(MEMBER, invitation.invite_code))
       .rejects.toThrow('Only family owner or invitation creator can cancel invitation');
     expect(invitations.get(invitation.invite_code).status).toBe('pending');
+  });
+});
+
+// Бот (ввод username после «Пригласить»): те же ответы, что в Mini App — общий «не получилось пригласить» и лимит
+describe('bot: inviting by username', () => {
+  const MessageHandlers = require('../handlers/messages');
+  const LocalizationService = require('../services/LocalizationService');
+  const localizationService = new LocalizationService();
+  const t = (key) => localizationService.getText('ru', key);
+
+  async function invite(world, username) {
+    const handlers = new MessageHandlers({
+      familyService: world.service, localizationService, stateService: { deleteUserState: jest.fn() },
+      formatter: { escapeMarkdown: (s) => s }
+    });
+    const ctx = { from: { id: OWNER }, reply: jest.fn(async () => ({})) };
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    await handlers.handleInviteMember(ctx, username, 'ru');
+    return ctx.reply.mock.calls[0][0];
+  }
+
+  test('not found, not premium and another family read the same; over the limit — «too many invitations»', async () => {
+    const world = await withFamily({ premium: [OWNER, MEMBER, OTHER_OWNER] });
+    await world.service.createFamily(OTHER_OWNER, 'Other');
+    expect(await invite(world, 'nobody')).toBe(t('invite_unavailable'));
+    expect(await invite(world, 'outsider')).toBe(t('invite_unavailable')); // без премиума
+    expect(await invite(world, '@other')).toBe(t('invite_unavailable')); // в другой семье
+    expect(await invite(world, 'ab')).toBe(t('invite_unavailable'));
+    expect(t('invite_unavailable')).not.toBe('invite_unavailable');
+
+    for (let i = 0; i < 10; i++) {
+      world.invitations.set(`OLD${i}`, { id: 100 + i, family_id: 1, inviter_id: String(OWNER), invitee_id: String(200 + i), invite_code: `OLD${i}`, status: 'expired', created_at_utc: new Date().toISOString() });
+    }
+    expect(await invite(world, 'outsider')).toBe(t('invite_limit'));
+    expect(t('invite_limit')).not.toBe('invite_limit');
   });
 });
 

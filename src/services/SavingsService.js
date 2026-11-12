@@ -2,7 +2,6 @@ const logger = require('../utils/logger');
 const { monthsToTarget, requiredMonthly } = require('../utils/savingsForecast');
 const { localToday } = require('../utils/period');
 
-const AUTO_PERIODS = 3; // взнос «авто» — среднее (доходы − траты) за столько последних полных периодов
 const MAX_ACCOUNTS = 10; // дополнительных счетов (наличные, вклад, крипта…) — бесплатно
 const MAX_DEBTS = 10; // долгов (кредит, ипотека, рассрочка, долг другу) — бесплатно
 
@@ -23,23 +22,19 @@ function dateOnly(value) {
 }
 
 class SavingsService {
-  constructor({ savingsRepository, expenseService, incomeService, userService, premiumService, currencyUtils }) {
+  // scenarios() — SavingsScenarioService: взнос «авто» считается по базе сценариев. Функция, а не сам сервис: сценарии
+  // читают накопления участников через этот сервис (getState), прямая ссылка замкнулась бы в DI-контейнере
+  constructor({ savingsRepository, userService, premiumService, currencyUtils, scenarios }) {
     this.savingsRepository = savingsRepository;
-    this.expenseService = expenseService;
-    this.incomeService = incomeService;
     this.userService = userService;
     this.premiumService = premiumService;
     this.currencyUtils = currencyUtils;
+    this.scenarios = scenarios;
   }
 
   async toCurrency(amount, from, to) {
     if (!amount || from === to) return amount;
     return this.currencyUtils.convert(amount, from, to);
-  }
-
-  async sumIn(byCurrency, currency) {
-    const parts = await Promise.all(byCurrency.map(row => this.toCurrency(Number(row.total), row.currency, currency)));
-    return parts.reduce((sum, value) => sum + value, 0);
   }
 
   // Числа вместо строк DECIMAL; незаданные ставки — 0, взнос null — «авто»
@@ -54,31 +49,12 @@ class SavingsService {
     };
   }
 
-  // Среднее (доходы − траты) за последние полные периоды, где записан хоть один доход: без доходов разница
-  // была бы просто «минус траты». null — таких периодов нет.
-  async autoMonthly(userId, currency) {
-    const samples = [];
-    for (let offset = -1; offset >= -AUTO_PERIODS; offset--) {
-      const { timezone, period } = await this.expenseService.getPeriodContext(userId, 'month', offset);
-      const [incomes, expenses] = await Promise.all([
-        this.incomeService.getTotals(userId, timezone, period),
-        this.expenseService.getTotals(userId, timezone, period)
-      ]);
-      if (!incomes.count) continue;
-      samples.push({
-        income: await this.sumIn(incomes.byCurrency, currency),
-        expenses: await this.sumIn(expenses.byCurrency, currency)
-      });
-    }
-    if (!samples.length) return null;
-    const income = samples.reduce((sum, s) => sum + s.income, 0) / samples.length;
-    const expenses = samples.reduce((sum, s) => sum + s.expenses, 0) / samples.length;
-    return { amount: income - expenses, income, expenses, periods: samples.length };
-  }
-
   // Всё для экранов раздела: копилки с суммами в основной валюте, итог, параметры, взнос в месяц.
   // Долги — не накопления: в total, parts и цели «от всех накоплений» не входят, только в debtTotal и netWorth.
-  async getState(userId) {
+  // Взнос: вручную из настроек, иначе «авто» — SavingsScenarioService.contribution (доход − траты сценария по
+  // умолчанию, тот же контур семьи), null — дохода за прошлые периоды нет. contribution: false — без «авто»
+  // (сценариям и проверке достижений нужны только суммы, а расчёт по доходам и тратам не бесплатный)
+  async getState(userId, { contribution = true } = {}) {
     const currency = await this.userService.getUserCurrency(userId);
     await this.savingsRepository.ensureGeneralPot(userId, currency);
     const [rows, settingsRow, timezone] = await Promise.all([
@@ -100,7 +76,7 @@ class SavingsService {
     const total = assets.reduce((sum, p) => sum + p.balanceMain, 0);
     const debtTotal = debts.reduce((sum, p) => sum + p.balanceMain, 0);
     const settings = this.normalizeSettings(settingsRow);
-    const auto = settings.manualMonthly === null ? await this.autoMonthly(userId, currency) : null;
+    const auto = settings.manualMonthly === null && contribution ? await this.scenarios().contribution(userId) : null;
     const monthly = settings.manualMonthly !== null ? settings.manualMonthly : (auto ? auto.amount : null);
     return {
       currency,
@@ -161,7 +137,8 @@ class SavingsService {
   // (накоплений и так больше), это не достижение — achieved_at = created_at, без поздравления; «🏆 Мечта сбылась»
   // считает только цели с achieved_at позже создания (AchievementRepository.getStats)
   async checkAchievements(userId, { createdGoalId = null } = {}) {
-    const state = await this.getState(userId);
+    // Достигнута ли цель — только по суммам, взнос не нужен
+    const state = await this.getState(userId, { contribution: false });
     const achieved = [];
     for (const goal of state.goals) {
       const status = await this.goalStatus(goal, state);

@@ -46,11 +46,12 @@ class QuizRepository extends BaseRepository {
     await this.query('UPDATE users SET quiz_invites_enabled = $2 WHERE id = $1', [userId, !!enabled]);
   }
 
-  // Кандидаты для приглашения: включено и не меньше minRecords своих трат (не авто-записей регулярных) с since
+  // Кандидаты для приглашения: включено, бот не заблокирован и не меньше minRecords своих трат (не авто-записей
+  // регулярных) с since
   async getInviteCandidates(minRecords, since) {
     const result = await this.query(
       `SELECT u.id, u.language, u.timezone FROM users u
-       WHERE u.id > 0 AND u.quiz_invites_enabled = TRUE
+       WHERE u.id > 0 AND u.quiz_invites_enabled = TRUE AND u.blocked_at IS NULL
          AND (SELECT COUNT(*) FROM expenses e
               WHERE e.user_id = u.id AND e.recurring_expense_id IS NULL AND e.created_at_utc >= $2) >= $1`,
       [minRecords, since]
@@ -162,7 +163,8 @@ class QuizRepository extends BaseRepository {
   }
 
   // Активные сессии, у которых текущий вопрос так и не отправлен (перезапуск между ответом и следующим вопросом).
-  // Прошлый вопрос задан в Mini App (poll_id a…) — следующий ждёт «Дальше» в приложении, в чат его не шлём
+  // Прошлый вопрос задан в Mini App (poll_id a…) — следующий ждёт «Дальше» в приложении, в чат его не шлём.
+  // Заблокировавшим бота (blocked_at) не шлём: иначе 403 каждую минуту, пока сессия активна
   async stuckSessions(now, idleMs, limit = 50) {
     const result = await this.query(
       `SELECT ${SESSION_COLUMNS} FROM quiz_sessions s
@@ -170,6 +172,7 @@ class QuizRepository extends BaseRepository {
          AND NOT EXISTS (SELECT 1 FROM quiz_polls p WHERE p.session_id = s.id AND p.question_index = s.current_index)
          AND NOT EXISTS (SELECT 1 FROM quiz_polls p WHERE p.session_id = s.id AND p.question_index = s.current_index - 1 AND p.poll_id LIKE 'a%')
          AND COALESCE(s.asked_at, s.started_at) < $1::timestamptz - make_interval(secs => $2::float / 1000)
+         AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id = s.user_id AND u.blocked_at IS NOT NULL)
        ORDER BY s.id LIMIT $3`,
       [now, idleMs, limit]
     );
@@ -323,12 +326,12 @@ class QuizRepository extends BaseRepository {
     return result.rowCount > 0;
   }
 
-  // Выданные, но не объявленные призы: по пользователю и неделе
+  // Выданные, но не объявленные призы: по пользователю и неделе. Заблокировавшим бота — когда вернутся
   async unannouncedPrizes(limit = 200) {
     const result = await this.query(
       `SELECT p.id, ${DAY('p.week_key')} AS week_key, p.user_id, p.kind, p.days, u.language, u.timezone, u.premium_expires_at
        FROM quiz_prizes p JOIN users u ON u.id = p.user_id
-       WHERE p.granted_at IS NOT NULL AND p.notified_at IS NULL ORDER BY p.id LIMIT $1`,
+       WHERE p.granted_at IS NOT NULL AND p.notified_at IS NULL AND u.blocked_at IS NULL ORDER BY p.id LIMIT $1`,
       [limit]
     );
     return result.rows;

@@ -263,21 +263,22 @@ class AchievementRepository extends BaseRepository {
 
   // ---------- Cron ----------
 
+  // Заблокировавших бота (blocked_at) не выбираем: итоги челленджа подведём и пришлём, когда вернётся
   async getUsersWithActiveChallenges() {
     const result = await this.query(
       `SELECT u.id, u.language, u.timezone FROM users u
-       WHERE u.id > 0 AND EXISTS (SELECT 1 FROM user_challenges c WHERE c.user_id = u.id AND c.status = 'active')`,
+       WHERE u.id > 0 AND u.blocked_at IS NULL AND EXISTS (SELECT 1 FROM user_challenges c WHERE c.user_id = u.id AND c.status = 'active')`,
       []
     );
     return result.rows;
   }
 
-  // «Итоги месяца»: записывали траты за 45 дней и не отключили итоги
+  // «Итоги месяца»: записывали траты за 45 дней, не отключили итоги и не заблокировали бота
   async getWrappedCandidates() {
     const result = await this.query(
       `SELECT u.id, u.language, u.timezone, u.period_start_day FROM users u
        LEFT JOIN user_gamification g ON g.user_id = u.id
-       WHERE u.id > 0 AND COALESCE(g.wrapped_enabled, TRUE)
+       WHERE u.id > 0 AND u.blocked_at IS NULL AND COALESCE(g.wrapped_enabled, TRUE)
          AND EXISTS (SELECT 1 FROM expenses e WHERE e.user_id = u.id AND e.recurring_expense_id IS NULL
                      AND e.created_at_utc > NOW() - INTERVAL '45 days')`,
       []

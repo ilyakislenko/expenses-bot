@@ -54,7 +54,7 @@ function statsScreen() {
   return async(() => api.get('/admin/stats'), (s) => page({ title: t('prof_adm_stats') },
     heading(t('prof_adm_users')),
     stats([
-      { label: t('prof_adm_total'), value: number(s.users.total) },
+      { label: t('prof_adm_total'), value: number(s.users.total), hint: t('prof_adm_blocked', { n: s.users.blocked }) },
       { label: t('prof_adm_new_week'), value: number(s.users.newWeek), hint: t('prof_adm_new_month', { n: s.users.newMonth }) },
       { label: t('prof_adm_premium_now'), value: number(s.users.activePremium), hint: t('prof_adm_ever', { n: s.users.everPremium }) },
       { label: t('prof_adm_admins'), value: number(s.users.admins) }
@@ -81,10 +81,13 @@ function funnelScreen(ctx) {
   const days = Number(ctx.query.days || 30);
   const block = (title, r) => section({ title },
     row({ title: t('prof_adm_f_registered'), value: number(r.registered) }),
+    row({ title: t('prof_adm_f_trial'), value: number(r.trial_started), valueNote: share(r.trial_started, r.registered) }),
     row({ title: t('prof_adm_f_onboarded'), value: number(r.onboarded), valueNote: share(r.onboarded, r.registered) }),
     row({ title: t('prof_adm_f_first'), value: number(r.first_expense), valueNote: share(r.first_expense, r.registered) }),
     row({ title: t('prof_adm_f_returned'), value: number(r.returned_week2), valueNote: share(r.returned_week2, r.registered) }),
     row({ title: t('prof_adm_f_paywall'), value: number(r.paywall_viewed), valueNote: t('prof_adm_f_tariffs', { n: r.tariffs_viewed }) }),
+    row({ title: t('prof_adm_f_invoice'), value: number(r.invoice_created), valueNote: share(r.invoice_created, r.registered) }),
+    row({ title: t('prof_adm_f_trial_ended'), value: number(r.trial_ended), valueNote: share(r.trial_ended, r.registered) }),
     row({ title: t('prof_adm_f_paid'), value: number(r.paid), valueNote: `${share(r.paid, r.registered)} · ${number(r.stars)} ⭐` }));
   return async(() => api.get(`/admin/funnel${qs({ days })}`), (f) => page({ title: t('prof_adm_funnel'), subtitle: t('prof_adm_funnel_note') },
     segmented([{ value: 30, label: t('prof_adm_days', { n: 30 }) }, { value: 90, label: t('prof_adm_days', { n: 90 }) }, { value: 0, label: t('prof_adm_all_time') }],

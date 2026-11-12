@@ -427,6 +427,8 @@ describe('family membership with a family plan', () => {
     const familyInvitationRepository = {
       expireOldInvitations: jest.fn(async () => {}),
       hasPendingInvitation: jest.fn(async () => false),
+      countSentSince: jest.fn(async () => 0),
+      hasRecentClosed: jest.fn(async () => false),
       createInvitation: jest.fn(async (familyId, inviterId, inviteeId) => {
         const invitation = { id: 1, family_id: familyId, invitee_id: inviteeId, invite_code: 'ABC', status: 'pending', expires_at_utc: new Date(Date.now() + DAY) };
         invitations.set('ABC', invitation);
@@ -450,10 +452,10 @@ describe('family membership with a family plan', () => {
 
   test('without own premium a person can be invited only while the plan is active and a seat is free', async () => {
     const { world, service } = familyServiceWorld();
-    await expect(service.createInvitation(BUYER, 'out')).rejects.toThrow('User does not have premium status');
+    await expect(service.createInvitation(BUYER, 'out')).rejects.toThrow('Invitation unavailable');
     await world.paymentService.handleSuccessfulPayment(familyPayment(), world.userService);
     world.setPending(FAMILY_PREMIUM.MAX_MEMBERS - world.joined().length);
-    await expect(service.createInvitation(BUYER, 'out')).rejects.toThrow('User does not have premium status');
+    await expect(service.createInvitation(BUYER, 'out')).rejects.toThrow('Invitation unavailable');
     world.setPending(0);
     await expect(service.createInvitation(BUYER, 'out')).resolves.toMatchObject({ invitee: { id: OUTSIDER } });
   });

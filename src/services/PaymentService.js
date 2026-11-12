@@ -380,9 +380,11 @@ class PaymentService {
    * @param {number} userId - ID пользователя
    * @param {Object} tariff - Тариф из констант
    * @param {string} userLanguage - Язык пользователя
+   * @param {Object} [options] - familyId — семейный тариф; track: false — не шаг воронки «счёт» (ссылка
+   *   в рассылке создаётся без действия пользователя)
    * @returns {Promise<string>} Прямая ссылка на оплату
    */
-  async createInvoiceLink(userId, tariff, userLanguage, { familyId = null } = {}) {
+  async createInvoiceLink(userId, tariff, userLanguage, { familyId = null, track = true } = {}) {
     const { duration, stars } = tariff;
     
     const durationKey = duration === 30 ? 'tariff_button_30' :
@@ -429,6 +431,7 @@ class PaymentService {
     try {
       const link = await this.requestInvoiceLink(invoiceParams);
       logger.info(`Created invoice link for user ${userId}, tariff: ${duration} days, stars: ${stars}${familyId ? `, family ${familyId}` : ''}`);
+      if (track && this.funnelService) await this.funnelService.track(userId, 'invoice_created');
       return link;
     } catch (error) {
       logger.error('Error creating invoice link:', error);

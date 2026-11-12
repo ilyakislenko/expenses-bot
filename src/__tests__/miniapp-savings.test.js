@@ -113,14 +113,15 @@ function setup({ premium = true } = {}) {
     isPremiumUser: async () => premium,
     getUserLimits: async () => ({ MAX_SAVINGS_GOALS: premium ? 10 : 1 })
   };
+  // Взнос «авто» — SavingsScenarioService.contribution; здесь дохода нет — взнос неизвестен
+  const savingsScenarioService = {
+    build: jest.fn(async (userId) => ({ family: false, userId, income: null, scenarios: [] })),
+    contribution: jest.fn(async () => null)
+  };
   const savingsService = new SavingsService({
-    savingsRepository: repo,
-    expenseService: { getPeriodContext: async () => ({ timezone: 'Europe/Moscow', period: {} }), getTotals: async () => ({ count: 0, byCurrency: [] }) },
-    incomeService: { getTotals: async () => ({ count: 0, byCurrency: [] }) },
-    userService, premiumService, currencyUtils
+    savingsRepository: repo, userService, premiumService, currencyUtils, scenarios: () => savingsScenarioService
   });
   const achievementService = { track: jest.fn(async () => '🏅 *Новое достижение:* Копилка') };
-  const savingsScenarioService = { build: jest.fn(async (userId) => ({ family: false, userId, income: null, scenarios: [] })) };
   const validator = {
     validateDescription: (text) => ({ isValid: !/[<>]/.test(text) }),
     sanitizeText: (text) => text.trim()
@@ -359,6 +360,24 @@ describe('mini app savings: update wizard, forecast, settings, scenarios', () =>
     expect(res.body.savings.real[120]).toBeLessThan(res.body.savings.nominal[120]);
     expect(res.body.monthly).toMatchObject({ amount: 30000, source: 'manual' });
     expect(res.body.ownRates).toBe(true);
+  });
+
+  test('automatic monthly — the default scenario\'s amount: home «in a year» and the forecast use it, manual wins', async () => {
+    const { repo, call, savingsScenarioService } = setup();
+    seed(repo);
+    savingsScenarioService.contribution.mockResolvedValue({ amount: 213000, income: 300000, spending: 87000, key: 'current', periods: 1 });
+    const home = await call('get', '/savings').expect(200);
+    const total = 1000 * USD + 200000 + 10000;
+    expect(savingsScenarioService.contribution).toHaveBeenCalledWith(ME);
+    expect(home.body.monthly).toEqual({ amount: 213000, source: 'auto', periods: 1 });
+    expect(home.body.yearAhead).toBeCloseTo(total + 12 * 213000);
+    const forecast = await call('get', '/savings/forecast').expect(200);
+    expect(forecast.body.savings.nominal[12]).toBeCloseTo(home.body.yearAhead);
+
+    await call('patch', '/savings/settings').send({ monthly: 30000 }).expect(200);
+    const manual = await call('get', '/savings').expect(200);
+    expect(manual.body.monthly).toEqual({ amount: 30000, source: 'manual', periods: null });
+    expect(manual.body.yearAhead).toBeCloseTo(total + 12 * 30000);
   });
 
   test('settings: manual monthly or automatic, rates within limits, 0 — not counted', async () => {

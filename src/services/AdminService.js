@@ -1,4 +1,5 @@
 const logger = require('../utils/logger');
+const { isUnreachableError } = require('../utils/telegramErrors');
 
 const BUG_REPORT_MAX_LENGTH = 1000;
 // Без флага g: общий RegExp с g помнит lastIndex между вызовами test()
@@ -88,7 +89,8 @@ class AdminService {
         COUNT(CASE WHEN premium = true AND premium_expires_at > $1 THEN 1 END) as active_premium,
         COUNT(CASE WHEN premium_activated_at IS NOT NULL THEN 1 END) as ever_had_premium,
         COUNT(CASE WHEN created_at >= NOW() - INTERVAL '7 days' THEN 1 END) as new_last_week,
-        COUNT(CASE WHEN created_at >= NOW() - INTERVAL '30 days' THEN 1 END) as new_last_month
+        COUNT(CASE WHEN created_at >= NOW() - INTERVAL '30 days' THEN 1 END) as new_last_month,
+        COUNT(blocked_at) as blocked
       FROM users
     `;
     
@@ -102,6 +104,7 @@ class AdminService {
       newUsersLastWeek: parseInt(stats.new_last_week, 10),
       newUsersLastMonth: parseInt(stats.new_last_month, 10),
       adminsCount: admins.length,
+      blockedUsers: parseInt(stats.blocked, 10),
       admins
     };
   }
@@ -287,8 +290,13 @@ class AdminService {
 
     logger.info('Broadcasting to users', { total, adminUserId });
 
-    // Отправляем сообщения с задержкой для избежания лимитов Telegram
+    // Отправляем сообщения с задержкой для избежания лимитов Telegram.
+    // Заблокировавшим бота (blocked_at) не пишем — они в failed; новый 403 помечает пользователя (NotificationService)
     for (const user of allUsers) {
+      if (user.blocked) {
+        failed++;
+        continue;
+      }
       try {
         // Получаем язык пользователя для локализованного заголовка
         const userLanguage = await this.userService.getUserLanguage(user.id);
@@ -306,6 +314,8 @@ class AdminService {
             await this.notificationService.sendMessage(user.id, broadcastMessage);
             messageSent = true;
           } catch (notificationError) {
+            // Бот заблокирован — другие способы получат тот же 403
+            if (isUnreachableError(notificationError)) throw notificationError;
             logger.warn('NotificationService failed, trying direct bot access', {
               userId: user.id,
               error: notificationError.message

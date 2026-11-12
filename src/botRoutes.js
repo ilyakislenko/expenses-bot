@@ -19,12 +19,16 @@ module.exports = function registerBotRoutes(bot, handlers) {
   // username/first_name из ctx.from — в БД при каждом изменении (поиск приглашаемых по username)
   const profileRefreshMiddleware = require('./middleware/profileRefreshMiddleware');
   bot.use(profileRefreshMiddleware(handlers.userService.userRepository));
+  // Пометку «заблокировал бота» снимает любой апдейт из лички, ставит my_chat_member kicked (рассылки его пропускают)
+  const reachabilityMiddleware = require('./middleware/reachabilityMiddleware');
+  bot.use(reachabilityMiddleware(handlers.userService));
 
   // Команды
   // приветствие и главная клавиатура; незаконченный опрос «🧭 Настроим бота под тебя» — продолжить с текущего вопроса
-  // /start split_<код> (делёж чека по ссылке) и gpass_<код> (оплата пропуска группы) — без онбординга
+  // /start split_<код> (делёж чека по ссылке) и gpass_<код> (оплата пропуска группы) — экран дележа или пропуска;
+  // пришедший так впервые регистрируется (пробный премиум, приветствие с языком), как по /start
   bot.command('start', errorHandler(async (ctx) => {
-    if (await groupHandlers.handlePrivateStart(ctx)) return;
+    if (await groupHandlers.handlePrivateStart(ctx)) return commandHandlers.startFromGroupLink(ctx);
     await handlers.onboardingHandlers.start(ctx);
   }));
   // Команды группового режима в личке — подсказка, как их использовать в группе
@@ -378,8 +382,10 @@ module.exports = function registerBotRoutes(bot, handlers) {
     await commandHandlers.settingsCurrencies(ctx);
   })); // установка основной валюты
   bot.action('change_currency', errorHandler((ctx) => commandHandlers.currency(ctx)));
-  // «Назад» в опросе: с первого вопроса — к выбору языка, с часового пояса — к валюте
+  // «Назад» в опросе: с первого вопроса — к выбору языка, с часового пояса — к валюте. Экран языка у нового —
+  // «Продолжить на <языке>» и «🌍 Другой язык» (ob_language_all — весь список)
   bot.action('ob_language', errorHandler((ctx) => commandHandlers.onboardingLanguage(ctx)));
+  bot.action('ob_language_all', errorHandler((ctx) => commandHandlers.onboardingLanguage(ctx, null, { compact: false })));
   bot.action('ob_currency', errorHandler((ctx) => handlers.onboardingHandlers.openCurrency(ctx)));
   // Опрос «🧭 Настроим бота под тебя»: onb|<шаг>[|<действие>[|<значение>]], вход из Настроек — onb_setup
   bot.action(/^onb\|[a-z](\|[a-z]{1,2}(\|[a-z0-9]{1,10})?)?$/, errorHandler((ctx) => handlers.onboardingHandlers.handle(ctx)));
@@ -460,6 +466,7 @@ module.exports = function registerBotRoutes(bot, handlers) {
   bot.action('pfam', errorHandler((ctx) => handlers.familyPremiumHandlers.showTariffs(ctx)));
   bot.action('pfam_create', errorHandler((ctx) => handlers.familyPremiumHandlers.startCreateFamily(ctx)));
   bot.action('premium_why_paid', errorHandler((ctx) => callbackHandlers.handlePremiumWhyPaid(ctx)));
+  bot.action(/^premium_stars_help(?:\|t)?$/, errorHandler((ctx) => callbackHandlers.handlePremiumStarsHelp(ctx)));
   bot.action('premium_donate', errorHandler((ctx) => callbackHandlers.handlePremiumDonate(ctx)));
   bot.action(/^premium_purchases(?:\|(\d+))?$/, errorHandler((ctx) => callbackHandlers.handlePremiumPurchases(ctx)));
   bot.action('premium_subscription', errorHandler((ctx) => callbackHandlers.handlePremiumSubscription(ctx)));
@@ -527,9 +534,15 @@ module.exports = function registerBotRoutes(bot, handlers) {
         await ctx.reply(renewedText);
         return;
       }
-      // Для премиум подписок показываем сообщение об активации
-      const successText = handlers.localizationService.getText(userLanguage, 'payment_success');
-      await ctx.reply(successText, { parse_mode: 'Markdown' });
+      // Покупка: до какого числа премиум и с чего начать — бюджеты
+      const timezone = await handlers.userService.getUserTimezone(ctx.from.id);
+      const successText = handlers.localizationService.getText(userLanguage, 'payment_success', {
+        date: handlers.formatter.formatDate(result.newExpiryDate, timezone)
+      });
+      await ctx.reply(successText, {
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard: [[{ text: handlers.localizationService.getText(userLanguage, 'button_budgets'), callback_data: 'bg_menu' }]] }
+      });
     } else if (result.type === 'family_premium') {
       if (result.status === 'duplicate') return; // повторная доставка того же платежа
       const timezone = await handlers.userService.getUserTimezone(ctx.from.id);

@@ -1,4 +1,4 @@
-const express = require('express');
+const { upload } = require('../upload');
 const logger = require('../../utils/logger');
 const { MAX_RECORD_AGE_DAYS } = require('../../utils/recordDate');
 const { receiptDate, localNow } = require('../../services/receipt/normalize');
@@ -71,6 +71,11 @@ function register(router, { get, http }) {
         await receiptService.addAttempt(ctx.userId, messageId, 'unreadable');
         return Object.assign(job, { status: 'error', code, lowResolution: !!result.lowResolution, note: job.rotated ? 'rotate_kept' : null });
       }
+      // «Не чек» — тоже попытка в месячном лимите (как в боте): запрос к нейросети был
+      if (code === 'not_receipt') {
+        await receiptService.addAttempt(ctx.userId, messageId, 'not_receipt');
+        return Object.assign(job, { status: 'error', code, note: null });
+      }
       return Object.assign(job, { status: 'error', code: SERVICE_ERRORS.has(code) ? 'unavailable' : code, currency: (result.error.params || {}).currency || null, note: null });
     }
     const duplicate = await receiptService.findDuplicate(ctx.userId, result.receipt);
@@ -117,31 +122,47 @@ function register(router, { get, http }) {
     if (!limit.remaining) throw http.badRequest('receipt_limit', { used: limit.used, limit: limit.limit, premium: receiptService.premiumLimit, isPremium: limit.isPremium });
   }
 
-  // POST /api/receipts (тело — фото) → 202 { jobId }
-  router.post('/receipts', express.raw({ type: ['image/*'], limit: MAX_JPEG_BYTES }), http.wrap(async (req, res) => {
-    const ctx = await req.ctx();
-    const receiptService = get('receiptService');
-    if (!receiptService.configured) throw http.badRequest('receipt_not_configured');
-    const mimeType = String(req.get('content-type') || '').split(';')[0].trim().toLowerCase().replace('image/jpg', 'image/jpeg');
-    const image = Buffer.isBuffer(req.body) ? req.body : null;
-    if (!image || !image.length || !IMAGE_TYPES.has(mimeType)) throw http.badRequest('receipt_format');
-    if (mimeType !== 'image/jpeg' && image.length > MAX_RAW_IMAGE_BYTES) throw http.badRequest('receipt_format');
-    if (busy.has(ctx.userId)) throw new http.HttpError(409, 'receipt_busy');
-    busy.add(ctx.userId);
-    let started = false;
-    try {
-      await ensureLimit(ctx);
-      sweep();
-      const id = Math.max(Date.now(), lastJobId + 1);
-      lastJobId = id;
-      const job = { id, userId: ctx.userId, status: 'working', stage: 'recognizing', position: 0, updatedAt: Date.now() };
-      jobs.set(jobKey(ctx.userId, id), job);
-      run(ctx, job, { image, mimeType });
-      started = true;
-      res.status(202).json({ jobId: id });
-    } finally {
-      if (!started) busy.delete(ctx.userId);
+  const mimeOf = (req) => String(req.get('content-type') || '').split(';')[0].trim().toLowerCase().replace('image/jpg', 'image/jpeg');
+
+  // Всё, кроме самого фото, — до чтения тела (upload.js): настроено ли, формат и размер по заголовкам, один чек за раз,
+  // rateLimiter 'receipt' (общий счётчик с ботом: 20 фото за 10 минут), месячный лимит
+  const receiptUpload = upload({
+    limit: MAX_JPEG_BYTES,
+    type: ['image/*'],
+    before: async (req, ctx) => {
+      if (!get('receiptService').configured) throw http.badRequest('receipt_not_configured');
+      const mimeType = mimeOf(req);
+      if (!IMAGE_TYPES.has(mimeType)) throw http.badRequest('receipt_format');
+      if (mimeType !== 'image/jpeg' && Number(req.get('content-length')) > MAX_RAW_IMAGE_BYTES) throw http.badRequest('receipt_format');
+      if (busy.has(ctx.userId)) throw new http.HttpError(409, 'receipt_busy');
+      busy.add(ctx.userId);
+      try {
+        http.rateLimit(get, ctx.userId, 'receipt', 'receipt_rate');
+        await ensureLimit(ctx);
+      } catch (error) {
+        busy.delete(ctx.userId);
+        throw error;
+      }
+      return () => busy.delete(ctx.userId);
     }
+  });
+
+  // POST /api/receipts (тело — фото) → 202 { jobId }
+  router.post('/receipts', receiptUpload, http.wrap(async (req, res) => {
+    const ctx = await req.ctx();
+    const mimeType = mimeOf(req);
+    const image = Buffer.isBuffer(req.body) ? req.body : null;
+    if (!image || !image.length) throw http.badRequest('receipt_format');
+    if (mimeType !== 'image/jpeg' && image.length > MAX_RAW_IMAGE_BYTES) throw http.badRequest('receipt_format');
+    sweep();
+    const id = Math.max(Date.now(), lastJobId + 1);
+    lastJobId = id;
+    const job = { id, userId: ctx.userId, status: 'working', stage: 'recognizing', position: 0, updatedAt: Date.now() };
+    jobs.set(jobKey(ctx.userId, id), job);
+    // Занятость теперь снимает задача (run → finally)
+    req.upload.take();
+    run(ctx, job, { image, mimeType });
+    res.status(202).json({ jobId: id });
   }));
 
   function findJob(ctx, idValue) {
@@ -157,7 +178,8 @@ function register(router, { get, http }) {
   }));
 
   // POST /api/receipts/jobs/:id/rotate — «Повернуть на 90° и попробовать»: тот же кадр, ещё одна попытка без повтора,
-  // попытка в лимите не добавляется (то же фото). Исправленный вручную черновик не поворачивается — правки пропали бы
+  // попытка в лимите не добавляется (то же фото). Исправленный вручную черновик не поворачивается — правки пропали бы.
+  // Новый запрос к нейросети — в rateLimiter 'receipt', как «🔄 Повернуть» в боте
   router.post('/receipts/jobs/:id/rotate', http.wrap(async (req, res) => {
     const ctx = await req.ctx();
     const job = findJob(ctx, req.params.id);
@@ -172,6 +194,7 @@ function register(router, { get, http }) {
       previous = draft.receipt;
     }
     if (busy.has(ctx.userId)) throw new http.HttpError(409, 'receipt_busy');
+    http.rateLimit(get, ctx.userId, 'receipt', 'receipt_rate');
     busy.add(ctx.userId);
     let started = false;
     try {

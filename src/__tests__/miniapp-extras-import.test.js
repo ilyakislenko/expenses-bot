@@ -180,7 +180,7 @@ describe('mini app statement import', () => {
   test('the bot\'s import limit applies: 10 files in 10 minutes', async () => {
     const { app } = server();
     for (let i = 0; i < 10; i++) await upload(app, CSV, 'statement.docx').expect(400);
-    await upload(app).expect(429, { error: 'import_rate' });
+    await upload(app).expect(429, { error: 'import_rate', retryAfter: 600 });
   });
 
   test('history lists the user\'s imports; undo deletes only the user\'s own batch, a second time — «already undone»', async () => {

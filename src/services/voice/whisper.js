@@ -12,6 +12,10 @@ const { Limiter } = require('../receipt/chain');
 const DEFAULT_TIMEOUT_MS = 90000; // 60 с речи на small — около 20–30 с, с запасом на очередь ffmpeg и загрузку модели
 const DEFAULT_THREADS = 4;
 const MAX_AUDIO_SECONDS = 61; // ffmpeg обрезает длиннее (Telegram и так присылает длительность — проверка в обработчике)
+// Вход ffmpeg — байты от пользователя (голосовое бота, запись Mini App): только локальный файл и только аудиоконтейнеры
+// записей (ogg/opus Telegram, webm Android, mp4/m4a iOS, wav, mp3, aac). Иначе манифест DASH/HLS вместо записи заставил бы
+// сервер ходить по адресам из него (SSRF во внутреннюю сеть)
+const INPUT_GUARD = ['-protocol_whitelist', 'file', '-format_whitelist', 'ogg,matroska,mov,wav,mp3,aac'];
 
 // Язык бота → код языка whisper
 const WHISPER_LANGUAGES = { ru: 'ru', en: 'en', de: 'de', es: 'es', fr: 'fr', pt: 'pt', tr: 'tr', ka: 'ka', kz: 'kk', uz: 'uz', hi: 'hi', jp: 'ja', zh: 'zh' };
@@ -89,7 +93,7 @@ class WhisperStt {
       const wav = path.join(dir, 'in.wav');
       const out = path.join(dir, 'out');
       await fs.promises.writeFile(input, audio, { mode: 0o600 });
-      await run(this.ffmpeg, ['-nostdin', '-hide_banner', '-loglevel', 'error', '-i', input,
+      await run(this.ffmpeg, ['-nostdin', '-hide_banner', '-loglevel', 'error', ...INPUT_GUARD, '-i', input,
         '-t', String(MAX_AUDIO_SECONDS), '-ar', '16000', '-ac', '1', '-c:a', 'pcm_s16le', wav], deadline);
       const args = ['-m', this.model, '-f', wav, '-t', String(this.threads), '-l', language, '-nt', '-np', '-otxt', '-of', out];
       const ctx = audioContext(durationSec);

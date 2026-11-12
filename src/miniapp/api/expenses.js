@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const express = require('express');
+const { upload } = require('../upload');
 const { SUPPORTED_CURRENCIES } = require('../../config/currencies');
 const { addDays } = require('../../utils/period');
 const { checkRecordDate, moveToDate } = require('../../utils/recordDate');
@@ -13,7 +13,8 @@ const serialize = require('../serialize');
 const MAX_INCOME_AMOUNT = 9999999999; // как IncomeHandlers.MAX_INCOME_AMOUNT (incomes.amount DECIMAL(12,2))
 const NEW_USER_DAYS = 14; // подсказку «добавь доход или бюджет» видят только новые (PlanningService.allowanceLine)
 const UNDO_TTL_MS = 10 * 60 * 1000; // «Вернуть» удалённую запись
-const MAX_AUDIO_BYTES = 20 * 1024 * 1024;
+const MAX_AUDIO_BYTES = 5 * 1024 * 1024; // минута opus/aac — меньше 1 МБ; больше — не запись голоса
+const AUDIO_TYPES = ['audio/*', 'video/webm', 'video/mp4', 'application/octet-stream'];
 const MAX_VOICE_SECONDS = 60; // как MultiEntryHandlers.MAX_VOICE_SECONDS
 const CATEGORY_NAME_MAX = 30; // как ввод своей категории в боте (messages.handleAddCustomCategory)
 const PICTOGRAPH = /^\p{Extended_Pictographic}(\uFE0F|\u200D\p{Extended_Pictographic}|\p{Emoji_Modifier})*$/u;
@@ -27,6 +28,19 @@ function groupByCurrency(rows) {
   const totals = new Map();
   for (const row of rows) totals.set(row.currency, (totals.get(row.currency) || 0) + Number(row.amount));
   return [...totals.entries()].map(([currency, total]) => ({ currency, total }));
+}
+
+// Сигнатура аудиоконтейнера записи: ogg (голосовые Telegram, Firefox), webm/matroska (Android, Chrome), mp4/m4a (iOS),
+// wav, mp3 (ID3 или кадр MPEG) и ADTS AAC. Остальное (манифесты, картинки, текст) до распознавания не доходит
+function isAudioSignature(buffer) {
+  if (buffer.length < 12) return false;
+  const ascii = (start, end) => buffer.toString('latin1', start, end);
+  if (ascii(0, 4) === 'OggS') return true;
+  if (buffer[0] === 0x1a && buffer[1] === 0x45 && buffer[2] === 0xdf && buffer[3] === 0xa3) return true;
+  if (ascii(4, 8) === 'ftyp') return true;
+  if (ascii(0, 4) === 'RIFF' && ascii(8, 12) === 'WAVE') return true;
+  if (ascii(0, 3) === 'ID3') return true;
+  return buffer[0] === 0xff && (buffer[1] & 0xe0) === 0xe0; // кадр MPEG audio / ADTS
 }
 
 // Строка ExpenseRepository.getExpenseById (автор — user_username / user_first_name) → единая форма записи
@@ -371,27 +385,44 @@ function register(router, { get, http }) {
   }));
 
   // POST /api/expenses/voice?duration=<с> (тело — запись голоса) — расшифровка тем же распознаванием, что у голосовых в
-  // боте (дневной лимит, одно за раз), и предпросмотр записей. Ничего не записывает
-  router.post('/expenses/voice', express.raw({ type: ['audio/*', 'video/webm', 'video/mp4', 'application/octet-stream'], limit: MAX_AUDIO_BYTES }), http.wrap(async (req, res) => {
+  // боте (дневной лимит, одно за раз, rateLimiter 'voice' — общий счётчик с ботом), и предпросмотр записей. Ничего не
+  // записывает. Все проверки, кроме самой записи, — до чтения тела (upload.js)
+  const voiceUpload = upload({
+    limit: MAX_AUDIO_BYTES,
+    type: AUDIO_TYPES,
+    before: async (req, ctx) => {
+      const voiceService = get('voiceService');
+      if (!voiceService || !voiceService.configured) throw http.badRequest('voice_not_configured');
+      const durationSec = Math.max(0, Math.round(Number(req.query.duration) || 0));
+      if (durationSec > MAX_VOICE_SECONDS) throw http.badRequest('voice_too_long', { max: MAX_VOICE_SECONDS });
+      if (voiceBusy.has(ctx.userId)) throw new http.HttpError(409, 'voice_busy');
+      voiceBusy.add(ctx.userId);
+      try {
+        http.rateLimit(get, ctx.userId, 'voice', 'voice_rate');
+        const limit = await voiceService.checkLimit(ctx.userId, ctx.timezone);
+        if (!limit.remaining) throw http.badRequest('voice_limit', { used: limit.used, limit: limit.limit, premium: voiceService.premiumLimit, isPremium: limit.isPremium });
+      } catch (error) {
+        voiceBusy.delete(ctx.userId);
+        throw error;
+      }
+      return () => voiceBusy.delete(ctx.userId);
+    }
+  });
+  router.post('/expenses/voice', voiceUpload, http.wrap(async (req, res) => {
     const ctx = await req.ctx();
-    const voiceService = get('voiceService');
-    if (!voiceService || !voiceService.configured) throw http.badRequest('voice_not_configured');
-    const audio = Buffer.isBuffer(req.body) ? req.body : null;
-    if (!audio || !audio.length) throw http.badRequest('voice_empty');
-    const durationSec = Math.max(0, Math.round(Number(req.query.duration) || 0));
-    if (durationSec > MAX_VOICE_SECONDS) throw http.badRequest('voice_too_long', { max: MAX_VOICE_SECONDS });
-    if (voiceBusy.has(ctx.userId)) throw new http.HttpError(409, 'voice_busy');
-    voiceBusy.add(ctx.userId);
+    const release = req.upload.take();
     try {
-      const limit = await voiceService.checkLimit(ctx.userId, ctx.timezone);
-      if (!limit.remaining) throw http.badRequest('voice_limit', { used: limit.used, limit: limit.limit, premium: voiceService.premiumLimit, isPremium: limit.isPremium });
-      const transcript = await voiceService.transcribe(ctx.userId, audio, {
+      const audio = Buffer.isBuffer(req.body) ? req.body : null;
+      if (!audio || !audio.length) throw http.badRequest('voice_empty');
+      if (!isAudioSignature(audio)) throw http.badRequest('voice_format');
+      const durationSec = Math.max(0, Math.round(Number(req.query.duration) || 0));
+      const transcript = await get('voiceService').transcribe(ctx.userId, audio, {
         lang: ctx.lang, timezone: ctx.timezone, durationSec, usable: text => Boolean(parseEntries(normalizeSpokenText(text), { runs: true }))
       });
       const preview = transcript ? await previewEntries(get, ctx, transcript, { voice: true }) : { entries: [], error: null };
       res.json({ transcript: transcript || '', ...preview });
     } finally {
-      voiceBusy.delete(ctx.userId);
+      release();
     }
   }));
 

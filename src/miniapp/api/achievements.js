@@ -275,10 +275,12 @@ module.exports = (router, { get, http }) => {
     res.json({ enabled });
   }));
 
-  // Карточка итогов картинкой — в чат с ботом (как achwi): её пересылают друзьям
+  // Карточка итогов картинкой — в чат с ботом (как achwi): её пересылают друзьям. PNG рисуется на сервере и уходит
+  // фото в чат: лимит 'share' (3 за 10 минут)
   router.post('/achievements/wrapped/share', http.wrap(async (req, res) => {
     const ctx = await req.ctx();
     const offset = http.int((req.body || {}).offset, { ...OFFSET, code: 'achievements_bad_offset' });
+    http.rateLimit(get, req.userId, 'share', 'achievements_share_rate');
     const status = await get('achievementService').shareWrapped(req.userId, ctx.lang, offset);
     if (status === 'empty') throw conflict('achievements_wrapped_empty');
     if (status !== 'sent') throw new http.HttpError(503, 'achievements_share_unavailable');

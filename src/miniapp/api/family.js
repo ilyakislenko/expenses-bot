@@ -12,10 +12,10 @@ const FAMILY_ERRORS = [
   [/not pending/, 409, 'invitation_not_pending'],
   [/expired/, 409, 'invitation_expired'],
   [/already a member of your family/, 409, 'user_already_in_your_family'],
-  [/already a member of another family/, 409, 'user_already_in_other_family'],
   [/already (owns|a member)/, 409, 'family_already_member'],
-  [/User not found/, 404, 'user_not_found'],
-  [/does not have premium status/, 409, 'user_not_premium'],
+  // «Нет такого», «нет премиума», «в другой семье» — один ответ (FamilyService), чтобы по нему не узнавали чужой статус
+  [/Invitation unavailable/, 409, 'invite_unavailable'],
+  [/Invitation limit reached/, 429, 'invite_limit'],
   [/already has a pending invitation/, 409, 'user_already_has_invitation'],
   [/Cannot remove yourself/, 400, 'cannot_remove_self'],
   [/not a member of this family|Not authorized to cancel|Only family owner or invitation creator/, 404, 'not_found'],
@@ -113,11 +113,12 @@ module.exports = (router, { get, http }) => {
     res.status(201).json({ id: family.id, name: family.name });
   }));
 
-  // Пригласить по username: приглашённому бот присылает приглашение с кнопками, код живёт 24 часа
+  // Пригласить по username: приглашённому бот присылает приглашение с кнопками, код живёт 24 часа. Не больше 10
+  // приглашений в сутки и пауза сутки перед повторным приглашением того же человека (FamilyService)
   router.post('/family/invitations', http.wrap(async (req, res) => {
     await ownedFamily(req);
     const username = String(req.body.username || '').trim().replace(/^@/, '');
-    if (username.length < 3 || username.length > 64) throw http.badRequest('user_not_found');
+    if (username.length < 3 || username.length > 64) throw new http.HttpError(409, 'invite_unavailable');
     const result = await call(() => get('familyService').createInvitation(req.userId, username));
     res.status(201).json({
       code: result.invitation.invite_code,
@@ -179,10 +180,12 @@ module.exports = (router, { get, http }) => {
   }));
 
   // «📤 Экспорт семьи» (как CommandHandlers.familyExport): все траты семьи CSV-файлом в чат с ботом (в WebView
-  // скачивание ненадёжно), тот же формат и имя файла. Нет трат — 404 no_family_expenses
+  // скачивание ненадёжно), тот же формат и имя файла. Нет трат — 404 no_family_expenses. Лимит — общий с выгрузками
+  // бота и Mini App (rateLimiter 'export': 5 файлов за 5 минут)
   router.post('/family/export', http.wrap(async (req, res) => {
     const ctx = await req.ctx();
     if (!ctx.isPremium) throw http.premiumRequired('family');
+    http.rateLimit(get, req.userId, 'export', 'export_rate');
     const family = await get('familyService').getUserFamily(req.userId);
     if (!family) throw http.notFound('not_family_member');
     const expenses = await get('familyService').getAllFamilyExpenses(family.id);
@@ -197,11 +200,12 @@ module.exports = (router, { get, http }) => {
   }));
 
   // «Все траты в семью» (как CommandHandlers.toggleFamilyMode): включение переносит личные бюджеты в семью, если у
-  // неё таких нет; чат получает reply-клавиатуру с новой кнопкой-исключением
+  // неё таких нет; чат получает reply-клавиатуру с новой кнопкой-исключением (сообщение в чат — лимит 'settings')
   router.put('/family/mode', http.wrap(async (req, res) => {
     const ctx = await req.ctx();
     if (typeof req.body.enabled !== 'boolean') throw http.badRequest('bad_bool');
     if (!ctx.isPremium) throw http.premiumRequired('family');
+    http.rateLimit(get, req.userId, 'settings');
     const family = await get('familyService').getUserFamily(req.userId);
     if (!family) throw http.notFound('not_family_member');
     const enabled = req.body.enabled;
@@ -271,9 +275,11 @@ module.exports = (router, { get, http }) => {
   }));
 
   // Счёт Stars на семейный тариф — тот же payload, что у бота (PaymentService.createInvoiceLink с familyId): оплату
-  // проверяет и засчитывает бот (pre_checkout_query, successful_payment), повтор платежа не засчитывается дважды
+  // проверяет и засчитывает бот (pre_checkout_query, successful_payment), повтор платежа не засчитывается дважды.
+  // Каждый вызов — запрос к Telegram: лимит 'invoice' (10 в минуту), общий с личными счетами и пожертвованиями
   router.post('/family/plan/invoice', http.wrap(async (req, res) => {
     const ctx = await req.ctx();
+    http.rateLimit(get, req.userId, 'invoice');
     const duration = http.int(req.body.duration, { min: 1, code: 'bad_tariff' });
     const tariff = findTariff(duration, true);
     if (!tariff) throw http.badRequest('bad_tariff');

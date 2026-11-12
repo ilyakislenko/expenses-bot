@@ -39,7 +39,8 @@ function renderJob(ctx) {
       empty({
         icon: 'receipt',
         title: job.note === 'rotate_kept' ? t('ex_receipt_rotate_kept') : t(ERROR_KEYS[job.code] || ERROR_KEYS.unavailable, { currency: job.currency || '' }),
-        text: tips ? `${t('ex_receipt_tips')} ${t('ex_receipt_counted')}` : null
+        // «Не получилось» и «не чек» засчитаны в месячный лимит, как в боте
+        text: tips ? `${t('ex_receipt_tips')} ${t('ex_receipt_counted')}` : (job.code === 'not_receipt' ? t('ex_receipt_counted') : null)
       }),
       job.canRotate ? section({}, row({ avatar: avatar('repeat'), title: t('ex_receipt_rotate'), onClick: rotate })) : null);
     mainButton.push({ text: t('ex_receipt_retake'), onClick: () => chooseReceiptPhoto({ replace: true }) });

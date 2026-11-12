@@ -8,7 +8,8 @@ const jsQR = require('jsqr');
 // QR на фото чека: сначала сильно уменьшенный кадр (усреднение сглаживает зерно фото — на шуме jsQR QR не находит;
 // крупный QR в кадре так находится всегда), не нашли — крупнее (мелкий QR на большом фото), до исходного размера
 const SCAN_SIDES = [700, 1200, 2000];
-const MAX_DECODE_MP = 50;
+const MAX_DECODE_MP = 24; // как imagePrep: больше — QR не ищем
+const MAX_DECODE_MEMORY_MB = 512;
 const MAX_TOTAL = 100000000; // больше — не итог чека, а ошибка чтения
 const OPERATION_INCOME = '1'; // n=1 — приход (покупка); 2 — возврат прихода, 3/4 — расход: не трата
 
@@ -75,7 +76,7 @@ function readFiscalQr(buffer) {
   if (!buffer || buffer.length < 4 || buffer[0] !== 0xff || buffer[1] !== 0xd8) return null;
   let decoded;
   try {
-    decoded = jpeg.decode(buffer, { useTArray: true, formatAsRGBA: true, maxResolutionInMP: MAX_DECODE_MP, maxMemoryUsageInMB: 1024 });
+    decoded = jpeg.decode(buffer, { useTArray: true, formatAsRGBA: true, maxResolutionInMP: MAX_DECODE_MP, maxMemoryUsageInMB: MAX_DECODE_MEMORY_MB });
   } catch (error) {
     return null;
   }

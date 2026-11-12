@@ -21,6 +21,13 @@ const premiumRequired = (feature = null) => new HttpError(402, 'premium_required
 // Express 5 сам ловит ошибки промисов, обёртка — для явности и Express 4-совместимости
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
+// Лимит общего с ботом rateLimiter (utils/rateLimiter.js, тип type) для пользователя: сверх — 429 с кодом и
+// retryAfter (через сколько секунд можно снова). Код по умолчанию 'rate' — клиент пишет «слишком часто»
+function rateLimit(get, userId, type, code = 'rate') {
+  const limit = get('rateLimiter').checkLimit(userId, type);
+  if (!limit.allowed) throw new HttpError(429, code, { retryAfter: limit.resetTime || null });
+}
+
 // Целое из строки запроса/тела в пределах [min, max]; нет значения — def (undefined → ошибка)
 function int(value, { min = -Infinity, max = Infinity, def, code = 'bad_int' } = {}) {
   if (value === undefined || value === null || value === '') {
@@ -95,4 +102,4 @@ function attachContext(get) {
   };
 }
 
-module.exports = { HttpError, badRequest, notFound, forbidden, premiumRequired, wrap, int, str, money, ymd, attachContext };
+module.exports = { HttpError, badRequest, notFound, forbidden, premiumRequired, wrap, rateLimit, int, str, money, ymd, attachContext };

@@ -1,4 +1,5 @@
 const { LEGACY_MENU_BUTTON_KEYS } = require('../utils/constants');
+const premiumGate = require('../utils/premiumGate');
 const AssistantHandlers = require('./AssistantHandlers');
 
 class MessageHandlers {
@@ -303,9 +304,8 @@ constructor({ expenseService, userService, premiumService, familyService, catego
   // Кнопка «Семейная трата»: ждём ввод траты следующим сообщением
   async startFamilyExpense(ctx, userLanguage) {
     const userId = ctx.from.id;
-    const isPremium = await this.premiumService.isPremiumUser(userId);
-    if (!isPremium) {
-      return ctx.reply(this.localizationService.getText(userLanguage, 'premium_required'));
+    if (!(await this.premiumService.isPremiumUser(userId))) {
+      return premiumGate(ctx, { localizationService: this.localizationService, lang: userLanguage, feature: 'family', back: 'back_to_menu' });
     }
     const userFamily = await this.familyService.getUserFamily(userId);
     if (!userFamily) {
@@ -451,7 +451,7 @@ constructor({ expenseService, userService, premiumService, familyService, catego
       const username = text.trim().replace('@', ''); // Убираем @ если пользователь его ввел
       
       if (username.length < 3) {
-        const errorText = this.localizationService.getText(userLanguage, 'user_not_found');
+        const errorText = this.localizationService.getText(userLanguage, 'invite_unavailable');
         return await ctx.reply(errorText);
       }
       
@@ -475,14 +475,13 @@ constructor({ expenseService, userService, premiumService, familyService, catego
       console.error('Error inviting member:', error);
       let errorText;
       
-      if (error.message.includes('not found')) {
-        errorText = this.localizationService.getText(userLanguage, 'user_not_found');
+      // «Нет такого», «нет премиума», «в другой семье» — один ответ (FamilyService): по нему не узнать чужой статус
+      if (error.message.includes('Invitation unavailable')) {
+        errorText = this.localizationService.getText(userLanguage, 'invite_unavailable');
+      } else if (error.message.includes('Invitation limit reached')) {
+        errorText = this.localizationService.getText(userLanguage, 'invite_limit');
       } else if (error.message.includes('already a member of your family')) {
         errorText = this.localizationService.getText(userLanguage, 'user_already_in_your_family');
-      } else if (error.message.includes('already a member of another family')) {
-        errorText = this.localizationService.getText(userLanguage, 'user_already_in_other_family');
-      } else if (error.message.includes('does not have premium status')) {
-        errorText = this.localizationService.getText(userLanguage, 'user_not_premium');
       } else if (error.message.includes('already has a pending invitation')) {
         errorText = this.localizationService.getText(userLanguage, 'user_already_has_invitation');
       } else if (error.message.includes('Only family owner can invite')) {
@@ -611,12 +610,15 @@ constructor({ expenseService, userService, premiumService, familyService, catego
       const backText = this.localizationService.getText(userLanguage, 'button_back');
       await ctx.reply(okText, { reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'custom_categories' }]] } });
     } catch (error) {
+      const userId = ctx.from.id;
+      const userLanguage2 = await this.userService.getUserLanguage(userId);
+      if (error.code === 'PREMIUM_REQUIRED') {
+        this.stateService.deleteUserState(userId);
+        return premiumGate(ctx, { localizationService: this.localizationService, lang: userLanguage2, feature: 'categories', back: 'back_to_settings' });
+      }
       let msgKey = 'error';
       if (error.code === 'ALREADY_EXISTS') msgKey = 'custom_categories_exists';
       if (error.code === 'LIMIT_REACHED') msgKey = 'custom_categories_limit_reached';
-      if (error.code === 'PREMIUM_REQUIRED') msgKey = 'custom_categories_premium_required';
-      const userId = ctx.from.id;
-      const userLanguage2 = await this.userService.getUserLanguage(userId);
       const message = this.localizationService.getText(userLanguage2, msgKey, { max: error.max });
       await ctx.reply(message);
     }
@@ -648,11 +650,13 @@ constructor({ expenseService, userService, premiumService, familyService, catego
       const backText = this.localizationService.getText(userLanguage, 'button_back');
       await ctx.reply(okText, { reply_markup: { inline_keyboard: [[{ text: backText, callback_data: 'custom_categories_manage' }]] } });
     } catch (error) {
-      let msgKey = 'error';
-      if (error.code === 'ALREADY_EXISTS') msgKey = 'custom_categories_exists';
-      if (error.code === 'PREMIUM_REQUIRED') msgKey = 'custom_categories_premium_required';
       const userId = ctx.from.id;
       const userLanguage2 = await this.userService.getUserLanguage(userId);
+      if (error.code === 'PREMIUM_REQUIRED') {
+        this.stateService.deleteUserState(userId);
+        return premiumGate(ctx, { localizationService: this.localizationService, lang: userLanguage2, feature: 'categories', back: 'back_to_settings' });
+      }
+      const msgKey = error.code === 'ALREADY_EXISTS' ? 'custom_categories_exists' : 'error';
       const message = this.localizationService.getText(userLanguage2, msgKey);
       await ctx.reply(message);
     }

@@ -52,7 +52,8 @@ module.exports = (router, { get, http }) => {
         everPremium: users.everHadPremiumUsers,
         newWeek: users.newUsersLastWeek,
         newMonth: users.newUsersLastMonth,
-        admins: users.adminsCount
+        admins: users.adminsCount,
+        blocked: users.blockedUsers
       },
       expenses: {
         total: expenses.totalExpenses,
@@ -82,7 +83,7 @@ module.exports = (router, { get, http }) => {
     const days = http.int(req.query.days, { def: 30, code: 'bad_days' });
     if (!FUNNEL_DAYS.includes(days)) throw http.badRequest('bad_days');
     const rows = await get('funnelService').getReport(days > 0 ? days : null);
-    const keys = ['registered', 'onboarded', 'first_expense', 'returned_week2', 'paywall_viewed', 'tariffs_viewed', 'paid', 'stars'];
+    const keys = ['registered', 'trial_started', 'onboarded', 'first_expense', 'returned_week2', 'paywall_viewed', 'tariffs_viewed', 'invoice_created', 'trial_ended', 'paid', 'stars'];
     const pick = (r) => Object.fromEntries(keys.map(key => [key, num(r[key])]));
     const total = rows.reduce((acc, r) => {
       for (const key of keys) acc[key] += num(r[key]);

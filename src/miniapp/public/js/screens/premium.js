@@ -23,7 +23,7 @@ export function tariffRow(tariff, currency, onPick) {
   });
 }
 
-// Шторка тарифов: касание тарифа — счёт Stars. Пока открыта, кнопка экрана спрятана
+// Шторка тарифов: касание тарифа — счёт Stars; выгоднее (дольше) — выше. Пока открыта, кнопка экрана спрятана
 function tariffsSheet(button) {
   button.hide();
   const s = sheet({
@@ -33,10 +33,11 @@ function tariffsSheet(button) {
       const pay = async (tariff) => {
         if (await payInvoice(() => api.post('/premium/invoice', { duration: tariff.duration }))) s.close();
       };
-      const footer = [t('prof_tariffs_footer')];
+      const footer = [t('prof_tariffs_footer'), t('prof_stars_short')];
       if (data.subscription) footer.push(t('prof_tariffs_subscribed', { date: dateText(data.subscription.expiresAt) }));
+      const tariffs = data.tariffs.filter(x => x.available).sort((a, b) => b.duration - a.duration);
       return h('div', null,
-        section({ footer: footer.join(' ') }, data.tariffs.filter(x => x.available).map(x => tariffRow(x, data.currency, pay))),
+        section({ footer: footer.join(' ') }, tariffs.map(x => tariffRow(x, data.currency, pay))),
         section({}, row({ avatar: avatar('users'), title: t('prof_premium_family_plan'), subtitle: t('prof_family_plan_short', { stars: data.family.stars, max: data.family.max }), onClick: () => { s.close(); navigate('/family/plan'); } })));
     })
   });
@@ -70,6 +71,12 @@ function donateSheet() {
 function whySheet(button) {
   button.hide();
   sheet({ title: t('prof_why_title'), onClose: button.show, content: async(() => api.get('/premium/why'), (data) => h('div', { class: 'prof-sheet-text' }, data.text)) });
+}
+
+// «Как купить звёзды»: покупаются в Telegram прямо в окне оплаты
+function starsSheet(button) {
+  button.hide();
+  sheet({ title: t('prof_stars_title'), onClose: button.show, content: h('div', { class: 'prof-sheet-text' }, t('prof_stars_text')) });
 }
 
 // Hero: статус премиума, срок и пояснение
@@ -123,8 +130,9 @@ function premiumScreen(ctx) {
         p.referral ? row({ avatar: avatar('gift'), title: t('prof_more_invite'), subtitle: t('prof_invite_short', { days: p.referral.days }), href: '/more/invite' }) : null,
         row({ avatar: avatar('receipt'), title: t('prof_history_title'), href: '/premium/history' })),
       section({},
-        row({ avatar: avatar('star'), title: t('prof_donate_title'), onClick: donateSheet }),
-        row({ avatar: avatar('help'), title: t('prof_why_title'), onClick: () => whySheet(button) })));
+        row({ avatar: avatar('info'), title: t('prof_stars_title'), onClick: () => starsSheet(button) }),
+        row({ avatar: avatar('help'), title: t('prof_why_title'), onClick: () => whySheet(button) }),
+        row({ avatar: avatar('star'), title: t('prof_donate_title'), onClick: donateSheet })));
   });
 }
 

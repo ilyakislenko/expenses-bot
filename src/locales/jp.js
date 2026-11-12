@@ -283,9 +283,9 @@ module.exports = {
     user_not_found: '❌ ユーザーが見つかりません。',
     user_already_in_family: '❌ ユーザーはすでに家族に所属しています。',
     user_already_has_invitation: '❌ ユーザーには既に有効な招待があります。',
-    user_already_in_other_family: '❌ ユーザーは別の家族に所属しています。',
     user_already_in_your_family: '❌ ユーザーはすでにあなたの家族のメンバーです。',
-    user_not_premium: '❌ ユーザーはプレミアムではありません。',
+    invite_unavailable: '❌ このユーザーを招待できませんでした。ユーザー名を確認してください：相手が一度はボットにメッセージを送っていること、プレミアムであること（またはあなたに空きのあるファミリープランがあること）、別の家族に入っていないことが必要です。',
+    invite_limit: '⏳ 招待が多すぎます。1日に送れるのは10件までで、取り消しや辞退のあとに同じ人を再招待できるのは1日後です。',
     only_owner_can_invite: '❌ 招待できるのは家族の所有者のみです。',
     active_invitations: '📋 有効な招待',
     no_active_invitations: '📋 有効な招待はありません。',
@@ -320,7 +320,6 @@ module.exports = {
     member_removed: '✅ {name} を家族から削除しました。',
     
     // プレミアム機能
-    premium_required: '❌ この機能はプレミアムユーザーのみ利用できます。',
     
     timezone_updated: `✅ *タイムゾーンを更新しました！*
 
@@ -330,17 +329,11 @@ module.exports = {
 これ以降、すべての支出は現地時間で表示されます。`,
     
     // 制限
-    status_regular: '👤 通常',
-    status_premium: '💎 プレミアム',
-    max_description_length: '<b>説明の最大長:</b> {length} 文字',
     premium_benefits: '💎 <b>プレミアムでできること</b>\n\n👀 <b>お金の行き先が見える</b>\n• 期間の詳細サマリー：カテゴリごとの前月比、1日あたりの平均支出、最大の支出{receipts}\n• 📈 「マイインフレ」：買い物かごの値上がり率と「値上がり／値下がり」リスト最大{inflationPremium}件（プレミアムなし — お試しで{inflationFree}件）\n\n🎯 <b>計画どおりに使える</b>\n• 月・カテゴリ別の予算 — 80%到達時と超過時に通知\n• 🔁 見つかったサブスクをすべて表示 — 最大{subsPremium}件（プレミアムなし — {subsFree}件）\n\n🏦 <b>もっと早く貯まる</b>\n• 貯蓄目標は最大10個（プレミアムなし — 1個）\n\n🤖 <b>いつでもボットに相談</b>\n• 「ボットに質問」：1日{askPremium}回まで（プレミアムなし — {askFree}回）{voice}\n\n🔥 <b>習慣を続けられる</b>\n• 🧊 連続記録のフリーズ：週{freezePremium}回（プレミアムなし — {freezeFree}回）\n• 🏁 チャレンジは無制限（プレミアムなし — 同時に{challengesFree}つ）\n\n👨‍👩‍👧 <b>家族みんなで</b>\n• 家族の予算：全員の共通の支出をひとつの場所に{family}\n\n✏️ <b>自分好みに</b>\n• 独自カテゴリ最大5個、説明は最大160文字（通常80文字）\n\n無料・無制限：支出・収入の記録（1通で複数も可：「コーヒー 250、タクシー 400」）、明細のインポート、貯蓄と予測、実績と連続記録、プランニング（今日使える金額と支払いカレンダー）。',
     
     // プレミアム購読
     premium_subscription_title: '⭐️ サブスクリプション',
-    premium_status_header: '<b>あなたのステータス:</b>',
-    premium_privileges: '特典: {status}',
-    premium_menu_title: '<b>メニュー:</b>',
-    premium_tariff_button: '⭐️ 料金プラン',
+    premium_tariff_button: "⭐️ すべてのプランとファミリー",
     premium_why_paid_button: '👀 なぜ有料？',
     premium_donate_button: '🤝 寄付',
     premium_back_button: '⬅️ 戻る',
@@ -348,7 +341,6 @@ module.exports = {
     per_month: '月あたり',
     premium_payment_info: '💳 支払いはTelegramの内部通貨であるTelegram Starsで行います。🔁 月額プランは自動更新されます。解約はTelegramの「設定 → スター → 登録状況」（英語表示では Settings → My Stars → My subscriptions）から行えます。3・6・12か月プランは一回払いです。',
     premium_renewal_info: '📅 いつでも延長可能です。残り時間に加算されます。',
-    premium_stars_info: '💡 公認 [@PremiumBot] から手数料なしでスターを購入できます。',
     premium_why_paid_title: '👀 なぜ有料？',
     premium_purchases_button: '🧾 購入履歴',
     purchases_header: '🧾 購入履歴',
@@ -357,7 +349,7 @@ module.exports = {
     no_purchases: '購入履歴はまだありません',
     purchases_prev_button: '◀ 前へ',
     purchases_next_button: '次へ ▶',
-    premium_why_paid_text: 'このボットのサーバー維持には毎月約$200かかります。利用者が増え続ける中、開発者としてサービス改善のために生活費も必要です :)',
+    premium_why_paid_text: "このボットは一人で開発している小さな独立プロジェクトです。サーバーとAI（レシートや音声の認識、質問への回答）には毎月費用がかかり、新しい機能には時間がかかります。プレミアムはそのすべてをまかない、ボットの運営と開発を支えています。支出の記録はこれからも無料です。",
     button_invite: '🎁 友だちを招待',
     command_invite: '友だちを招待：プレミアム+7日',
     referral_title: '🎁 *友だちを招待*',
@@ -397,10 +389,9 @@ module.exports = {
     premium_product: 'プレミアム購読',
     discount_save: '{percent}% お得',
   
-    payment_success: '🎉 *支払い成功!* プレミアムが有効になりました。高度な機能をご利用ください。',
+    payment_success: "🎉 *お支払いが完了しました！*\n\nプレミアムは{date}まで。予算、詳細なサマリー、家族などすべての機能がすでに使えます。まずは予算から — 80%に達したときと超えたときにお知らせします。",
     donation_success: '🙏 *ご支援ありがとうございます!* 寄付はボットの開発に役立ちます。',
     general_payment_success: '✅ *支払い確認済み!* ご利用ありがとうございます。',
-    premium_expires: '📅 プレミアム有効期限: <b>{date}</b>\n⏰ 残り日数: <b>{days}</b>',
   
     // 寄付
     donate_prompt_title: '🤝 プロジェクトを支援する',
@@ -494,7 +485,6 @@ module.exports = {
     custom_categories_list_title: 'あなたのカスタムカテゴリー:',
     custom_categories_delete: '🗑️ 削除',
     custom_categories_deleted: '✅ カテゴリーを削除しました。',
-    custom_categories_premium_required: '💎 この機能はプレミアムユーザーのみ利用可能です。',
 
     // Income
     button_income: '💵 収入',
@@ -677,7 +667,7 @@ module.exports = {
     savings_monthly_manual: '📥 毎月 {amount} を貯金（手動設定）',
     savings_monthly_unknown: '📥 毎月の貯金額はまだ不明です',
     savings_monthly_negative: '📉 支出が収入を毎月 ~{amount} 上回っています — 貯金が増えていません',
-    savings_monthly_auto: '📥 毎月 ~{amount} を貯金 — 直近 {n} か月の収入から支出を引いた額',
+    savings_monthly_auto: "📥 毎月 ~{amount} を貯金 — 直近 {n} か月の平均収入から今月の支出を引いた額",
     savings_button_set_current: '✏️ 貯金の合計を入力',
     savings_button_forecast: '📈 予測',
     savings_button_settings: '⚙️ 設定',
@@ -2108,4 +2098,22 @@ module.exports = {
     payment_subscription_already_active: '🔁 月額サブスクリプションはすでに有効です。2つ目は不要です。プレミアムを前もって延長するには、一回払いのプランをお選びください: /limits',
     payment_foreign_payer: '⚠️ この支払いリンクは別のユーザー向けに作成されたものです。ご自身でボットのプランを開いてください — /limits',
     premium_expired_granted: '🌙 プレミアムの期間が終了しました。支出と収入の記録は引き続き無料です。予算、詳細サマリー、カスタムカテゴリー、家族はプレミアムで利用できます。いつでも延長できます。',
+  onb_trial: "🎁 {date}までプレミアムが無料です：通知付きの予算、月の詳しいまとめ、家族の家計簿。",
+  language_other: "🌍 他の言語",
+  nudge_first_expense: "👋 最初の支出を記録してみませんか？メッセージを送るだけです — 例：`250 コーヒー`。数秒で終わります。このお知らせは今回だけです。",
+  premium_gate_family: "👨‍👩‍👧 *家族の家計簿 — プレミアムで利用可能*\n\n家族との共通の支出をひとつの場所で: 各自が自分で記録し、集計とエクスポートは共有されます。ファミリープランは最大{max}人で月{stars} ⭐から。",
+  premium_gate_categories: "🏷 *自分のカテゴリー — プレミアムで利用可能*\n\n自分のアイコン付きで最大{max}個の独自カテゴリー: 支出を自分に合った形で分類できます。",
+  premium_status_free: "👤 現在: 無料版",
+  premium_status_until: "💎 プレミアム <b>{date}</b>まで · 残り日数: {days}",
+  premium_status_trial: "🎁 プレミアムのお試し <b>{date}</b>まで · 残り日数: {days}",
+  premium_pay_year: "⭐ 1年 — {stars} ⭐（−{percent}%）",
+  premium_pay_month: "🔁 1か月 — {stars} ⭐",
+  premium_stars_help_button: "❓ スターの購入方法",
+  premium_stars_help_text: "⭐ <b>スターの購入方法</b>\n\nスターはボット内の支払いに使うTelegramの通貨です。事前に購入する必要はありません。プランをタップして、スターが足りなければ、Telegramが支払い画面でそのまま購入を案内します。\n\n• iPhone・AndroidのTelegramアプリでは、App StoreまたはGoogle Playでスターを購入できます。\n• Telegram公式ボット @PremiumBot でも購入できます。\n\n年間プランは1年分を一度に購入するので、毎月スターを買う必要はありません。",
+  premium_trial_summary_title: "📊 直近{days}日間:",
+  premium_trial_summary_records: "• 記録: {count}件",
+  premium_trial_summary_top: "• いちばん多い: {category}",
+  premium_trial_summary_budgets: "• 予算: {count}件 — 予算の通知はプレミアムで届きます",
+  premium_trial_price: "💡 プレミアムは月{month} ⭐、または年{year} ⭐（月あたり ≈ {perMonth} ⭐、{percent}%お得）。",
+  budget_locked_notice: "🚨 {name}: 予算超過 — {limit} のうち {spent}。\n予算の通知はプレミアムで届きます。プレミアムがない場合、このメッセージは月に1回までです。",
 };

@@ -82,7 +82,7 @@ describe('Reminder cron', () => {
     const expenseService = { hasAnyExpenseToday: jest.fn(async (id) => recordedToday.has(id)) };
     const notificationService = {
       localizationService: { getText: (lang, key) => (key === 'reminder_sample_variants' ? ['Запиши траты'] : 'Напоминалка') },
-      bot: { telegram: { sendMessage: jest.fn().mockResolvedValue({}) } }
+      sendMessage: jest.fn().mockResolvedValue({})
     };
     return { userService, expenseService, notificationService };
   };
@@ -90,7 +90,7 @@ describe('Reminder cron', () => {
   const user = (id, extra = {}) => ({
     id, timezone: 'UTC', language: 'ru', reminder_hours: [10, 14, 18], reminder_sent_today_hours: null, last_reminder_local_date: null, ...extra
   });
-  const sentTo = (deps) => deps.notificationService.bot.telegram.sendMessage.mock.calls.map(([id]) => id);
+  const sentTo = (deps) => deps.notificationService.sendMessage.mock.calls.map(([id]) => id);
   const at10 = new Date('2026-10-26T10:00:00Z');
 
   test('a user with an invalid timezone does not stop reminders for the others', async () => {
@@ -101,7 +101,7 @@ describe('Reminder cron', () => {
 
   test('a failed delivery does not stop reminders for the others', async () => {
     const deps = makeDeps([user(1), user(2)]);
-    deps.notificationService.bot.telegram.sendMessage.mockRejectedValueOnce(new Error('403: bot was blocked by the user'));
+    deps.notificationService.sendMessage.mockRejectedValueOnce(new Error('403: bot was blocked by the user'));
     expect(await sendReminders(deps, at10)).toBe(1);
     expect(sentTo(deps)).toEqual([1, 2]);
   });

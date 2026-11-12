@@ -348,7 +348,7 @@ describe('evening summary and reminders know about the morning plan', () => {
         setReminderSentTodayHours: jest.fn(async () => {})
       },
       expenseService: { hasAnyExpenseToday: async () => false },
-      notificationService: { localizationService: localization, bot: { telegram: { sendMessage: jest.fn(async () => ({})) } } },
+      notificationService: { localizationService: localization, sendMessage: jest.fn(async () => ({})) },
       dailyPlanService: { sentOn: jest.fn(async () => true) }
     });
     const morning = deps();

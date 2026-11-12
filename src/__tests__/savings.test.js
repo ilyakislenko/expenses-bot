@@ -1,4 +1,4 @@
-// Накопления: математика прогноза, авто-взнос, статус цели, разбор ввода
+// Накопления: математика прогноза, статус цели, разбор ввода (авто-взнос — savingsScenarios.test.js)
 const { simulate, monthsToTarget, requiredMonthly } = require('../utils/savingsForecast');
 const SavingsService = require('../services/SavingsService');
 const SavingsHandlers = require('../handlers/SavingsHandlers');
@@ -74,41 +74,6 @@ describe('SavingsService', () => {
     expect(monthsUntil('2026-10-27', '2026-11-26')).toBe(0);
     expect(monthsUntil('2026-10-27', '2026-11-27')).toBe(1);
     expect(monthsUntil('2026-10-27', '2026-01-01')).toBe(0);
-  });
-
-  // 3 прошлых периода: доходы есть в двух, в третьем только траты — его не учитываем
-  function serviceWithHistory() {
-    const totals = {
-      '-1': { income: [{ currency: 'RUB', total: 150000 }], incomeCount: 2, expenses: [{ currency: 'RUB', total: 90000 }, { currency: 'USD', total: 100 }] },
-      '-2': { income: [{ currency: 'RUB', total: 130000 }], incomeCount: 1, expenses: [{ currency: 'RUB', total: 100000 }] },
-      '-3': { income: [], incomeCount: 0, expenses: [{ currency: 'RUB', total: 70000 }] }
-    };
-    const period = (offset) => ({ start: `p${offset}`, end: `e${offset}` });
-    const offsetOf = (p) => p.start.slice(1);
-    return new SavingsService({
-      expenseService: {
-        getPeriodContext: async (userId, kind, offset) => ({ timezone: 'UTC', period: period(offset) }),
-        getTotals: async (userId, tz, p) => ({ byCurrency: totals[offsetOf(p)].expenses })
-      },
-      incomeService: {
-        getTotals: async (userId, tz, p) => ({ byCurrency: totals[offsetOf(p)].income, count: totals[offsetOf(p)].incomeCount })
-      },
-      currencyUtils: { convert: async (amount, from) => (from === 'USD' ? amount * 100 : amount) }
-    });
-  }
-
-  test('auto contribution: average income − expenses over periods that have incomes, in the main currency', async () => {
-    const auto = await serviceWithHistory().autoMonthly(7, 'RUB');
-    expect(auto).toEqual({ income: 140000, expenses: 100000, amount: 40000, periods: 2 });
-  });
-
-  test('no recorded incomes → auto contribution is unknown, not «minus expenses»', async () => {
-    const service = new SavingsService({
-      expenseService: { getPeriodContext: async () => ({ timezone: 'UTC', period: {} }), getTotals: async () => ({ byCurrency: [{ currency: 'RUB', total: 1000 }] }) },
-      incomeService: { getTotals: async () => ({ byCurrency: [], count: 0 }) },
-      currencyUtils: {}
-    });
-    expect(await service.autoMonthly(7, 'RUB')).toBeNull();
   });
 
   const state = (overrides = {}) => ({

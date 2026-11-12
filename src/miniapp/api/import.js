@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const express = require('express');
+const { upload } = require('../upload');
 const logger = require('../../utils/logger');
 const { ImportError, MAX_FILE_BYTES, isSupportedDocument } = require('../../utils/statement');
 const { parseStatementIsolated } = require('../../utils/statement/worker');
@@ -97,15 +97,21 @@ module.exports = (router, { get, http }) => {
     });
   }));
 
-  router.post('/import/preview', express.raw({ type: () => true, limit: MAX_FILE_BYTES }), http.wrap(async (req, res) => {
-    const ctx = await req.ctx();
-    const limit = get('rateLimiter').checkLimit(ctx.userId, 'import');
-    if (!limit.allowed) throw new http.HttpError(429, 'import_rate');
-    const name = http.str(req.query.name, { max: 255, def: '' });
-    const buffer = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
-    if (!isSupportedDocument({ file_name: name, mime_type: req.get('content-type') }) || !buffer.length) {
-      throw http.badRequest('import_unsupported_file');
+  // Лимит и тип файла (по имени и заголовку) — до чтения тела (upload.js); размер больше 20 МБ — 413 too_large
+  const fileUpload = upload({
+    limit: MAX_FILE_BYTES,
+    type: () => true,
+    before: (req, ctx) => {
+      http.rateLimit(get, ctx.userId, 'import', 'import_rate');
+      const name = http.str(req.query.name, { max: 255, def: '' });
+      if (!isSupportedDocument({ file_name: name, mime_type: req.get('content-type') })) throw http.badRequest('import_unsupported_file');
     }
+  });
+
+  router.post('/import/preview', fileUpload, http.wrap(async (req, res) => {
+    const ctx = await req.ctx();
+    const buffer = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+    if (!buffer.length) throw http.badRequest('import_unsupported_file');
     if (buffer.length > MAX_FILE_BYTES) throw http.badRequest('import_file_too_big');
 
     let parsed;

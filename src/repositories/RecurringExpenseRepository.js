@@ -3,18 +3,19 @@ const BaseRepository = require('./BaseRepository');
 // Регулярная трата "к списанию": в локальном дне пользователя наступило число списания
 // (в коротких месяцах — последний день), а за текущий локальный месяц трата ещё не записана.
 // Пояс берётся из pg_timezone_names: строка с неизвестным поясом пропускается, а не роняет запрос для всех.
+// blocked — автор заблокировал бота: трата записывается, сообщение о ней не шлём.
 const DUE_SELECT = `
   WITH t AS (
     SELECT r.*,
            tz.name AS timezone,
-           u.language,
+           u.language, u.blocked_at IS NOT NULL AS blocked,
            (NOW() AT TIME ZONE tz.name)::date AS local_today
     FROM recurring_expenses r
     JOIN users u ON u.id = r.user_id
     JOIN pg_timezone_names tz ON tz.name = COALESCE(u.timezone, 'UTC')
   )
   SELECT t.id, t.user_id, t.amount, t.currency, t.category_id, t.description, t.day_of_month, t.is_family,
-         t.timezone, t.language,
+         t.timezone, t.language, t.blocked,
          to_char(date_trunc('month', t.local_today), 'YYYY-MM-DD') AS charge_month,
          c.name AS category_name, c.icon AS category_icon
   FROM t
