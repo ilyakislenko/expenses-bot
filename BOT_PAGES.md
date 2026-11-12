@@ -393,7 +393,14 @@ Cron каждые 15 минут записывает трату в расход�
 `setChatMenuButton` в `scripts/set-bot-profile.js`; без адреса — обычное меню команд), «📱 Крутить в приложении»
 (`miniapp_button`) в «📈 Прогноз» / «📊 Сценарии на год» ведёт сразу на `#/savings/scenarios`. Без `MINIAPP_URL` кнопок
 нет. Сервер — `MiniAppServer` на `127.0.0.1:MINIAPP_PORT` (без `MINIAPP_PORT` не запускается), отдельно от мониторинга;
-наружу его выводит Cloudflare Tunnel: публичный адрес → `http://localhost:MINIAPP_PORT`.
+наружу его выводит https-прокси на тот же адрес `http://127.0.0.1:MINIAPP_PORT`. В проде — `https://app.clubspace.space/`:
+запись `A app → внешний адрес сервера` в DNS Reg.ru; Caddy в docker (`expenses-app-proxy`, сеть хоста,
+`/opt/expenses-app-proxy/Caddyfile`) слушает 8443 и пускает только этот адрес — Nginx Proxy Manager и домашние сервисы
+наружу не попадают; сертификат Let's Encrypt Caddy получает и продлевает сам через TLS-ALPN на 443 (порт 80 провайдер
+закрывает, HTTP-проверка выключена); правило роутера «внешний 443 → сервер:8443» ставит по UPnP
+`/usr/local/bin/expenses-app-upnp` (таймер `expenses-app-upnp.timer` раз в 5 минут — роутер забывает правила при
+перезагрузке; роутер принимает правило только на адрес того, кто его ставит). Подойдёт и Cloudflare Tunnel (публичный
+адрес → `http://localhost:MINIAPP_PORT`), но из России он бывает медленным.
 
 - **Вход** только из Telegram: страница шлёт `Authorization: tma <Telegram.WebApp.initData>`, сервер проверяет подпись
   токеном бота (`miniapp/initData.js`, HMAC «WebAppData», сравнение за постоянное время) и свежесть (`auth_date` не старше

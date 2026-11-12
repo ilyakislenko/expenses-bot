@@ -53,11 +53,11 @@ async function setProfile(localization, lang, languageCode) {
   for (const lang of Object.keys(localization.supportedLanguages)) {
     await setProfile(localization, lang, TELEGRAM_LANGUAGE[lang] || lang);
   }
-  // Кнопка меню у поля ввода: при MINIAPP_URL открывает Mini App (одна подпись на всех — у Telegram она без языка),
-  // без адреса — обычное меню команд
+  // Кнопка меню у поля ввода: при MINIAPP_URL открывает Mini App, без адреса — обычное меню команд. Подпись у Telegram
+  // одна на всех (без языка) — по-русски, как у основной аудитории бота
   const url = process.env.MINIAPP_URL;
   await call('setChatMenuButton', {
-    menu_button: url ? { type: 'web_app', text: localization.getText(DEFAULT_LANGUAGE, 'miniapp_menu'), web_app: { url } } : { type: 'commands' }
+    menu_button: url ? { type: 'web_app', text: localization.getText('ru', 'miniapp_menu'), web_app: { url } } : { type: 'commands' }
   });
   console.log(`menu button: ${url ? 'mini app' : 'commands'}`);
 })().catch((error) => {

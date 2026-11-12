@@ -69,7 +69,7 @@ production:
 - **Migrations** — `npm run migrate`, plain SQL in `src/migrations`.
 - **Voice** — whisper.cpp + ffmpeg on the host, `VOICE_STT_*` in `.env`; exact install commands in `BOT_PAGES.md` («Голосовые»).
 - **Charts** — no browser or chart service: SVG built in code, text shaped by HarfBuzz (`harfbuzzjs`, WASM), rasterized by `@resvg/resvg-js` off the event loop; Noto fonts for Latin/Cyrillic, Georgian and Devanagari ship in `assets/fonts` (OFL), CJK comes from the system (`fonts-noto-cjk` or Droid Sans Fallback, or `CHART_CJK_FONT`). Details in `BOT_PAGES.md` («Графики картинками»).
-- **Mini App** — `MINIAPP_PORT` starts the page and API on `127.0.0.1` only; expose it with Cloudflare Tunnel (public hostname → `http://localhost:MINIAPP_PORT`) and set `MINIAPP_URL` to that https address to show the «📱 Open the app» buttons, then run `node scripts/set-bot-profile.js` so the chat menu button opens the app. Details in `BOT_PAGES.md` («Mini App»).
+- **Mini App** — `MINIAPP_PORT` starts the page and API on `127.0.0.1` only; put an https reverse proxy in front of `http://127.0.0.1:MINIAPP_PORT` (production: a dedicated Caddy container behind a forwarded port 443 with automatic Let's Encrypt via TLS-ALPN, so no other local service is exposed; Cloudflare Tunnel also works) and set `MINIAPP_URL` to that https address to show the «📱 Open the app» buttons, then run `node scripts/set-bot-profile.js` so the chat menu button opens the app. Details in `BOT_PAGES.md` («Mini App»).
 
 ```bash
 docker compose up -d                                    # Postgres
