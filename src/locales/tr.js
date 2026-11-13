@@ -199,7 +199,7 @@ module.exports = {
 • 🎯 *Bütçeler* ve 📄 dönem *Özeti* — ay genel bakışının altındaki düğmeler (Premium)
 • Para birimleri, hatırlatıcılar (günde en fazla 3) ve dönem başlangıcı — ☰ Daha fazla → ⚙️ Ayarlar
 • 🏆 /achievements — gün serisi, başarılar, meydan okumalar ve ayın özeti
-• 🎁 /invite — arkadaşınızı davet edin: ikinize de +7 gün Premium
+• 🎁 /invite — arkadaşınızı davet edin: ikinize de +30 gün Premium
 
 Komutlar: /stats /history /income /recurring /export /settings /menu`,
       
@@ -353,7 +353,7 @@ Artık tüm harcamalar yerel saatte gösterilecek.`,
         purchases_next_button: 'Sonraki ▶',
     premium_why_paid_text: "Bu botu tek bir kişi geliştiriyor — küçük, bağımsız bir proje. Sunucular ve yapay zekâ (fiş ve ses tanıma, sorulara yanıtlar) her ay para tutuyor, yeni özellikler de zaman istiyor. Premium bunların hepsini karşılıyor ve botun yaşamasını ve gelişmesini sağlıyor. Harcama kaydetmek ücretsiz kalıyor.",
     button_invite: '🎁 Arkadaş davet et',
-    command_invite: 'Arkadaş davet et: +7 gün Premium',
+    command_invite: 'Arkadaş davet et: +30 gün Premium',
     referral_title: '🎁 *Bir arkadaşınızı davet edin*',
     referral_intro: "Bağlantınızı bir arkadaşınıza gönderin. Arkadaşınız en az {activeDays} farklı günde {expenses} harcama kaydettiğinde *ikiniz de* *+{days} gün Premium* kazanırsınız — deneme ya da ücretli sürenize eklenir.",
     referral_link_label: '🔗 Bağlantınız (kopyalamak için dokunun):',
@@ -371,6 +371,13 @@ Artık tüm harcamalar yerel saatte gösterilecek.`,
     referral_reward_inviter: '🎉 *+{days} gün Premium!* {name} davetiniz sayesinde harcamalarını kaydediyor. Premium {date} tarihine kadar geçerli.',
     referral_reward_inviter_capped: '🎉 {name} davetiniz sayesinde harcamalarını kaydediyor ve +{friendDays} gününü aldı. Maksimum bonusa ({days} gün) zaten ulaştınız — botu önerdiğiniz için teşekkürler ❤️',
     referral_upsell_line: '🎁 Ya da bir arkadaşınızı davet edin — ikiniz de +{days} gün Premium kazanırsınız.',
+    share_prompt_streak: "🔥 Her gün kayıt tutuyorsunuz — artık bu bir alışkanlık! Botu işine yarayacak bir arkadaşınıza gösterin.",
+    share_prompt_wrapped: "🎉 Ay özetiniz hazır. Botu bir arkadaşınıza gösterin — o da parasının nereye gittiğini görsün.",
+    share_prompt_quiz: "🎲 Quiz tamamlandı! Botu bir arkadaşınıza gösterin, harcamalarını kim daha iyi biliyor görün.",
+    share_prompt_goal: "🏆 Hedefe ulaşıldı — tebrikler! Botu birikim yapan bir arkadaşınıza gösterin.",
+    share_prompt_bonus_both: "🎁 Bağlantınızla ikiniz de +{days} gün Premium kazanırsınız.",
+    share_prompt_bonus_friend: "🎁 Bağlantınızla gelen arkadaşınız +{days} gün Premium alır.",
+    share_prompt_button: "📤 Arkadaşına göster",
     premium_hook_regular: '📊 Son 30 gündeki kayıtlar: <b>{count}</b>. Premium ile hangi kategorilerin büyüdüğünü görür, limit koyarsınız — ay sonunda daha fazlası kalır.',
     premium_hook_trial: '📊 Son 30 gündeki kayıtlar: <b>{count}</b>. Deneme bittikten sonra bütçeler, tam özetler ve aile yalnızca Premium ile kalır — kaydettikleriniz her durumda saklanır.',
     premium_benefit_receipts: '\n• 🧾 Fiş fotoğrafları: ayda {premium} adede kadar (Premium olmadan — {free})',

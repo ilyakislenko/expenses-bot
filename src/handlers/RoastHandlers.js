@@ -9,10 +9,11 @@ const BACK = { s: 'rst', m: 'rsm' };
 // уровня «без цензуры» и «Разнос месяца» (`/roast`, `rsm`). origin в callback_data — куда вернуться после выбора:
 // `s` — экран настройки, `m` — «Разнос месяца», `o` — опрос «🧭 Настроим бота под тебя» (registerOrigin).
 class RoastHandlers {
-  constructor({ roastService, userService, localizationService }) {
+  constructor({ roastService, userService, localizationService, referralService = null }) {
     this.roastService = roastService;
     this.userService = userService;
     this.localizationService = localizationService;
+    this.referralService = referralService; // ссылка поделившегося в тексте «Поделиться разносом»
     this.extraOrigins = {};
   }
 
@@ -204,7 +205,10 @@ class RoastHandlers {
       keyboard.push(row);
     }
     if (roast.hasData && ctx.botInfo && ctx.botInfo.username) {
-      const link = `https://t.me/${ctx.botInfo.username}?start=roast`;
+      // share_roast_<код>: пришедший по пересланному разносу — приглашённый этого пользователя
+      const link = this.referralService
+        ? await this.referralService.shareLinkFor(userId, 'roast', ctx.botInfo.username)
+        : ReferralService.shareLink(ctx.botInfo.username, 'roast');
       const shareText = `${this.t(lang, 'roast_share_header')}\n\n${roast.shareText}`;
       keyboard.push([{ text: this.t(lang, 'button_roast_share'), url: ReferralService.shareUrl(link, shareText) }]);
     }

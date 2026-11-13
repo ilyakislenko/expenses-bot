@@ -25,7 +25,7 @@ class UserService {
   // language — язык бота по языку Telegram (LocalizationService.resolveTelegramLanguage; null — en): новой записи
   // сразу ставятся он и часовой пояс по нему (utils/onboarding LANGUAGE_TIMEZONE, у en — UTC), чтобы трата до выбора
   // языка и «сегодня» были по-человечески. У существующего пользователя язык и пояс не меняются.
-  // source — источник для воронки (код из ?start=, 'ref', 'split', 'gpass', 'miniapp'), пишется только новому
+  // source — источник для воронки (код из ?start=, 'ref', 'share_<вид>', 'split', 'gpass', 'miniapp'), пишется только новому
   async registerUser(userId, username, firstName, { language = null, source = null } = {}) {
     try {
       const userLanguage = language || 'en';

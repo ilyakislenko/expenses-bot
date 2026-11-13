@@ -6,6 +6,7 @@ const { signInitData } = require('../miniapp/initData');
 const MiniAppServer = require('../miniapp/MiniAppServer');
 const LocalizationService = require('../services/LocalizationService');
 const AchievementService = require('../services/AchievementService');
+const ReferralService = require('../services/ReferralService');
 const CoinService = require('../services/CoinService');
 const Formatter = require('../utils/formatter');
 const { USER_LIMITS, COINS } = require('../utils/constants');
@@ -265,17 +266,20 @@ describe('mini app achievements', () => {
 });
 
 describe('AchievementService.shareWrapped', () => {
-  test('the card goes to the chat with the bot link (like achwi); no spending — nothing is sent', async () => {
+  test('the card goes to the chat with the sharer\'s referral link (like achwi); no spending — nothing is sent', async () => {
     const notificationService = { sendPhoto: jest.fn(async () => {}), botUsername: () => 'ExpensesAssistant_bot' };
     const chartService = { available: true, wrappedCard: jest.fn(async () => Buffer.from('png')) };
-    const service = new AchievementService({ notificationService, chartService, localizationService: new LocalizationService() });
+    const referralService = new ReferralService({ referralRepository: { getCode: async (id) => (id === 7 ? 'k3m9x2p' : null) } });
+    const service = new AchievementService({ notificationService, chartService, localizationService: new LocalizationService(), referralService });
     service.buildWrapped = jest.fn(async () => ({ text: 'x', period: {}, card: { total: 1 } }));
     expect(await service.shareWrapped(7, 'ru', 3)).toBe('sent');
     expect(service.buildWrapped).toHaveBeenCalledWith(7, 'ru', 0);
+    const link = 'https://t.me/ExpensesAssistant_bot?start=share_wrapped_k3m9x2p';
+    expect(chartService.wrappedCard).toHaveBeenCalledWith({ total: 1 }, 'ru', { botUsername: 'ExpensesAssistant_bot', link });
     const [userId, png, extra] = notificationService.sendPhoto.mock.calls[0];
     expect([userId, png.toString()]).toEqual([7, 'png']);
-    expect(extra.caption).toContain('https://t.me/ExpensesAssistant_bot?start=wrapped');
-    expect(extra.reply_markup.inline_keyboard[0][0].url).toBe('https://t.me/ExpensesAssistant_bot?start=wrapped');
+    expect(extra.caption).toContain(link);
+    expect(extra.reply_markup.inline_keyboard[0][0].url).toBe(link);
 
     service.buildWrapped = jest.fn(async () => null);
     expect(await service.shareWrapped(7, 'ru', -1)).toBe('empty');

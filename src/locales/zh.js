@@ -200,7 +200,7 @@ module.exports = {
 • 🎯 *预算* 和 📄 期间 *总结* — 月度概览下方的按钮（高级版）
 • 货币、提醒（每天最多3次）和周期起始日 — 在 ☰ 更多 → ⚙️ 设置
 • 🏆 /achievements — 连续记录天数、成就、挑战和月度回顾
-• 🎁 /invite — 邀请好友：你们俩都得高级版 +7 天
+• 🎁 /invite — 邀请好友：你们俩都得高级版 +30 天
 
 命令：/stats /history /income /recurring /export /settings /menu`,
   
@@ -352,7 +352,7 @@ module.exports = {
     purchases_next_button: '下一页 ▶',
     premium_why_paid_text: "这个机器人由一个人开发，是一个小型独立项目。服务器和 AI（小票与语音识别、问题解答）每月都需要费用，新功能也需要时间。高级版支付这一切，让机器人得以持续运行和发展。记录支出依然免费。",
     button_invite: '🎁 邀请好友',
-    command_invite: '邀请好友：高级版 +7 天',
+    command_invite: '邀请好友：高级版 +30 天',
     referral_title: '🎁 *邀请好友*',
     referral_intro: "把你的链接发给好友。好友在至少 {activeDays} 个不同的日子里记录 {expenses} 笔支出后，你们*俩*都将获得*高级版 +{days} 天*——叠加到试用或已付费的期限上。",
     referral_link_label: '🔗 你的链接（点按即可复制）：',
@@ -370,6 +370,13 @@ module.exports = {
     referral_reward_inviter: '🎉 *高级版 +{days} 天！* {name} 通过你的邀请开始记账了。高级版有效期至 {date}。',
     referral_reward_inviter_capped: '🎉 {name} 通过你的邀请开始记账了，并获得了 +{friendDays} 天。你已拿满奖励上限（{days} 天）——感谢你推荐这个机器人 ❤️',
     referral_upsell_line: '🎁 或者邀请好友——你们俩都得高级版 +{days} 天。',
+    share_prompt_streak: "🔥 你每天都在记账——这已经成了习惯！把机器人推荐给也用得上的朋友吧。",
+    share_prompt_wrapped: "🎉 你的月度总结已生成。把机器人推荐给朋友——让他也看看钱都花在哪了。",
+    share_prompt_quiz: "🎲 测验完成！把机器人推荐给朋友，比比谁更了解自己的开销。",
+    share_prompt_goal: "🏆 目标达成，恭喜！把机器人推荐给也在存钱的朋友吧。",
+    share_prompt_bonus_both: "🎁 通过你的链接，你们俩都得高级版 +{days} 天。",
+    share_prompt_bonus_friend: "🎁 通过你的链接加入的好友将获得高级版 +{days} 天。",
+    share_prompt_button: "📤 推荐给朋友",
     premium_hook_regular: '📊 最近 30 天的记录：<b>{count}</b> 条。有了高级版，你能看到哪些类别在增长、设置限额——月底就能剩下更多。',
     premium_hook_trial: '📊 最近 30 天的记录：<b>{count}</b> 条。试用期结束后，预算、完整总结和家庭功能仅限高级版——已记录的内容都会保留。',
     premium_benefit_receipts: '\n• 🧾 小票照片：每月最多 {premium} 张（无高级版 — {free} 张）',

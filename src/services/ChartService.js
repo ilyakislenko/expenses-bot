@@ -9,6 +9,8 @@ const IMAGE_WIDTH = { donut: 1200, trend: 1200, card: 1080 };
 const DEFAULT_OTHER_NAMES = ['Другое', 'Other'];
 // Коды языков бота → локали Intl для названий месяцев
 const INTL_LOCALES = { jp: 'ja', kz: 'kk' };
+// Ссылка на картинке — без https:// (короче, а Telegram и камеры телефона её всё равно узнают)
+const cardLink = (link) => (link ? String(link).replace(/^https?:\/\//, '') : '');
 
 // Графики картинками: данные — те же, что у текстовых экранов (суммы в основной валюте по курсу),
 // раскладка — utils/charts.js, растеризация — ChartRenderer. Если картинку не нарисовать (нет рендера или
@@ -336,7 +338,8 @@ class ChartService {
 
   // 🎉 Карточка «Итоги месяца» из AchievementService.buildWrapped().card → PNG или null.
   // Без описаний трат и названий целей: только числа, главная категория и категория самой крупной покупки.
-  async wrappedCard(card, lang, { botUsername } = {}) {
+  // link — ссылка поделившегося (share_wrapped_<код>), пишется внизу картинки: её видят те, кому переслали
+  async wrappedCard(card, lang, { botUsername, link = null } = {}) {
     if (!card) return null;
     const { currency } = card;
     const money = (value) => this.money(value, currency);
@@ -380,17 +383,19 @@ class ChartService {
     if (card.biggestDay) {
       rows.push({ label: labels.biggestDay, value: money(card.biggestDay.total), detail: shortDate(card.biggestDay.day) });
     }
+    const linkLabel = cardLink(link);
     const svg = charts.wrappedCardSvg({
       title: labels.title, subtitle: range, total: money(card.total), totalLabel: labels.spent,
-      brand: this.brand(botUsername), footer: labels.footer, tiles, rows
+      brand: this.brand(botUsername), footer: labels.footer, link: linkLabel, tiles, rows
     }, this.renderer.createText());
     return this.render(svg, IMAGE_WIDTH.card);
   }
 
   // 🎲 Карточка результата квиза недели → PNG или null (нет рендера или шрифта для языка).
-  // card: { weekRange, score, correct, total, answers, percent, streak, perfect }. Сумм и описаний трат нет
-  async quizCard(card, lang, { botUsername } = {}) {
-    const link = botUsername ? `t.me/${botUsername}?start=quiz` : '';
+  // card: { weekRange, score, correct, total, answers, percent, streak, perfect }. Сумм и описаний трат нет.
+  // shareLink — ссылка поделившегося (share_quiz_<код>); без неё — ссылка на квиз без кода
+  async quizCard(card, lang, { botUsername, link: shareLink = null } = {}) {
+    const link = cardLink(shareLink) || (botUsername ? `t.me/${botUsername}?start=share_quiz` : '');
     const labels = {
       title: this.t(lang, 'quiz_card_title'),
       subtitle: this.t(lang, 'quiz_card_week', { range: card.weekRange }),

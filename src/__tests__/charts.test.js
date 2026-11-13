@@ -5,6 +5,7 @@ const ChartHandlers = require('../handlers/ChartHandlers');
 const AchievementService = require('../services/AchievementService');
 const LocalizationService = require('../services/LocalizationService');
 const Formatter = require('../utils/formatter');
+const ReferralService = require('../services/ReferralService');
 
 const textOf = (lang, key, params) => (params ? `${key}:${JSON.stringify(params)}` : key);
 const sum = (list) => list.reduce((a, b) => a + b, 0);
@@ -316,6 +317,17 @@ describe('ChartService', () => {
     expect(svg).toContain('@ExpensesAssistant_bot');
   });
 
+  test('wrapped card with the sharer\'s link: the link (without https://) replaces the bot name at the bottom', async () => {
+    const { service } = chartService();
+    const card = { period: { start: '2026-10-01', end: '2026-11-01', last: '2026-10-31' }, currency: 'RUB', total: 100, count: 3, days: 2, streak: 0 };
+    const svg = (await service.wrappedCard(card, 'ru', {
+      botUsername: 'ExpensesAssistant_bot', link: 'https://t.me/ExpensesAssistant_bot?start=share_wrapped_k3m9x2p'
+    })).toString();
+    expect(svg).toContain('t.me/ExpensesAssistant_bot?start=share_wrapped_k3m9x2p');
+    expect(svg).not.toContain('https://');
+    expect(svg).not.toContain('@ExpensesAssistant_bot');
+  });
+
   test('plan vs actual: recurring payments are steps on their days, the rest of the budget is spread evenly', async () => {
     const { service } = chartService({
       expenses: [
@@ -474,6 +486,18 @@ describe('AchievementService.processWrapped with a card', () => {
     expect(notificationService.sendMessage).not.toHaveBeenCalled();
   });
 
+  test('the card carries the user\'s share link (share_wrapped_<code>); after the summary — «📤 Покажи другу»', async () => {
+    const { s, notificationService } = service();
+    const order = [];
+    notificationService.sendPhoto.mockImplementation(async () => { order.push('wrapped'); });
+    s.referralService = new ReferralService({ referralRepository: { getCode: async () => 'k3m9x2p' } });
+    s.referralService.offerShare = jest.fn(async () => { order.push('prompt'); return true; });
+    expect(await s.processWrapped(new Date('2026-11-01T12:00:00Z'))).toBe(1);
+    expect(s.chartService.wrappedCard).toHaveBeenCalledWith({}, 'ru', { botUsername: 'bot', link: 'https://t.me/bot?start=share_wrapped_k3m9x2p' });
+    expect(s.referralService.offerShare).toHaveBeenCalledWith(5, 'wrapped');
+    expect(order).toEqual(['wrapped', 'prompt']);
+  });
+
   test('too long for a caption or no picture — plain text as before', async () => {
     const long = service({ text: 'x'.repeat(1100) });
     await long.s.processWrapped(new Date('2026-11-01T12:00:00Z'));
@@ -575,16 +599,30 @@ describe('ChartHandlers', () => {
     expect(c2.replyWithPhoto).not.toHaveBeenCalled();
   });
 
-  test('wrapped share: free, a separate photo with only the bot link in the caption', async () => {
+  test('wrapped share: free, a separate photo with the sharer\'s referral link in the caption and on the card', async () => {
     const { h, chartService } = handlers();
+    h.referralService = new ReferralService({ referralRepository: { getCode: async () => 'k3m9x2p' } });
     const c = ctx();
     await h.shareWrapped(c, -1);
-    expect(chartService.wrappedCard).toHaveBeenCalled();
+    const link = 'https://t.me/ExpensesAssistant_bot?start=share_wrapped_k3m9x2p';
+    expect(chartService.wrappedCard).toHaveBeenCalledWith({}, 'ru', { botUsername: 'ExpensesAssistant_bot', link });
     const [media, extra] = c.replyWithPhoto.mock.calls[0];
     expect(media.source.toString()).toBe('card');
-    expect(extra.caption).toBe('chart_card_caption:{"link":"https://t.me/ExpensesAssistant_bot?start=wrapped"}');
-    expect(extra.reply_markup.inline_keyboard[0][0].url).toBe('https://t.me/ExpensesAssistant_bot?start=wrapped');
+    expect(extra.caption).toBe(`chart_card_caption:{"link":"${link}"}`);
+    expect(extra.reply_markup.inline_keyboard[0][0].url).toBe(link);
     expect(c.answerCbQuery).toHaveBeenCalledWith('chart_card_hint');
+  });
+
+  test('wrapped share without a referral code (no service or DB error) — share_wrapped link without a code', async () => {
+    const { h } = handlers();
+    const c = ctx();
+    await h.shareWrapped(c, -1);
+    expect(c.replyWithPhoto.mock.calls[0][1].reply_markup.inline_keyboard[0][0].url).toBe('https://t.me/ExpensesAssistant_bot?start=share_wrapped');
+
+    h.referralService = new ReferralService({ referralRepository: { getCode: async () => { throw new Error('db down'); } } });
+    const c2 = ctx();
+    await h.shareWrapped(c2, -1);
+    expect(c2.replyWithPhoto.mock.calls[0][1].reply_markup.inline_keyboard[0][0].url).toBe('https://t.me/ExpensesAssistant_bot?start=share_wrapped');
   });
 
   test('wrapped share without expenses — alert, no photo', async () => {

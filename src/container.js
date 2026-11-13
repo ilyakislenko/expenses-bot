@@ -304,7 +304,8 @@ class Container {
           notificationService: this.get('notificationService'),
           userNotificationRepository: this.get('userNotificationRepository'),
           chartService: this.get('chartService'),
-          coinService: this.get('coinService')
+          coinService: this.get('coinService'),
+          referralService: this.get('referralService')
         });
 
       // «🪙 Монеты»: журнал с ключами идемпотентности, обмен на дни премиума (UserService.grantRewardDays)
@@ -433,7 +434,8 @@ class Container {
           notificationService: this.get('notificationService'),
           userNotificationRepository: this.get('userNotificationRepository'),
           achievementService: this.get('achievementService'),
-          chartService: this.get('chartService')
+          chartService: this.get('chartService'),
+          referralService: this.get('referralService')
         });
 
       case 'quizHandlers':
@@ -580,7 +582,8 @@ class Container {
         return new RoastHandlers({
           roastService: this.get('roastService'),
           userService: this.get('userService'),
-          localizationService: this.get('localizationService')
+          localizationService: this.get('localizationService'),
+          referralService: this.get('referralService')
         });
 
       case 'taxRefundRepository':

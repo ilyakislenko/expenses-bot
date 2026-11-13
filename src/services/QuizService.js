@@ -4,6 +4,7 @@ const { QUIZ } = require('../utils/constants');
 const { addDays, customPeriod } = require('../utils/period');
 const quiz = require('../utils/quiz');
 const { isUnreachableError } = require('../utils/telegramErrors');
+const ReferralService = require('./ReferralService');
 
 // Локали Intl для названий дней недели
 const INTL_LOCALES = { jp: 'ja', kz: 'kk' };
@@ -34,7 +35,7 @@ function pollRejected(error) {
 // «Играть»/«Продолжить» (один отправитель — claimAsk), следующий вопрос в чат после ответа в приложении не уходит.
 // Всё состояние — в БД: перезапуск посреди квиза не ломает его (таймеры вопросов восстанавливает sweep()).
 class QuizService {
-  constructor({ quizRepository, userService, expenseService, incomeService, budgetService, currencyUtils, formatter, localizationService, notificationService, userNotificationRepository, achievementService = null, chartService = null, timers = true }) {
+  constructor({ quizRepository, userService, expenseService, incomeService, budgetService, currencyUtils, formatter, localizationService, notificationService, userNotificationRepository, achievementService = null, chartService = null, referralService = null, timers = true }) {
     this.repo = quizRepository;
     this.userService = userService;
     this.expenseService = expenseService;
@@ -47,6 +48,7 @@ class QuizService {
     this.userNotificationRepository = userNotificationRepository;
     this.achievementService = achievementService;
     this.chartService = chartService;
+    this.referralService = referralService; // ссылка поделившегося на карточке результата, «📤 Покажи другу»
     this.useTimers = timers;
     this.timers = new Map(); // poll_id → таймер «время вышло» (после перезапуска — sweep() раз в минуту)
   }
@@ -63,9 +65,13 @@ class QuizService {
     return this.notificationService.botUsername ? this.notificationService.botUsername() : null;
   }
 
-  shareLink() {
+  // Ссылка с карточки результата: t.me/<бот>?start=share_quiz_<код> — пришедший по ней приглашён этим игроком
+  // (уже пользующийся ботом попадает сразу в квиз)
+  async shareLink(userId) {
     const username = this.botUsername();
-    return username ? `https://t.me/${username}?start=quiz` : null;
+    return this.referralService
+      ? this.referralService.shareLinkFor(userId, 'quiz', username)
+      : ReferralService.shareLink(username, 'quiz');
   }
 
   weekRange(weekKey) {
@@ -560,6 +566,11 @@ class QuizService {
       : '';
     const text = this.resultText(finished, summary, [achievement]);
     if (send) await this.sendResult(finished, summary, text);
+    // После результата — «📤 Покажи другу» (раз на пользователя). Из приложения — тоже в чат, не задерживая ответ
+    if (this.referralService) {
+      if (send) await this.referralService.offerShare(Number(finished.user_id), 'quiz');
+      else this.referralService.offerShareLater(Number(finished.user_id), 'quiz');
+    }
     return { session: finished, summary, text, achievement };
   }
 
@@ -574,11 +585,11 @@ class QuizService {
   // Результат — карточкой-картинкой с подписью (её пересылают друзьям: на ней нет сумм и описаний), без картинки — текстом
   async sendResult(session, summary, text) {
     const chatId = Number(session.user_id);
-    const png = await this.resultCard(session, summary).catch((error) => {
+    const link = await this.shareLink(chatId);
+    const png = await this.resultCard(session, summary, link).catch((error) => {
       logger.warn('Quiz card not rendered', { userId: chatId, error: error.message });
       return null;
     });
-    const link = this.shareLink();
     const caption = link ? `${text}\n\n${this.t(session.lang, 'quiz_share_line', { link })}` : text;
     try {
       if (png && caption.length <= 1024) {
@@ -591,7 +602,7 @@ class QuizService {
     }
   }
 
-  async resultCard(session, summary) {
+  async resultCard(session, summary, link = null) {
     if (!this.chartService) return null;
     return this.chartService.quizCard({
       weekRange: this.weekRange(session.week_key),
@@ -602,7 +613,7 @@ class QuizService {
       percent: summary.percent,
       streak: summary.streak,
       perfect: summary.perfect
-    }, session.lang, { botUsername: this.botUsername() });
+    }, session.lang, { botUsername: this.botUsername(), link });
   }
 
   // ---------- Фоновые задачи ----------

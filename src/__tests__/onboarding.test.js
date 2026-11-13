@@ -64,7 +64,7 @@ function build({ store = createStore(), voice = false, receipt = false } = {}) {
     getPremiumSource: jest.fn(async () => store.premiumSource),
     getPendingInviter: jest.fn(async () => null),
     config: { ACTIVATION_EXPENSES: 3, ACTIVATION_DAYS: 2 },
-    rewardDays: 7
+    rewardDays: 30
   };
   const roastService = {
     getSettings: jest.fn(async () => ({ ...store.roast })),

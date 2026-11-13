@@ -195,7 +195,7 @@ module.exports = {
 • 🎯 *Budgets* and 📄 period *Summary* — buttons under the month overview (premium)
 • Currencies, reminders (up to 3 a day) and period start — in ☰ More → ⚙️ Settings
 • 🏆 /achievements — day streak, achievements, challenges and your month in review
-• 🎁 /invite — invite a friend: +7 days of premium for both of you
+• 🎁 /invite — invite a friend: +30 days of premium for both of you
 
 Commands: /stats /history /income /recurring /export /settings /menu`,
 
@@ -427,7 +427,7 @@ Now all your expenses will be correctly displayed in your local time.`,
   purchases_next_button: 'Next ▶',
   premium_why_paid_text: "This bot is made by one person — it is a small independent project. Servers and AI (receipt and voice recognition, answers to questions) cost money every month, and new features take time. Premium pays for all of this and keeps the bot alive and growing. Recording expenses stays free.",
   button_invite: '🎁 Invite a friend',
-  command_invite: 'Invite a friend: +7 days of premium',
+  command_invite: 'Invite a friend: +30 days of premium',
   referral_title: '🎁 *Invite a friend*',
   referral_intro: "Send a friend your link. Once they record {expenses} expenses on at least {activeDays} different days, you *both* get *+{days} days of premium* — added to a trial or paid period.",
   referral_link_label: '🔗 Your link (tap to copy):',
@@ -445,6 +445,13 @@ Now all your expenses will be correctly displayed in your local time.`,
   referral_reward_inviter: '🎉 *+{days} days of premium!* {name} is tracking expenses thanks to your invite. Premium is active until {date}.',
   referral_reward_inviter_capped: '🎉 {name} is tracking expenses thanks to your invite and got their +{friendDays} days. You have already collected the maximum bonus ({days} days) — thanks for spreading the word ❤️',
   referral_upsell_line: '🎁 Or invite a friend — you both get +{days} days of premium.',
+  share_prompt_streak: "🔥 You track every day — it is a habit now! Show the bot to a friend who could use it too.",
+  share_prompt_wrapped: "🎉 Your month in review is ready. Show the bot to a friend — let them see where their money goes too.",
+  share_prompt_quiz: "🎲 Quiz done! Show the bot to a friend and see who knows their spending better.",
+  share_prompt_goal: "🏆 Goal reached — congrats! Show the bot to a friend who is saving up too.",
+  share_prompt_bonus_both: "🎁 With your link you both get +{days} days of premium.",
+  share_prompt_bonus_friend: "🎁 A friend who joins with your link gets +{days} days of premium.",
+  share_prompt_button: "📤 Show a friend",
   premium_hook_regular: '📊 Entries in the last 30 days: <b>{count}</b>. With premium you see which categories grow, set limits — and keep more by the end of the month.',
   premium_hook_trial: '📊 Entries in the last 30 days: <b>{count}</b>. After the trial, budgets, full summaries and family stay with premium only — everything you recorded is kept either way.',
   premium_benefit_receipts: '\n• 🧾 Receipt photos: up to {premium} a month ({free} without premium)',

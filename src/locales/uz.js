@@ -182,7 +182,7 @@ module.exports = {
 • 🎯 *Byudjetlar* va 📄 davr *Xulosasi* — oy sharhi ostidagi tugmalar (Premium)
 • Valyutalar, eslatmalar (kuniga 3 tagacha) va davr boshi — ☰ Yana → ⚙️ Sozlamalar
 • 🏆 /achievements — kunlar seriyasi, yutuqlar, chellenjlar va oy yakuni
-• 🎁 /invite — do‘stingizni taklif qiling: ikkalangizga +7 kun Premium
+• 🎁 /invite — do‘stingizni taklif qiling: ikkalangizga +30 kun Premium
 
 Buyruqlar: /stats /history /income /recurring /export /settings /menu`,
   
@@ -334,7 +334,7 @@ Endi barcha xarajatlaringiz mahalliy vaqt bo‘yicha ko‘rsatiladi.`,
     purchases_next_button: 'Keyingi ▶',
     premium_why_paid_text: "Bu botni bir kishi yaratadi — bu kichik mustaqil loyiha. Serverlar va sun’iy intellekt (chek va ovozni tanish, savollarga javoblar) har oy pul talab qiladi, yangi funksiyalar esa vaqt. Premium bularning barchasini qoplaydi va botning yashashi hamda rivojlanishiga yordam beradi. Xarajatlarni yozish bepulligicha qoladi.",
     button_invite: '🎁 Do‘stni taklif qilish',
-    command_invite: 'Do‘stni taklif qilish: +7 kun Premium',
+    command_invite: 'Do‘stni taklif qilish: +30 kun Premium',
     referral_title: '🎁 *Do‘stingizni taklif qiling*',
     referral_intro: "Havolangizni do‘stingizga yuboring. U kamida {activeDays} xil kunda {expenses} ta xarajat yozganda, *ikkalangiz ham* *+{days} kun Premium* olasiz — sinov yoki to‘langan muddatga qo‘shiladi.",
     referral_link_label: '🔗 Sizning havolangiz (nusxalash uchun bosing):',
@@ -352,6 +352,13 @@ Endi barcha xarajatlaringiz mahalliy vaqt bo‘yicha ko‘rsatiladi.`,
     referral_reward_inviter: '🎉 *+{days} kun Premium!* {name} taklifingiz bilan xarajatlarini yozib bormoqda. Premium {date} gacha amal qiladi.',
     referral_reward_inviter_capped: '🎉 {name} taklifingiz bilan xarajatlarini yozib bormoqda va o‘zining +{friendDays} kunini oldi. Siz maksimal bonusni ({days} kun) allaqachon yig‘dingiz — botni tavsiya qilganingiz uchun rahmat ❤️',
     referral_upsell_line: '🎁 Yoki do‘stingizni taklif qiling — ikkalangizga +{days} kun Premium.',
+    share_prompt_streak: "🔥 Siz har kuni xarajat yozasiz — bu endi odat! Botni unga ham foydali bo‘ladigan do‘stingizga ko‘rsating.",
+    share_prompt_wrapped: "🎉 Oy yakunlari tayyor. Botni do‘stingizga ko‘rsating — u ham pullari qayerga ketayotganini ko‘rsin.",
+    share_prompt_quiz: "🎲 Kviz tugadi! Botni do‘stingizga ko‘rsating va xarajatlarini kim yaxshiroq bilishini ko‘ring.",
+    share_prompt_goal: "🏆 Maqsadga erishildi — tabriklayman! Botni pul yig‘ayotgan do‘stingizga ko‘rsating.",
+    share_prompt_bonus_both: "🎁 Havolangiz orqali ikkalangizga +{days} kun Premium.",
+    share_prompt_bonus_friend: "🎁 Havolangiz orqali kelgan do‘st +{days} kun Premium oladi.",
+    share_prompt_button: "📤 Do‘stga ko‘rsatish",
     premium_hook_regular: '📊 Oxirgi 30 kundagi yozuvlar: <b>{count}</b>. Premium bilan qaysi toifalar o‘sayotganini ko‘rasiz, limit qo‘yasiz — oy oxirida ko‘proq qoladi.',
     premium_hook_trial: '📊 Oxirgi 30 kundagi yozuvlar: <b>{count}</b>. Sinov muddatidan keyin byudjetlar, to‘liq xulosa va oila faqat Premium bilan qoladi — yozilganlarning hammasi har qanday holatda saqlanadi.',
     premium_benefit_receipts: '\n• 🧾 Chek suratlari: oyiga {premium} tagacha (Premiumsiz — {free})',

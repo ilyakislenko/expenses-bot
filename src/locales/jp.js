@@ -200,7 +200,7 @@ module.exports = {
 • 🎯 *予算* と 📄 期間の *サマリー* — 月の概要の下のボタン（プレミアム）
 • 通貨、リマインダー（1日3回まで）、期間の開始日 — ☰ その他 → ⚙️ 設定
 • 🏆 /achievements — 連続記録日数、実績、チャレンジ、月間まとめ
-• 🎁 /invite — 友だちを招待：おふたりにプレミアム+7日
+• 🎁 /invite — 友だちを招待：おふたりにプレミアム+30日
 
 コマンド: /stats /history /income /recurring /export /settings /menu`,
   
@@ -351,7 +351,7 @@ module.exports = {
     purchases_next_button: '次へ ▶',
     premium_why_paid_text: "このボットは一人で開発している小さな独立プロジェクトです。サーバーとAI（レシートや音声の認識、質問への回答）には毎月費用がかかり、新しい機能には時間がかかります。プレミアムはそのすべてをまかない、ボットの運営と開発を支えています。支出の記録はこれからも無料です。",
     button_invite: '🎁 友だちを招待',
-    command_invite: '友だちを招待：プレミアム+7日',
+    command_invite: '友だちを招待：プレミアム+30日',
     referral_title: '🎁 *友だちを招待*',
     referral_intro: "あなたのリンクを友だちに送ってください。友だちが{activeDays}日以上に分けて支出を{expenses}件記録すると、*おふたりとも* *プレミアム+{days}日* を受け取れます（お試し期間・有料期間に加算）。",
     referral_link_label: '🔗 あなたのリンク（タップでコピー）：',
@@ -369,6 +369,13 @@ module.exports = {
     referral_reward_inviter: '🎉 *プレミアム+{days}日！* {name}さんがあなたの招待で記録を始めました。プレミアムは{date}まで有効です。',
     referral_reward_inviter_capped: '🎉 {name}さんがあなたの招待で記録を始め、+{friendDays}日を受け取りました。あなたはすでにボーナスの上限（{days}日）に達しています。ボットを紹介してくださりありがとうございます ❤️',
     referral_upsell_line: '🎁 または友だちを招待すると、おふたりともプレミアム+{days}日。',
+    share_prompt_streak: "🔥 毎日記録できています — もう習慣ですね！役に立ちそうな友だちにボットを紹介しましょう。",
+    share_prompt_wrapped: "🎉 今月のまとめができました。友だちにもボットを紹介して、お金の行き先を見てもらいましょう。",
+    share_prompt_quiz: "🎲 クイズ完了！友だちにボットを紹介して、どちらが自分の支出に詳しいか比べてみましょう。",
+    share_prompt_goal: "🏆 目標達成おめでとうございます！貯金中の友だちにボットを紹介しましょう。",
+    share_prompt_bonus_both: "🎁 あなたのリンクから参加すると、おふたりともプレミアム+{days}日。",
+    share_prompt_bonus_friend: "🎁 あなたのリンクから参加した友だちはプレミアム+{days}日を受け取れます。",
+    share_prompt_button: "📤 友だちに紹介",
     premium_hook_regular: '📊 直近30日間の記録：<b>{count}</b>件。プレミアムなら、どのカテゴリが増えているかが分かり、上限も設定できます。月末に残るお金が増えます。',
     premium_hook_trial: '📊 直近30日間の記録：<b>{count}</b>件。お試し期間の後は、予算・詳細サマリー・家族機能はプレミアムのみになります。記録したデータはそのまま残ります。',
     premium_benefit_receipts: '\n• 🧾 レシート写真：月{premium}枚まで（プレミアムなし — {free}枚）',

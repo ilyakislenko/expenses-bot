@@ -200,7 +200,7 @@ module.exports = {
 • 🎯 *Presupuestos* y 📄 *Resumen* del periodo — botones bajo el resumen del mes (premium)
 • Monedas, recordatorios (hasta 3 al día) e inicio del periodo — en ☰ Más → ⚙️ Ajustes
 • 🏆 /achievements — racha diaria, logros, retos y tu resumen del mes
-• 🎁 /invite — invita a un amigo: +7 días de premium para los dos
+• 🎁 /invite — invita a un amigo: +30 días de premium para los dos
 
 Comandos: /stats /history /income /recurring /export /settings /menu`,
   
@@ -352,7 +352,7 @@ Tus gastos se mostrarán en hora local.`,
     purchases_next_button: 'Siguiente ▶',
     premium_why_paid_text: "Este bot lo hace una sola persona: es un proyecto pequeño e independiente. Los servidores y la IA (reconocimiento de tickets y de voz, respuestas a preguntas) cuestan dinero cada mes, y las funciones nuevas llevan tiempo. Premium paga todo eso y mantiene el bot vivo y en desarrollo. Registrar gastos sigue siendo gratis.",
     button_invite: '🎁 Invitar a un amigo',
-    command_invite: 'Invitar a un amigo: +7 días de premium',
+    command_invite: 'Invitar a un amigo: +30 días de premium',
     referral_title: '🎁 *Invita a un amigo*',
     referral_intro: "Envía tu enlace a un amigo. Cuando registre {expenses} gastos en al menos {activeDays} días distintos, *los dos* recibiréis *+{days} días de premium* — sumados a la prueba o al periodo pagado.",
     referral_link_label: '🔗 Tu enlace (toca para copiar):',
@@ -370,6 +370,13 @@ Tus gastos se mostrarán en hora local.`,
     referral_reward_inviter: '🎉 *¡+{days} días de premium!* {name} ya registra sus gastos gracias a tu invitación. Premium activo hasta {date}.',
     referral_reward_inviter_capped: '🎉 ¡{name} ya registra sus gastos gracias a tu invitación y recibió sus +{friendDays} días! Ya tienes el bono máximo ({days} días) — gracias por recomendar el bot ❤️',
     referral_upsell_line: '🎁 O invita a un amigo — los dos recibís +{days} días de premium.',
+    share_prompt_streak: "🔥 Registras tus gastos cada día — ¡ya es un hábito! Muéstrale el bot a un amigo al que también le sirva.",
+    share_prompt_wrapped: "🎉 Tu resumen del mes está listo. Muéstrale el bot a un amigo — que él también vea en qué se le va el dinero.",
+    share_prompt_quiz: "🎲 ¡Quiz completado! Muéstrale el bot a un amigo y comprobad quién conoce mejor sus gastos.",
+    share_prompt_goal: "🏆 ¡Meta lograda, enhorabuena! Muéstrale el bot a un amigo que también esté ahorrando.",
+    share_prompt_bonus_both: "🎁 Con tu enlace los dos recibís +{days} días de premium.",
+    share_prompt_bonus_friend: "🎁 Un amigo que llegue por tu enlace recibirá +{days} días de premium.",
+    share_prompt_button: "📤 Mostrar a un amigo",
     premium_hook_regular: '📊 Registros en los últimos 30 días: <b>{count}</b>. Con premium ves qué categorías crecen, pones límites — y a fin de mes te queda más.',
     premium_hook_trial: '📊 Registros en los últimos 30 días: <b>{count}</b>. Tras la prueba, los presupuestos, los resúmenes completos y la familia quedan solo con premium — todo lo registrado se conserva igualmente.',
     premium_benefit_receipts: '\n• 🧾 Fotos de tickets: hasta {premium} al mes (sin premium — {free})',

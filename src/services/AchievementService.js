@@ -8,6 +8,7 @@ const { CHALLENGE_DAYS, NO_SPEND_TARGET, evaluateChallenge, countNoSpendDays } =
 const { COMPARISON_ITEMS, countKeywords, pickComparison, biggestDay } = require('../utils/wrapped');
 const { USER_LIMITS } = require('../utils/constants');
 const { weekStart, weekStreak, bestWeekStreak } = require('../utils/quiz');
+const ReferralService = require('./ReferralService');
 
 // Первое знакомство открывает значки за всю историю. До стольких — празднуем как обычно (новичок и его первая
 // трата), больше — одна строка-сюрприз, без перечисления
@@ -34,7 +35,7 @@ class AchievementService {
   constructor({
     achievementRepository, userService, premiumService, expenseService, reportService, budgetService, savingsService,
     currencyUtils, formatter, localizationService, notificationService, userNotificationRepository, chartService = null,
-    coinService = null
+    coinService = null, referralService = null
   }) {
     this.achievementRepository = achievementRepository;
     this.userService = userService;
@@ -50,6 +51,7 @@ class AchievementService {
     this.userNotificationRepository = userNotificationRepository;
     this.chartService = chartService;
     this.coinService = coinService; // «🪙 Монеты»: день с записями, серия, значки, челленджи
+    this.referralService = referralService; // ссылка поделившегося на карточке итогов, «📤 Покажи другу»
   }
 
   t(lang, key, params) {
@@ -204,7 +206,10 @@ class AchievementService {
       if (!result.initialized && snap.streak.todayActive && snap.streak.current >= 2
         && await this.achievementRepository.markStreakSeen(userId, snap.today)) {
         lines.push(this.t(language, 'ach_streak_today', { days: snap.streak.current }));
+        // Каждые 7 дней серии подряд — удачный момент для «📤 Покажи другу» (сообщение — после ответа)
+        if (snap.streak.current % 7 === 0) this.offerShareLater(userId, 'streak');
       }
+      if (event === 'goal_reached') this.offerShareLater(userId, 'goal');
       return lines.filter(Boolean).slice(0, MAX_NOTE_LINES).join('\n');
     } catch (error) {
       logger.warn('Achievement tracking failed', { userId, event, error: error.message });
@@ -599,11 +604,15 @@ class AchievementService {
         if (this.chartService && this.chartService.available) keyboard.push([{ text: this.t(lang, 'button_wrapped_share'), callback_data: 'achwi|-1' }]);
         keyboard.push([{ text: this.t(lang, 'ach_button_wrapped_off'), callback_data: 'achwo' }]);
         const extra = { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } };
-        // Карточка-картинка с итогами в подписи (подпись — до 1024 символов); не вышло — как раньше, текстом
-        const card = text.length <= CAPTION_LIMIT ? await this.wrappedCardImage(wrapped.card, lang) : null;
+        // Карточка-картинка с итогами в подписи (подпись — до 1024 символов); не вышло — как раньше, текстом.
+        // Внизу картинки — ссылка поделившегося: картинку пересылают и без кнопки «📤 Поделиться»
+        const card = text.length <= CAPTION_LIMIT && this.canShareWrapped
+          ? await this.wrappedCardImage(wrapped.card, lang, await this.wrappedShareLink(user.id))
+          : null;
         if (card) await this.notificationService.sendPhoto(user.id, card, { ...extra, caption: text });
         else await this.notificationService.sendMessage(user.id, text, extra);
         sent++;
+        if (this.referralService) await this.referralService.offerShare(user.id, 'wrapped');
       } catch (error) {
         logger.warn('Monthly wrapped not delivered', { userId: user.id, error: error.message });
       }
@@ -611,15 +620,29 @@ class AchievementService {
     return sent;
   }
 
-  // PNG карточки «Итоги месяца» для рассылки или null (графики выключены, нет шрифта, ошибка рисования)
-  async wrappedCardImage(card, lang) {
+  // PNG карточки «Итоги месяца» для рассылки или null (графики выключены, нет шрифта, ошибка рисования).
+  // link — ссылка поделившегося (wrappedShareLink), пишется внизу картинки
+  async wrappedCardImage(card, lang, link = null) {
     if (!this.chartService || !this.chartService.available || !this.notificationService.sendPhoto) return null;
     try {
-      return await this.chartService.wrappedCard(card, lang, { botUsername: this.notificationService.botUsername() });
+      return await this.chartService.wrappedCard(card, lang, { botUsername: this.notificationService.botUsername(), link });
     } catch (error) {
       logger.warn('Wrapped card not rendered', { error: error.message });
       return null;
     }
+  }
+
+  // Ссылка с карточки итогов: t.me/<бот>?start=share_wrapped_<код> — пришедший по ней приглашён этим пользователем
+  async wrappedShareLink(userId) {
+    const username = this.notificationService.botUsername ? this.notificationService.botUsername() : null;
+    return this.referralService
+      ? this.referralService.shareLinkFor(userId, 'wrapped', username)
+      : ReferralService.shareLink(username, 'wrapped');
+  }
+
+  // «📤 Покажи другу» после ответа на действие (track() вызывается до ответа)
+  offerShareLater(userId, moment) {
+    if (this.referralService) this.referralService.offerShareLater(userId, moment);
   }
 
   // Карточку можно нарисовать и прислать картинкой
@@ -628,14 +651,14 @@ class AchievementService {
   }
 
   // «📤 Поделиться картинкой» из Mini App: карточка итогов отдельным сообщением в чат с ботом — как achwi (подпись —
-  // только ссылка на бота, кнопка «Открыть бота»). → 'sent' | 'empty' (трат нет) | 'unavailable' (не нарисовать/не отправить)
+  // только ссылка поделившегося, кнопка «Открыть бота»). → 'sent' | 'empty' (трат нет) | 'unavailable' (не нарисовать/не отправить)
   async shareWrapped(userId, lang, offset = -1) {
     const wrapped = await this.buildWrapped(userId, lang, Math.min(0, offset));
     if (!wrapped) return 'empty';
-    const png = await this.wrappedCardImage(wrapped.card, lang);
+    if (!this.canShareWrapped) return 'unavailable';
+    const link = await this.wrappedShareLink(userId);
+    const png = await this.wrappedCardImage(wrapped.card, lang, link);
     if (!png) return 'unavailable';
-    const username = this.notificationService.botUsername();
-    const link = username ? `https://t.me/${username}?start=wrapped` : null;
     try {
       await this.notificationService.sendPhoto(userId, png, {
         caption: link ? this.t(lang, 'chart_card_caption', { link }) : undefined,

@@ -86,11 +86,12 @@ class CommandHandlers {
   async start(ctx) {
     const user = ctx.from;
     // Источник из ссылки t.me/<bot>?start=<код>. Приглашения друзей (ref_<код>) — один источник «ref», а не
-    // отдельный у каждого пригласившего
+    // отдельный у каждого пригласившего; ссылки с картинок «поделиться» (share_<вид>_<код>) — share_<вид>, и это
+    // тоже приглашение от поделившегося
     const startCode = FunnelService.parseStartSource(ctx.message && ctx.message.text);
     const referralCode = ReferralService.parseStartCode(startCode);
     // Новый пользователь — только тот, чей вызов создал строку (без гонки двух /start подряд)
-    const registered = await this.registerFrom(ctx, referralCode ? 'ref' : startCode);
+    const registered = await this.registerFrom(ctx, ReferralService.funnelSource(startCode));
 
     // Новый пользователь: приветствие и язык, затем опрос (шаг — в callback_data `|ob` и в users.onboarding_answers)
     if (registered && registered.isNew) {
@@ -105,8 +106,9 @@ class CommandHandlers {
       if (!onboarding || !onboarding.answers) return;
     }
 
-    // Ссылка с карточки результата квиза (t.me/<бот>?start=quiz) у того, кто уже пользуется ботом, — сразу квиз
-    if (this.quizHandlers && startCode === 'quiz') {
+    // Ссылка с карточки результата квиза (t.me/<бот>?start=share_quiz_<код>, раньше ?start=quiz) у того, кто уже
+    // пользуется ботом, — сразу квиз
+    if (this.quizHandlers && (startCode === 'quiz' || ReferralService.parseShareKind(startCode) === 'quiz')) {
       return this.quizHandlers.show(ctx);
     }
     const userLanguage = await this.userService.getUserLanguage(user.id);

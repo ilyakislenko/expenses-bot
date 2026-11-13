@@ -6,8 +6,12 @@ const { REFERRAL } = require('../utils/constants');
 const CODE_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789';
 const CODE_LENGTH = 7;
 const CODE_ATTEMPTS = 5;
-// start-параметр приглашения: ref_<код>
+// start-параметр приглашения: ref_<код>. Ссылка с картинки или текста «поделиться» (итоги месяца, квиз, разнос):
+// share_<вид>_<код> — пришедший по ней тоже приглашён этим человеком, но в воронке виден свой источник share_<вид>;
+// share_<вид> без кода — если код получить не удалось
 const START_PATTERN = /^ref_([a-z0-9]{4,16})$/i;
+const SHARE_PATTERN = /^share_([a-z]+)(?:_([a-z0-9]{4,16}))?$/i;
+const SHARE_KINDS = ['wrapped', 'quiz', 'roast'];
 
 function generateCode(randomInt = crypto.randomInt) {
   let code = '';
@@ -40,14 +44,48 @@ class ReferralService {
     return this.localizationService.getText(lang, key, params);
   }
 
-  // "ref_k3m9x2p" → "k3m9x2p"; другой start-параметр (рекламный код) → null
+  // "ref_k3m9x2p" / "share_quiz_k3m9x2p" → "k3m9x2p"; другой start-параметр (рекламный код) → null
   static parseStartCode(payload) {
-    const match = START_PATTERN.exec(String(payload || ''));
+    const text = String(payload || '');
+    const match = START_PATTERN.exec(text) || SHARE_PATTERN.exec(text);
+    const code = match && match[match.length - 1];
+    return code ? code.toLowerCase() : null;
+  }
+
+  // "share_quiz_k3m9x2p" / "share_quiz" → "quiz"; не ссылка «поделиться» → null
+  static parseShareKind(payload) {
+    const match = SHARE_PATTERN.exec(String(payload || ''));
     return match ? match[1].toLowerCase() : null;
+  }
+
+  // Источник для воронки: приглашения (ref_<код>) — один источник «ref», ссылки «поделиться» — share_<вид>
+  // (без кода пригласившего), остальное (рекламный код) — как есть
+  static funnelSource(payload) {
+    if (!payload) return null;
+    if (START_PATTERN.test(payload)) return 'ref';
+    const kind = ReferralService.parseShareKind(payload);
+    return kind ? `share_${kind}` : payload;
   }
 
   static inviteLink(botUsername, code) {
     return `https://t.me/${botUsername}?start=ref_${code}`;
+  }
+
+  // Ссылка на бота для картинки или текста «поделиться»: share_<вид>_<код> (без кода — share_<вид>)
+  static shareLink(botUsername, kind, code = null) {
+    if (!SHARE_KINDS.includes(kind)) throw new Error(`Unknown share kind: ${kind}`);
+    if (!botUsername) return null;
+    return `https://t.me/${botUsername}?start=share_${kind}${code ? `_${code}` : ''}`;
+  }
+
+  // То же с кодом этого пользователя; код не получить (ошибка БД) — ссылка без кода, «поделиться» не ломается
+  async shareLinkFor(userId, kind, botUsername) {
+    if (!botUsername) return null;
+    const code = await this.getOrCreateCode(userId).catch((error) => {
+      logger.warn('Referral code for share link failed', { userId, kind, error: error.message });
+      return null;
+    });
+    return ReferralService.shareLink(botUsername, kind, code);
   }
 
   static shareUrl(link, text) {
@@ -199,7 +237,7 @@ class ReferralService {
     return this.referralRepository.getPremiumSource(userId);
   }
 
-  // Мягкая подсказка к сообщению о лимите для бесплатного пользователя: «или пригласи друга — +7 дней».
+  // Мягкая подсказка к сообщению о лимите для бесплатного пользователя: «или пригласи друга — +30 дней».
   // Не чаще раза в UPSELL_INTERVAL_DAYS и не тем, кто уже собрал все бонусы. null — не показывать.
   async limitUpsell(userId, lang) {
     try {
@@ -225,6 +263,37 @@ class ReferralService {
     rows.splice(Math.min(1, rows.length), 0, upsell.row);
     return { text: `${text}\n\n${upsell.text}`, keyboard: rows };
   }
+
+  // «📤 Покажи другу» в удачный момент (moment — из SHARE_MOMENTS): короткая строка и кнопка, открывающая отправку
+  // приглашения (t.me/share/url с личной ссылкой). Каждый момент — один раз на пользователя, всего — не чаще раза в
+  // SHARE_PROMPT_INTERVAL_DAYS (user_notifications 'share_prompt'). Никогда не бросает. → true, если отправлено
+  async offerShare(userId, moment) {
+    if (!this.config.SHARE_MOMENTS.includes(moment)) throw new Error(`Unknown share moment: ${moment}`);
+    try {
+      const username = this.notificationService.botUsername ? this.notificationService.botUsername() : null;
+      if (!username) return false;
+      const code = await this.getOrCreateCode(userId);
+      if (!(await this.referralRepository.claimSharePrompt(userId, moment, this.config.SHARE_PROMPT_INTERVAL_DAYS))) return false;
+      const [lang, stats] = await Promise.all([this.userService.getUserLanguage(userId), this.referralRepository.getInviterStats(userId)]);
+      const days = this.config.REWARD_DAYS;
+      const bonus = inviterBonusDays(stats, this.config) === 0 ? 'share_prompt_bonus_friend' : 'share_prompt_bonus_both';
+      const url = ReferralService.shareUrl(ReferralService.inviteLink(username, code), this.t(lang, 'referral_share_text', { days }));
+      await this.notificationService.sendMessage(userId, `${this.t(lang, `share_prompt_${moment}`)}\n${this.t(lang, bonus, { days })}`, {
+        reply_markup: { inline_keyboard: [[{ text: this.t(lang, 'share_prompt_button'), url }]] }
+      });
+      logger.info('Share prompt sent', { userId, moment });
+      return true;
+    } catch (error) {
+      logger.warn('Share prompt failed', { userId, moment, error: error.message });
+      return false;
+    }
+  }
+
+  // Для моментов внутри действия (track() до ответа): подсказка приходит через SHARE_PROMPT_DELAY_MS — после ответа
+  offerShareLater(userId, moment) {
+    const timer = setTimeout(() => this.offerShare(userId, moment), this.config.SHARE_PROMPT_DELAY_MS);
+    if (timer.unref) timer.unref();
+  }
 }
 
 module.exports = ReferralService;
@@ -232,3 +301,4 @@ module.exports.generateCode = generateCode;
 module.exports.inviterBonusDays = inviterBonusDays;
 module.exports.maxInviterDays = maxInviterDays;
 module.exports.CODE_ALPHABET = CODE_ALPHABET;
+module.exports.SHARE_KINDS = SHARE_KINDS;

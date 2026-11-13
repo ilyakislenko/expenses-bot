@@ -118,6 +118,25 @@ class ReferralRepository extends BaseRepository {
     return result.rowCount > 0;
   }
 
+  // «📤 Покажи другу»: true — показать (и момент занят), false — этот момент уже был или любая подсказка была за
+  // последние intervalDays. Строка кода приглашения (создаётся до вызова) под FOR UPDATE: два момента разом — одна подсказка
+  async claimSharePrompt(userId, moment, intervalDays) {
+    return this.transaction(async (client) => {
+      await client.query('SELECT 1 FROM referral_codes WHERE user_id = $1 FOR UPDATE', [userId]);
+      const result = await client.query(
+        `INSERT INTO user_notifications (user_id, kind, ref_key)
+         SELECT $1, 'share_prompt', $2
+         WHERE NOT EXISTS (
+           SELECT 1 FROM user_notifications
+           WHERE user_id = $1 AND kind = 'share_prompt' AND sent_at > NOW() - make_interval(days => $3::int)
+         )
+         ON CONFLICT DO NOTHING RETURNING user_id`,
+        [userId, moment, intervalDays]
+      );
+      return result.rowCount > 0;
+    });
+  }
+
   // Источник премиума, как в уведомлениях об окончании: 'paid' — были оплаты, 'granted' — выдан без оплат
   // (админ, приглашения), 'trial' — только пробный период, null — премиума не было
   async getPremiumSource(userId) {

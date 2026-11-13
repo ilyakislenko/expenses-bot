@@ -200,7 +200,7 @@ module.exports = {
 • 🎯 *Budgets* und 📄 *Zusammenfassung* des Zeitraums — Buttons unter der Monatsübersicht (Premium)
 • Währungen, Erinnerungen (bis zu 3 pro Tag) und Periodenbeginn — unter ☰ Mehr → ⚙️ Einstellungen
 • 🏆 /achievements — Tagesserie, Erfolge, Challenges und dein Monatsrückblick
-• 🎁 /invite — lade einen Freund ein: +7 Tage Premium für euch beide
+• 🎁 /invite — lade einen Freund ein: +30 Tage Premium für euch beide
 
 Befehle: /stats /history /income /recurring /export /settings /menu`,
   
@@ -354,7 +354,7 @@ Ab jetzt werden alle Ausgaben in deiner Ortszeit angezeigt.`,
     purchases_next_button: 'Weiter ▶',
     premium_why_paid_text: "Diesen Bot entwickelt eine einzelne Person — ein kleines unabhängiges Projekt. Server und KI (Beleg- und Spracherkennung, Antworten auf Fragen) kosten jeden Monat Geld, und neue Funktionen kosten Zeit. Premium bezahlt all das und hält den Bot am Leben und in Entwicklung. Ausgaben erfassen bleibt kostenlos.",
     button_invite: '🎁 Freund einladen',
-    command_invite: 'Freund einladen: +7 Tage Premium',
+    command_invite: 'Freund einladen: +30 Tage Premium',
     referral_title: '🎁 *Lade einen Freund ein*',
     referral_intro: "Schick einem Freund deinen Link. Sobald er {expenses} Ausgaben an mindestens {activeDays} verschiedenen Tagen erfasst, bekommt ihr *beide* *+{days} Tage Premium* — zusätzlich zur Test- oder bezahlten Laufzeit.",
     referral_link_label: '🔗 Dein Link (tippen zum Kopieren):',
@@ -372,6 +372,13 @@ Ab jetzt werden alle Ausgaben in deiner Ortszeit angezeigt.`,
     referral_reward_inviter: '🎉 *+{days} Tage Premium!* {name} erfasst dank deiner Einladung schon Ausgaben. Premium gilt bis {date}.',
     referral_reward_inviter_capped: '🎉 {name} erfasst dank deiner Einladung schon Ausgaben und hat +{friendDays} Tage bekommen. Du hast den maximalen Bonus ({days} Tage) schon erreicht — danke, dass du den Bot weiterempfiehlst ❤️',
     referral_upsell_line: '🎁 Oder lade einen Freund ein — ihr bekommt beide +{days} Tage Premium.',
+    share_prompt_streak: "🔥 Du erfasst jeden Tag — das ist schon Gewohnheit! Zeig den Bot einem Freund, dem er auch hilft.",
+    share_prompt_wrapped: "🎉 Dein Monatsrückblick ist fertig. Zeig den Bot einem Freund — damit auch er sieht, wohin sein Geld geht.",
+    share_prompt_quiz: "🎲 Quiz geschafft! Zeig den Bot einem Freund — wer kennt seine Ausgaben besser?",
+    share_prompt_goal: "🏆 Ziel erreicht — Glückwunsch! Zeig den Bot einem Freund, der auch spart.",
+    share_prompt_bonus_both: "🎁 Über deinen Link bekommt ihr beide +{days} Tage Premium.",
+    share_prompt_bonus_friend: "🎁 Ein Freund über deinen Link bekommt +{days} Tage Premium.",
+    share_prompt_button: "📤 Einem Freund zeigen",
     premium_hook_regular: '📊 Einträge in den letzten 30 Tagen: <b>{count}</b>. Mit Premium siehst du, welche Kategorien wachsen, setzt Limits — und am Monatsende bleibt mehr übrig.',
     premium_hook_trial: '📊 Einträge in den letzten 30 Tagen: <b>{count}</b>. Nach der Testphase gibt es Budgets, vollständige Zusammenfassungen und Familie nur mit Premium — alles Erfasste bleibt in jedem Fall erhalten.',
     premium_benefit_receipts: '\n• 🧾 Kassenbon-Fotos: bis zu {premium} pro Monat (ohne Premium — {free})',

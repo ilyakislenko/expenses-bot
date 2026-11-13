@@ -394,6 +394,32 @@ describe('AchievementService.track', () => {
     expect(await service.track(1, 'expense_added', { lang: 'ru' })).toBe('');
   });
 
+  test('«📤 Покажи другу» moments: every 7 days of the streak (once a day) and a reached goal', async () => {
+    const week = Array.from({ length: 7 }, (_, i) => `2026-10-${22 + i}`);
+    const repo = fakeRepo({
+      stats: { expenses: 7, records: 7, categories: 1 },
+      expenseDays: week.slice(1),
+      unlocked: ['first_expense'],
+      state: { user_id: 1, level_seen: 1, streak_seen_date: '2026-10-27', wrapped_enabled: true }
+    });
+    const service = buildService(repo);
+    service.referralService = { offerShareLater: jest.fn() };
+    await service.track(1, 'expense_added', { lang: 'ru' }); // серия 6 дней — не момент
+    expect(service.referralService.offerShareLater).not.toHaveBeenCalled();
+
+    repo.days.expenseDays = week;
+    repo.state.streak_seen_date = '2026-10-27';
+    await service.track(1, 'expense_added', { lang: 'ru' });
+    expect(service.referralService.offerShareLater).toHaveBeenCalledWith(1, 'streak');
+    await service.track(1, 'expense_added', { lang: 'ru' }); // тот же день — строка серии уже была
+    expect(service.referralService.offerShareLater).toHaveBeenCalledTimes(1);
+
+    await service.track(1, 'goal_reached', { lang: 'ru' });
+    expect(service.referralService.offerShareLater).toHaveBeenLastCalledWith(1, 'goal');
+    await service.track(1, 'savings_updated', { lang: 'ru' });
+    expect(service.referralService.offerShareLater).toHaveBeenCalledTimes(2);
+  });
+
   test('a freeze used for a missed day is saved once and reported', async () => {
     const repo = fakeRepo({
       stats: { expenses: 3, records: 3 },

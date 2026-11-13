@@ -1,6 +1,7 @@
 const respond = require('../utils/respond');
 const respondPhoto = require('../utils/respondPhoto');
 const logger = require('../utils/logger');
+const ReferralService = require('../services/ReferralService');
 
 // Графики картинками: кольцо по категориям (chp|<offset>), столбики за 6 периодов (cht|<offset>,
 // chc|<categoryId>|<offset>) и карточка «Итоги месяца» для пересылки (achwi|<offset>).
@@ -99,7 +100,8 @@ class ChartHandlers {
   }
 
   // achwi|<offset> — карточка «Итоги месяца» отдельным сообщением: её пересылают друзьям. Бесплатно.
-  // В подписи — только ссылка на бота; на картинке нет описаний трат и названий целей
+  // В подписи и внизу картинки — ссылка поделившегося (share_wrapped_<код>: пришедший по ней — его приглашённый);
+  // на картинке нет описаний трат и названий целей
   async shareWrapped(ctx, offset = -1) {
     const userId = ctx.from.id;
     const lang = await this.userService.getUserLanguage(userId);
@@ -109,11 +111,13 @@ class ChartHandlers {
       await ctx.answerCbQuery(this.t(lang, 'chart_empty'), { show_alert: true }).catch(() => {});
       return;
     }
-    const png = await this.render(() => this.chartService.wrappedCard(wrapped.card, lang, { botUsername: this.botUsername(ctx) }));
+    const username = this.botUsername(ctx);
+    const link = this.referralService
+      ? await this.referralService.shareLinkFor(userId, 'wrapped', username)
+      : ReferralService.shareLink(username, 'wrapped');
+    const png = await this.render(() => this.chartService.wrappedCard(wrapped.card, lang, { botUsername: username, link }));
     if (!png) return this.unavailable(ctx, lang);
     await ctx.answerCbQuery(this.t(lang, 'chart_card_hint')).catch(() => {});
-    const username = this.botUsername(ctx);
-    const link = username ? `https://t.me/${username}?start=wrapped` : null;
     await ctx.replyWithPhoto({ source: png, filename: 'wrapped.png' }, {
       caption: link ? this.t(lang, 'chart_card_caption', { link }) : undefined,
       reply_markup: link ? { inline_keyboard: [[{ text: this.t(lang, 'button_chart_try'), url: link }]] } : undefined

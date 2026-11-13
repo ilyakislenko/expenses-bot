@@ -5,6 +5,7 @@ const TRIVIA = require('../utils/quizTrivia');
 const { QUIZ } = require('../utils/constants');
 const { addDays } = require('../utils/period');
 const QuizService = require('../services/QuizService');
+const ReferralService = require('../services/ReferralService');
 const LocalizationService = require('../services/LocalizationService');
 const Formatter = require('../utils/formatter');
 const charts = require('../utils/charts');
@@ -560,6 +561,21 @@ describe('poll_answer mapping and quiz flow', () => {
     expect((await service.start(7781100001, later(30000))).status).toBe('finished');
   });
 
+  test('the result carries the player\'s referral share link (share_quiz_<code>), then «📤 Покажи другу»', async () => {
+    const { service, telegram } = makeService();
+    const order = [];
+    telegram.sendMessage.mockImplementation(async () => { order.push('result'); return {}; });
+    const referralService = new ReferralService({ referralRepository: { getCode: async () => 'k3m9x2p' } });
+    referralService.offerShare = jest.fn(async () => { order.push('prompt'); return true; });
+    service.referralService = referralService;
+    await service.start(7781100003, OPEN);
+    for (let i = 0; i < 5; i++) await service.answerPoll(`poll${i + 1}`, 7781100003, [i % 4], later(i * 3000 + 1000));
+    const [, text] = telegram.sendMessage.mock.calls[0];
+    expect(text).toContain('https://t.me/TestQuizBot?start=share_quiz_k3m9x2p');
+    expect(referralService.offerShare).toHaveBeenCalledWith(7781100003, 'quiz');
+    expect(order).toEqual(['result', 'prompt']);
+  });
+
   test('foreign, duplicate, late and unknown answers are ignored', async () => {
     const { service, repo } = makeService();
     await service.start(7781100002, OPEN);
@@ -702,9 +718,9 @@ describe('quiz card and texts', () => {
   test('share card: score, answers and link — no amounts', () => {
     const svg = charts.quizCardSvg({
       title: 'Угадай свои траты', subtitle: 'Квиз недели · 26.10 – 01.11.2026', score: '60', scoreLabel: 'очков', badge: 'Идеально!',
-      answers: 'ccwcm', tiles: [{ value: '3/5', label: 'верных' }, { value: '72%', label: 'лучше' }], footer: 'Проверь себя:', link: 't.me/TestQuizBot?start=quiz'
+      answers: 'ccwcm', tiles: [{ value: '3/5', label: 'верных' }, { value: '72%', label: 'лучше' }], footer: 'Проверь себя:', link: 't.me/TestQuizBot?start=share_quiz_k3m9x2p'
     });
-    expect(svg).toContain('t.me/TestQuizBot?start=quiz');
+    expect(svg).toContain('t.me/TestQuizBot?start=share_quiz_k3m9x2p');
     expect(svg).not.toMatch(/₽|\$|€/);
     expect((svg.match(/<rect x="[\d.]+" y="236"/g) || [])).toHaveLength(5);
   });

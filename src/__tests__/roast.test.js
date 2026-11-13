@@ -5,6 +5,7 @@ const {
 const roastTemplates = require('../locales/roast');
 const RoastService = require('../services/RoastService');
 const RoastHandlers = require('../handlers/RoastHandlers');
+const ReferralService = require('../services/ReferralService');
 const LocalizationService = require('../services/LocalizationService');
 const Formatter = require('../utils/formatter');
 const { ROAST, generateSettingsKeyboard } = require('../utils/constants');
@@ -677,7 +678,8 @@ describe('RoastHandlers settings flow', () => {
       confirmAdult: jest.fn(async () => { settings.adultConfirmed = true; }),
       monthRoast: jest.fn(async () => ({ text: 'roast', shareText: 'share', hasData: true }))
     };
-    const handlers = new RoastHandlers({ roastService, userService: { getUserLanguage: async () => 'ru' }, localizationService });
+    const referralService = new ReferralService({ referralRepository: { getCode: async () => 'k3m9x2p' } });
+    const handlers = new RoastHandlers({ roastService, userService: { getUserLanguage: async () => 'ru' }, localizationService, referralService });
     const ctx = (match) => ({
       from: { id: 7 }, chat: { type: 'private', id: 7 }, match, botInfo: { username: 'test_bot' },
       callbackQuery: { message: { message_id: 1 } },
@@ -734,7 +736,7 @@ describe('RoastHandlers settings flow', () => {
     expect(roastService.monthRoast).toHaveBeenCalledWith(7, 'ru', { level: 'spicy', gender: 'x' });
     expect(data(c)).toEqual(['rstl|spicy|m', 'rstl|savage|m', 'rst']);
     const share = c.editMessageText.mock.calls[0][1].reply_markup.inline_keyboard.flat().find(b => b.url);
-    expect(share.url).toMatch(/^https:\/\/t\.me\/share\/url\?url=https%3A%2F%2Ft\.me%2Ftest_bot%3Fstart%3Droast&text=/);
+    expect(share.url).toMatch(/^https:\/\/t\.me\/share\/url\?url=https%3A%2F%2Ft\.me%2Ftest_bot%3Fstart%3Dshare_roast_k3m9x2p&text=/);
     for (const callback of data(c)) expect(Buffer.byteLength(callback)).toBeLessThanOrEqual(64);
   });
 });

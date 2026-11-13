@@ -248,7 +248,7 @@ describe('referral reward needs expenses on 2 different days (Fix E)', () => {
   test('texts in every language mention the days', () => {
     for (const lang of LANGS) {
       for (const key of ['referral_intro', 'referral_joined_notification', 'referral_welcome_note']) {
-        const text = t(lang, key, { expenses: 3, activeDays: 2, days: 7, name: 'A' });
+        const text = t(lang, key, { expenses: 3, activeDays: 2, days: 30, name: 'A' });
         expect(text).not.toMatch(/\{activeDays\}/);
         expect(text).toContain('2');
       }
@@ -353,7 +353,7 @@ describe('new texts are valid Markdown in every language (Fix E)', () => {
       'roast_enabled_sample', 'roast_enabled_when', 'referral_intro', 'referral_welcome_note'];
     for (const lang of LANGS) {
       for (const key of keys) {
-        const text = t(lang, key, { ...params, expenses: 3, activeDays: 2, days: 7 });
+        const text = t(lang, key, { ...params, expenses: 3, activeDays: 2, days: 30 });
         expect(text).not.toBe(key);
         expect(text).not.toMatch(/\{\w+\}|%[A-Z]+%/);
         expect(() => checkTelegramMarkdown(text)).not.toThrow();

@@ -89,8 +89,8 @@ function makeServices({ premium = true, family = null, admin = false, subscripti
       sendBroadcastMessage: jest.fn(async () => ({ total: 2, sent: 2, failed: 0 }))
     },
     referralService: {
-      getOrCreateCode: async () => 'k3m9x2p', getStats: async () => ({ invited: 2, activated: 1, days: 7, maxDays: 70, capped: false }),
-      rewardDays: 7, config: { ACTIVATION_EXPENSES: 3, ACTIVATION_DAYS: 2 }
+      getOrCreateCode: async () => 'k3m9x2p', getStats: async () => ({ invited: 2, activated: 1, days: 30, maxDays: 300, capped: false }),
+      rewardDays: 30, config: { ACTIVATION_EXPENSES: 3, ACTIVATION_DAYS: 2 }
     },
     funnelService: { track: jest.fn(async () => {}) },
     rateLimiter: new RateLimiter()
@@ -286,7 +286,7 @@ describe('premium API', () => {
   test('invite: personal link and share url to the bot', async () => {
     const { app } = server();
     const res = await request(app).get('/api/invite').set('Authorization', auth()).expect(200);
-    expect(res.body).toMatchObject({ link: 'https://t.me/ExpensesAssistant_bot?start=ref_k3m9x2p', days: 7, stats: { invited: 2, activated: 1 } });
+    expect(res.body).toMatchObject({ link: 'https://t.me/ExpensesAssistant_bot?start=ref_k3m9x2p', days: 30, stats: { invited: 2, activated: 1 } });
     expect(res.body.shareUrl).toMatch(/^https:\/\/t\.me\/share\/url\?url=https%3A%2F%2Ft\.me%2FExpensesAssistant_bot%3Fstart%3Dref_k3m9x2p&text=/);
   });
 });

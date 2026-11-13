@@ -308,7 +308,7 @@ function trendSvg(data, engine = estimateText()) {
 
 // ---------- Карточка «Итоги месяца» ----------
 
-// data: { title, subtitle, total, totalLabel, brand, footer,
+// data: { title, subtitle, total, totalLabel, brand, footer, link? (ссылка поделившегося — внизу вместо имени бота),
 //         tiles: [{ value, label }] (до 3), rows: [{ label, value, detail?, note?, percent? }] }
 // Описаний трат здесь нет и быть не должно — карточку пересылают
 function wrappedCardSvg(data, engine = estimateText()) {
@@ -343,7 +343,7 @@ function wrappedCardSvg(data, engine = estimateText()) {
   let y = tiles.length ? 710 : 500;
   for (const row of data.rows || []) {
     const height = 50 + (row.detail ? 42 : 0) + (row.note ? 38 : 0) + (typeof row.percent === 'number' ? 36 : 0);
-    if (y + height > H - 130) break;
+    if (y + height > H - (data.link ? 170 : 130)) break;
     parts.push(label(pad, y, row.label, inner, { size: 26, color: THEME.muted }));
     parts.push(label(pad, y + 50, row.value, inner, { size: 40, bold: true }));
     let next = y + 50;
@@ -364,9 +364,14 @@ function wrappedCardSvg(data, engine = estimateText()) {
     y = next + 78;
   }
 
-  const brandWidth = data.brand ? engine.width(data.brand, 28, true) : 0;
-  if (data.footer) parts.push(label(pad, H - 70, data.footer, inner - brandWidth - 32, { size: 26, color: THEME.muted }));
-  if (data.brand) parts.push(engine.draw(W - pad, H - 70, data.brand, { size: 28, bold: true, color: PALETTE[0], anchor: 'end' }));
+  if (data.link) {
+    if (data.footer) parts.push(label(pad, H - 110, data.footer, inner, { size: 26, color: THEME.muted }));
+    parts.push(label(pad, H - 60, data.link, inner, { size: 28, bold: true, color: PALETTE[0] }));
+  } else {
+    const brandWidth = data.brand ? engine.width(data.brand, 28, true) : 0;
+    if (data.footer) parts.push(label(pad, H - 70, data.footer, inner - brandWidth - 32, { size: 26, color: THEME.muted }));
+    if (data.brand) parts.push(engine.draw(W - pad, H - 70, data.brand, { size: 28, bold: true, color: PALETTE[0], anchor: 'end' }));
+  }
   return svgDoc(W, H, engine, parts.join(''), background);
 }
 
