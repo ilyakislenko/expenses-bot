@@ -1338,3 +1338,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_category_budgets_family_category ON catego
 -- Пользователь заблокировал бота (или удалил аккаунт): проактивные сообщения ему не шлём, пока он снова не напишет
 ALTER TABLE users ADD COLUMN IF NOT EXISTS blocked_at TIMESTAMP NULL;
 COMMENT ON COLUMN users.blocked_at IS 'Когда Telegram ответил 403 (бот заблокирован, аккаунт удалён) или пришёл my_chat_member kicked; NULL — доступен. Сбрасывается любым апдейтом из лички';
+
+-- ==== MARKETPLACES CATEGORY ====
+-- Системная категория «Маркетплейсы» (Wildberries, Ozon, AliExpress, Яндекс Маркет…) для всех; старые траты не переносятся
+INSERT INTO categories (user_id, name, icon) VALUES (0, 'Маркетплейсы', '🛍️')
+ON CONFLICT (user_id, name) DO NOTHING;

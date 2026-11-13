@@ -318,6 +318,7 @@ Now all your expenses will be correctly displayed in your local time.`,
   category_transport: 'Transport',
   category_entertainment: 'Entertainment',
   category_shopping: 'Shopping',
+  category_marketplaces: 'Marketplaces',
   category_health: 'Health',
   category_other: 'Other',
   

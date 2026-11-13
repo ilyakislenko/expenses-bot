@@ -478,6 +478,7 @@ module.exports = {
   category_transport: 'Транспорт',
   category_entertainment: 'Развлечения',
   category_shopping: 'Покупки',
+  category_marketplaces: 'Маркетплейсы',
   category_health: 'Здоровье',
   category_other: 'Другое'
   ,

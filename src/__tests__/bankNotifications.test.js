@@ -230,6 +230,19 @@ describe('BankNotificationService: recording, dates, skipped operations', () => 
     expect(JSON.stringify(rows)).not.toMatch(/MAGNIT|5 120|1234/);
   });
 
+  it('marketplace purchases get the «Маркетплейсы» hint, regular stores stay «Покупки»', async () => {
+    const hints = {};
+    for (const merchant of ['WILDBERRIES', 'OZON', 'Яндекс Маркет', 'AliExpress', 'DNS', 'IKEA']) {
+      const { service, entryBatchService } = serviceEnv();
+      await service.ingest(USER, [{ text: `VISA1234 12:31 Покупка 349р ${merchant} Баланс: 5 120р` }], { now: NOW });
+      const [entry] = entryBatchService.record.mock.calls[0][1];
+      hints[entry.description] = entry.categoryHint;
+    }
+    expect(hints).toEqual({
+      WILDBERRIES: 'Маркетплейсы', OZON: 'Маркетплейсы', 'Яндекс Маркет': 'Маркетплейсы', AliExpress: 'Маркетплейсы', DNS: 'Покупки', IKEA: 'Покупки'
+    });
+  });
+
   it('income for «Зачисление / Перевод от», foreign purchase keeps the original amount in the description', async () => {
     const { service, entryBatchService } = serviceEnv();
     await service.ingest(USER, [

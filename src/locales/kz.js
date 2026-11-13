@@ -445,6 +445,7 @@ module.exports = {
     category_transport: 'Көлік',
     category_entertainment: 'Ойын-сауық',
     category_shopping: 'Сауда',
+    category_marketplaces: 'Маркетплейстер',
     category_health: 'Денсаулық',
     category_other: 'Басқа',
     

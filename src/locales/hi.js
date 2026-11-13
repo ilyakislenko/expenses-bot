@@ -465,6 +465,7 @@ module.exports = {
     category_transport: 'परिवहन',
     category_entertainment: 'मनोरंजन',
     category_shopping: 'खरीदारी',
+    category_marketplaces: 'मार्केटप्लेस',
     category_health: 'स्वास्थ्य',
     category_other: 'अन्य',
     

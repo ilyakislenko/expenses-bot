@@ -200,3 +200,27 @@ describe('Formatter CSV Localization', () => {
     });
   });
 }); 
+
+describe('system category «Маркетплейсы»', () => {
+  const LocalizationService = require('../services/LocalizationService');
+  const ExpenseService = require('../services/ExpenseService');
+  const { SYSTEM_CATEGORY_KEYS } = require('../config/categories');
+  const localization = new LocalizationService();
+
+  test('is translated by the formatter and ExpenseService from one map', () => {
+    const formatter = new Formatter(mockCurrencyUtils);
+    const expenseService = new ExpenseService();
+    expect(formatter.translateCategoryName('Маркетплейсы', localization, 'en')).toBe('Marketplaces');
+    expect(formatter.translateCategoryName('Маркетплейсы', localization, 'de')).toBe('Marktplätze');
+    expect(formatter.translateCategoryName('Marketplaces', localization, 'ru')).toBe('Маркетплейсы');
+    expect(expenseService.translateCategoryName('Маркетплейсы', localization, 'tr')).toBe('Pazaryerleri');
+    expect(expenseService.translateCategoryName('Покупки', localization, 'en')).toBe('Shopping');
+  });
+
+  test('every system category key exists in all 13 languages', () => {
+    for (const lang of ['ru', 'en', 'de', 'es', 'fr', 'pt', 'tr', 'hi', 'ka', 'kz', 'uz', 'jp', 'zh']) {
+      const locale = require(`../locales/${lang}`);
+      for (const key of new Set(Object.values(SYSTEM_CATEGORY_KEYS))) expect([lang, key, typeof locale[key]]).toEqual([lang, key, 'string']);
+    }
+  });
+});

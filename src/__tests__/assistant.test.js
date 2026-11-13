@@ -17,9 +17,9 @@ const { USER_LIMITS } = require('../utils/constants');
 
 const TODAY = '2026-10-28'; // среда
 const CATEGORIES = [
-  ['Еда', '🍔'], ['Транспорт', '🚕'], ['Развлечения', '🎬'], ['Покупки', '🛍'], ['Здоровье', '💊'], ['Другое', '📦']
+  ['Еда', '🍔'], ['Транспорт', '🚕'], ['Развлечения', '🎬'], ['Покупки', '🛍'], ['Здоровье', '💊'], ['Другое', '📦'], ['Маркетплейсы', '🛍️']
 ].map(([name, icon], i) => ({ id: i + 1, name, icon, label: name }));
-const EN_CATEGORIES = CATEGORIES.map(c => ({ ...c, label: { Еда: 'Food', Транспорт: 'Transport', Развлечения: 'Entertainment', Покупки: 'Shopping', Здоровье: 'Health', Другое: 'Other' }[c.name] }));
+const EN_CATEGORIES = CATEGORIES.map(c => ({ ...c, label: { Еда: 'Food', Транспорт: 'Transport', Развлечения: 'Entertainment', Покупки: 'Shopping', Здоровье: 'Health', Другое: 'Other', Маркетплейсы: 'Marketplaces' }[c.name] }));
 const context = { categories: CATEGORIES, today: TODAY, startDay: 1 };
 const check = (raw, ctx = context) => normalizeIntent(raw, ctx);
 
@@ -247,6 +247,10 @@ describe('assistant text helpers', () => {
     expect(matchCategory('продукты', CATEGORIES).name).toBe('Еда');
     expect(matchCategory('Food', EN_CATEGORIES).name).toBe('Еда');
     expect(matchCategory('такси', CATEGORIES)).toBeNull();
+    // «маркетплейс» — категория, бренды («вб», «озон») — поиск по описанию
+    expect(matchCategory('маркетплейс', CATEGORIES).name).toBe('Маркетплейсы');
+    expect(matchCategory('marketplace', EN_CATEGORIES).name).toBe('Маркетплейсы');
+    expect(matchCategory('вб', CATEGORIES)).toBeNull();
   });
 
   test('LIKE patterns escape % and _ from user text', () => {

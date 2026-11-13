@@ -1,3 +1,5 @@
+const { translateCategoryName } = require('../config/categories');
+
 class Formatter {
   constructor(currencyUtils) {
     this.currencyUtils = currencyUtils;
@@ -225,34 +227,7 @@ async formatCSV(expenses, userCurrency, userTimezone = 'UTC', localizationServic
   }
 
   translateCategoryName(categoryName, localizationService, userLanguage) {
-    if (!localizationService) {
-      return categoryName;
-    }
-    
-    const categoryMap = {
-      // Русские названия
-      'Еда': 'category_food',
-      'Транспорт': 'category_transport',
-      'Развлечения': 'category_entertainment',
-      'Покупки': 'category_shopping',
-      'Здоровье': 'category_health',
-      'Другое': 'category_other',
-      // Английские названия
-      'Food': 'category_food',
-      'Transport': 'category_transport',
-      'Entertainment': 'category_entertainment',
-      'Shopping': 'category_shopping',
-      'Health': 'category_health',
-      'Other': 'category_other'
-    };
-    
-    // hasOwn: своя категория «constructor»/«toString» иначе нашла бы метод Object.prototype
-    const translationKey = Object.hasOwn(categoryMap, categoryName) ? categoryMap[categoryName] : null;
-    if (translationKey) {
-      return localizationService.getText(userLanguage, translationKey);
-    }
-    
-    return categoryName; // Возвращаем оригинальное название, если перевод не найден
+    return translateCategoryName(categoryName, localizationService, userLanguage);
   }
 }
 

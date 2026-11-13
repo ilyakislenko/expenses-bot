@@ -462,6 +462,7 @@ module.exports = {
     category_transport: 'ტრანსპორტი',
     category_entertainment: 'გართობა',
     category_shopping: 'შოპინგი',
+    category_marketplaces: 'მარკეტპლეისები',
     category_health: 'ჯანმრთელობა',
     category_other: 'სხვა',
     

@@ -465,6 +465,7 @@ Ab jetzt werden alle Ausgaben in deiner Ortszeit angezeigt.`,
     category_transport: 'Transport',
     category_entertainment: 'Unterhaltung',
     category_shopping: 'Einkäufe',
+    category_marketplaces: 'Marktplätze',
     category_health: 'Gesundheit',
     category_other: 'Andere',
     

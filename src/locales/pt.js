@@ -463,6 +463,7 @@ Agora todas as suas despesas serão exibidas no horário local.`,
   category_transport: 'Transporte',
   category_entertainment: 'Entretenimento',
   category_shopping: 'Compras',
+  category_marketplaces: 'Marketplaces',
   category_health: 'Saúde',
   category_other: 'Outros',
   

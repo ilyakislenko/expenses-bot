@@ -462,6 +462,7 @@ module.exports = {
     category_transport: '交通',
     category_entertainment: '娯楽',
     category_shopping: '買い物',
+    category_marketplaces: 'マーケットプレイス',
     category_health: '健康',
     category_other: 'その他',
     

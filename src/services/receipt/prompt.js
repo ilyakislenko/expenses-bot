@@ -62,7 +62,8 @@ const RECEIPT_PROMPT_TEMPLATE = [
   '  If a discount is printed as a separate line under an item, subtract it from that item amount instead of listing it.',
   '- items[].category: every item MUST have one, exactly one of: {{CATEGORIES}}. If none fits, use {{FALLBACK_CATEGORY}}.',
   '  Choose by what the item is (groceries and drinks are food; medicine is health; fuel and taxi are transport),',
-  '  not by the fact that it was bought in a shop.',
+  '  not by the fact that it was bought in a shop; only non-food goods from an online marketplace order follow the merchant',
+  '  if a category is described as such.',
   'Numbers must be JSON numbers with a dot as decimal separator.',
   'A 2-digit year YY on the receipt means 20YY; receipts are recent — printed in {{YEAR}} or the year before.',
   'If you cannot read the receipt, reply {"is_receipt":true,"items":[]}. If it is not a receipt, reply {"is_receipt":false,"items":[]}.',
@@ -96,7 +97,8 @@ const SYSTEM_CATEGORY_HINTS = {
   'Еда': 'food: groceries, drinks, cafes',
   'Транспорт': 'transport: taxi, fuel, public transport, parking',
   'Развлечения': 'entertainment: cinema, games, events',
-  'Покупки': 'non-food goods: clothes, electronics, household goods, bags',
+  'Покупки': 'non-food goods from regular stores: clothes, electronics, household goods, bags',
+  'Маркетплейсы': 'non-food goods in an online marketplace order receipt (Wildberries, Ozon, AliExpress, Yandex Market, Megamarket, Lamoda, Temu, Uzum Market, Kaspi Магазин…)',
   'Здоровье': 'health: medicine, pharmacy, doctors',
   'Другое': 'anything else'
 };

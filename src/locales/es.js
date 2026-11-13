@@ -463,6 +463,7 @@ Tus gastos se mostrarán en hora local.`,
   category_transport: 'Transporte',
   category_entertainment: 'Entretenimiento',
   category_shopping: 'Compras',
+  category_marketplaces: 'Marketplaces',
   category_health: 'Salud',
   category_other: 'Otros',
   

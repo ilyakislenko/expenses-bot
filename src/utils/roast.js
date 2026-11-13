@@ -23,7 +23,7 @@ const JUNK_KINDS = [
   // Подписки — только разовые платежи: авто-запись регулярной траты (recurring_expense_id) поводом не считается
   { key: 'subscription', pattern: /netflix|нетфликс|spotify|спотифай|кинопоиск|kinopoisk|(?:^|[^а-яё])иви(?:[^а-яё]|$)|\bivi\b|яндекс\s*плюс|yandex\s*plus|youtube\s*premium|ютуб\s*премиум|ютуб\s*premium/i },
   { key: 'games', pattern: /steam|(?:^|[^а-яё])стим(?:[^а-яё]|$)|донат|playstation|ps\s*store|\bpsn\b|xbox|nintendo|(?:^|[^а-яё])игр[аыу](?:[^а-яё]|$)|\bgames?\b|in-?game|v-?bucks|robux|робукс/i },
-  { key: 'marketplace', pattern: /озон|ozon|wildberries|вайлдберриз|валдберр?из|(?:^|[^а-яё])вб(?:[^а-яё]|$)|\bwb\b|aliexpress|алиэкспресс|(?:^|[^а-яё])али(?:[^а-яё]|$)|яндекс\s*маркет|yandex\s*market|amazon|амазон|\btemu\b|(?:^|[^а-яё])тему(?:[^а-яё]|$)/i },
+  { key: 'marketplace', pattern: /маркетплейс|marketplace|озон|ozon|wildberries|вайлдберриз|валдберр?из|(?:^|[^а-яё])вб(?:[^а-яё]|$)|\bwb\b|aliexpress|алиэкспресс|(?:^|[^а-яё])али(?:[^а-яё]|$)|яндекс\s*маркет|yandex\s*market|мега\s*маркет|megamarket|lamoda|ламода|amazon|амазон|\btemu\b|(?:^|[^а-яё])тему(?:[^а-яё]|$)|\bshein\b|\bjoom\b|uzum\s*market|trendyol/i },
   { key: 'coffee', pattern: /кофе|капучин|латте|американо|эспрессо|(?:^|[^а-яё])раф(?:[^а-яё]|$)|старбакс|coffee|latte|cappuccino|espresso|americano|starbucks/i }
 ];
 

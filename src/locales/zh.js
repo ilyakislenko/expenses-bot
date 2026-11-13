@@ -463,6 +463,7 @@ module.exports = {
   category_transport: '交通',
   category_entertainment: '娱乐',
   category_shopping: '购物',
+  category_marketplaces: '电商平台',
   category_health: '健康',
   category_other: '其他',
   

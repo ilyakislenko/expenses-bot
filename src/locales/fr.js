@@ -461,6 +461,7 @@ Toutes tes dépenses seront désormais affichées à ton heure locale.`,
     category_transport: 'Transport',
     category_entertainment: 'Divertissement',
     category_shopping: 'Achats',
+    category_marketplaces: 'Marketplaces',
     category_health: 'Santé',
     category_other: 'Autres',
     

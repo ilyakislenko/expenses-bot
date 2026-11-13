@@ -464,6 +464,7 @@ Artık tüm harcamalar yerel saatte gösterilecek.`,
   category_transport: 'Ulaşım',
   category_entertainment: 'Eğlence',
   category_shopping: 'Alışveriş',
+  category_marketplaces: 'Pazaryerleri',
   category_health: 'Sağlık',
   category_other: 'Diğer',
   

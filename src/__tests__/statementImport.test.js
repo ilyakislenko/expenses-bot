@@ -293,10 +293,25 @@ describe('category mapping', () => {
     expect(mapBankCategory({ bankCategory: 'Игрушки' })).toBe('Покупки');
     expect(mapBankCategory({ bankCategory: 'Сервис', mcc: '5912' })).toBe('Здоровье');
     expect(mapBankCategory({ mcc: '3012' })).toBe('Транспорт');
-    expect(mapBankCategory({ description: 'WILDBERRIES' })).toBe('Покупки');
+    expect(mapBankCategory({ description: 'WILDBERRIES' })).toBe('Маркетплейсы');
     // Тип операции Kaspi «Покупки» — не категория: решает описание
     expect(mapBankCategory({ bankCategory: 'Покупки', description: 'Magnum' })).toBe('Еда');
     expect(mapBankCategory({ bankCategory: 'Прочие операции', description: 'ООО Ромашка' })).toBeNull();
+  });
+
+  it('marketplaces go to «Маркетплейсы» ahead of bank category and MCC; regular stores and marketplace banks do not', () => {
+    for (const description of ['WILDBERRIES', 'WB.RU', 'OZON', 'OZON.RU', 'Яндекс Маркет', 'YANDEX.MARKET', 'AliExpress', 'SBERMEGAMARKET',
+      'LAMODA', 'TEMU.COM', 'SHEIN', 'JOOM', 'Kaspi Магазин', 'Uzum Market', 'TRENDYOL', 'AMZN Mktp US', 'EBAY', 'AVITO']) {
+      expect([description, mapBankCategory({ description })]).toEqual([description, 'Маркетплейсы']);
+    }
+    expect(mapBankCategory({ bankCategory: 'Маркетплейсы' })).toBe('Маркетплейсы');
+    expect(mapBankCategory({ bankCategory: 'Одежда и обувь', description: 'LAMODA' })).toBe('Маркетплейсы');
+    expect(mapBankCategory({ mcc: '5399', description: 'WILDBERRIES' })).toBe('Маркетплейсы');
+    expect(mapBankCategory({ bankCategory: 'Покупки', description: 'Kaspi Магазин' })).toBe('Маркетплейсы');
+    for (const description of ['DNS', 'IKEA', 'ZARA', 'M.VIDEO']) expect(mapBankCategory({ description })).toBe('Покупки');
+    for (const description of ['Ozon Банк', 'Вайлдберриз Банк', 'Перевод Kaspi', 'Amazon Prime', 'озонатор']) {
+      expect([description, mapBankCategory({ description })]).not.toEqual([description, 'Маркетплейсы']);
+    }
   });
 });
 

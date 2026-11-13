@@ -3,6 +3,7 @@ const { expensesTotal, expensesAmountTotal } = require('../utils/metrics');
 const { localToday, customPeriod, dayPeriod } = require('../utils/period');
 const { moveToDate } = require('../utils/recordDate');
 const { stripTags } = require('../utils/tags');
+const { translateCategoryName } = require('../config/categories');
 
 class ExpenseService {
   constructor(expenseRepository, userRepository, categoryRepository, premiumService, funnelService, referralService = null) {
@@ -133,21 +134,7 @@ class ExpenseService {
   }
 
   translateCategoryName(categoryName, localizationService, userLanguage) {
-    const categoryMap = {
-      'Еда': 'category_food',
-      'Транспорт': 'category_transport',
-      'Развлечения': 'category_entertainment',
-      'Покупки': 'category_shopping',
-      'Здоровье': 'category_health',
-      'Другое': 'category_other'
-    };
-    
-    const translationKey = Object.hasOwn(categoryMap, categoryName) ? categoryMap[categoryName] : null;
-    if (translationKey) {
-      return localizationService.getText(userLanguage, translationKey);
-    }
-    
-    return categoryName; // Возвращаем оригинальное название, если перевод не найден
+    return translateCategoryName(categoryName, localizationService, userLanguage);
   }
 
   async getExpenseById(userId, expenseId) {

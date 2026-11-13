@@ -1,17 +1,44 @@
-// Категория бота (имя системной категории) для операции выписки: по категории банка, затем по MCC,
-// затем по ключевым словам описания. null — не узнали (запишется в категорию по умолчанию).
+// Категория бота (имя системной категории) для операции выписки и уведомления банка: маркетплейс по описанию, затем
+// категория банка, MCC и ключевые слова описания. null — не узнали (запишется в категорию по умолчанию).
 const FOOD = 'Еда';
 const TRANSPORT = 'Транспорт';
 const ENTERTAINMENT = 'Развлечения';
 const SHOPPING = 'Покупки';
+const MARKETPLACES = 'Маркетплейсы';
 const HEALTH = 'Здоровье';
+
+// Маркетплейс по продавцу — раньше категории банка и MCC: у них это «Одежда», «Различные товары», MCC 5399/5311, а
+// продавец однозначен. Банки маркетплейсов (Ozon Банк, Вайлдберриз Банк) и переводы Kaspi — не покупка; обычные
+// магазины (DNS, IKEA, Zara…) — «Покупки».
+const NO_LETTER_BEFORE = '(?<![\\p{L}\\p{N}])';
+const NO_LETTER_AFTER = '(?![\\p{L}\\p{N}])';
+const MARKETPLACE_NAMES = [
+  'маркетплейс', 'marketplace',
+  'wildberries', 'wildberris', 'вайлдберр?из', 'валдберр?из', `${NO_LETTER_BEFORE}(?:wb|вб)${NO_LETTER_AFTER}`,
+  `${NO_LETTER_BEFORE}(?:ozon|озон)(?!ат|ир)`, // не «озонатор», «озонирование»
+  'ali\\s*express', 'али\\s*экспресс',
+  'яндекс[\\s.]*маркет', 'yandex[\\s.]*market', 'market\\.yandex',
+  'мега\\s*маркет', 'megamarket',
+  'lamoda', 'ламода',
+  `${NO_LETTER_BEFORE}temu${NO_LETTER_AFTER}`,
+  `${NO_LETTER_BEFORE}(?:shein|шеин)${NO_LETTER_AFTER}`,
+  `${NO_LETTER_BEFORE}(?:joom|джум)${NO_LETTER_AFTER}`,
+  'kaspi(?:\\.kz)?\\s*(?:магазин|дүкен|shop)', 'каспи\\s*магазин',
+  'uzum\\s*market', 'узум\\s*маркет',
+  'trendyol',
+  'amazon(?![\\s.]*(?:prime|web\\s*services|aws))', 'амазон', `${NO_LETTER_BEFORE}amzn${NO_LETTER_AFTER}`,
+  `${NO_LETTER_BEFORE}ebay${NO_LETTER_AFTER}`,
+  'avito', 'авито'
+];
+const MARKETPLACE_PATTERN = new RegExp(`(?:${MARKETPLACE_NAMES.join('|')})(?![\\p{L}\\p{N}]*\\s*(?:банк|bank))`, 'iu');
 
 const BANK_CATEGORY_RULES = [
   [HEALTH, /аптек|медицин|здоров|клиник|стоматолог|больниц|анализ|pharmac|medical|health|drug|clinic|dental/i],
   [FOOD, /супермаркет|продукт|рестора|кафе|фастфуд|фаст-фуд|(^|\s)еда|(^|\s)бары?($|\s|,)|кофе|пекар|кондитер|доставка еды|столов|grocer|supermarket|restaurant|cafe|café|food|coffee|bakery|азық|тамақ/i],
   [TRANSPORT, /транспорт|такси|топлив|азс|бензин|каршеринг|метро|парковк|ж\/д|железнодорож|авиа|автоуслуг|аренда авто|автомобил|taxi|transport|fuel|gas station|parking|airline|railway|car rental|көлік/i],
   [ENTERTAINMENT, /развлеч|кино|театр|музык|игр(?!ушк)|отдых|культур|хобби|концерт|музе|подписк|entertainment|cinema|movie|game|music|stream|hobby|leisure/i],
-  [SHOPPING, /одежд|обув|маркетплейс|электрон|техник|для дома|ремонт|различные товары|универмаг|книг|спорттовар|цвет|подарк|игрушк|косметик|красот|животн|детск|ювелир|shopping|clothing|electronics|marketplace|department|books|beauty|gifts|pets/i]
+  [MARKETPLACES, /маркетплейс|marketplace/i],
+  [SHOPPING, /одежд|обув|электрон|техник|для дома|ремонт|различные товары|универмаг|книг|спорттовар|цвет|подарк|игрушк|косметик|красот|животн|детск|ювелир|shopping|clothing|electronics|department|books|beauty|gifts|pets/i]
 ];
 
 // MCC: точные коды и диапазоны
@@ -29,7 +56,7 @@ const DESCRIPTION_RULES = [
   [TRANSPORT, /такси|taxi|uber|yandex\.?\s?go|яндекс\.?\s?go|\bbolt\b|indriver|ситимобил|лукойл|lukoil|газпромнефть|gazpromneft|роснефть|rosneft|\bshell\b|tatneft|татнефть|метрополитен|metro mos|тройка|аэрофлот|aeroflot|ржд|\brzd\b|\bs7\b|\bonay\b|делимобиль|delimobil|whoosh|юрент|urent/i],
   [HEALTH, /аптек|apteka|pharm|еаптека|ригла|rigla|горздрав|invitro|инвитро|гемотест|helix|хеликс|стоматолог|dental|клиник|clinic/i],
   [ENTERTAINMENT, /кино|cinema|синема|театр|netflix|spotify|кинопоиск|kinopoisk|okko|\bivi\b|steam|playstation|xbox|nintendo|apple\.com\/bill|яндекс плюс|yandex plus|youtube/i],
-  [SHOPPING, /wildberries|вайлдберриз|\bozon\b|озон|aliexpress|алиэкспресс|яндекс маркет|yandex market|lamoda|ламода|\bdns\b|мвидео|m\.video|эльдорадо|eldorado|\bikea\b|икеа|леруа|leroy|\bobi\b|\bzara\b|h&m|uniqlo|sulpak|technodom|детский мир|золотое яблоко|летуаль|l'etoile|sportmaster|спортмастер/i]
+  [SHOPPING, /\bdns\b|мвидео|m\.video|эльдорадо|eldorado|\bikea\b|икеа|леруа|leroy|\bobi\b|\bzara\b|h&m|uniqlo|sulpak|technodom|детский мир|золотое яблоко|летуаль|l'etoile|sportmaster|спортмастер/i]
 ];
 
 function mccMatches(codes, mcc) {
@@ -37,6 +64,7 @@ function mccMatches(codes, mcc) {
 }
 
 function mapBankCategory({ bankCategory = '', mcc = '', description = '' } = {}) {
+  if (description && MARKETPLACE_PATTERN.test(description)) return MARKETPLACES;
   if (bankCategory) {
     for (const [name, pattern] of BANK_CATEGORY_RULES) {
       if (pattern.test(bankCategory)) return name;

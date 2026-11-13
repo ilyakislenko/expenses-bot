@@ -445,6 +445,7 @@ Endi barcha xarajatlaringiz mahalliy vaqt bo‘yicha ko‘rsatiladi.`,
     category_transport: 'Transport',
     category_entertainment: 'Ko‘ngilochar',
     category_shopping: 'Xarid',
+    category_marketplaces: 'Marketpleyslar',
     category_health: 'Sog‘liq',
     category_other: 'Boshqa',
     

@@ -40,8 +40,8 @@ Rules: "за неделю" / "for a week" means the last 7 days, "this week" mea
 Reply with the JSON object only.`;
 
 const EXAMPLE_CONTEXT = {
-  ru: 'Today: 2026-10-15 (Thursday). Month starts on day 1.\nCategories: Еда, Транспорт, Развлечения, Покупки, Здоровье, Другое',
-  en: 'Today: 2026-10-15 (Thursday). Month starts on day 1.\nCategories: Food, Transport, Entertainment, Shopping, Health, Other'
+  ru: 'Today: 2026-10-15 (Thursday). Month starts on day 1.\nCategories: Еда, Транспорт, Развлечения, Покупки, Маркетплейсы, Здоровье, Другое',
+  en: 'Today: 2026-10-15 (Thursday). Month starts on day 1.\nCategories: Food, Transport, Entertainment, Shopping, Marketplaces, Health, Other'
 };
 
 const base = { period: null, compare_to: null, categories: [], text_filter: null, limit: null, currency: null };
@@ -61,6 +61,8 @@ const EXAMPLES = [
   ['en', 'how many times did I take a taxi for a week', { type: 'count_records', period: { kind: 'last_n_days', n: 7 }, text_filter: 'taxi' }],
   ['ru', 'топ 5 трат за всё время', { type: 'top_expenses', period: { kind: 'all' }, limit: 5 }],
   ['ru', 'сколько ушло на лекарства в сентябре', { type: 'spend_total', period: { kind: 'named_month', month: 9, year: null }, categories: ['Здоровье'] }],
+  ['ru', 'сколько ушло на вб в этом году', { type: 'spend_total', period: { kind: 'year', offset: 0 }, text_filter: 'вб' }],
+  ['en', 'how much did I spend on marketplaces last month', { type: 'spend_total', period: { kind: 'month', offset: -1 }, categories: ['Marketplaces'] }],
   ['en', 'how much did I earn in 2025', { type: 'income_total', period: { kind: 'custom', from: '2025-01-01', to: '2025-12-31' } }],
   ['ru', 'сколько у меня накоплений', { type: 'savings_status' }],
   ['en', 'am I within my budget?', { type: 'budget_status' }],
