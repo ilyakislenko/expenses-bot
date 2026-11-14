@@ -199,7 +199,7 @@ module.exports = {
 • 🎯 *Bütçeler* ve 📄 dönem *Özeti* — ay genel bakışının altındaki düğmeler (Premium)
 • Para birimleri, hatırlatıcılar (günde en fazla 3) ve dönem başlangıcı — ☰ Daha fazla → ⚙️ Ayarlar
 • 🏆 /achievements — gün serisi, başarılar, meydan okumalar ve ayın özeti
-• 🎁 /invite — arkadaşınızı davet edin: ikinize de +30 gün Premium
+• 🎁 /invite — arkadaşınızı davet edin: ikinize de +7 gün Premium
 
 Komutlar: /stats /history /income /recurring /export /settings /menu`,
       
@@ -353,7 +353,7 @@ Artık tüm harcamalar yerel saatte gösterilecek.`,
         purchases_next_button: 'Sonraki ▶',
     premium_why_paid_text: "Bu botu tek bir kişi geliştiriyor — küçük, bağımsız bir proje. Sunucular ve yapay zekâ (fiş ve ses tanıma, sorulara yanıtlar) her ay para tutuyor, yeni özellikler de zaman istiyor. Premium bunların hepsini karşılıyor ve botun yaşamasını ve gelişmesini sağlıyor. Harcama kaydetmek ücretsiz kalıyor.",
     button_invite: '🎁 Arkadaş davet et',
-    command_invite: 'Arkadaş davet et: +30 gün Premium',
+    command_invite: 'Arkadaş davet et: +7 gün Premium',
     referral_title: '🎁 *Bir arkadaşınızı davet edin*',
     referral_intro: "Bağlantınızı bir arkadaşınıza gönderin. Arkadaşınız en az {activeDays} farklı günde {expenses} harcama kaydettiğinde *ikiniz de* *+{days} gün Premium* kazanırsınız — deneme ya da ücretli sürenize eklenir.",
     referral_link_label: '🔗 Bağlantınız (kopyalamak için dokunun):',

@@ -200,7 +200,7 @@ module.exports = {
 • 🎯 *Budgets* und 📄 *Zusammenfassung* des Zeitraums — Buttons unter der Monatsübersicht (Premium)
 • Währungen, Erinnerungen (bis zu 3 pro Tag) und Periodenbeginn — unter ☰ Mehr → ⚙️ Einstellungen
 • 🏆 /achievements — Tagesserie, Erfolge, Challenges und dein Monatsrückblick
-• 🎁 /invite — lade einen Freund ein: +30 Tage Premium für euch beide
+• 🎁 /invite — lade einen Freund ein: +7 Tage Premium für euch beide
 
 Befehle: /stats /history /income /recurring /export /settings /menu`,
   
@@ -354,7 +354,7 @@ Ab jetzt werden alle Ausgaben in deiner Ortszeit angezeigt.`,
     purchases_next_button: 'Weiter ▶',
     premium_why_paid_text: "Diesen Bot entwickelt eine einzelne Person — ein kleines unabhängiges Projekt. Server und KI (Beleg- und Spracherkennung, Antworten auf Fragen) kosten jeden Monat Geld, und neue Funktionen kosten Zeit. Premium bezahlt all das und hält den Bot am Leben und in Entwicklung. Ausgaben erfassen bleibt kostenlos.",
     button_invite: '🎁 Freund einladen',
-    command_invite: 'Freund einladen: +30 Tage Premium',
+    command_invite: 'Freund einladen: +7 Tage Premium',
     referral_title: '🎁 *Lade einen Freund ein*',
     referral_intro: "Schick einem Freund deinen Link. Sobald er {expenses} Ausgaben an mindestens {activeDays} verschiedenen Tagen erfasst, bekommt ihr *beide* *+{days} Tage Premium* — zusätzlich zur Test- oder bezahlten Laufzeit.",
     referral_link_label: '🔗 Dein Link (tippen zum Kopieren):',

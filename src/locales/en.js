@@ -195,7 +195,7 @@ module.exports = {
 • 🎯 *Budgets* and 📄 period *Summary* — buttons under the month overview (premium)
 • Currencies, reminders (up to 3 a day) and period start — in ☰ More → ⚙️ Settings
 • 🏆 /achievements — day streak, achievements, challenges and your month in review
-• 🎁 /invite — invite a friend: +30 days of premium for both of you
+• 🎁 /invite — invite a friend: +7 days of premium for both of you
 
 Commands: /stats /history /income /recurring /export /settings /menu`,
 
@@ -427,7 +427,7 @@ Now all your expenses will be correctly displayed in your local time.`,
   purchases_next_button: 'Next ▶',
   premium_why_paid_text: "This bot is made by one person — it is a small independent project. Servers and AI (receipt and voice recognition, answers to questions) cost money every month, and new features take time. Premium pays for all of this and keeps the bot alive and growing. Recording expenses stays free.",
   button_invite: '🎁 Invite a friend',
-  command_invite: 'Invite a friend: +30 days of premium',
+  command_invite: 'Invite a friend: +7 days of premium',
   referral_title: '🎁 *Invite a friend*',
   referral_intro: "Send a friend your link. Once they record {expenses} expenses on at least {activeDays} different days, you *both* get *+{days} days of premium* — added to a trial or paid period.",
   referral_link_label: '🔗 Your link (tap to copy):',

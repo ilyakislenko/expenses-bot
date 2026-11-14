@@ -200,7 +200,7 @@ module.exports = {
 • 🎯 *Budgets* et 📄 *Bilan* de la période — boutons sous l’aperçu du mois (premium)
 • Devises, rappels (jusqu'à 3 par jour) et début de période — dans ☰ Plus → ⚙️ Paramètres
 • 🏆 /achievements — série de jours, succès, défis et ton bilan du mois
-• 🎁 /invite — invite un ami : +30 jours de premium pour vous deux
+• 🎁 /invite — invite un ami : +7 jours de premium pour vous deux
 
 Commandes : /stats /history /income /recurring /export /settings /menu`,
   
@@ -350,7 +350,7 @@ Toutes tes dépenses seront désormais affichées à ton heure locale.`,
     purchases_next_button: 'Suivant ▶',
     premium_why_paid_text: "Ce bot est créé par une seule personne — c’est un petit projet indépendant. Les serveurs et l’IA (reconnaissance des tickets et de la voix, réponses aux questions) coûtent de l’argent chaque mois, et les nouvelles fonctions demandent du temps. Le premium finance tout cela et fait vivre et évoluer le bot. Noter ses dépenses reste gratuit.",
     button_invite: '🎁 Inviter un ami',
-    command_invite: 'Inviter un ami : +30 jours de premium',
+    command_invite: 'Inviter un ami : +7 jours de premium',
     referral_title: '🎁 *Invite un ami*',
     referral_intro: "Envoie ton lien à un ami. Dès qu’il aura enregistré {expenses} dépenses sur au moins {activeDays} jours différents, vous recevrez *tous les deux* *+{days} jours de premium* — ajoutés à l’essai ou à la période payée.",
     referral_link_label: '🔗 Ton lien (touche pour copier) :',

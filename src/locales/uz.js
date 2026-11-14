@@ -182,7 +182,7 @@ module.exports = {
 • 🎯 *Byudjetlar* va 📄 davr *Xulosasi* — oy sharhi ostidagi tugmalar (Premium)
 • Valyutalar, eslatmalar (kuniga 3 tagacha) va davr boshi — ☰ Yana → ⚙️ Sozlamalar
 • 🏆 /achievements — kunlar seriyasi, yutuqlar, chellenjlar va oy yakuni
-• 🎁 /invite — do‘stingizni taklif qiling: ikkalangizga +30 kun Premium
+• 🎁 /invite — do‘stingizni taklif qiling: ikkalangizga +7 kun Premium
 
 Buyruqlar: /stats /history /income /recurring /export /settings /menu`,
   
@@ -334,7 +334,7 @@ Endi barcha xarajatlaringiz mahalliy vaqt bo‘yicha ko‘rsatiladi.`,
     purchases_next_button: 'Keyingi ▶',
     premium_why_paid_text: "Bu botni bir kishi yaratadi — bu kichik mustaqil loyiha. Serverlar va sun’iy intellekt (chek va ovozni tanish, savollarga javoblar) har oy pul talab qiladi, yangi funksiyalar esa vaqt. Premium bularning barchasini qoplaydi va botning yashashi hamda rivojlanishiga yordam beradi. Xarajatlarni yozish bepulligicha qoladi.",
     button_invite: '🎁 Do‘stni taklif qilish',
-    command_invite: 'Do‘stni taklif qilish: +30 kun Premium',
+    command_invite: 'Do‘stni taklif qilish: +7 kun Premium',
     referral_title: '🎁 *Do‘stingizni taklif qiling*',
     referral_intro: "Havolangizni do‘stingizga yuboring. U kamida {activeDays} xil kunda {expenses} ta xarajat yozganda, *ikkalangiz ham* *+{days} kun Premium* olasiz — sinov yoki to‘langan muddatga qo‘shiladi.",
     referral_link_label: '🔗 Sizning havolangiz (nusxalash uchun bosing):',

@@ -67,17 +67,17 @@ const ROAST = {
 
 // Реферальная программа: оба получают REWARD_DAYS премиума, когда у приглашённого ACTIVATION_EXPENSES трат хотя бы
 // в ACTIVATION_DAYS разных днях (ручных или из чека — не регулярных и не из импорта; удалённые не считаются).
-// Пригласившему — не больше MAX_REWARDED_INVITES наград и MAX_BONUS_DAYS дней всего (за всё время; 10 × 30 — лимит
-// задаёт число друзей, а не дни); приглашённый получает награду всегда. Одинаково для всех: это путь к премиуму.
+// Пригласившему — не больше MAX_REWARDED_INVITES наград и MAX_BONUS_DAYS дней всего (за всё время);
+// приглашённый получает награду всегда. Одинаково для всех: это путь к премиуму.
 // Подсказка «пригласи друга» к сообщениям о лимитах — не чаще раза в UPSELL_INTERVAL_DAYS.
 // «📤 Покажи другу» в удачный момент (SHARE_MOMENTS) — каждый момент один раз на пользователя и не чаще раза в
 // SHARE_PROMPT_INTERVAL_DAYS по всем моментам; из track() — через SHARE_PROMPT_DELAY_MS, чтобы прийти после ответа.
 const REFERRAL = {
-  REWARD_DAYS: 30,
+  REWARD_DAYS: 7,
   ACTIVATION_EXPENSES: 3,
   ACTIVATION_DAYS: 2,
   MAX_REWARDED_INVITES: 10,
-  MAX_BONUS_DAYS: 300,
+  MAX_BONUS_DAYS: 70,
   UPSELL_INTERVAL_DAYS: 7,
   SHARE_MOMENTS: ['streak', 'wrapped', 'quiz', 'goal'],
   SHARE_PROMPT_INTERVAL_DAYS: 7,

@@ -342,7 +342,7 @@ describe('referral reward', () => {
     repository.expenses.set(FRIEND, 3);
     const reward = await service.onExpenseRecorded(FRIEND);
     expect(reward).toEqual(expect.objectContaining({ inviterId: INVITER, inviteeDays: REFERRAL.REWARD_DAYS, inviterDays: REFERRAL.REWARD_DAYS }));
-    expect(REFERRAL.REWARD_DAYS).toBe(30);
+    expect(REFERRAL.REWARD_DAYS).toBe(7);
     expect(users.get(FRIEND).premium).toBe(true);
     expect(users.get(INVITER).premium).toBe(true);
 
@@ -367,7 +367,7 @@ describe('referral reward', () => {
     expect(premiumTransactionRepository.createTransaction).not.toHaveBeenCalled();
   });
 
-  test('both sides get 30 days of premium as a free referral transaction, not a payment', async () => {
+  test('both sides get 7 days of premium as a free referral transaction, not a payment', async () => {
     const { service, repository, premiumTransactionRepository, users } = await invited();
     repository.expenses.set(FRIEND, 3);
     const before = Date.now();
@@ -375,13 +375,13 @@ describe('referral reward', () => {
     const calls = premiumTransactionRepository.createTransaction.mock.calls.map(([tx]) => tx);
     expect(calls.map(tx => JSON.parse(tx.invoice_payload).role).sort()).toEqual(['invitee', 'inviter']);
     for (const tx of calls) {
-      expect(tx).toEqual(expect.objectContaining({ stars_amount: 0, telegram_payment_id: null, tariff_duration: 30, status: 'completed' }));
+      expect(tx).toEqual(expect.objectContaining({ stars_amount: 0, telegram_payment_id: null, tariff_duration: REFERRAL.REWARD_DAYS, status: 'completed' }));
       expect(JSON.parse(tx.invoice_payload).type).toBe('referral');
       expect(['activation', 'extension']).toContain(tx.transaction_type);
     }
     for (const id of [INVITER, FRIEND]) {
-      expect(users.get(id).premium_expires_at.getTime()).toBeGreaterThanOrEqual(before + 30 * DAY);
-      expect(users.get(id).premium_expires_at.getTime()).toBeLessThanOrEqual(Date.now() + 30 * DAY);
+      expect(users.get(id).premium_expires_at.getTime()).toBeGreaterThanOrEqual(before + REFERRAL.REWARD_DAYS * DAY);
+      expect(users.get(id).premium_expires_at.getTime()).toBeLessThanOrEqual(Date.now() + REFERRAL.REWARD_DAYS * DAY);
     }
   });
 
@@ -399,62 +399,61 @@ describe('referral reward', () => {
   });
 
   describe('premium extension math', () => {
-    test('active paid premium: 30 days are added to the current expiry', async () => {
+    test('active paid premium: 7 days are added to the current expiry', async () => {
       const expiry = new Date(Date.now() + 10 * DAY);
       const { service, repository, users } = await invited({ inviter: { premium: true, premium_expires_at: expiry } });
       repository.expenses.set(FRIEND, 3);
       await service.onExpenseRecorded(FRIEND);
-      expect(users.get(INVITER).premium_expires_at.getTime()).toBe(expiry.getTime() + 30 * DAY);
+      expect(users.get(INVITER).premium_expires_at.getTime()).toBe(expiry.getTime() + REFERRAL.REWARD_DAYS * DAY);
     });
 
-    test('expired premium: 30 days from now', async () => {
+    test('expired premium: 7 days from now', async () => {
       const { service, repository, users } = await invited({ inviter: { premium: true, premium_expires_at: new Date(Date.now() - 3 * DAY) } });
       repository.expenses.set(FRIEND, 3);
       const before = Date.now();
       await service.onExpenseRecorded(FRIEND);
       const after = Date.now();
       const expires = users.get(INVITER).premium_expires_at.getTime();
-      expect(expires).toBeGreaterThanOrEqual(before + 30 * DAY);
-      expect(expires).toBeLessThanOrEqual(after + 30 * DAY);
+      expect(expires).toBeGreaterThanOrEqual(before + REFERRAL.REWARD_DAYS * DAY);
+      expect(expires).toBeLessThanOrEqual(after + REFERRAL.REWARD_DAYS * DAY);
     });
 
-    test('trial (the invited friend): 30 days are added to the trial, activation date kept', async () => {
+    test('trial (the invited friend): 7 days are added to the trial, activation date kept', async () => {
       const activated = new Date(Date.now() - DAY);
       const trialEnd = new Date(activated.getTime() + TRIAL_PERIOD.DAYS * DAY);
       const { service, repository, users } = await invited({ friend: { premium: true, premium_expires_at: trialEnd, premium_activated_at: activated } });
       repository.expenses.set(FRIEND, 3);
       await service.onExpenseRecorded(FRIEND);
-      expect(users.get(FRIEND).premium_expires_at.getTime()).toBe(trialEnd.getTime() + 30 * DAY);
+      expect(users.get(FRIEND).premium_expires_at.getTime()).toBe(trialEnd.getTime() + REFERRAL.REWARD_DAYS * DAY);
     });
   });
 
   describe('inviter caps', () => {
     test('bonus days: per invite, by rewarded count and by total days', () => {
-      expect(inviterBonusDays({ rewarded: 0, days: 0 })).toBe(30);
-      expect(inviterBonusDays({ rewarded: 9, days: 270 })).toBe(30);
-      // Награды по 7 дней, выданные до перехода на 30, не съедают лимит: он — 10 друзей
-      expect(inviterBonusDays({ rewarded: 9, days: 63 })).toBe(30);
-      expect(inviterBonusDays({ rewarded: 10, days: 300 })).toBe(0);
+      expect(inviterBonusDays({ rewarded: 0, days: 0 })).toBe(REFERRAL.REWARD_DAYS);
+      expect(inviterBonusDays({ rewarded: 9, days: 69 })).toBe(1);
+      expect(inviterBonusDays({ rewarded: 9, days: 63 })).toBe(7);
+      expect(inviterBonusDays({ rewarded: 10, days: 0 })).toBe(0);
       expect(inviterBonusDays({ rewarded: 10, days: 70 })).toBe(0);
       const loose = { ...REFERRAL, MAX_REWARDED_INVITES: 100 };
-      expect(inviterBonusDays({ rewarded: 12, days: 290 }, loose)).toBe(10); // до 300 дней осталось 10
-      expect(inviterBonusDays({ rewarded: 13, days: 300 }, loose)).toBe(0);
-      expect(maxInviterDays()).toBe(300);
-      expect(maxInviterDays(loose)).toBe(300);
+      expect(inviterBonusDays({ rewarded: 12, days: 67 }, loose)).toBe(3); // до 70 дней осталось 3
+      expect(inviterBonusDays({ rewarded: 13, days: 70 }, loose)).toBe(0);
+      expect(maxInviterDays()).toBe(REFERRAL.MAX_BONUS_DAYS);
+      expect(maxInviterDays(loose)).toBe(REFERRAL.MAX_BONUS_DAYS);
     });
 
     test('capped inviter: friend still gets the days, inviter gets a thank-you without days', async () => {
       const ctx = await invited();
       for (let i = 0; i < REFERRAL.MAX_REWARDED_INVITES; i++) {
-        ctx.repository.referrals.set(900 + i, { inviterId: INVITER, rewarded: true, inviteeDays: 30, inviterDays: 30 });
+        ctx.repository.referrals.set(900 + i, { inviterId: INVITER, rewarded: true, inviteeDays: REFERRAL.REWARD_DAYS, inviterDays: REFERRAL.REWARD_DAYS });
       }
       ctx.repository.expenses.set(FRIEND, 3);
       const reward = await ctx.service.onExpenseRecorded(FRIEND);
-      expect(reward).toEqual(expect.objectContaining({ inviteeDays: 30, inviterDays: 0 }));
+      expect(reward).toEqual(expect.objectContaining({ inviteeDays: REFERRAL.REWARD_DAYS, inviterDays: 0 }));
       expect(ctx.users.get(INVITER).premium).toBe(false);
       expect(ctx.users.get(FRIEND).premium).toBe(true);
       const inviterText = ctx.notificationService.sendMessage.mock.calls.find(([to]) => to === INVITER)[1];
-      expect(inviterText).toContain('300');
+      expect(inviterText).toContain(String(REFERRAL.MAX_BONUS_DAYS));
       expect((await ctx.service.getStats(INVITER)).capped).toBe(true);
     });
   });
@@ -466,7 +465,7 @@ describe('limit upsell', () => {
   test('appends the line and the invite button after the premium button, then waits 7 days', async () => {
     const { service, repository } = makeService();
     const first = await service.withUpsell(FRIEND, 'ru', 'Лимит', base());
-    expect(first.text).toBe('Лимит\n\n🎁 Или пригласи друга — вам обоим +30 дней премиума.');
+    expect(first.text).toBe('Лимит\n\n🎁 Или пригласи друга — вам обоим +7 дней премиума.');
     expect(first.keyboard.map(row => row[0].callback_data)).toEqual(['premium_subscription', 'ref', 'sv']);
 
     const again = await service.withUpsell(FRIEND, 'ru', 'Лимит', base());
@@ -479,7 +478,7 @@ describe('limit upsell', () => {
   test('not shown to an inviter who already collected every bonus', async () => {
     const { service, repository } = makeService();
     for (let i = 0; i < REFERRAL.MAX_REWARDED_INVITES; i++) {
-      repository.referrals.set(900 + i, { inviterId: FRIEND, rewarded: true, inviteeDays: 30, inviterDays: 30 });
+      repository.referrals.set(900 + i, { inviterId: FRIEND, rewarded: true, inviteeDays: REFERRAL.REWARD_DAYS, inviterDays: REFERRAL.REWARD_DAYS });
     }
     expect(await service.withUpsell(FRIEND, 'en', 'Limit', base())).toEqual({ text: 'Limit', keyboard: base() });
   });
@@ -502,14 +501,14 @@ describe('share prompt («📤 Покажи другу»)', () => {
     const [[to, text, extra]] = sent(notificationService);
     expect(to).toBe(INVITER);
     expect(text).toContain('Покажи бота другу');
-    expect(text).toContain('вам обоим +30 дней премиума');
+    expect(text).toContain('вам обоим +7 дней премиума');
     expect(text).not.toMatch(/\{\w+\}/);
     const button = extra.reply_markup.inline_keyboard[0][0];
     expect(button.text).toBe('📤 Покажи другу');
     const share = new URL(button.url);
     expect(share.origin + share.pathname).toBe('https://t.me/share/url');
     expect(share.searchParams.get('url')).toBe(`https://t.me/ExpensesAssistant_bot?start=ref_${code}`);
-    expect(share.searchParams.get('text')).toContain('+30');
+    expect(share.searchParams.get('text')).toContain('+7');
   });
 
   test('each moment once per user, and not more than once a week across all moments', async () => {
@@ -539,11 +538,11 @@ describe('share prompt («📤 Покажи другу»)', () => {
   test('capped inviter: the line promises the bonus to the friend only', async () => {
     const { service, repository, notificationService } = makeService({ users: new Map([freeUser(INVITER)]) });
     for (let i = 0; i < REFERRAL.MAX_REWARDED_INVITES; i++) {
-      repository.referrals.set(900 + i, { inviterId: INVITER, rewarded: true, inviteeDays: 30, inviterDays: 30 });
+      repository.referrals.set(900 + i, { inviterId: INVITER, rewarded: true, inviteeDays: REFERRAL.REWARD_DAYS, inviterDays: REFERRAL.REWARD_DAYS });
     }
     await service.offerShare(INVITER, 'goal');
     const text = sent(notificationService)[0][1];
-    expect(text).toContain('Друг по твоей ссылке получит +30 дней премиума');
+    expect(text).toContain('Друг по твоей ссылке получит +7 дней премиума');
     expect(text).not.toContain('вам обоим');
   });
 
@@ -577,7 +576,7 @@ describe('share prompt («📤 Покажи другу»)', () => {
   });
 });
 
-describe('every language has the share prompt and 30-day invite texts', () => {
+describe('every language has the share prompt and 7-day invite texts', () => {
   const LANGS = ['ru', 'en', 'de', 'es', 'fr', 'pt', 'tr', 'hi', 'ka', 'kz', 'uz', 'jp', 'zh'];
   const KEYS = ['share_prompt_streak', 'share_prompt_wrapped', 'share_prompt_quiz', 'share_prompt_goal', 'share_prompt_bonus_both', 'share_prompt_bonus_friend', 'share_prompt_button'];
 
@@ -585,8 +584,8 @@ describe('every language has the share prompt and 30-day invite texts', () => {
     const locale = require(`../locales/${lang}`);
     for (const key of KEYS) expect([lang, key, typeof locale[key]]).toEqual([lang, key, 'string']);
     for (const key of ['share_prompt_bonus_both', 'share_prompt_bonus_friend']) expect(locale[key]).toContain('{days}');
-    expect(locale.command_invite).toContain('+30');
-    expect(locale.command_invite).not.toMatch(/\+7(?!\d)/);
+    expect(locale.command_invite).toContain('+7');
+    expect(locale.command_invite).not.toMatch(/\+30/);
   });
 });
 
@@ -601,7 +600,7 @@ describe('premium screen pitch', () => {
       referralService: {
         getPremiumSource: async () => source,
         getStats: async () => ({ capped }),
-        rewardDays: 30
+        rewardDays: REFERRAL.REWARD_DAYS
       }
     });
   }

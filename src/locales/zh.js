@@ -200,7 +200,7 @@ module.exports = {
 • 🎯 *预算* 和 📄 期间 *总结* — 月度概览下方的按钮（高级版）
 • 货币、提醒（每天最多3次）和周期起始日 — 在 ☰ 更多 → ⚙️ 设置
 • 🏆 /achievements — 连续记录天数、成就、挑战和月度回顾
-• 🎁 /invite — 邀请好友：你们俩都得高级版 +30 天
+• 🎁 /invite — 邀请好友：你们俩都得高级版 +7 天
 
 命令：/stats /history /income /recurring /export /settings /menu`,
   
@@ -352,7 +352,7 @@ module.exports = {
     purchases_next_button: '下一页 ▶',
     premium_why_paid_text: "这个机器人由一个人开发，是一个小型独立项目。服务器和 AI（小票与语音识别、问题解答）每月都需要费用，新功能也需要时间。高级版支付这一切，让机器人得以持续运行和发展。记录支出依然免费。",
     button_invite: '🎁 邀请好友',
-    command_invite: '邀请好友：高级版 +30 天',
+    command_invite: '邀请好友：高级版 +7 天',
     referral_title: '🎁 *邀请好友*',
     referral_intro: "把你的链接发给好友。好友在至少 {activeDays} 个不同的日子里记录 {expenses} 笔支出后，你们*俩*都将获得*高级版 +{days} 天*——叠加到试用或已付费的期限上。",
     referral_link_label: '🔗 你的链接（点按即可复制）：',

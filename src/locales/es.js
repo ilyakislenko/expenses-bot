@@ -200,7 +200,7 @@ module.exports = {
 • 🎯 *Presupuestos* y 📄 *Resumen* del periodo — botones bajo el resumen del mes (premium)
 • Monedas, recordatorios (hasta 3 al día) e inicio del periodo — en ☰ Más → ⚙️ Ajustes
 • 🏆 /achievements — racha diaria, logros, retos y tu resumen del mes
-• 🎁 /invite — invita a un amigo: +30 días de premium para los dos
+• 🎁 /invite — invita a un amigo: +7 días de premium para los dos
 
 Comandos: /stats /history /income /recurring /export /settings /menu`,
   
@@ -352,7 +352,7 @@ Tus gastos se mostrarán en hora local.`,
     purchases_next_button: 'Siguiente ▶',
     premium_why_paid_text: "Este bot lo hace una sola persona: es un proyecto pequeño e independiente. Los servidores y la IA (reconocimiento de tickets y de voz, respuestas a preguntas) cuestan dinero cada mes, y las funciones nuevas llevan tiempo. Premium paga todo eso y mantiene el bot vivo y en desarrollo. Registrar gastos sigue siendo gratis.",
     button_invite: '🎁 Invitar a un amigo',
-    command_invite: 'Invitar a un amigo: +30 días de premium',
+    command_invite: 'Invitar a un amigo: +7 días de premium',
     referral_title: '🎁 *Invita a un amigo*',
     referral_intro: "Envía tu enlace a un amigo. Cuando registre {expenses} gastos en al menos {activeDays} días distintos, *los dos* recibiréis *+{days} días de premium* — sumados a la prueba o al periodo pagado.",
     referral_link_label: '🔗 Tu enlace (toca para copiar):',

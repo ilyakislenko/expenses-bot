@@ -200,7 +200,7 @@ module.exports = {
 • 🎯 *予算* と 📄 期間の *サマリー* — 月の概要の下のボタン（プレミアム）
 • 通貨、リマインダー（1日3回まで）、期間の開始日 — ☰ その他 → ⚙️ 設定
 • 🏆 /achievements — 連続記録日数、実績、チャレンジ、月間まとめ
-• 🎁 /invite — 友だちを招待：おふたりにプレミアム+30日
+• 🎁 /invite — 友だちを招待：おふたりにプレミアム+7日
 
 コマンド: /stats /history /income /recurring /export /settings /menu`,
   
@@ -351,7 +351,7 @@ module.exports = {
     purchases_next_button: '次へ ▶',
     premium_why_paid_text: "このボットは一人で開発している小さな独立プロジェクトです。サーバーとAI（レシートや音声の認識、質問への回答）には毎月費用がかかり、新しい機能には時間がかかります。プレミアムはそのすべてをまかない、ボットの運営と開発を支えています。支出の記録はこれからも無料です。",
     button_invite: '🎁 友だちを招待',
-    command_invite: '友だちを招待：プレミアム+30日',
+    command_invite: '友だちを招待：プレミアム+7日',
     referral_title: '🎁 *友だちを招待*',
     referral_intro: "あなたのリンクを友だちに送ってください。友だちが{activeDays}日以上に分けて支出を{expenses}件記録すると、*おふたりとも* *プレミアム+{days}日* を受け取れます（お試し期間・有料期間に加算）。",
     referral_link_label: '🔗 あなたのリンク（タップでコピー）：',
